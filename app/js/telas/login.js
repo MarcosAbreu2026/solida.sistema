@@ -36,41 +36,29 @@ export function render({ obras = [], ultimo = {}, erro = '' }) {
 }
 
 // ---------------------------------------------------------------- na nuvem (Supabase)
-// modo: entrar · criar · esqueci · nova-senha · aguardando (conta criada, esperando a diretoria definir a função)
-export function renderNuvem({ modo = 'entrar', erro = '', info = '', email = '' } = {}) {
+// Login por usuário e senha, criados pela diretoria (Acessos). modo: entrar · nova-senha (primeiro acesso) · esqueci
+export function renderNuvem({ modo = 'entrar', erro = '', info = '', usuario = '' } = {}) {
   const lado = html`<div class="login-lado"><img src="img/logo.png" alt="Sólida"><p>Painel da empresa</p></div>`;
   const link = (m, txt) => html`<button type="button" class="link login-link" data-login-modo="${m}">${txt}</button>`;
   const msg = html`<p class="msg err" id="msg-login">${erro}</p>${info ? html`<p class="msg ok">${info}</p>` : ''}`;
   let corpo;
-  if (modo === 'aguardando') {
-    corpo = html`<div class="login-form"><h1>Quase lá</h1>
-      <p>Sua conta (${email}) foi criada. Agora a diretoria precisa liberar o seu acesso e definir a sua função.</p>
-      <p class="pequeno">Assim que liberarem, é só recarregar a página.</p>
-      <button type="button" class="btn" data-login-recarregar>Já liberaram — entrar</button>
-      <p>${link('sair', 'Sair desta conta')}</p></div>`;
-  } else if (modo === 'nova-senha') {
-    corpo = html`<form class="login-form" data-modo="nova-senha" novalidate><h1>Nova senha</h1>
+  if (modo === 'nova-senha') {
+    corpo = html`<form class="login-form" data-modo="nova-senha" novalidate><h1>Crie a sua senha</h1>
+      <p class="pequeno">Primeiro acesso: troque a senha provisória por uma só sua (8 caracteres ou mais).</p>
       <label>Nova senha<input type="password" name="senha" autocomplete="new-password" minlength="8" required></label>
-      ${msg}<button type="submit" class="btn">Salvar a senha</button></form>`;
+      <label>Repita a senha<input type="password" name="senha2" autocomplete="new-password" minlength="8" required></label>
+      ${msg}<button type="submit" class="btn">Salvar e entrar</button><p>${link('sair', 'Sair')}</p></form>`;
   } else if (modo === 'esqueci') {
-    corpo = html`<form class="login-form" data-modo="esqueci" novalidate><h1>Esqueci a senha</h1>
-      <p class="pequeno">Mandamos um link para o seu e-mail da Sólida criar uma senha nova.</p>
-      <label>E-mail<input type="email" name="email" value="${email}" placeholder="nome@construcaosolida.com" autocomplete="username" required></label>
-      ${msg}<button type="submit" class="btn">Mandar o link</button><p>${link('entrar', '← Voltar para entrar')}</p></form>`;
-  } else if (modo === 'criar') {
-    corpo = html`<form class="login-form" data-modo="criar" novalidate><h1>Criar minha conta</h1>
-      <p class="pequeno">Só para e-mail @construcaosolida.com. Depois de criar, a diretoria libera o seu acesso.</p>
-      <label>Nome<input type="text" name="nome" placeholder="como você é chamado" required></label>
-      <label>E-mail<input type="email" name="email" value="${email}" placeholder="nome@construcaosolida.com" autocomplete="username" required></label>
-      <label>Senha (8 caracteres ou mais)<input type="password" name="senha" autocomplete="new-password" minlength="8" required></label>
-      ${msg}<button type="submit" class="btn">Criar conta</button><p>${link('entrar', '← Já tenho conta')}</p></form>`;
+    corpo = html`<div class="login-form"><h1>Esqueci a senha</h1>
+      <p>Peça para a diretoria (Felipe ou Marcos) redefinir a sua senha. Você recebe uma senha provisória e cria a sua de novo no primeiro acesso.</p>
+      <p>${link('entrar', '← Voltar para entrar')}</p></div>`;
   } else {
     corpo = html`<form class="login-form" data-modo="entrar" novalidate><h1>Entrar</h1>
-      <p class="pequeno">Use o seu e-mail da Sólida.</p>
-      <label>E-mail<input type="email" name="email" value="${email}" placeholder="nome@construcaosolida.com" autocomplete="username" required></label>
+      <p class="pequeno">Use o usuário e a senha que a diretoria passou para você.</p>
+      <label>Usuário<input type="text" name="usuario" value="${usuario}" placeholder="ex.: mariana" autocapitalize="none" spellcheck="false" autocomplete="username" required></label>
       <label>Senha<input type="password" name="senha" autocomplete="current-password" required></label>
       ${msg}<button type="submit" class="btn">Entrar</button>
-      <p class="login-links">${link('esqueci', 'Esqueci a senha')} · ${link('criar', 'Criar minha conta')}</p></form>`;
+      <p class="login-links">${link('esqueci', 'Esqueci a senha')}</p></form>`;
   }
   return html`${lado}<div class="login-corpo">${corpo}</div>`;
 }

@@ -1,5 +1,5 @@
 -- Sistema Sólida no Supabase — rodar uma vez no SQL Editor do projeto.
--- Quem entra: só e-mail @construcaosolida.com. Quem cria a conta fica "aguardando liberação" até a diretoria
+-- Logins por usuário e senha, criados pelos sócios (ver 02-login-por-usuario.sql).
 -- definir a função (tela Equipe). O que cada função vê segue app/js/funcoes.js; valores só para quem "vê valores".
 
 -- ---------------------------------------------------------------- perfis (um por pessoa)

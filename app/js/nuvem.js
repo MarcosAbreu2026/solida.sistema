@@ -27,42 +27,43 @@ export async function carregarPerfil() {
   return perfil;
 }
 
-const DOMINIO = '@construcaosolida.com';
+// login por usuário (ex.: "mariana"): por trás, vira um e-mail interno que nunca recebe mensagem
+const emailDoUsuario = (u) => { const x = String(u || '').trim().toLowerCase(); return x.includes('@') ? x : `${x}@usuarios.construcaosolida.com`; };
 const traduzir = (m) => {
   const t = String(m || '');
-  if (/invalid login/i.test(t)) return 'E-mail ou senha errados.';
-  if (/email not confirmed/i.test(t)) return 'Confirme o seu e-mail: abra o link que chegou na sua caixa de entrada.';
-  if (/already registered|already been registered/i.test(t)) return 'Este e-mail já tem conta. Use "Entrar" ou "Esqueci a senha".';
+  if (/invalid login/i.test(t)) return 'Usuário ou senha errados.';
   if (/password should be|at least/i.test(t)) return 'A senha precisa ter pelo menos 8 caracteres.';
-  if (/construcaosolida/i.test(t)) return `Use o seu e-mail ${DOMINIO}.`;
   if (/rate limit/i.test(t)) return 'Muitas tentativas. Espere alguns minutos e tente de novo.';
   return t || 'Não foi possível entrar.';
 };
-const conferirEmail = (email) => {
-  const e = String(email || '').trim().toLowerCase();
-  if (!e.endsWith(DOMINIO)) throw new Error(`Use o seu e-mail ${DOMINIO}.`);
-  return e;
-};
 
-export async function entrar(email, senha) {
-  const { error } = await sb.auth.signInWithPassword({ email: conferirEmail(email), password: senha });
+export async function entrar(usuario, senha) {
+  if (!String(usuario || '').trim() || !senha) throw new Error('Preencha o usuário e a senha.');
+  const { error } = await sb.auth.signInWithPassword({ email: emailDoUsuario(usuario), password: senha });
   if (error) throw new Error(traduzir(error.message));
   return carregarPerfil();
 }
-export async function criarConta(email, senha, nome) {
-  if (String(senha || '').length < 8) throw new Error('A senha precisa ter pelo menos 8 caracteres.');
-  const { data, error } = await sb.auth.signUp({ email: conferirEmail(email), password: senha, options: { data: { nome: String(nome || '').trim() }, emailRedirectTo: `${location.origin}/` } });
-  if (error) throw new Error(traduzir(error.message));
-  return data.session ? carregarPerfil() : null;   // null = falta confirmar o e-mail
-}
-export async function esqueciSenha(email) {
-  const { error } = await sb.auth.resetPasswordForEmail(conferirEmail(email), { redirectTo: `${location.origin}/` });
-  if (error) throw new Error(traduzir(error.message));
-}
+// primeiro acesso (ou senha redefinida pela diretoria): a pessoa cria a própria senha
 export async function trocarSenha(senha) {
   if (String(senha || '').length < 8) throw new Error('A senha precisa ter pelo menos 8 caracteres.');
   const { error } = await sb.auth.updateUser({ password: senha });
   if (error) throw new Error(traduzir(error.message));
+  await sb.rpc('senha_trocada');
+  return carregarPerfil();
+}
+// diretoria: cria o login de alguém e redefine a senha de quem esqueceu (senha provisória)
+export async function criarLogin({ usuario, nome, funcao, obras, senha }) {
+  const { error } = await sb.rpc('criar_login', { p_usuario: usuario, p_nome: nome, p_funcao: funcao, p_obras: obras || [], p_senha: senha });
+  if (error) throw new Error(error.message);
+}
+export async function redefinirSenha(id, senha) {
+  const { error } = await sb.rpc('redefinir_senha', { p_id: id, p_senha: senha });
+  if (error) throw new Error(error.message);
+}
+export function senhaProvisoria() {
+  const L = 'abcdefghjkmnpqrstuvwxyz', N = '23456789', M = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const r = (s, n) => Array.from(crypto.getRandomValues(new Uint32Array(n)), (v) => s[v % s.length]).join('');
+  return `${r(M, 1)}${r(L, 4)}-${r(N, 4)}`;
 }
 export async function sair() { perfil = null; await sb.auth.signOut(); }
 

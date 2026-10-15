@@ -271,7 +271,10 @@ function mostrarLogin(erro = '') {
   if (nuvem.NA_NUVEM) {
     // na nuvem: e-mail e senha; conta sem função = aguardando a diretoria liberar
     const p = nuvem.perfilAtual();
-    const st = p && (!p.funcao || p.ativo === false) ? { modo: 'aguardando', email: p.email } : { ...estado.loginNuvem, erro: erro || estado.loginNuvem.erro };
+    // logado com senha provisória: cria a senha; sem função ou bloqueado: volta para entrar com aviso
+    const st = p && p.trocar_senha ? { modo: 'nova-senha' }
+      : p && (!p.funcao || p.ativo === false) ? { modo: 'entrar', erro: 'Seu acesso está bloqueado ou sem função. Fale com a diretoria.' }
+      : { ...estado.loginNuvem, erro: erro || estado.loginNuvem.erro };
     el.innerHTML = String(login.renderNuvem(st));
   } else el.innerHTML = String(login.render({ obras: obrasDisponiveis(), ultimo, erro }));
   document.title = 'Entrar · Sólida';
@@ -282,16 +285,15 @@ function mostrarLogin(erro = '') {
 // entrada na nuvem: entrar, criar conta, esqueci a senha, senha nova
 async function loginNuvem(form) {
   const fd = new FormData(form); const modo = form.dataset.modo;
-  const email = String(fd.get('email') || '').trim(); const senha = String(fd.get('senha') || '');
   const msg = form.querySelector('#msg-login'); const bt = form.querySelector('button[type=submit]');
   if (msg) msg.textContent = ''; if (bt) bt.disabled = true;
   try {
-    if (modo === 'entrar') { await nuvem.entrar(email, senha); estado.loginNuvem = { modo: 'entrar' }; }
-    else if (modo === 'criar') {
-      const p = await nuvem.criarConta(email, senha, fd.get('nome'));
-      if (!p) { estado.loginNuvem = { modo: 'entrar', email, info: 'Conta criada. Abra o link que chegou no seu e-mail para confirmar e depois entre aqui.' }; mostrarLogin(); return; }
-    } else if (modo === 'esqueci') { await nuvem.esqueciSenha(email); estado.loginNuvem = { modo: 'entrar', email, info: 'Se o e-mail tiver conta, chegou um link para criar a senha nova.' }; mostrarLogin(); return; }
-    else if (modo === 'nova-senha') { await nuvem.trocarSenha(senha); await nuvem.carregarPerfil(); estado.loginNuvem = { modo: 'entrar' }; }
+    if (modo === 'entrar') await nuvem.entrar(fd.get('usuario'), String(fd.get('senha') || ''));
+    else if (modo === 'nova-senha') {
+      if (fd.get('senha') !== fd.get('senha2')) throw new Error('As duas senhas não são iguais.');
+      await nuvem.trocarSenha(String(fd.get('senha') || ''));
+    }
+    estado.loginNuvem = { modo: 'entrar' };
     estado.dia = hojeISO();
     if (logado()) { location.hash = funcaoAtual().semMinhaSemana ? '#/geral' : '#/meudia'; atualizar(); }
     desenhar();
@@ -350,7 +352,7 @@ function desenhar() {
   }
   if (tela === 'acessos' && nuvem.NA_NUVEM && funcaoReal().id === 'socio') {
     $('#conteudo').innerHTML = '<div class="carregando">Carregando a equipe…</div>';
-    nuvem.listarPerfis().then((ps) => { if (rotaAtual().tela === 'acessos') $('#conteudo').innerHTML = `<div>${acessos.render({ perfis: ps, obras: obrasDisponiveis(), msg: estado.acessosMsg || '' })}</div>`; estado.acessosMsg = ''; });
+    nuvem.listarPerfis().then((ps) => { if (rotaAtual().tela === 'acessos') $('#conteudo').innerHTML = `<div>${acessos.render({ perfis: ps, obras: obrasDisponiveis(), msg: estado.acessosMsg || '', aviso: estado.acessosAviso })}</div>`; estado.acessosMsg = ''; estado.acessosAviso = null; });
     return;
   }
   if (tela === 'treinamentos') { $('#conteudo').innerHTML = `<div>${treinamentos.render()}</div>`; return; }
@@ -360,7 +362,7 @@ function desenhar() {
     const podeVerTodos = f.id === 'socio';
     const alvo = podeVerTodos && pAlvo && reg[pAlvo] ? { chave: pAlvo, ...reg[pAlvo] } : null;
     // diretoria: além do ranking, as sugestões da equipe sobre o sistema (pedidos de alteração)
-    const extra = podeVerTodos && !alvo ? pedidos.secaoEquipe(estado.pedido.lista) : '';
+    const extra = podeVerTodos && !alvo ? `${nuvem.NA_NUVEM ? '<section class="secao"><h2>Logins da equipe</h2><p><a class="botao on" href="#/acessos">Criar login · redefinir senha · função e obras</a></p></section>' : ''}${pedidos.secaoEquipe(estado.pedido.lista)}` : '';
     $('#conteudo').innerHTML = `<div>${perfil.render({ eu, alvo, podeVerTodos, extra, CFG })}</div>`;
     desenharAvatares();
     return;
@@ -818,6 +820,30 @@ function configurar() {
   };
   document.addEventListener('input', (e) => { if (e.target.id === 'busca-estoque') filtrarEstoque(); });
   // Acessos (diretoria, na nuvem): liberar a pessoa, mudar função/obras, bloquear
+  // criar login (senha provisória gerada aqui e mostrada uma vez) e redefinir senha
+  document.addEventListener('submit', async (e) => {
+    const f = e.target.closest('#ac-novo'); if (!f) return;
+    e.preventDefault();
+    const fd = new FormData(f);
+    const usuario = String(fd.get('usuario') || '').trim().toLowerCase(); const nome = String(fd.get('nome') || '').trim();
+    const funcao = fd.get('funcao'); const obras = fd.getAll('obras');
+    if (!nome || !usuario || !funcao) { alert('Preencha nome, usuário e função.'); return; }
+    if (funcaoPorId(funcao).porObra && !obras.length) { alert('Escolha pelo menos uma obra para esta função.'); return; }
+    const senha = nuvem.senhaProvisoria();
+    try { await nuvem.criarLogin({ usuario, nome, funcao, obras, senha }); estado.acessosAviso = { titulo: `Login criado para ${nome}`, usuario, senha }; desenhar(); }
+    catch (err) { alert(`Não foi possível criar (${err.message || err}).`); }
+  });
+  document.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-redefinir-senha]'); if (!b) return;
+    const [id, nome] = b.dataset.redefinirSenha.split('|');
+    if (!confirm(`Gerar uma senha provisória nova para ${nome}? A senha atual deixa de funcionar.`)) return;
+    const senha = nuvem.senhaProvisoria();
+    try {
+      await nuvem.redefinirSenha(id, senha);
+      const usuario = b.closest('.ac-linha').querySelector('.ac-quem .pequeno b').textContent;
+      estado.acessosAviso = { titulo: `Senha nova de ${nome}`, usuario, senha }; desenhar();
+    } catch (err) { alert(`Não foi possível (${err.message || err}).`); }
+  });
   document.addEventListener('submit', async (e) => {
     const f = e.target.closest('[data-acesso]'); if (!f) return;
     e.preventDefault();
@@ -901,7 +927,6 @@ function configurar() {
 configurar();
 if (nuvem.NA_NUVEM) {
   // link de 'esqueci a senha' volta com a sessão de recuperação: pede a senha nova
-  nuvem.sb.auth.onAuthStateChange((ev) => { if (ev === 'PASSWORD_RECOVERY') { estado.loginNuvem = { modo: 'nova-senha' }; mostrarLogin(); } });
   await nuvem.carregarPerfil();
 }
 desenhar();

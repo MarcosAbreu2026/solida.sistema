@@ -22,7 +22,7 @@ let sim = ler(CHAVE_SIM);   // { funcao, obras } quando o sócio está vendo com
 
 // na nuvem, quem está logado vem do Supabase (perfil com a função que a diretoria definiu)
 const daNuvem = () => { const p = perfilAtual(); return p ? { usuario: p.email, nome: p.nome || p.email, funcao: p.funcao, obras: p.obras || [], id: p.id } : null; };
-export const logado = () => (NA_NUVEM ? !!(perfilAtual() && perfilAtual().funcao && perfilAtual().ativo !== false) : !!atual);
+export const logado = () => (NA_NUVEM ? !!(perfilAtual() && perfilAtual().funcao && perfilAtual().ativo !== false && !perfilAtual().trocar_senha) : !!atual);
 const real = () => (NA_NUVEM ? daNuvem() : atual) || { nome: '', usuario: '', funcao: 'socio', obras: [] };
 
 // Sessão efetiva: com "ver como", a função e as obras são as simuladas
