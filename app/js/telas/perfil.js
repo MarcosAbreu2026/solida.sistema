@@ -11,6 +11,7 @@ import { lerTodosChecks, lerPessoasTarefas } from '../armazenamento.js';
 import { feriado } from '../feriados.js';
 import { pessoaDoLogin } from '../escritorio/pessoas.js';
 import { provaDe } from '../evidencias.js';
+import { NA_NUVEM, listarFotos, enviarFoto as fotoNuvem, removerFoto as tirarFotoNuvem } from '../nuvem.js';
 
 const PONTOS_FEITO = 10;
 const DIAS = ['', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
@@ -108,6 +109,7 @@ export const iniciais = (nome) => String(nome || '?').trim().split(/\s+/).slice(
 let fotos = {};
 export const chaveFoto = (nome) => String(nome || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
 export async function carregarFotos() {
+  if (NA_NUVEM) { try { fotos = await listarFotos(chaveFoto); } catch { /* sem conexão */ } return fotos; }
   try { const r = await fetch('/api/fotos', { cache: 'no-store' }); if (r.ok) fotos = await r.json() || {}; } catch { /* sem servidor */ }
   return fotos;
 }
@@ -120,12 +122,14 @@ export async function enviarFoto(nome, arquivo) {
     const lado = Math.min(img.naturalWidth, img.naturalHeight);
     const c = document.createElement('canvas'); c.width = 256; c.height = 256;
     c.getContext('2d').drawImage(img, (img.naturalWidth - lado) / 2, (img.naturalHeight - lado) / 2, lado, lado, 0, 0, 256, 256);
+    if (NA_NUVEM) { await fotoNuvem(await new Promise((ok) => c.toBlob(ok, 'image/jpeg', 0.85))); await carregarFotos(); return; }
     const r = await fetch('/api/fotos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pessoa: chaveFoto(nome), imagem: c.toDataURL('image/jpeg', 0.85) }) });
     if (!r.ok) throw new Error(await r.text());
     fotos = await r.json() || {};
   } finally { URL.revokeObjectURL(url); }
 }
 export async function removerFoto(nome) {
+  if (NA_NUVEM) { await tirarFotoNuvem(); await carregarFotos(); return; }
   const r = await fetch('/api/fotos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pessoa: chaveFoto(nome), remover: true }) });
   if (r.ok) fotos = await r.json() || {};
 }
@@ -133,7 +137,7 @@ export async function removerFoto(nome) {
 // avatar: a foto da pessoa; sem foto, o bonequinho do escritório ou as iniciais
 export function avatar(nome, tam = 40) {
   const k = chaveFoto(nome);
-  if (fotos[k]) return html`<span class="av" style="width:${tam}px;height:${tam}px"><img src="/api/foto/${k}.jpg?v=${fotos[k]}" alt=""></span>`;
+  if (fotos[k]) return html`<span class="av" style="width:${tam}px;height:${tam}px"><img src="${String(fotos[k]).startsWith('http') ? fotos[k] : `/api/foto/${k}.jpg?v=${fotos[k]}`}" alt=""></span>`;
   const p = pessoaDoLogin({ nome });
   return p ? html`<span class="av" style="width:${tam}px;height:${tam}px"><canvas data-avatar="${p.id}" width="${tam * 2}" height="${tam * 2}"></canvas></span>`
     : html`<span class="av av-ini" style="width:${tam}px;height:${tam}px;font-size:${Math.round(tam * 0.38)}px">${iniciais(nome)}</span>`;

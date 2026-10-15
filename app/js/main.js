@@ -14,6 +14,8 @@ import { FUNCOES, funcaoPorId, veBlocoGeral, INDICADORES_SO_GESTAO } from './fun
 import * as login from './telas/login.js';
 import { marcarCheck, gravarLancamento, apagarLancamento, gravarManual, vincularDia, sincronizarTarefas, lerPessoasTarefas } from './armazenamento.js';
 import * as perfil from './telas/perfil.js';
+import * as nuvem from './nuvem.js';
+import * as acessos from './telas/acessos.js';
 import * as feed from './telas/feed.js';
 import * as evidencias from './evidencias.js';
 import * as treinamentos from './telas/treinamentos.js';
@@ -61,7 +63,8 @@ const estado = {
   quadro: { funcao: null, ref: hojeISO() },        // Quadro de funções
   pessoas: { filtro: 'todos', busca: '', obra: 'todas' },
   drive: { orcamentos: null, projetos: null },    // orçamentos e projetos lidos no Drive (exportar-drive.ps1)
-  pedido: { aberto: false, lista: [], msg: '' },  // "Pedir alteração" (dados/pedidos.json no servidor)
+  pedido: { aberto: false, lista: [], msg: '' },
+  loginNuvem: { modo: 'entrar' },                 // tela de entrada na nuvem  // "Pedir alteração" (dados/pedidos.json no servidor)
 };
 
 // ---------------------------------------------------------------- pedir alteração
@@ -165,7 +168,7 @@ function desenharNav(sel) {
     + '<div class="nav-sep"></div>'   // equipe: escritório virtual, treinamentos (e o que vier depois)
     + item('escritorio', 'Escritório virtual')
     + item('treinamentos', 'Treinamentos')
-    + (f.veAgentes ? `<div class="nav-sep"></div>${item('agentes', 'Agentes')}` : '')
+    + (f.veAgentes ? `<div class="nav-sep"></div>${item('agentes', 'Agentes')}${nuvem.NA_NUVEM && funcaoReal().id === 'socio' ? item('acessos', 'Acessos') : ''}` : '')
     + `<div class="navfoot">${estado.sync.origem === 'link' ? 'Atualiza sozinho a cada 5 minutos.' : 'Mostrando os últimos dados baixados.'}</div>`;
   desenharAvatares($('#nav'));
 }
@@ -265,10 +268,36 @@ function mostrarLogin(erro = '') {
   el.hidden = false;
   let ultimo = {};
   try { ultimo = JSON.parse(localStorage.getItem('solida.ultimoLogin')) || {}; } catch { /* nada */ }
-  el.innerHTML = String(login.render({ obras: obrasDisponiveis(), ultimo, erro }));
+  if (nuvem.NA_NUVEM) {
+    // na nuvem: e-mail e senha; conta sem função = aguardando a diretoria liberar
+    const p = nuvem.perfilAtual();
+    const st = p && (!p.funcao || p.ativo === false) ? { modo: 'aguardando', email: p.email } : { ...estado.loginNuvem, erro: erro || estado.loginNuvem.erro };
+    el.innerHTML = String(login.renderNuvem(st));
+  } else el.innerHTML = String(login.render({ obras: obrasDisponiveis(), ultimo, erro }));
   document.title = 'Entrar · Sólida';
-  const campo = el.querySelector(ultimo.usuario ? '[name="senha"]' : '[name="usuario"]');
+  const campo = el.querySelector(ultimo.usuario ? '[name="senha"]' : '[name="usuario"], [name="email"], [name="nome"]');
   if (campo) campo.focus();
+}
+
+// entrada na nuvem: entrar, criar conta, esqueci a senha, senha nova
+async function loginNuvem(form) {
+  const fd = new FormData(form); const modo = form.dataset.modo;
+  const email = String(fd.get('email') || '').trim(); const senha = String(fd.get('senha') || '');
+  const msg = form.querySelector('#msg-login'); const bt = form.querySelector('button[type=submit]');
+  if (msg) msg.textContent = ''; if (bt) bt.disabled = true;
+  try {
+    if (modo === 'entrar') { await nuvem.entrar(email, senha); estado.loginNuvem = { modo: 'entrar' }; }
+    else if (modo === 'criar') {
+      const p = await nuvem.criarConta(email, senha, fd.get('nome'));
+      if (!p) { estado.loginNuvem = { modo: 'entrar', email, info: 'Conta criada. Abra o link que chegou no seu e-mail para confirmar e depois entre aqui.' }; mostrarLogin(); return; }
+    } else if (modo === 'esqueci') { await nuvem.esqueciSenha(email); estado.loginNuvem = { modo: 'entrar', email, info: 'Se o e-mail tiver conta, chegou um link para criar a senha nova.' }; mostrarLogin(); return; }
+    else if (modo === 'nova-senha') { await nuvem.trocarSenha(senha); await nuvem.carregarPerfil(); estado.loginNuvem = { modo: 'entrar' }; }
+    estado.dia = hojeISO();
+    if (logado()) { location.hash = funcaoAtual().semMinhaSemana ? '#/geral' : '#/meudia'; atualizar(); }
+    desenhar();
+  } catch (err) {
+    if (msg) msg.textContent = err.message || String(err);
+  } finally { if (bt) bt.disabled = false; }
 }
 
 function esconderLogin() {
@@ -291,7 +320,7 @@ function desenhar() {
   let area = CFG && CFG.areas.find((a) => a.id === tela);
   if (area && !podeVerArea(area)) { area = null; tela = 'geral'; }   // setor fora do perfil: nem existe
   const ehObraPlan = tela === 'planejamento' && rota.sub === 'obra';
-  const fixas = ['agentes', 'meudia', 'quadro', 'estoque', 'escritorio', 'perfil', 'feed', 'treinamentos'];
+  const fixas = ['agentes', 'meudia', 'quadro', 'estoque', 'escritorio', 'perfil', 'feed', 'treinamentos', 'acessos'];
   const sel = tela === 'funcionarios' ? 'rh' : (area || fixas.includes(tela)) ? tela : 'geral';
   desenharNav(sel);
   desenharPerfil();
@@ -302,7 +331,7 @@ function desenhar() {
   $('#data').textContent = d.charAt(0).toUpperCase() + d.slice(1);
   const titulo = ehObraPlan ? rota.arg
     : area ? area.nome
-    : ({ agentes: 'Agentes', funcionarios: 'Funcionários por obra', meudia: 'Minha semana', quadro: 'Quadro de funções', estoque: 'Estoque', escritorio: 'Escritório virtual', perfil: 'Perfil', feed: 'Feed', treinamentos: 'Treinamentos' }[tela] || 'Visão geral');
+    : ({ agentes: 'Agentes', funcionarios: 'Funcionários por obra', meudia: 'Minha semana', quadro: 'Quadro de funções', estoque: 'Estoque', escritorio: 'Escritório virtual', perfil: 'Perfil', feed: 'Feed', treinamentos: 'Treinamentos', acessos: 'Acessos' }[tela] || 'Visão geral');
   $('#titulo').textContent = titulo;
   document.title = `${titulo} · Sólida`;
 
@@ -317,6 +346,11 @@ function desenhar() {
     feed.marcarVisto();
     $('#conteudo').innerHTML = `<div>${feed.render({ eu: { nome: sessao().nome }, diretoria: f.id === 'socio', msg: estado.feedMsg || '' })}</div>`;
     estado.feedMsg = '';
+    return;
+  }
+  if (tela === 'acessos' && nuvem.NA_NUVEM && funcaoReal().id === 'socio') {
+    $('#conteudo').innerHTML = '<div class="carregando">Carregando a equipe…</div>';
+    nuvem.listarPerfis().then((ps) => { if (rotaAtual().tela === 'acessos') $('#conteudo').innerHTML = `<div>${acessos.render({ perfis: ps, obras: obrasDisponiveis(), msg: estado.acessosMsg || '' })}</div>`; estado.acessosMsg = ''; });
     return;
   }
   if (tela === 'treinamentos') { $('#conteudo').innerHTML = `<div>${treinamentos.render()}</div>`; return; }
@@ -537,6 +571,7 @@ function configurar() {
   });
   $('#login').addEventListener('submit', (e) => {
     e.preventDefault();
+    if (nuvem.NA_NUVEM) { loginNuvem(e.target); return; }
     const fd = new FormData(e.target);
     const usuario = String(fd.get('usuario') || '').trim();
     const msg = $('#msg-login');
@@ -552,7 +587,13 @@ function configurar() {
     location.hash = funcaoPorId(funcao).semMinhaSemana ? '#/geral' : '#/meudia';
     desenhar();
   });
-  $('#bSair').addEventListener('click', () => {
+  $('#login').addEventListener('click', async (e) => {
+    const m = e.target.closest('[data-login-modo]');
+    if (m) { if (m.dataset.loginModo === 'sair') { await nuvem.sair(); } estado.loginNuvem = { modo: m.dataset.loginModo === 'sair' ? 'entrar' : m.dataset.loginModo }; mostrarLogin(); return; }
+    if (e.target.closest('[data-login-recarregar]')) { await nuvem.carregarPerfil(); desenhar(); atualizar(); }
+  });
+  $('#bSair').addEventListener('click', async () => {
+    if (nuvem.NA_NUVEM) await nuvem.sair();
     sair();
     location.hash = '#/geral';
     mostrarLogin();
@@ -776,6 +817,17 @@ function configurar() {
     });
   };
   document.addEventListener('input', (e) => { if (e.target.id === 'busca-estoque') filtrarEstoque(); });
+  // Acessos (diretoria, na nuvem): liberar a pessoa, mudar função/obras, bloquear
+  document.addEventListener('submit', async (e) => {
+    const f = e.target.closest('[data-acesso]'); if (!f) return;
+    e.preventDefault();
+    const fd = new FormData(f);
+    const funcao = fd.get('funcao') || null; const obras = fd.getAll('obras');
+    if (!funcao) { alert('Escolha a função da pessoa.'); return; }
+    if (funcaoPorId(funcao).porObra && !obras.length) { alert('Escolha pelo menos uma obra para esta função.'); return; }
+    try { await nuvem.salvarPerfil(f.dataset.acesso, { funcao, obras, ativo: !!fd.get('ativo') }); estado.acessosMsg = 'Salvo.'; desenhar(); }
+    catch (err) { alert(`Não foi possível salvar (${err.message || err}).`); }
+  });
   // Feed: publicar, comentar, curtir, fixar e apagar
   const quemPublica = () => ({ autor: sessao().nome, funcao: funcaoReal().nome });
   document.addEventListener('submit', async (e) => {
@@ -847,6 +899,11 @@ function configurar() {
 }
 
 configurar();
+if (nuvem.NA_NUVEM) {
+  // link de 'esqueci a senha' volta com a sessão de recuperação: pede a senha nova
+  nuvem.sb.auth.onAuthStateChange((ev) => { if (ev === 'PASSWORD_RECOVERY') { estado.loginNuvem = { modo: 'nova-senha' }; mostrarLogin(); } });
+  await nuvem.carregarPerfil();
+}
 desenhar();
 atualizar();
 setInterval(atualizar, ATUALIZAR_A_CADA_MS);

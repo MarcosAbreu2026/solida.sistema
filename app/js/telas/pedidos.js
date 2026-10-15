@@ -6,6 +6,7 @@
 //         ou recusado (pela diretoria ou pelo Claude)
 
 import { html, data as fmtData } from '../formato.js';
+import { NA_NUVEM, listarPedidos, enviarPedido, decidirPedido } from '../nuvem.js';
 
 const TEXTO_STATUS = {
   aprovacao: 'aguardando aprovação', aberto: 'aprovado, na fila', fazendo: 'em andamento', feito: 'feito', recusado: 'recusado',
@@ -14,6 +15,7 @@ export const pendenteAprovacao = (p) => p.status === 'aprovacao';
 export const emAberto = (p) => !['feito', 'recusado'].includes(p.status);
 
 export async function listar() {
+  if (NA_NUVEM) { try { return await listarPedidos(); } catch { return []; } }
   try {
     const r = await fetch('/api/pedidos', { cache: 'no-store' });
     const j = r.ok ? await r.json() : [];
@@ -26,8 +28,8 @@ async function postar(url, corpo) {
   if (!r.ok) throw new Error(`O servidor respondeu ${r.status}.`);
   return r.json();
 }
-export const enviar = (pedido) => postar('/api/pedidos', pedido);
-export const decidir = (id, status, pessoa) => postar('/api/pedidos/decidir', { id, status, pessoa });
+export const enviar = (pedido) => (NA_NUVEM ? enviarPedido(pedido) : postar('/api/pedidos', pedido));
+export const decidir = (id, status, pessoa) => (NA_NUVEM ? decidirPedido(id, status) : postar('/api/pedidos/decidir', { id, status, pessoa }));
 
 const item = (p, { mostrarTela = false, decidir: podeDecidir = false } = {}) => html`<li class="pd-item pd-${p.status}">
   <span class="pd-status">${TEXTO_STATUS[p.status] || p.status}</span>

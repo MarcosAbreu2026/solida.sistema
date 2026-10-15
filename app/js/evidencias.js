@@ -9,9 +9,11 @@
 
 import { programacoes, registroDoDia } from './programacao.js';
 import { somarDias, inicioDaSemana } from './datas.js';
+import { NA_NUVEM, baixar } from './nuvem.js';
 
 let eventos = [];
 export async function carregar() {
+  if (NA_NUVEM) { const j = await baixar('evidencias'); eventos = j && Array.isArray(j.eventos) ? j.eventos : []; return eventos; }
   try { const r = await fetch('/dados/json/evidencias.json', { cache: 'no-store' }); if (r.ok) { const j = await r.json(); eventos = Array.isArray(j.eventos) ? j.eventos : (j.eventos ? [j.eventos] : []); } } catch { /* sem arquivo */ }
   return eventos;
 }

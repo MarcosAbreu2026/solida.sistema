@@ -1,0 +1,12 @@
+# só as telas (app/) vão para a internet; nada de dados, scripts ou documentos
+dados/
+docs/
+scripts/
+supabase/
+servidor.ps1
+iniciar.bat
+*.md
+config*.json
+# conferência de cálculos do pós-obra: tem valores da planilha (só no computador do escritório)
+app/verificar.html
+app/js/verificacao.js

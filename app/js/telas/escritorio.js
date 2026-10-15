@@ -11,6 +11,7 @@ import { LARGURA, ALTURA, ENTRADA, andavel, sentavel, noVaso, tile, caminho, sal
 import { T, desenharPlanta, desenharBoneco, desenharEtiqueta, desenharBalao, desenharIcone } from '../escritorio/desenho.js';
 import { PESSOAS, pessoaPorId, pessoaDoLogin } from '../escritorio/pessoas.js';
 import { sessao } from '../sessao.js';
+import { NA_NUVEM, presenca, sairDaPresenca } from '../nuvem.js';
 
 const SERVIDOR = '/api/escritorio';
 const VELOCIDADE = 6;          // quadrados por segundo
@@ -139,7 +140,8 @@ export function parar() {
   window.removeEventListener('resize', jogo.aoRedimensionar);
   try { sessionStorage.setItem('solida.escritorio.pos', JSON.stringify({ x: Math.round(jogo.pos.x), y: Math.round(jogo.pos.y) })); } catch { /* nada */ }
   // avisa que saiu
-  try { navigator.sendBeacon(`${SERVIDOR}/sair`, JSON.stringify({ id: jogo.eu.id })); } catch { /* nada */ }
+  if (NA_NUVEM) sairDaPresenca();
+  else { try { navigator.sendBeacon(`${SERVIDOR}/sair`, JSON.stringify({ id: jogo.eu.id })); } catch { /* nada */ } }
   jogo = null;
 }
 
@@ -333,8 +335,9 @@ async function sincronizar() {
     balao: j.balao, balaoId: j.balaoId, aceno: j.aceno, acenoId: j.acenoId, sala: salaEm(x, y),
   };
   try {
-    const r = await fetch(SERVIDOR, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(meu), cache: 'no-store' });
-    const lista = r.ok ? await r.json() : [];
+    let lista;
+    if (NA_NUVEM) lista = await presenca(meu);
+    else { const r = await fetch(SERVIDOR, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(meu), cache: 'no-store' }); lista = r.ok ? await r.json() : []; }
     if (jogo !== j) return;
     const vistos = new Set();
     for (const s of (Array.isArray(lista) ? lista : [])) {

@@ -25,18 +25,30 @@ create or replace function public.minhas_obras() returns text[] language sql sta
 create or replace function public.liberado() returns boolean language sql stable security definer set search_path = public as
   $$ select public.minha_funcao() is not null $$;
 
--- conta nova: só @construcaosolida.com; cria o perfil sem função
+-- conta nova: só @construcaosolida.com (antes de criar); depois, cria o perfil sem função
 create or replace function public.nova_conta() returns trigger language plpgsql security definer set search_path = public as $$
 begin
   if lower(new.email) not like '%@construcaosolida.com' then
     raise exception 'Use o seu e-mail @construcaosolida.com';
   end if;
+  return new;
+end $$;
+create or replace function public.criar_perfil() returns trigger language plpgsql security definer set search_path = public as $$
+begin
   insert into public.perfis (id, email, nome) values (new.id, lower(new.email), coalesce(new.raw_user_meta_data ->> 'nome', split_part(new.email, '@', 1)))
     on conflict (id) do nothing;
   return new;
 end $$;
 drop trigger if exists ao_criar_conta on auth.users;
 create trigger ao_criar_conta before insert on auth.users for each row execute function public.nova_conta();
+drop trigger if exists depois_criar_conta on auth.users;
+create trigger depois_criar_conta after insert on auth.users for each row execute function public.criar_perfil();
+
+-- funções de gatilho ninguém chama pela API; as das regras, só quem está logado
+revoke execute on function public.nova_conta() from public, anon, authenticated;
+revoke execute on function public.criar_perfil() from public, anon, authenticated;
+revoke execute on function public.minha_funcao(), public.eh_diretoria(), public.ve_valores(), public.minhas_obras(), public.liberado() from public, anon;
+grant execute on function public.minha_funcao(), public.eh_diretoria(), public.ve_valores(), public.minhas_obras(), public.liberado() to authenticated;
 
 alter table public.perfis enable row level security;
 drop policy if exists perfis_ler on public.perfis;

@@ -4,15 +4,18 @@
 
 import { html } from '../formato.js';
 import { avatar } from './perfil.js';
+import { NA_NUVEM, eventosFeed, acaoFeed } from '../nuvem.js';
 
 let eventos = [];
 
 export async function carregar() {
+  if (NA_NUVEM) { try { eventos = await eventosFeed(); } catch { /* sem conexão */ } return eventos; }
   try { const r = await fetch('/api/feed', { cache: 'no-store' }); if (r.ok) { const j = await r.json(); eventos = Array.isArray(j) ? j : []; } } catch { /* sem servidor */ }
   return eventos;
 }
 
 export async function enviar(acao) {
+  if (NA_NUVEM) { await acaoFeed(acao); await carregar(); return; }
   const r = await fetch('/api/feed', { method: 'POST', headers: { 'Content-Type': 'application/json; charset=utf-8' }, body: JSON.stringify(acao) });
   if (!r.ok) throw new Error(await r.text());
   await carregar();

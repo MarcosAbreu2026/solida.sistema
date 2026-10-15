@@ -27,13 +27,17 @@ export function marcarCheck(pessoa, data, tarefa, valor, info = {}) {
 
 // ---------------------------------------------------------------- marcações compartilhadas (servidor)
 // O servidor guarda todas as marcações (dados/tarefas-feitas.jsonl); este navegador fica com uma cópia.
+import { NA_NUVEM, linhasTarefas, marcarTarefa } from './nuvem.js';
+
 function enviarCheck(c) {
+  if (NA_NUVEM) { if (!c.registro) marcarTarefa(c).catch(() => {}); return; }
   try { fetch('/api/tarefas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(c) }).catch(() => {}); } catch { /* sem servidor */ }
 }
 // Baixa as marcações de todos; o que só existe aqui (marcado antes de ir para o servidor) é enviado.
 export async function sincronizarTarefas(atual = null) {
   let linhas;
-  try { const r = await fetch('/api/tarefas', { cache: 'no-store' }); if (!r.ok) return false; linhas = await r.json(); } catch { return false; }
+  if (NA_NUVEM) { try { linhas = await linhasTarefas(); } catch { return false; } }
+  else { try { const r = await fetch('/api/tarefas', { cache: 'no-store' }); if (!r.ok) return false; linhas = await r.json(); } catch { return false; } }
   const checks = {}; const pessoas = {};
   for (const l of Array.isArray(linhas) ? linhas : []) {
     if (!l || !l.pessoa) continue;
@@ -59,7 +63,7 @@ export async function sincronizarTarefas(atual = null) {
     }
   }
   // cadastro da pessoa (nome, função, obras): manda quando mudou, para a pontuação automática saber as obras dela
-  if (atual && atual.pessoa) {
+  if (atual && atual.pessoa && !NA_NUVEM) {
     const reg = pessoas[atual.pessoa]; const obras = atual.obras || [];
     if (!reg || reg.nome !== atual.nome || JSON.stringify(reg.obras || []) !== JSON.stringify(obras)) {
       enviarCheck({ ...atual, registro: true, data: '', tarefa: '', valor: '' });

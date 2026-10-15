@@ -5,6 +5,7 @@
 // Quando o login de verdade entrar, só este arquivo muda: o resto do sistema lê daqui.
 
 import { funcaoPorId, AREAS_DE_OBRA } from './funcoes.js';
+import { NA_NUVEM, perfilAtual } from './nuvem.js';
 
 const CHAVE = 'solida.sessao';
 const CHAVE_SIM = 'solida.verComo';
@@ -19,8 +20,10 @@ function gravar(k, v) {
 let atual = ler(CHAVE);
 let sim = ler(CHAVE_SIM);   // { funcao, obras } quando o sócio está vendo como outra função
 
-export const logado = () => !!atual;
-const real = () => atual || { nome: '', usuario: '', funcao: 'socio', obras: [] };
+// na nuvem, quem está logado vem do Supabase (perfil com a função que a diretoria definiu)
+const daNuvem = () => { const p = perfilAtual(); return p ? { usuario: p.email, nome: p.nome || p.email, funcao: p.funcao, obras: p.obras || [], id: p.id } : null; };
+export const logado = () => (NA_NUVEM ? !!(perfilAtual() && perfilAtual().funcao && perfilAtual().ativo !== false) : !!atual);
+const real = () => (NA_NUVEM ? daNuvem() : atual) || { nome: '', usuario: '', funcao: 'socio', obras: [] };
 
 // Sessão efetiva: com "ver como", a função e as obras são as simuladas
 export const sessao = () => (sim && podeVerComo() ? { ...real(), funcao: sim.funcao, obras: sim.obras || [] } : real());
@@ -29,7 +32,7 @@ export const veValores = () => !!funcaoAtual().veValores;
 
 // Fase de teste: a faixa "Ver como" aparece para todo mundo, para trocar de perfil com um clique.
 // Quando o login de verdade entrar, mudar para false: aí só o sócio vê a faixa.
-export const MODO_TESTE = true;
+export const MODO_TESTE = !NA_NUVEM;   // na nuvem, só a diretoria usa o "Ver como"
 export const podeVerComo = () => MODO_TESTE || real().funcao === 'socio';
 export const simulando = () => !!(sim && podeVerComo() && sim.funcao !== real().funcao);
 export const funcaoReal = () => funcaoPorId(real().funcao);
@@ -72,4 +75,4 @@ export function sair() {
 }
 
 // identificador estável para guardar checks e lançamentos de teste
-export const idPessoa = () => `${sessao().funcao}:${sessao().usuario || sessao().nome.toLowerCase()}`;
+export const idPessoa = () => (NA_NUVEM && real().id ? real().id : `${sessao().funcao}:${sessao().usuario || sessao().nome.toLowerCase()}`);
