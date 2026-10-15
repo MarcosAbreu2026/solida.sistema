@@ -50,7 +50,7 @@ export function renderNuvem({ modo = 'entrar', erro = '', info = '', usuario = '
       ${msg}<button type="submit" class="btn">Salvar e entrar</button><p>${link('sair', 'Sair')}</p></form>`;
   } else if (modo === 'esqueci') {
     corpo = html`<div class="login-form"><h1>Esqueci a senha</h1>
-      <p>Peça para a diretoria (Felipe ou Marcos) redefinir a sua senha. Você recebe uma senha provisória e cria a sua de novo no primeiro acesso.</p>
+      <p>Peça para a diretoria (Marcos ou Márcio) redefinir a sua senha. Você recebe uma senha provisória e cria a sua de novo no primeiro acesso.</p>
       <p>${link('entrar', '← Voltar para entrar')}</p></div>`;
   } else {
     corpo = html`<form class="login-form" data-modo="entrar" novalidate><h1>Entrar</h1>

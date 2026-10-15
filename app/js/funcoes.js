@@ -38,6 +38,9 @@ export const FUNCOES = [
     areas: ['operacao', 'suprimentos', 'transporte', 'planejamento'] },
   { id: 'ferramentas', nome: 'Ferramentas / EPI + transporte', pop: 'PAIVA', veValores: false, porObra: false, geral: OBRA,
     areas: ['operacao', 'transporte', 'suprimentos', 'posobra'] },
+  // Pedro (galpão): estagiário de compras e ferramentas, ajudando também nas obras (pedido do Felipe, 15/10)
+  { id: 'estagiario_compras', nome: 'Estagiário de compras e ferramentas', pop: 'PEDRO', veValores: false, porObra: false, geral: OBRA,
+    areas: ['suprimentos', 'transporte', 'operacao'] },
   { id: 'executor_ferramentas', nome: 'Executor de ferramentas / EPI + transporte', pop: 'ANDERSON', veValores: false, porObra: false, geral: OBRA,
     areas: ['transporte', 'suprimentos'] },
   { id: 'posobra', nome: 'Gestor do pós-obra', pop: 'ENIO', veValores: false, porObra: false, geral: GESTAO,
