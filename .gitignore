@@ -1,0 +1,16 @@
+# Fica só no computador do escritório — nunca no GitHub:
+# planilhas, dados lidos do Drive, fotos, marcações, financeiro e as chaves do Supabase
+dados/
+config.local.json
+*.local.json
+
+# ferramentas
+node_modules/
+.vercel/
+.claude/
+*.log
+Thumbs.db
+desktop.ini
+
+# link do dados.json no Drive (dá acesso aos dados de todos os setores)
+config.json
