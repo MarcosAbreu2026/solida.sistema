@@ -4,6 +4,17 @@ Versão web do **Painel da Empresa**: mostra tudo o que o painel antigo (Solida.
 mesmas fontes, e acrescenta no setor Pós-obra os detalhes da planilha integrada. Só leitura: lançar dados
 dentro do sistema fica para a Fase 2.
 
+## Na internet (Vercel + Supabase)
+- Endereço: https://sistema-solida.vercel.app — entra com e-mail @construcaosolida.com e senha ("Criar minha conta";
+  a diretoria libera e define a função em **Acessos**). Código: GitHub MarcosAbreu2026/sistema-solida (privado);
+  cada envio ao GitHub publica sozinho no Vercel. Só a pasta `app/` vai para o site (`.vercelignore`).
+- Supabase (projeto "App Solida Construção"): login, perfis, marcações, Feed, pedidos, fotos e presença.
+  Estrutura e regras de acesso em `supabase/schema.sql` (valores só para sócio e financeiro).
+- `app/js/nuvem.js`: fora do localhost, as telas usam o Supabase; no computador do escritório (localhost) continua tudo local.
+- **Coletor** (este computador): `scripts/coletor.ps1`, aberto pelo `iniciar.bat`, a cada 10 min lê o Drive e roda
+  `scripts/enviar-nuvem.mjs`, que manda os dados para o armazenamento "dados" do Supabase: `valores/` (completo) e
+  `todos/` (sem diárias, custos e área financeira). A chave de serviço fica em `config.local.json` (fora do GitHub).
+
 ## Como abrir
 Dê dois cliques em **`iniciar.bat`**. Abre uma janela preta (deixe aberta) e o navegador em
 `http://localhost:8080/app/`. Não precisa instalar nada.
