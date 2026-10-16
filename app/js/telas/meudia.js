@@ -131,8 +131,6 @@ function janela(e, dias, hoje, estado, prova) {
       <button type="button" class="fq-x" data-fn="fechar" title="Fechar">×</button>
       <div class="fq-pop-nome">${textoTarefa(t)}</div>
       <p class="pequeno">${infoTarefa(t)}${e.dia !== e.d ? ` · previsto para ${fmt(e.d)}` : ''}</p>
-      <div class="fq-pop-linha"><span>Dia</span><div>${dias.map((d) => html`<button type="button" class="fn-b" data-fn="dia|${d}" aria-pressed="${d === e.dia ? 'true' : 'false'}">${fmt(d)}</button>`)}</div></div>
-      <div class="fq-pop-linha"><span>Início</span><div><button type="button" class="fn-b" data-fn="hora|-30">‹ 30 min</button> <b>${hhmm(e.ini)}</b> <button type="button" class="fn-b" data-fn="hora|30">30 min ›</button></div></div>
       <div class="fq-pop-linha"><span>Duração</span><div><button type="button" class="fn-b" data-fn="dur|-30">− 30 min</button> <b>${durTxt(e.dur)}</b> <button type="button" class="fn-b" data-fn="dur|30">+ 30 min</button></div></div>
       ${acoes ? html`<div class="fq-pop-linha"><span>Situação</span><div class="fn-acoes">${acoes}</div></div>` : html`<p class="pequeno">A marcação de feito/não feito abre no dia da tarefa.</p>`}
       ${e.mudou ? html`<button type="button" class="botao" data-fn="volta">↺ Voltar ao quadro (${t.hora || '08:00'})</button>` : ''}
