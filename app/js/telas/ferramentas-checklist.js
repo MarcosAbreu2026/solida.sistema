@@ -14,7 +14,8 @@ const chave = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').to
 const diaCurto = (iso) => `${DIA[new Date(`${iso}T12:00:00`).getDay()]} ${fmtData(iso).slice(0, 5)}`;
 
 // Estado de um local numa semana (ini = segunda-feira): ok | atraso | espera | nao | nv
-function estadoDaSemana(regs, ini, hoje, verificadoEm) {
+function estadoDaSemana(regs, ini, hoje, verificadoEm, inicio) {
+  if (inicio && ini < inicioDaSemana(inicio)) return { cod: 'sem', reg: null }; // antes de o controle começar
   const quarta = somarDias(ini, 2);
   const dela = regs.filter((r) => r.enviadoEm >= ini && r.enviadoEm <= somarDias(ini, 6)).sort((a, b) => b.enviadoEm.localeCompare(a.enviadoEm))[0];
   if (dela) return { cod: dela.enviadoEm <= quarta ? 'ok' : 'atraso', reg: dela };
@@ -24,7 +25,7 @@ function estadoDaSemana(regs, ini, hoje, verificadoEm) {
 }
 const ROTULO = {
   ok: '✓ Enviada no prazo', atraso: '⚠ Enviada com atraso', espera: 'Aguardando (até quarta)',
-  nao: '✕ Não enviada', nv: 'Ainda não verificado',
+  nao: '✕ Não enviada', nv: 'Ainda não verificado', sem: 'Controle ainda não existia',
 };
 
 export function locaisDoChecklist(CFG, visiveis) {
@@ -36,12 +37,13 @@ export function cartoes(CFG, dados, visiveis = null) {
   const hoje = hojeISO();
   const regsTodos = (dados && Array.isArray(dados.registros) ? dados.registros : []).filter((r) => r && r.local && /^\d{4}-\d{2}-\d{2}$/.test(String(r.enviadoEm || '')));
   const verificadoEm = dados && dados.verificadoEm;
+  const inicio = dados && dados.inicio;
   const ini = inicioDaSemana(hoje);
   const semanas = Array.from({ length: SEMANAS }, (_, i) => somarDias(ini, -7 * (SEMANAS - 1 - i))); // da mais antiga para a atual
   const locais = locaisDoChecklist(CFG, visiveis);
   const card = (local) => {
     const regs = regsTodos.filter((r) => chave(r.local) === chave(local));
-    const hist = semanas.map((s) => ({ s, ...estadoDaSemana(regs, s, hoje, verificadoEm) }));
+    const hist = semanas.map((s) => ({ s, ...estadoDaSemana(regs, s, hoje, verificadoEm, inicio) }));
     const atual = hist[hist.length - 1];
     const ultimo = [...regs].sort((a, b) => b.enviadoEm.localeCompare(a.enviadoEm))[0];
     const sub = atual.reg ? `${atual.reg.por ? `${atual.reg.por}, ` : ''}${diaCurto(atual.reg.enviadoEm)}${atual.reg.hora ? `, ${atual.reg.hora}` : ''}`
@@ -54,7 +56,7 @@ export function cartoes(CFG, dados, visiveis = null) {
       <span class="fc-hist" title="Últimas semanas, da mais antiga para a atual">${hist.map((h) => html`<i class="fc-b fc-${h.cod}" title="Semana de ${fmtData(h.s).slice(0, 5)}: ${ROTULO[h.cod]}"></i>`)}</span>
     </div>`;
   };
-  const nOk = locais.filter((l) => { const r = regsTodos.filter((x) => chave(x.local) === chave(l)); return ['ok', 'atraso'].includes(estadoDaSemana(r, ini, hoje, verificadoEm).cod); }).length;
+  const nOk = locais.filter((l) => { const r = regsTodos.filter((x) => chave(x.local) === chave(l)); return ['ok', 'atraso'].includes(estadoDaSemana(r, ini, hoje, verificadoEm, inicio).cod); }).length;
   const lido = verificadoEm ? `Grupos lidos em ${fmtData(String(verificadoEm).slice(0, 10))}${String(verificadoEm).length > 10 ? `, ${String(verificadoEm).slice(11, 16)}` : ''}` : 'Os grupos ainda não foram lidos para este controle';
   return html`<section class="ob-sec">
     <div class="painel-h"><h2>Planilha de ferramentas obrigatórias</h2><p>Enviada toda quarta-feira no grupo do WhatsApp (Anderson) · ${nOk} de ${locais.length} desta semana · ${lido}</p></div>

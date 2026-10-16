@@ -1259,4 +1259,4 @@ a.card:hover .card-rotulo { color: var(--clique2); text-decoration: underline; }
 .fc-b.fc-atraso { background: #E0B04A; }
 .fc-b.fc-nao { background: #D9534F; }
 .fc-b.fc-nv { background: #C9CFD6; }
-.fc-b.fc-espera { background: #fff; box-shadow: inset 0 0 0 2px #C9CFD6; }
+.fc-b.fc-espera { background: #fff; box-shadow: inset 0 0 0 2px #C9CFD6; }.fc-b.fc-sem { background: transparent; box-shadow: inset 0 0 0 1px #D8DCE1; }
