@@ -142,7 +142,7 @@ export function abaOrcamentos(dados, anoSel) {
 
   return html`<div>
     ${seletor}${cards}${comparativo}
-    ${tabelaGrupo('Por tipo de obra', 'O que mais orçamos e o que mais fecha.', tipos)}
+    ${tabelaGrupo('Por tipo de obra', 'O que mais orçamos e o que mais fecha.', tipos, true)}
     ${tabelaGrupo('Por área', 'Tamanho da obra orçada (m²).', porFaixa(FAIXAS_AREA, 'area'), true)}
     ${tabelaGrupo('Por tempo de obra', 'Prazo previsto no orçamento (semanas).', porFaixa(FAIXAS_TEMPO, 'semanas'), true)}
     ${lista}
