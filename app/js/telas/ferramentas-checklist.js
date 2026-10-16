@@ -1,23 +1,34 @@
 // Transporte e logística › Planilha de ferramentas obrigatórias: um cartão por obra (e por estoque / carro)
-// dizendo se a planilha da semana foi enviada no grupo de WhatsApp até quarta-feira.
-// Quem envia: Anderson, toda quarta, em foto/imagem da planilha preenchida no grupo "Sólida FERRAMENTAS".
+// dizendo se a planilha do ciclo foi enviada no grupo de WhatsApp até a quarta-feira.
+// A aferição é de 15 em 15 dias (decisão do Felipe, 16/10): a compra demora para chegar, então contar toda
+// semana só mostraria de novo o que já foi comprado e ainda não chegou. O ciclo começa na segunda-feira de
+// `inicio` (12/10/2026) e dura 14 dias; a planilha vence na quarta-feira da primeira semana do ciclo.
+// Quem envia: Anderson, em foto da planilha preenchida no grupo "GESTAO ferramentas".
 // Quem lê o grupo (só leitura) preenche dados/json/ferramentas-checklist.json — ver docs/contrato-agentes.md.
 
 import { html, data as fmtData } from '../formato.js';
-import { hojeISO, inicioDaSemana, somarDias } from '../datas.js';
+import { hojeISO, inicioDaSemana, somarDias, diasEntre } from '../datas.js';
 
 export const LOCAIS_FIXOS = ['Estoque', 'Carro do Anderson', 'Carro do Nascimento', 'Carro do Enio'];
-const SEMANAS = 4; // a atual + as 3 anteriores (bolinhas do histórico)
+export const CICLO_DIAS = 14;
+const CICLOS = 4; // o atual + os 3 anteriores (bolinhas do histórico)
 const DIA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
 
 const chave = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/^carro\s+(do|da|de)?\s*/, 'carro ').replace(/\s+/g, ' ').trim();
 const diaCurto = (iso) => `${DIA[new Date(`${iso}T12:00:00`).getDay()]} ${fmtData(iso).slice(0, 5)}`;
 
-// Estado de um local numa semana (ini = segunda-feira): ok | atraso | espera | nao | nv
-function estadoDaSemana(regs, ini, hoje, verificadoEm, inicio) {
-  if (inicio && ini < inicioDaSemana(inicio)) return { cod: 'sem', reg: null }; // antes de o controle começar
+// Início (segunda-feira) do ciclo que contém `hoje`
+export function inicioDoCiclo(hoje, inicio = '2026-10-12') {
+  const base = inicioDaSemana(inicio);
+  const n = Math.floor(diasEntre(base, hoje) / CICLO_DIAS);
+  return somarDias(base, n * CICLO_DIAS);
+}
+
+// Estado de um local num ciclo (ini = segunda-feira de abertura): ok | atraso | espera | nao | nv | sem
+function estadoDoCiclo(regs, ini, hoje, verificadoEm, inicio = '2026-10-12') {
+  if (ini < inicioDaSemana(inicio)) return { cod: 'sem', reg: null }; // antes de o controle começar
   const quarta = somarDias(ini, 2);
-  const dela = regs.filter((r) => r.enviadoEm >= ini && r.enviadoEm <= somarDias(ini, 6)).sort((a, b) => b.enviadoEm.localeCompare(a.enviadoEm))[0];
+  const dela = regs.filter((r) => r.enviadoEm >= ini && r.enviadoEm <= somarDias(ini, CICLO_DIAS - 1)).sort((a, b) => b.enviadoEm.localeCompare(a.enviadoEm))[0];
   if (dela) return { cod: dela.enviadoEm <= quarta ? 'ok' : 'atraso', reg: dela };
   if (hoje <= quarta) return { cod: 'espera', reg: null };
   const lido = String(verificadoEm || '').slice(0, 10);
@@ -39,13 +50,14 @@ export function cartoes(CFG, dados, visiveis = null, estoque = null) {
   const hoje = hojeISO();
   const regsTodos = (dados && Array.isArray(dados.registros) ? dados.registros : []).filter((r) => r && r.local && /^\d{4}-\d{2}-\d{2}$/.test(String(r.enviadoEm || '')));
   const verificadoEm = dados && dados.verificadoEm;
-  const inicio = dados && dados.inicio;
-  const ini = inicioDaSemana(hoje);
-  const semanas = Array.from({ length: SEMANAS }, (_, i) => somarDias(ini, -7 * (SEMANAS - 1 - i))); // da mais antiga para a atual
+  const inicio = (dados && dados.inicio) || '2026-10-12';
+  const ini = inicioDoCiclo(hoje, inicio);
+  const ciclos = Array.from({ length: CICLOS }, (_, i) => somarDias(ini, -CICLO_DIAS * (CICLOS - 1 - i))); // do mais antigo para o atual
   const locais = locaisDoChecklist(CFG, visiveis, estoque);
+  const estado = (regs, c) => estadoDoCiclo(regs, c, hoje, verificadoEm, inicio);
   const card = (local) => {
     const regs = regsTodos.filter((r) => chave(r.local) === chave(local));
-    const hist = semanas.map((s) => ({ s, ...estadoDaSemana(regs, s, hoje, verificadoEm, inicio) }));
+    const hist = ciclos.map((c) => ({ c, ...estado(regs, c) }));
     const atual = hist[hist.length - 1];
     const ultimo = [...regs].sort((a, b) => b.enviadoEm.localeCompare(a.enviadoEm))[0];
     const sub = atual.reg ? `${atual.reg.por ? `${atual.reg.por}, ` : ''}${diaCurto(atual.reg.enviadoEm)}${atual.reg.hora ? `, ${atual.reg.hora}` : ''}`
@@ -55,14 +67,15 @@ export function cartoes(CFG, dados, visiveis = null, estoque = null) {
       <span class="ob-topo"><b class="ob-cod">${local}</b></span>
       <span class="fc-situacao">${ROTULO[atual.cod]}</span>
       <span class="ob-sub">${sub}</span>
-      <span class="fc-hist" title="Últimas semanas, da mais antiga para a atual">${hist.map((h) => html`<i class="fc-b fc-${h.cod}" title="Semana de ${fmtData(h.s).slice(0, 5)}: ${ROTULO[h.cod]}"></i>`)}</span>
+      <span class="fc-hist" title="Últimos ciclos de 15 dias, do mais antigo para o atual">${hist.map((h) => html`<i class="fc-b fc-${h.cod}" title="Ciclo de ${fmtData(h.c).slice(0, 5)} a ${fmtData(somarDias(h.c, CICLO_DIAS - 1)).slice(0, 5)}: ${ROTULO[h.cod]}"></i>`)}</span>
     </div>`;
   };
-  const nOk = locais.filter((l) => { const r = regsTodos.filter((x) => chave(x.local) === chave(l)); return ['ok', 'atraso'].includes(estadoDaSemana(r, ini, hoje, verificadoEm, inicio).cod); }).length;
+  const nOk = locais.filter((l) => ['ok', 'atraso'].includes(estado(regsTodos.filter((x) => chave(x.local) === chave(l)), ini).cod)).length;
   const lido = verificadoEm ? `Grupos lidos em ${fmtData(String(verificadoEm).slice(0, 10))}${String(verificadoEm).length > 10 ? `, ${String(verificadoEm).slice(11, 16)}` : ''}` : 'Os grupos ainda não foram lidos para este controle';
+  const proximo = somarDias(ini, CICLO_DIAS + 2);
   return html`<section class="ob-sec">
-    <div class="painel-h"><h2>Planilha de ferramentas obrigatórias</h2><p>Enviada toda quarta-feira no grupo do WhatsApp (Anderson) · ${nOk} de ${locais.length} desta semana · ${lido}</p></div>
+    <div class="painel-h"><h2>Planilha de ferramentas obrigatórias</h2><p>De 15 em 15 dias, enviada pelo Anderson no grupo do WhatsApp · ciclo de ${fmtData(ini).slice(0, 5)} a ${fmtData(somarDias(ini, CICLO_DIAS - 1)).slice(0, 5)} (próxima: ${diaCurto(proximo)}) · ${nOk} de ${locais.length} neste ciclo · ${lido}</p></div>
     <div class="ob-cards">${locais.map(card)}</div>
-    <p class="legenda-semana"><span class="fc-b fc-ok"></span> no prazo <span class="fc-b fc-atraso"></span> com atraso <span class="fc-b fc-nao"></span> não enviada <span class="fc-b fc-nv"></span> não verificado <span class="fc-b fc-espera"></span> ainda no prazo · bolinhas: últimas 4 semanas</p>
+    <p class="legenda-semana"><span class="fc-b fc-ok"></span> no prazo <span class="fc-b fc-atraso"></span> com atraso <span class="fc-b fc-nao"></span> não enviada <span class="fc-b fc-nv"></span> não verificado <span class="fc-b fc-espera"></span> ainda no prazo · bolinhas: últimos 4 ciclos</p>
   </section>`;
 }

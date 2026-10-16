@@ -88,7 +88,7 @@ divisão por dia, então aparecem com o alerta "sem meta diária separada por di
 
 ## Agente de Transporte e logística: planilha de ferramentas obrigatórias por obra (pedido de 16/10)
 
-Toda quarta o Anderson manda no grupo "Sólida FERRAMENTAS" (ou "Gestão Ferramentas") a imagem da planilha
+A cada 15 dias (quarta-feira; ciclos a partir da semana de 12/10/2026, decisão do Felipe porque a compra demora a chegar) o Anderson manda no grupo "GESTAO ferramentas" a imagem da planilha
 de ferramentas obrigatórias preenchida, uma por obra, mais as do estoque e dos carros (Anderson,
 Nascimento e Enio). A tela Transporte e logística mostra um cartão por local dizendo se a da semana
 chegou até quarta. Quem lê o grupo (só leitura) grava `dados/json/ferramentas-checklist.json`:
@@ -103,7 +103,7 @@ chegou até quarta. Quem lê o grupo (só leitura) grava `dados/json/ferramentas
 ```
 
 - `local`: código da obra (Mo533...) ou `Estoque`, `Carro do Anderson`, `Carro do Nascimento`, `Carro do Enio`.
-- `enviadoEm`: dia em que a imagem foi postada no grupo. Até quarta = no prazo; quinta em diante = com atraso.
+- `enviadoEm`: dia em que a imagem foi postada no grupo. Até a quarta-feira da primeira semana do ciclo de 14 dias = no prazo; depois disso = com atraso. Próximas datas: 28/10, 11/11, 25/11...
 - `verificadoEm`: quando os grupos foram lidos pela última vez. Sem ele (ou lido antes da quarta), o cartão
   mostra "ainda não verificado" em vez de "não enviada" — o sistema nunca afirma que faltou sem ter lido.
 - Um registro por envio; o histórico das últimas 4 semanas sai dos próprios registros.

@@ -24,7 +24,7 @@ export const ABAS_TRANSPORTE = [
 ];
 
 const NOME_FIXO = { galpao: 'Galpão', anderson: 'Carro do Anderson', nascimento: 'Carro do Nascimento', enio: 'Carro do Enio' };
-const DIAS_VELHO = 7;
+const DIAS_VELHO = 15; // aferição de 15 em 15 dias (a compra demora a chegar)
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 
 // Quantidade de uma célula: número, vazio (não contado) ou texto tipo "2-7D" / "7-7D, 2-5D"
@@ -216,6 +216,7 @@ export function render(est) {
       <li><b>A compra é uma só</b> para todas as obras e chega no galpão. Depois da compra, o Anderson leva para cada lugar o que está em "Onde falta".</li>
       <li><b>Escada:</b> a contagem vem como "2-7D" = 2 escadas de 7 degraus. O sistema soma as escadas e mostra os tipos; na hora de levar, escolher o tipo certo.</li>
       <li><b>Maquinário</b> (esmerilhadeira, extensão, laser…) é obrigatório, mas pode não estar em uso em todas as obras. Por isso a compra dele fica numa lista à parte, "confirmar antes de comprar".</li>
+      <li><b>A contagem é de 15 em 15 dias</b>, porque a compra demora a chegar: contar toda semana mostraria de novo o que já foi comprado e ainda não chegou. Esta lista vale para o dia da contagem de cada lugar.</li>
       <li>Item sem contagem na planilha <b>não conta como falta</b>: o sistema só cobra o que foi contado.</li>
     </ol></div></details>
 
