@@ -2,7 +2,8 @@
 // mais: perfis por função, "Meu dia" (quadro de funções), Operação › Metas e produtividade,
 // e no Pós-obra os detalhes da planilha integrada (dados/json).
 
-import { carregarDados, carregarPainel, carregarProdutividade, carregarDrive, carregarFerramentasChk } from './dados.js';
+import { carregarDados, carregarPainel, carregarProdutividade, carregarDrive, carregarFerramentasChk, carregarTerceirizados } from './dados.js';
+import * as terceiros from './telas/terceirizados.js';
 import * as ferrChk from './telas/ferramentas-checklist.js';
 import * as reposicao from './telas/reposicao.js';
 import { montarBase } from './regras.js';
@@ -414,7 +415,7 @@ function desenhar() {
         const ob = operacao.porObra(CFG, visiveis, estado.drive.projetos, rota.params, base, { veValores: !!f.veValores });
         // ordem (pedido do Felipe, 15/10): indicadores → alertas das metas → cronograma/programação/medições → Por obra
         const tabela = operacao.abaProgramacao(CFG, visiveis, (o) => `${base}?obra=${encodeURIComponent(o)}&aba=cronograma`);
-        const depois = `${produtividade.alertasMetas(CFG, visiveis)}${tabela}<div style="margin-top:34px">${ob.cards}</div>`;
+        const depois = `${produtividade.alertasMetas(CFG, visiveis)}${terceiros.render(CFG, estado.terceiros, visiveis)}${tabela}<div style="margin-top:34px">${ob.cards}</div>`;
         // obra aberta: só ela (com o link para voltar)
         if (ob.aberta) out = `<div>${ob.painel}</div>`;
         else out = deObra ? `<div>${depois}</div>` : T.telaArea(area, '', { semEstado: true, semAlertas: true, depoisIndicadores: depois });
@@ -523,7 +524,8 @@ function separarProjetos(cfg) {
 async function atualizar() {
   // marcações de tarefas de todos (pontuação do Perfil); quem está logado manda o que só tinha neste navegador
   const atual = logado() ? { pessoa: idPessoa(), nome: sessao().nome, funcao: funcaoAtual().id, teste: simulando(), obras: obrasDaPessoa() } : null;
-  const [painelR, baseR, prodR, driveR, , , , , ferrR] = await Promise.allSettled([carregarPainel(), carregarDados(), carregarProdutividade(), carregarDrive(), sincronizarTarefas(atual), perfil.carregarFotos(), feed.carregar(), evidencias.carregar(), carregarFerramentasChk()]);
+  const [painelR, baseR, prodR, driveR, , , , , ferrR, terR] = await Promise.allSettled([carregarPainel(), carregarDados(), carregarProdutividade(), carregarDrive(), sincronizarTarefas(atual), perfil.carregarFotos(), feed.carregar(), evidencias.carregar(), carregarFerramentasChk(), carregarTerceirizados()]);
+  if (terR.status === 'fulfilled') estado.terceiros = terR.value;
   if (ferrR.status === 'fulfilled') estado.ferrChk = ferrR.value;
   if (prodR.status === 'fulfilled') estado.whats = prodR.value;
   if (driveR.status === 'fulfilled') estado.drive = driveR.value;

@@ -26,6 +26,15 @@ export async function carregarFerramentasChk() {
   } catch { return { registros: [] }; }
 }
 
+// Empresas terceirizadas nas obras e a conferência de contratos no Mais Controle (agente de Operação, só leitura).
+export async function carregarTerceirizados() {
+  try {
+    if (NA_NUVEM) return (await baixar('terceirizados')) || { empresas: [] };
+    const r = await fetch(`terceirizados.json`, { cache: 'no-store' });
+    return r.ok ? await r.json() : { empresas: [] };
+  } catch { return { empresas: [] }; }
+}
+
 // Produtividade lida nos grupos de WhatsApp das obras (programação do dia × relatório diário).
 // Preenchida pela verificação diária (Claude, toda manhã, do dia anterior). Ver docs/contrato-agentes.md.
 export async function carregarProdutividade() {

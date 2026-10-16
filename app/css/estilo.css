@@ -1368,3 +1368,9 @@ a.card:hover .card-rotulo { color: var(--clique2); text-decoration: underline; }
 .guia-branca td { height: 30px; }
 .guia-rodape { font-size: 10px; color: #444; margin: 10px 0 0; }
 .rp-guia .painel-h { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+/* Operação › terceirizadas × contratos no Mais Controle */
+.tr-alerta { margin: 10px 0; }
+.tr-alerta.tr-critico { border-left: 4px solid #D9534F; background: #FDF4F3; }
+.tr-selo { font-size: 12px; font-weight: 700; padding: 1px 9px; border-radius: 999px; background: var(--calcario); color: var(--muted); white-space: nowrap; }
+.tr-selo.tr-ok { background: #E1EFE5; color: #2F6B43; } .tr-selo.tr-sem { background: #F8E1DF; color: #9B3A33; } .tr-selo.tr-semmed { background: #FFF1D6; color: #7A5A1E; }
+.tr-tab tr.tr-sem td { background: #FFFBFA; }
