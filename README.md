@@ -143,3 +143,7 @@ Dê dois cliques em **`iniciar.bat`**. Abre uma janela preta (deixe aberta) e o 
 - `app/js/dados.js` — de onde vêm os dados.
 - `app/js/telas/` — abas da planilha do pós-obra.
 - `servidor.ps1` / `iniciar.bat` — servidor local; busca o dados.json no Drive.
+
+## Rota do Anderson (Transporte › Reposição de ferramentas)
+A ordem das paradas minimiza o tempo de carro (galpão em São Cristóvão → obras → galpão). Endereços (das pastas de OPERACOES/OBRAS) e tempos de carro entre os lugares estão em `app/js/geografia.js`; para uma obra nova, acrescente o endereço, as coordenadas e refaça a matriz de tempos (OSRM `/table`). Mo465 e Mo581 estão com ponto aproximado (a avenida não tem o número no mapa).
+A impressão (botão 🖨) usa regras `@media print` em `app/css/estilo.css`: o app tem tela cheia com rolagem interna, então na impressão o corpo vira página normal.

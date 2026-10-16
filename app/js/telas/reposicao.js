@@ -17,6 +17,7 @@
 
 import { html, numero, data as fmtData } from '../formato.js';
 import { hojeISO, diasEntre } from '../datas.js';
+import { tempoEntre, enderecoDe } from '../geografia.js';
 
 export const ABAS_TRANSPORTE = [
   { id: '', nome: 'Resumo' },
@@ -183,6 +184,18 @@ function simularRota(ordem, doGalpao, soltosIni, tipo) {
 }
 function permutacoes(xs) { if (xs.length <= 1) return [xs]; const out = []; xs.forEach((x, i) => { for (const p of permutacoes([...xs.slice(0, i), ...xs.slice(i + 1)])) out.push([x, ...p]); }); return out; }
 
+// custo = tempo de carro (ida e volta ao galpão) + 5 min em cada parada
+const PARADA_S = 300;
+function custoDaRota(ids) { let t = 0; let atual = 'galpao'; for (const id of ids) { t += tempoEntre(atual, id) + PARADA_S; atual = id; } return t + tempoEntre(atual, 'galpao'); }
+// marca em cada parada os minutos de carro desde a anterior e o total da rota
+function marcarTempos(lista) {
+  let atual = 'galpao'; let total = 0;
+  lista.forEach((p, k) => { const t = k === 0 ? 0 : tempoEntre(atual, p.id); p.min = Math.round(t / 60); total += t; atual = p.id; });
+  if (atual !== 'galpao') total += tempoEntre(atual, 'galpao');
+  lista.totalMin = Math.round(total / 60);
+  return lista;
+}
+
 function montarRota(movs, por) {
   const tipo = (id) => (por.get(id) || {}).tipo;
   const aCarros = movs.filter((m) => m.de === 'galpao' && tipo(m.para) === 'carro');
@@ -192,14 +205,16 @@ function montarRota(movs, por) {
   let melhor = null;
   for (const ordem of (ids.length <= 7 ? permutacoes(ids) : [ids])) {
     const r = simularRota(ordem, doGalpao, soltos, tipo);
-    if (r.ok && (!melhor || r.paradas.length < melhor.paradas.length)) melhor = r;
+    if (!r.ok) continue;
+    r.custo = custoDaRota(r.paradas.map((p) => p.id));
+    if (!melhor || r.custo < melhor.custo || (r.custo === melhor.custo && r.paradas.length < melhor.paradas.length)) melhor = r;
   }
   if (!melhor) melhor = simularRota(ids, doGalpao, soltos, tipo);
-  return [
+  return marcarTempos([
     { id: 'galpao', pegar: doGalpao, deixar: [], carros: aCarros },
     ...melhor.paradas,
     { id: 'galpao', volta: true, pegar: [], deixar: melhor.carregado.filter((m) => tipo(m.para) === 'galpao'), carros: melhor.carregado.filter((m) => tipo(m.para) === 'carro') },
-  ].filter((p, k, arr) => k === 0 || p.pegar.length || p.deixar.length || p.carros.length);
+  ].filter((p, k, arr) => k === 0 || p.volta || p.pegar.length || p.deixar.length || p.carros.length));
 }
 // Depois que a compra chegar no galpão: pega tudo e deixa em cada lugar, numa saída só
 function rotaDaCompra(compras, por) {
@@ -207,12 +222,13 @@ function rotaDaCompra(compras, por) {
   const tipo = (id) => (por.get(id) || {}).tipo;
   const daObra = itens.filter((c) => tipo(c.para) === 'obra');
   const dosCarros = itens.filter((c) => tipo(c.para) === 'carro');
-  const ids = [...new Set(daObra.map((c) => c.para))];
+  let ids = [...new Set(daObra.map((c) => c.para))];
   if (!ids.length && !dosCarros.length) return [];
+  if (ids.length <= 7) { let melhorC = Infinity; for (const o of permutacoes(ids)) { const c = custoDaRota(o); if (c < melhorC) { melhorC = c; ids = o; } } }
   const paradas = [{ id: 'galpao', pegar: soma(daObra), deixar: [], carros: dosCarros.map((c) => ({ ...c, para: c.para })) }];
   for (const id of ids) paradas.push({ id, pegar: [], deixar: soma(daObra.filter((c) => c.para === id)), carros: [] });
   paradas.push({ id: 'galpao', volta: true, pegar: [], deixar: [], carros: [] });
-  return paradas.filter((p, k) => k === 0 || p.pegar.length || p.deixar.length || p.carros.length);
+  return marcarTempos(paradas.filter((p, k) => k === 0 || p.volta || p.pegar.length || p.deixar.length || p.carros.length));
 }
 
 export function render(est) {
@@ -239,19 +255,21 @@ export function render(est) {
   const chips = (lista, cls) => lista.map((m) => html`<span class="rt-item rt-${cls}" title="${m.nota || ''}">${m.item} <b>×${un(m.qtd)}</b>${m.nota ? html` <i>(${m.nota})</i>` : ''}</span>`);
   const nomeCarro = (id) => nome(id).replace('Carro do ', 'carro do ');
   const parada = (p, n) => html`<li class="rt-parada ${p.volta ? 'rt-volta' : ''}"><span class="rt-n">${n}</span><div class="rt-corpo">
-      <b class="rt-local">${nome(p.id)}${p.volta ? html` <em>(voltar)</em>` : ''}</b>
+      <b class="rt-local">${nome(p.id)}${p.volta ? html` <em>(voltar)</em>` : ''}${p.min ? html` <em>· ≈ ${p.min} min de carro</em>` : ''}</b>
+      ${enderecoDe(p.id) ? html`<div class="rt-end">${enderecoDe(p.id)}</div>` : ''}
       ${p.pegar.length ? html`<div class="rt-linha"><span class="rt-rot rt-pegar">pegar</span>${chips(soma(p.pegar), 'pegar')}</div>` : ''}
       ${p.deixar.length ? html`<div class="rt-linha"><span class="rt-rot rt-deixar">deixar</span>${chips(p.id === 'galpao' ? soma(p.deixar) : p.deixar.length ? soma(p.deixar) : [], 'deixar')}</div>` : ''}
       ${p.carros.length ? html`<div class="rt-linha"><span class="rt-rot rt-carro">${p.volta ? 'deixar nos carros' : 'colocar nos carros'}</span>${chips(p.carros.map((m) => ({ ...m, item: `${m.item} (${nomeCarro(m.para)})` })), 'carro')}</div>` : ''}
     </div></li>`;
 
   return html`<div class="rp">
+    <div class="rp-cab-imp"><h1>Reposição de ferramentas obrigatórias · Rota e compras</h1><p>Impresso em ${fmtData(hojeISO())} · planilha ${est.arquivo || ''} · Sólida Construção</p></div>
     <div class="rp-barra"><p class="pequeno">Só itens <b>obrigatórios de obra</b> (${est.itens.filter((i) => num(i.minObra) > 0 && !consumivelItem(i)).length} itens, sem consumíveis). Planilha ${est.arquivo || ''}, lida do Drive.</p><button type="button" class="botao" data-imprimir>🖨 Imprimir</button></div>
 
     <section class="ob-sec rp-resumo">
       ${resumo(comprarJa.length, comprarJa.length === 1 ? 'item para comprar' : 'itens para comprar', `${un(comprarJa.reduce((s, c) => s + c.total, 0))} unidades`)}
-      ${resumo(rota1.filter((p) => p.id !== 'galpao').length, 'paradas na rota de hoje', rota1.length ? 'uma saída só' : 'nada para mover')}
-      ${resumo(rota2.filter((p) => p.id !== 'galpao').length, 'paradas quando a compra chegar', 'uma saída só')}
+      ${resumo(rota1.filter((p) => p.id !== 'galpao').length, 'paradas na rota de hoje', rota1.length ? `uma saída só · ≈ ${rota1.totalMin} min de estrada` : 'nada para mover')}
+      ${resumo(rota2.filter((p) => p.id !== 'galpao').length, 'paradas quando a compra chegar', rota2.length ? `uma saída só · ≈ ${rota2.totalMin} min de estrada` : 'nada a levar')}
       ${resumo(confirmar.length, 'maquinário a confirmar', 'antes de comprar')}
     </section>
     ${velhas.length ? html`<p class="aviso rp-aviso">⚠ <b>Contagem antiga ou sem data</b> em: ${velhas.map((l) => `${l.nome}${l.conferido ? ` (${dm(l.conferido)})` : ''}`).join(', ')}. Quanto mais velha a contagem, menos confiável a lista abaixo; atualize a planilha de ferramentas obrigatórias dessas obras.</p>` : ''}
@@ -266,11 +284,11 @@ export function render(est) {
       </tbody></table><p class="pequeno">Pergunte ao gestor de cada obra se a obra usa mesmo; só compre o que for confirmado.</p></article>` : ''}
     </section>
 
-    <section class="ob-sec"><div class="painel-h"><h2>2 · Rota de hoje</h2><p>Com o que já existe: sai do galpão, passa por cada obra e volta</p></div>
+    <section class="ob-sec"><div class="painel-h"><h2>2 · Rota de hoje</h2><p>Com o que já existe: sai do galpão, passa por cada obra e volta${rota1.totalMin ? ` · ≈ ${rota1.totalMin} min de estrada` : ''}</p></div>
       ${rota1.length ? html`<ol class="rt-rota">${rota1.map((p, k) => parada(p, k + 1))}</ol>` : html`<p class="pequeno">Nenhuma movimentação necessária com o que já existe.</p>`}
     </section>
 
-    <section class="ob-sec"><div class="painel-h"><h2>3 · Rota quando a compra chegar</h2><p>Leva do galpão o que foi comprado para quem precisa (sem o maquinário a confirmar)</p></div>
+    <section class="ob-sec"><div class="painel-h"><h2>3 · Rota quando a compra chegar</h2><p>Leva do galpão o que foi comprado para quem precisa (sem o maquinário a confirmar)${rota2.totalMin ? ` · ≈ ${rota2.totalMin} min de estrada` : ''}</p></div>
       ${rota2.length ? html`<ol class="rt-rota">${rota2.map((p, k) => parada(p, k + 1))}</ol>` : html`<p class="pequeno">Nada a levar depois da compra.</p>`}
     </section>
 
