@@ -1120,3 +1120,31 @@ a.card:hover .card-rotulo { color: var(--clique2); text-decoration: underline; }
 .ac-botoes { display: flex; gap: 6px; }
 .ac-aviso { padding: 12px 16px; border-radius: 10px; background: #EEF6F0; border: 1px solid #BFDCC8; margin-bottom: 14px; }
 .ac-aviso code { font-size: 15px; font-weight: 700; background: #fff; padding: 1px 6px; border-radius: 4px; }
+
+/* ---------- Minha semana › Funções: quadro da semana (uma coluna por dia, uma caixinha por tarefa) ---------- */
+.fn-painel { background: #fff; border: 1px solid var(--linha2); border-radius: 12px; padding: 14px 16px 16px; }
+.fn-cab { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.fn-cab h3 { margin: 0; font-size: 16px; }
+.fn-semana { display: grid; grid-template-columns: repeat(6, minmax(138px, 1fr)); gap: 8px; align-items: start; overflow-x: auto; padding-bottom: 4px; }
+.fn-col { background: var(--gesso); border-radius: 10px; padding: 8px; display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.fn-col > header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; column-gap: 6px; padding: 1px 3px 3px; min-width: 0; }
+.fn-col > header b { font-size: 13px; }
+.fn-col > header small { font-size: 11.5px; color: var(--muted); }
+.fn-col.hoje { background: #FFF6E3; box-shadow: inset 0 0 0 2px #E0B04A; }
+.fn-col.hoje > header b { color: #7A5A1E; }
+.fn-caixa { background: #fff; border: 1px solid var(--linha2); border-left: 4px solid #E0B04A; border-radius: 8px; padding: 7px 8px; display: flex; flex-direction: column; gap: 4px; }
+.fn-caixa.fn-ok { border-left-color: #4E8A62; background: #F5FAF6; }
+.fn-caixa.fn-nao { border-left-color: #D9534F; background: #FDF4F3; }
+.fn-caixa.fn-futuro { border-left-color: #C9CFD6; background: #FBFAF8; }
+.fn-nome { font-size: 12.5px; line-height: 1.3; word-break: break-word; }
+.fn-nome .selo-pop { display: inline-block; font-size: 10px; padding: 0 5px; margin-top: 3px; }
+.fn-nome .tf-normal { font-weight: 600; }
+.fn-meta { font-size: 11px; color: var(--muted); }
+.fn-acoes { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+.fn-b { font: inherit; font-size: 11.5px; padding: 2px 8px; border: 1px solid var(--linha); border-radius: 6px; background: #fff; color: var(--grafite); cursor: pointer; }
+.fn-b:hover { border-color: var(--clique); }
+.fn-b.fn-feito[aria-pressed="true"] { background: #E1EFE5; border-color: #4E8A62; color: #2F6B43; font-weight: 700; }
+.fn-b.fn-nao[aria-pressed="true"] { background: #F8E1DF; border-color: #D9534F; color: #9B3A33; font-weight: 700; }
+.fn-auto { font-size: 11.5px; font-weight: 700; color: #2F6B43; }
+.fn-sub { margin: 18px 0 8px; font-size: 13.5px; }
+.fn-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }

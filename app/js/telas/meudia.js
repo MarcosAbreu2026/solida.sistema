@@ -5,7 +5,7 @@
 
 import { html, data as fmtData } from '../formato.js';
 import { somarDias, hojeISO, inicioDaSemana } from '../datas.js';
-import { TAREFAS, valeNoDia, descreverDias, naGrade, OBSERVACOES } from '../funcoes.js';
+import { TAREFAS, valeNoDia, descreverDias, naGrade, OBSERVACOES, diaSemana } from '../funcoes.js';
 import { sessao, funcaoAtual, idPessoa, obrasDaPessoa } from '../sessao.js';
 import { lerChecks, primeiroDia } from '../armazenamento.js';
 import { programacoes } from '../programacao.js';
@@ -38,21 +38,25 @@ export const ABAS = [
   { id: 'funcoes', nome: 'Funções' },
 ];
 
-// Uma célula tarefa × dia
-function celulaTarefa(t, data, estado, hoje, prova = null) {
-  if (feriado(data)) return html`<td class="qs-cel qs-feriado" title="${feriado(data)}">feriado</td>`;
-  if (!valeNoDia(t, data)) return html`<td class="qs-cel qs-vazia">—</td>`;
-  if (data > hoje) return html`<td class="qs-cel qs-futuro"><span>previsto</span></td>`;
-  const marca = (v, txt, cls) => html`<button type="button" class="fn-marca ${cls}" data-check="${t.id}|${data}|${v}" aria-pressed="true" title="Clique para desmarcar">${txt}</button>`;
-  if (estado === 'feito') return html`<td class="qs-cel qs-ok ${data === hoje ? 'qs-hoje' : ''}">${marca('feito', '✓ feito', '')}</td>`;
-  // sem marcação, mas o sistema achou a prova (arquivo no Drive ou produtividade no grupo): feito automático
-  if (!estado && prova) return html`<td class="qs-cel qs-ok qs-auto ${data === hoje ? 'qs-hoje' : ''}" title="${descreverProva(prova)}"><span class="fn-auto">✓ feito <small>automático</small></span>
-    <div class="qs-sim-nao"><button type="button" data-check="${t.id}|${data}|nao" aria-pressed="false" title="Não foi feito">✕ Não</button></div></td>`;
-  if (estado === 'nao') return html`<td class="qs-cel qs-abaixo ${data === hoje ? 'qs-hoje' : ''}">${marca('nao', '✕ não feito', '')}</td>`;
-  return html`<td class="qs-cel qs-sem ${data === hoje ? 'qs-hoje' : ''}">
-    <span>falta marcar</span>
-    <div class="qs-sim-nao"><button type="button" data-check="${t.id}|${data}|feito" aria-pressed="false">✓ Feito</button><button type="button" data-check="${t.id}|${data}|nao" aria-pressed="false">✕ Não</button></div>
-  </td>`;
+// Quadro da semana: uma coluna por dia (seg a sáb); em cada dia, uma caixinha por tarefa com o nome dentro
+// e ✓ Feito / ✕ Não na própria caixinha (pedido do Felipe, 16/10). A semana inteira aparece de uma vez.
+const horaDe = (t) => { const m = String(t.hora || '').match(/(\d{1,2})h/); return m ? Number(m[1]) : 99; };
+
+function caixaTarefa(t, data, estado, hoje, prova, rotuloDia = '') {
+  const btn = (v, txt, pressionado) => html`<button type="button" class="fn-b fn-${v}" data-check="${t.id}|${data}|${v}" aria-pressed="${pressionado ? 'true' : 'false'}" title="${pressionado ? 'Clique para desfazer' : ''}">${txt}</button>`;
+  let cls = 'sem'; let acoes;
+  if (data > hoje) { cls = 'futuro'; acoes = ''; }
+  else if (estado === 'feito') { cls = 'ok'; acoes = btn('feito', '✓ Feito', true); }
+  else if (estado === 'nao') { cls = 'nao'; acoes = btn('nao', '✕ Não feito', true); }
+  else if (prova) { cls = 'ok'; acoes = html`<span class="fn-auto" title="${descreverProva(prova)}">✓ automático</span>${btn('nao', '✕ Não', false)}`; }
+  else acoes = html`${btn('feito', '✓ Feito', false)}${btn('nao', '✕ Não', false)}`;
+  const meta = [rotuloDia, t.hora].filter(Boolean).join(' · ');
+  const dica = [NOME_AREA[t.area] || t.area, t.processo && t.processo !== '—' ? `POP ${t.processo}` : '', descreverDias(t.dias)].filter(Boolean).join(' · ');
+  return html`<div class="fn-caixa fn-${cls}" title="${dica}">
+    <div class="fn-nome">${textoTarefa(t)}</div>
+    ${meta ? html`<div class="fn-meta">${meta}</div>` : ''}
+    ${acoes ? html`<div class="fn-acoes">${acoes}</div>` : ''}
+  </div>`;
 }
 
 function funcoesSemana(ref, CFG) {
@@ -63,22 +67,13 @@ function funcoesSemana(ref, CFG) {
   const ini = inicioDaSemana(ref);
   const dias = [0, 1, 2, 3, 4, 5].map((i) => somarDias(ini, i));
   const tarefas = TAREFAS.filter((t) => t.funcao === f.id && naGrade(t));
+  const estadoDe = (t, d) => (checks[d] || {})[t.id];
+  const provaDoDia = (t, d) => (!estadoDe(t, d) && d <= hoje && !feriado(d) && valeNoDia(t, d) ? provaDe(t, d, eu, CFG) : null);
+  const feita = (t, d) => estadoDe(t, d) === 'feito' || (!estadoDe(t, d) && !!provaDoDia(t, d));
+  const doDia = (d) => (feriado(d) ? [] : tarefas.filter((t) => valeNoDia(t, d)).sort((a, b) => horaDe(a) - horaDe(b)));
 
-  let feitas = 0;
-  let previstas = 0;
-  for (const t of tarefas) {
-    for (const d of dias) {
-      if (!valeNoDia(t, d) || d > hoje || feriado(d)) continue;
-      previstas++;
-      if ((checks[d] || {})[t.id] === 'feito' || (!(checks[d] || {})[t.id] && provaDe(t, d, eu, CFG))) feitas++;
-    }
-  }
-  // pendências de semanas anteriores (desde que a pessoa começou a usar)
-  const desde = primeiroDia(idPessoa(), hoje);
-  let antigas = 0;
-  for (let d = somarDias(ini, -1); d >= desde && d >= somarDias(ini, -28); d = somarDias(d, -1)) {
-    for (const t of tarefas) if (valeNoDia(t, d) && !feriado(d) && (checks[d] || {})[t.id] !== 'feito') antigas++;
-  }
+  let feitas = 0; let previstas = 0;
+  for (const d of dias) { if (d > hoje) continue; for (const t of doDia(d)) { previstas++; if (feita(t, d)) feitas++; } }
 
   const nav = html`<div class="periodo">
     <button type="button" class="botao" data-semana-md="${somarDias(ini, -7)}">← Semana anterior</button>
@@ -89,20 +84,33 @@ function funcoesSemana(ref, CFG) {
 
   if (!tarefas.length) return html`${nav}<p class="vazio">Nenhuma tarefa cadastrada para a sua função.</p>`;
 
+  const colunas = dias.map((d, i) => {
+    const l = doDia(d); const fe = l.filter((t) => feita(t, d)).length;
+    return html`<div class="fn-col ${d === hoje ? 'hoje' : ''} ${d > hoje ? 'futuro' : ''}">
+      <header><b>${DIA_CURTO[i]} ${d.slice(8, 10)}/${d.slice(5, 7)}</b><small>${feriado(d) ? 'feriado' : l.length ? (d > hoje ? `${l.length} previstas` : `${fe} de ${l.length}`) : 'sem tarefas'}</small></header>
+      ${l.map((t) => caixaTarefa(t, d, estadoDe(t, d), hoje, provaDoDia(t, d)))}
+    </div>`;
+  });
+
+  // ficaram sem marcar em semanas anteriores (até 4 semanas, desde que a pessoa começou a usar)
+  const desde = primeiroDia(idPessoa(), hoje);
+  const atrasadas = [];
+  for (let d = somarDias(ini, -1); d >= desde && d >= somarDias(ini, -28); d = somarDias(d, -1)) {
+    if (d > hoje) continue;
+    for (const t of doDia(d)) if (!estadoDe(t, d) && !provaDoDia(t, d)) atrasadas.push({ t, d });
+  }
+  const nomeDia = (d) => `${DIA_CURTO[(diaSemana(d) + 6) % 7] || ''} ${d.slice(8, 10)}/${d.slice(5, 7)}`;
+
   return html`${nav}
-    <article class="cartao cartao-largo">
-      <header class="cartao-cab"><h3>Suas funções na semana</h3><span class="pequeno">${f.nome} · ${previstas ? `${feitas} de ${previstas} feitas até hoje` : 'nenhuma tarefa até hoje'}</span></header>
-      ${previstas ? html`<div class="pct" style="margin:0"><i style="width:${Math.round((feitas / previstas) * 100)}%"></i></div>` : ''}
-      ${antigas ? html`<p class="alerta-linha">⚠ ${antigas} ${antigas > 1 ? 'tarefas' : 'tarefa'} sem "feito" nas semanas anteriores — clique em "Semana anterior" para marcar</p>` : ''}
-      <div class="tabela-rolagem"><table class="quadro-semana">
-        <thead><tr><th>Tarefa</th><th class="qs-total">Quando</th>${dias.map((d, i) => html`<th class="${d === hoje ? 'qs-hoje' : ''}">${DIA_CURTO[i]} ${d.slice(8, 10)}/${d.slice(5, 7)}</th>`)}</tr></thead>
-        <tbody>${tarefas.map((t) => html`<tr>
-          <td class="qs-item">${textoTarefa(t)}<span class="pequeno">${NOME_AREA[t.area] || t.area}${t.processo && t.processo !== '—' ? ` · POP ${t.processo}` : ''}</span></td>
-          <td class="qs-total">${descreverDias(t.dias)}${t.hora ? html`<br><span class="pequeno">${t.hora}</span>` : ''}</td>
-          ${dias.map((d) => { const v = (checks[d] || {})[t.id]; return celulaTarefa(t, d, v, hoje, !v && d <= hoje && !feriado(d) && valeNoDia(t, d) ? provaDe(t, d, eu, CFG) : null); })}
-        </tr>`)}</tbody></table></div>
-      <p class="legenda-semana"><span class="lg lg-ok"></span> feito <span class="lg lg-abaixo"></span> não feito <span class="lg lg-sem"></span> falta marcar · "automático" = o sistema achou a prova (arquivo no Drive ou produtividade no grupo) <span class="lg lg-futuro"></span> ainda não chegou · clique numa marcação para desfazer</p>
-    </article>
+    <section class="fn-painel">
+      <header class="fn-cab"><h3>${f.nome}</h3>
+        <span class="pequeno">${previstas ? `${feitas} de ${previstas} feitas até hoje` : 'nenhuma tarefa até hoje'}</span></header>
+      ${previstas ? html`<div class="pct" style="margin:6px 0 12px"><i style="width:${Math.round((feitas / previstas) * 100)}%"></i></div>` : ''}
+      <div class="fn-semana" style="grid-template-columns:${dias.map((d) => (doDia(d).length ? 'minmax(138px,1fr)' : 'minmax(78px,.4fr)')).join(' ')}">${colunas}</div>
+      <p class="legenda-semana"><span class="lg lg-ok"></span> feito <span class="lg lg-abaixo"></span> não feito <span class="lg lg-sem"></span> falta marcar · "automático" = o sistema achou a prova (arquivo no Drive ou produtividade no grupo) · clique numa marcação para desfazer</p>
+      ${atrasadas.length ? html`<h4 class="fn-sub">⚠ Ficaram sem marcar em semanas anteriores <span class="pequeno">${atrasadas.length} ${atrasadas.length > 1 ? 'tarefas' : 'tarefa'} — marque aqui ou em "Semana anterior"</span></h4>
+        <div class="fn-grade">${atrasadas.map(({ t, d }) => caixaTarefa(t, d, undefined, hoje, null, nomeDia(d)))}</div>` : ''}
+    </section>
     ${foraDoQuadro(f.id)}
     <p class="pequeno">Quadro de Tarefas Semanal (SL_TAREFAS_FUNC_R37 + POP R14). As marcações valem pontos no seu <a class="link" href="#/perfil">Perfil</a>: tarefa sem marcação conta como não entregue.</p>`;
 }
