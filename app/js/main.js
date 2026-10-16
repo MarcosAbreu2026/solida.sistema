@@ -680,7 +680,14 @@ function configurar() {
       if (campo) { campo.focus(); campo.select(); }
       return;
     }
-    if (e.target.closest('[data-imprimir]')) { window.print(); return; }
+    const imp = e.target.closest('[data-imprimir]');
+    if (imp) {
+      // data-imprimir="guia1" imprime só aquela guia; vazio = a impressão normal da tela
+      document.body.dataset.imprime = imp.dataset.imprimir || '';
+      window.addEventListener('afterprint', () => { delete document.body.dataset.imprime; }, { once: true });
+      window.print();
+      return;
+    }
     const cp = e.target.closest('[data-copiar]');
     if (cp) {
       const el = document.querySelector(`[data-texto-rota="${cp.dataset.copiar}"]`);

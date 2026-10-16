@@ -277,6 +277,44 @@ function textoDaRota(paradas, titulo, cabecalho, nome, por, saidaMin) {
   if (fim.length) linhas.push(`Final do dia - Galpão - ${fim.join(' / ')}`);
   return [cabecalho, '', titulo, '', ...linhas.flatMap((l) => [l, ''])].join('\n').trim();
 }
+// ---------------------------------------------------------------- guia de movimentação (modelo SL_MOVIMENTAÇÃO_R01, já preenchido)
+// Uma linha por origem → destino, com todos os itens numa caixinha só (a lista não fica extensa).
+function linhasDoGuia(movs, ordemIds, por, nome) {
+  const tipo = (id) => (por.get(id) || {}).tipo;
+  const rot = (id) => (id === 'galpao' ? 'GALPÃO' : tipo(id) === 'carro' ? 'CARROS' : String(nome(id)).toUpperCase());
+  const chaveRot = (id) => (tipo(id) === 'carro' ? 'carros' : id);
+  const pos = (id) => { const k = ordemIds.indexOf(chaveRot(id)); return k < 0 ? 99 : k; };
+  const g = new Map();
+  for (const m of movs) {
+    const k = `${chaveRot(m.de)}>${chaveRot(m.para)}`;
+    if (!g.has(k)) g.set(k, { de: m.de, para: m.para, itens: [] });
+    g.get(k).itens.push(m);
+  }
+  return [...g.values()]
+    .sort((a, b) => pos(a.de) - pos(b.de) || pos(a.para) - pos(b.para))
+    .map((x) => {
+      const itens = soma(x.itens);
+      const notas = [...new Set(x.itens.map((m) => m.nota).filter(Boolean))];
+      return { item: lista(itens), qtd: itens.reduce((t, m) => t + m.qtd, 0), origem: rot(x.de), destino: rot(x.para), obs: notas.join('; ') };
+    });
+}
+const MIN_LINHAS_GUIA = 10;
+function guiaHtml(linhas, dataIso, n, titulo) {
+  const brancas = Math.max(0, MIN_LINHAS_GUIA - linhas.length);
+  return html`<section class="ob-sec rp-guia" data-guia="${n}">
+    <div class="painel-h"><h2>${titulo}</h2><button type="button" class="botao" data-imprimir="guia${n}">🖨 Imprimir esta guia</button></div>
+    <div class="guia-papel">
+      <header class="guia-cab"><span class="guia-logo" role="img" aria-label="Sólida"></span><b class="guia-titulo">GUIA DE MOVIMENTAÇÃO</b><span></span></header>
+      <div class="guia-campos"><span>Data: <u>${fmtData(dataIso)}</u></span><span>Responsável: <u>Anderson</u></span></div>
+      <p class="guia-dica"><b>ORIGEM e DESTINO:</b> escreva GALPÃO, o nome da obra, MANUTENÇÃO ou DESCARTE.</p>
+      <table class="guia-tab"><thead><tr><th>ITEM / FERRAMENTA</th><th>QTD</th><th>ORIGEM</th><th>DESTINO</th><th>OBS</th><th>ASSINATURA</th></tr></thead><tbody>
+        ${linhas.map((l) => html`<tr><td class="guia-item">${l.item}</td><td class="guia-qtd">${un(l.qtd)}</td><td>${l.origem}</td><td>${l.destino}</td><td class="guia-obs">${l.obs}</td><td></td></tr>`)}
+        ${Array.from({ length: brancas }, () => html`<tr class="guia-branca"><td></td><td></td><td></td><td></td><td></td><td></td></tr>`)}
+      </tbody></table>
+      <p class="guia-rodape">Cada linha é uma movimentação — use a mesma folha o dia todo. Preencha na hora em que movimentar, assine a linha e mande a foto pelo WhatsApp no mesmo dia.</p>
+    </div>
+  </section>`;
+}
 export function render(est) {
   if (!est || est.erro || !Array.isArray(est.itens)) {
     return html`<p class="vazio">Não consegui ler a planilha de ferramentas${est && est.erro ? `: ${est.erro}` : ''}. Quando o coletor ler a planilha (pasta Pós-obra › Ferramentas › Listas), esta tela se monta sozinha.</p>`;
@@ -341,6 +379,13 @@ export function render(est) {
       ${rota2.length ? blocoTexto(texto2, 2) : html`<p class="pequeno">Nada a levar depois da compra.</p>`}
     </section>
 
+    ${(() => {
+      const ids1 = ['galpao', ...rota1.map((p) => p.id).filter((id) => id !== 'galpao'), 'carros'];
+      const mov2 = [...r.compras, ...r.fabricar].filter((c) => c.cat !== 'MAQ' && (por.get(c.para) || {}).tipo !== 'galpao').map((c) => ({ de: 'galpao', para: c.para, cod: c.cod, item: c.item, qtd: c.qtd, nota: '' }));
+      const ids2 = ['galpao', ...rota2.map((p) => p.id).filter((id) => id !== 'galpao'), 'carros'];
+      return html`${rota1.length ? guiaHtml(linhasDoGuia(r.movs, ids1, por, nome), dataRota, 1, '4 · Guia de movimentação: rota de hoje (para imprimir)') : ''}
+      ${mov2.length ? guiaHtml(linhasDoGuia(mov2, ids2, por, nome), dataCompra, 2, '5 · Guia de movimentação: entrega da compra (para imprimir)') : ''}`;
+    })()}
     <details class="caixa rp-detalhe"><summary><span class="caixa-tit">Detalhe: o que falta em cada lugar</span><span class="contador">${obrasComFalta}</span><span class="pequeno">${obrasComFalta} de ${obras.length} obras com falta · clique para ver item por item</span></summary><div class="caixa-corpo">
       ${obras.map((l) => blocoLocal(l, nome))}
       <h3 class="rp-sub">Carros e galpão</h3>
