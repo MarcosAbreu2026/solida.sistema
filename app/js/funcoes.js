@@ -151,23 +151,25 @@ export const TAREFAS = [
   t('projetos', 'planejamento', 'Recebimento de projeto e análise de impacto da revisão: no dia em que o projeto/revisão chegar', 'ocasional', '', POP),
 
   // ---------------------------------------------------------------- Planejamento + orçamento terceirizado (MARIANA)
-  t('planejamento', 'planejamento', 'Metas semanais: disparar para cada obra com métricas', [1], '8h'),
-  t('planejamento', 'planejamento', 'Metas semanais: verificar o que foi feito e plano de ação corretivo', [1], '9h'),
-  t('planejamento', 'operacao', 'Orç. terceirizado: conferir orçamentos recebidos', 'uteis', '16h · seg e sex também 10h'),
-  t('planejamento', 'planejamento', 'Cronograma: lançar real executado (produtividade) na revisão', [2], '8h–11h'),
-  t('planejamento', 'operacao', 'Terceirizados laranja e cinza: prazos de contratação dominados, passar para orçamento', [3], '8h'),
+  // Ajustes da Mariana (papéis de 16/10): metas movidas para quarta/quinta, conferir orçamentos só seg e qua, etc.
+  // (as tarefas novas dessa revisão ficam no fim da lista: o id de cada tarefa é a posição e as marcações já feitas dependem dele)
+  t('planejamento', 'planejamento', 'Metas semanais: disparar para cada obra com métricas', [4], '8h'),
+  t('planejamento', 'planejamento', 'Metas semanais: verificar o que foi feito e plano de ação corretivo', [3], '9h'),
+  t('planejamento', 'operacao', 'Orç. terceirizado: conferir orçamentos recebidos', [1], '8h'),
+  t('planejamento', 'planejamento', 'Cronograma: lançar real executado (produtividade) na revisão', [2], '9h–11h'),
+  t('planejamento', 'operacao', 'Terceirizados laranja e cinza: prazos de contratação dominados, passar para orçamento', [2], '8h'),
   t('planejamento', 'planejamento', 'Reunião com gestores (metas semanais)', [3], '9h–11h', FIXO),
-  t('planejamento', 'planejamento', 'Cronograma de obra: analisar e revisar', [4], '8h–11h'),
-  t('planejamento', 'planejamento', 'Metas semanais: check das métricas × planejado', [5], '8h'),
+  t('planejamento', 'planejamento', 'Cronograma de obra: analisar e revisar', [4], '9h–11h'),
+  t('planejamento', 'planejamento', 'Metas semanais: check das métricas × planejado', [4], '9h'),
   t('planejamento', 'planejamento', 'Cronograma inicial de obra nova (quando houver)', [5], '9h'),
   t('planejamento', 'operacao', 'Orç. terceirizado: cobrar definição de arquiteta e cliente', 'uteis', '11h'),
   t('planejamento', 'comercial', 'Reunião de alinhamento: orçamentos novos × obras em andamento (quando houver)', [1], '13h', POP),
-  t('planejamento', 'operacao', 'Orç. terceirizado: apresentar orçamentos para cliente e arquiteta', 'uteis', 'ter e sex 13h · seg, qua e qui 14h'),
+  t('planejamento', 'operacao', 'Orç. terceirizado: apresentar orçamentos para cliente e arquiteta', [1, 3, 4], '14h'),
   t('planejamento', 'operacao', 'QCL: aprovar', [3], '13h'),
   t('planejamento', 'operacao', 'Orç. terceirizado: encaminhar para pagamento e financeiro', [4], '13h'),
   t('planejamento', 'operacao', 'Reunião fornecedor / cliente / arquiteta', [2], '14h', FIXO),
   t('planejamento', 'operacao', 'Orç. terceirizado: negociar desconto (com Julia)', [1, 2, 3, 4], '15h'),
-  t('planejamento', 'planejamento', 'Reunião planejamento / coordenação / técnico', [5], '15h', FIXO),
+  t('planejamento', 'planejamento', 'Reunião planejamento / coordenação / técnico', [5], '11h', FIXO),
 
   // ---------------------------------------------------------------- Orçamento terceirizado (JULIA, estagiária)
   t('orc_terceirizado', 'operacao', 'Terc. laranja: atualizar planilha', 'uteis', '8h'),
@@ -457,6 +459,17 @@ export const TAREFAS = [
   t('rh', 'rh', 'Férias: atualizar calendário anual (com validação da Operação) e checar vencidas', 'mensal', '', POP),
   t('rh', 'rh', 'Sazonal: admissões; experiência 45 dias; contratos de estagiários e terceirizados; recrutamento', 'ocasional'),
   t('rh', 'rh', 'Sazonal / mensal: demissões; aniversariantes do mês; confraternizações e meses temáticos', 'ocasional', '', POP),
+
+  // ---------------------------------------------------------------- acréscimos de 16/10 (no fim, para não mudar o id das tarefas já marcadas)
+  // Mariana (papéis com as setas "1A → 1D" etc.): tarefas que passaram a ter mais de um horário na semana
+  t('planejamento', 'operacao', 'Orç. terceirizado: conferir orçamentos recebidos', [1], '10h'),
+  t('planejamento', 'operacao', 'Orç. terceirizado: conferir orçamentos recebidos', [3], '16h'),
+  t('planejamento', 'planejamento', 'Cronograma: lançar real executado (produtividade) na revisão', [3], '13h'),
+  t('planejamento', 'planejamento', 'Cronograma de obra: analisar e revisar', [3], '14h'),
+  t('planejamento', 'operacao', 'Orç. terceirizado: apresentar orçamentos para cliente e arquiteta', [3], '8h'),
+  t('planejamento', 'operacao', 'Orç. terceirizado: apresentar orçamentos para cliente e arquiteta', [5], '13h'),
+  // Julia: acrescentado à mão na lista dela
+  t('orc_terceirizado', 'planejamento', 'Imprimir o cronograma das obras e enviar nos grupos', [4]),
 ].map((x, i) => ({ ...x, id: `${x.funcao}-${i}` }));
 
 // 1 = segunda … 7 = domingo
