@@ -234,7 +234,7 @@ function resumoDoPerfil() {
 const NOME_CURTO = {
   socio: 'Diretoria', coord_operacoes: 'Coordenação', tecnico: 'Técnico', planejamento: 'Planejamento',
   orc_terceirizado: 'Orç. terceirizado', projetos: 'Projeto + orç.', compras: 'Compras', ferramentas: 'Ferramentas',
-  executor_ferramentas: 'Executor ferram.', posobra: 'Pós-obra', financeiro: 'Financeiro', administrativo: 'Administrativo',
+  executor_ferramentas: 'Executor ferram.', estagiario_compras: 'Estag. compras', posobra: 'Pós-obra', financeiro: 'Financeiro', administrativo: 'Administrativo',
   rh: 'RH', marketing: 'Marketing', gestor_obra: 'Gestor de obra', estagiario: 'Estagiário', encarregado: 'Encarregado', ajudante: 'Ajudante',
 };
 
