@@ -28,19 +28,21 @@ const ROTULO = {
   nao: '✕ Não enviada', nv: 'Ainda não verificado', sem: 'Controle ainda não existia',
 };
 
-export function locaisDoChecklist(CFG, visiveis) {
-  const obras = ((CFG && CFG.obras) || []).filter((o) => /^Mo/i.test(o) && (!visiveis || visiveis.includes(o)));
+// obras encerradas no cadastro da planilha de ferramentas (aba OBRAS) saem dos cartões
+export function locaisDoChecklist(CFG, visiveis, estoque) {
+  const encerradas = new Set(((estoque && estoque.cadastroObras) || []).filter((c) => /encerr|finaliz|conclu/i.test(c.status || '')).map((c) => c.obra));
+  const obras = ((CFG && CFG.obras) || []).filter((o) => /^Mo/i.test(o) && !encerradas.has(o) && (!visiveis || visiveis.includes(o)));
   return [...obras, ...(visiveis ? [] : LOCAIS_FIXOS)];
 }
 
-export function cartoes(CFG, dados, visiveis = null) {
+export function cartoes(CFG, dados, visiveis = null, estoque = null) {
   const hoje = hojeISO();
   const regsTodos = (dados && Array.isArray(dados.registros) ? dados.registros : []).filter((r) => r && r.local && /^\d{4}-\d{2}-\d{2}$/.test(String(r.enviadoEm || '')));
   const verificadoEm = dados && dados.verificadoEm;
   const inicio = dados && dados.inicio;
   const ini = inicioDaSemana(hoje);
   const semanas = Array.from({ length: SEMANAS }, (_, i) => somarDias(ini, -7 * (SEMANAS - 1 - i))); // da mais antiga para a atual
-  const locais = locaisDoChecklist(CFG, visiveis);
+  const locais = locaisDoChecklist(CFG, visiveis, estoque);
   const card = (local) => {
     const regs = regsTodos.filter((r) => chave(r.local) === chave(local));
     const hist = semanas.map((s) => ({ s, ...estadoDaSemana(regs, s, hoje, verificadoEm, inicio) }));

@@ -88,7 +88,7 @@ export function calcular(est) {
       const q = qtd(i.obras[l.id]);
       if (q.texto) { l.verificar.push({ cod: i.cod, item: i.item, texto: q.texto }); continue; }
       if (q.n == null) { l.sem.push({ cod: i.cod, item: i.item }); continue; }
-      if (l.finalizada) { if (q.n > 0 && !consumivel) { mover(i, l.id, 'galpao', q.n, q.detalhe ? `na obra: ${q.detalhe}` : ''); galpao += q.n; } continue; }
+      if (l.finalizada) { if (q.n > 0 && !consumivel && !l.velha) { mover(i, l.id, 'galpao', q.n, q.detalhe ? `na obra: ${q.detalhe}` : ''); galpao += q.n; } continue; }
       if (q.n >= min) { l.ok++; if (q.n > min && !consumivel) sobraObra.push({ id: l.id, s: q.n - min, detalhe: q.detalhe }); }
       else faltas.push({ id: l.id, falta: min - q.n, tem: q, min });
     }
@@ -173,7 +173,8 @@ export function render(est) {
   }
   const r = calcular(est);
   const por = new Map(r.locais.map((l) => [l.id, l]));
-  const obras = r.locais.filter((l) => l.tipo === 'obra');
+  const obras = r.locais.filter((l) => l.tipo === 'obra' && !l.finalizada);
+  const encerradas = r.locais.filter((l) => l.tipo === 'obra' && l.finalizada);
   const outros = r.locais.filter((l) => l.tipo !== 'obra');
   const via = viagens(r.movs, r.nomeDe, por);
   const pecas = r.movs.reduce((s, m) => s + m.qtd, 0);
@@ -182,7 +183,7 @@ export function render(est) {
   const compras = [...compraPorItem.values()].sort((a, b) => a.cod.localeCompare(b.cod, 'pt-BR', { numeric: true }));
   const comprarJa = compras.filter((c) => c.cat !== 'MAQ');
   const confirmar = compras.filter((c) => c.cat === 'MAQ');
-  const obrasComFalta = obras.filter((o) => !o.finalizada && o.faltas.length).length;
+  const obrasComFalta = obras.filter((o) => o.faltas.length).length;
   const velhas = r.locais.filter((l) => l.velha && !l.finalizada && (l.tipo === 'obra' ? true : l.tipo === 'carro' ? true : true));
   const resumo = (v, r1, r2 = '') => html`<div class="rp-kpi"><b>${v}</b><span>${r1}</span>${r2 ? html`<em>${r2}</em>` : ''}</div>`;
 
@@ -197,7 +198,7 @@ export function render(est) {
     <div class="rp-barra"><p class="pequeno">Só itens <b>obrigatórios de obra</b> (${est.itens.filter((i) => num(i.minObra) > 0).length} itens). Planilha ${est.arquivo || ''}, lida do Drive.</p><button type="button" class="botao" data-imprimir>🖨 Imprimir</button></div>
 
     <section class="ob-sec rp-resumo">
-      ${resumo(obrasComFalta, obrasComFalta === 1 ? 'obra com falta' : 'obras com falta', `de ${obras.filter((o) => !o.finalizada).length} ativas`)}
+      ${resumo(obrasComFalta, obrasComFalta === 1 ? 'obra com falta' : 'obras com falta', `de ${obras.length} ativas`)}
       ${resumo(via.length, via.length === 1 ? 'viagem' : 'viagens do Anderson', `${un(pecas)} peças no total`)}
       ${resumo(comprarJa.length, comprarJa.length === 1 ? 'item para comprar' : 'itens para comprar', `${un(comprarJa.reduce((s, c) => s + c.total, 0))} unidades`)}
       ${resumo(confirmar.length, 'maquinário a confirmar', 'antes de comprar')}
@@ -216,6 +217,7 @@ export function render(est) {
       <li>Item sem contagem na planilha <b>não conta como falta</b>: o sistema só cobra o que foi contado.</li>
     </ol></div></details>
 
+    ${encerradas.length ? html`<p class="pequeno rp-nota">Obras encerradas, fora desta lista: <b>${encerradas.map((l) => l.nome).join(', ')}</b>. ${encerradas.some((l) => !l.velha) ? 'O que ainda estava nelas volta para o galpão (veja as viagens).' : 'As contagens delas são antigas, então não geram viagem.'}</p>` : ''}
     <section class="ob-sec"><div class="painel-h"><h2>1 · O que falta em cada obra</h2><p>Abra uma obra para ver item por item e como resolver</p></div>
       ${obras.map((l) => blocoLocal(l, r.nomeDe))}
       <h3 class="rp-sub">Carros e galpão</h3>

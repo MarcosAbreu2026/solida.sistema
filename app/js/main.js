@@ -426,7 +426,7 @@ function desenhar() {
       const veRepos = estoque.VE_ESTOQUE_COMPLETO.includes(f.id);
       const abas = veRepos ? subnav(reposicao.ABAS_TRANSPORTE.map((a) => ({ ...a, href: `#/transporte${a.id ? `/${a.id}` : ''}` })), rota.sub === 'reposicao' ? 'reposicao' : '') : '';
       if (veRepos && rota.sub === 'reposicao') out = `<div>${abas}<div style="margin-top:26px">${reposicao.render(estado.drive.estoque)}</div></div>`;
-      else out = T.telaArea(area, abas ? `<div style="margin-bottom:34px">${abas}</div>` : '', { depoisIndicadores: ferrChk.cartoes(CFG, estado.ferrChk, deObra ? obrasDaPessoa() : null) });
+      else out = T.telaArea(area, abas ? `<div style="margin-bottom:34px">${abas}</div>` : '', { depoisIndicadores: ferrChk.cartoes(CFG, estado.ferrChk, deObra ? obrasDaPessoa() : null, estado.drive.estoque) });
     }
     else if (area && area.id === 'planejamento') {
       // Planejamento: Resumo · Programação semanal · Produtividade · Diário de obra
