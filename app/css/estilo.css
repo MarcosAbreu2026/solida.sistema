@@ -1203,3 +1203,42 @@ a.card:hover .card-rotulo { color: var(--clique2); text-decoration: underline; }
 .fn-pe .fn-hora { gap: 2px; }
 .fn-pe .fn-hora span, .fn-pe .fn-volta { min-width: 34px; }
 .fn-pe .fn-volta { width: auto; padding: 0 3px; font-size: 11px; font-weight: 700; color: #7A5A1E; background: #FFF6E3; border-color: #E0B04A; margin-left: 0; }
+/* Quadro da semana › Funções (cartões soltos na linha do tempo; dias em colunas, horas na vertical) */
+.fq-quadro { display: grid; grid-template-columns: 40px repeat(6, minmax(128px, 1fr)); column-gap: 6px; row-gap: 6px; overflow-x: auto; padding-bottom: 4px; }
+.fq-cab { background: var(--gesso); border-radius: 10px; padding: 7px 9px; display: flex; flex-direction: column; gap: 2px; justify-content: center; }
+.fq-cab b { font-size: 13px; }
+.fq-cab small { font-size: 11.5px; color: var(--muted); }
+.fq-cab.hoje { background: #FFF6E3; box-shadow: inset 0 0 0 2px #E0B04A; }
+.fq-cab.hoje b { color: #7A5A1E; }
+.fq-horas { position: relative; font-size: 11px; color: var(--muted); }
+.fq-horas span { position: absolute; left: 0; right: 0; border-top: 1px solid var(--linha2); padding-top: 2px; }
+.fq-trilho { position: relative; border-radius: 10px; background-color: var(--gesso);
+  background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 59px, var(--linha2) 59px, var(--linha2) 60px); }
+.fq-trilho.hoje { background-color: #FFF6E3; }
+.fq-card { position: absolute; box-sizing: border-box; overflow: hidden; padding: 3px 6px 7px 7px; background: #fff; border: 1px solid var(--linha2); border-left: 4px solid #E0B04A; border-radius: 7px;
+  display: flex; flex-direction: column; gap: 3px; cursor: grab; user-select: none; -webkit-user-select: none; font-size: 11.5px; line-height: 15px; z-index: 1; }
+.fq-card:hover { z-index: 3; box-shadow: 0 2px 8px rgba(0, 0, 0, .18); }
+.fq-card.fn-ok { border-left-color: #4E8A62; background: #F5FAF6; }
+.fq-card.fn-nao { border-left-color: #D9534F; background: #FDF4F3; }
+.fq-card.fn-futuro { border-left-color: #C9CFD6; background: #FBFAF8; }
+.fq-card.mudou { box-shadow: inset 0 0 0 1px #E0B04A; }
+.fq-card.arrastando { z-index: 30; opacity: .88; cursor: grabbing; box-shadow: 0 6px 18px rgba(0, 0, 0, .3); transition: none; }
+.fq-nome { font-weight: 600; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: var(--l, 1); min-height: 0; word-break: break-word; }
+.fq-card .fn-meta { font-size: 10.5px; line-height: 13px; flex: none; }
+.fq-card .fn-acoes { flex: none; margin-top: auto; flex-wrap: nowrap; gap: 3px; }
+.fq-card .fn-b { padding: 1px 7px; font-size: 12px; }
+.fq-marca { position: absolute; top: 1px; right: 4px; font-size: 11px; font-weight: 800; }
+.fq-card.fn-ok .fq-marca { color: #2F6B43; }
+.fq-card.fn-nao .fq-marca { color: #9B3A33; }
+.fq-card.fn-ok .fq-nome, .fq-card.fn-nao .fq-nome { padding-right: 12px; }
+.fq-alca { position: absolute; left: 0; right: 0; bottom: 0; height: 6px; cursor: ns-resize; touch-action: none; background: linear-gradient(transparent, rgba(0, 0, 0, .08)); }
+.fq-alca:hover { background: linear-gradient(transparent, rgba(224, 176, 74, .55)); }
+.fq-fundo { position: fixed; inset: 0; background: rgba(20, 24, 30, .35); z-index: 90; }
+.fq-pop { position: fixed; z-index: 91; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(420px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto;
+  background: #fff; border-radius: 14px; padding: 18px 18px 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, .35); display: flex; flex-direction: column; gap: 10px; }
+.fq-x { position: absolute; top: 8px; right: 10px; font-size: 22px; line-height: 1; border: 0; background: none; cursor: pointer; color: var(--muted); }
+.fq-pop-nome { font-size: 14.5px; line-height: 1.35; padding-right: 22px; }
+.fq-pop-linha { display: flex; align-items: center; gap: 10px; }
+.fq-pop-linha > span { width: 62px; flex: none; font-size: 12px; color: var(--muted); }
+.fq-pop-linha > div { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.fq-pop .fn-b[aria-pressed="true"]:not(.fn-feito):not(.fn-nao) { background: #FFF6E3; border-color: #E0B04A; font-weight: 700; }

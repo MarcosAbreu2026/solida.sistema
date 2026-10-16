@@ -7,7 +7,7 @@ import { html, data as fmtData } from '../formato.js';
 import { somarDias, hojeISO, inicioDaSemana } from '../datas.js';
 import { TAREFAS, valeNoDia, descreverDias, naGrade, OBSERVACOES, diaSemana } from '../funcoes.js';
 import { sessao, funcaoAtual, idPessoa, obrasDaPessoa } from '../sessao.js';
-import { lerChecks, lerHorarios, primeiroDia } from '../armazenamento.js';
+import { lerChecks, lerHorarios, moverHorario, primeiroDia } from '../armazenamento.js';
 import { programacoes } from '../programacao.js';
 import { feriado } from '../feriados.js';
 import { telaSemana } from './produtividade.js';
@@ -38,11 +38,11 @@ export const ABAS = [
   { id: 'funcoes', nome: 'Funções' },
 ];
 
-// Quadro da semana: uma coluna por dia (seg a sáb) e as horas na vertical; em cada dia, uma caixinha por tarefa com o nome dentro
-// e ✓ Feito / ✕ Não na própria caixinha (pedido do Felipe, 16/10). A semana inteira aparece de uma vez.
-// Linha do tempo na vertical, das 7h às 19h, em faixas de 30 min. A caixinha pode ser movida (arrastando ou
-// com ‹ ›) para a pessoa ajustar a semana; o horário escolhido fica guardado por dia.
-export const GRADE = { ini: 7 * 60, passo: 30, faixas: 24 };
+// Quadro da semana (Funções): dias em colunas, horas na vertical (7h às 19h, faixas de 30 min).
+// Cada tarefa é um cartão: arrastar muda o dia/horário, puxar a borda de baixo muda a duração, clicar abre
+// uma janelinha com os detalhes (e os mesmos ajustes, para quem está no celular). Cartões no mesmo horário
+// ficam lado a lado, com o texto cortado em "…". O ajuste fica guardado neste navegador, por dia da tarefa.
+export const GRADE = { ini: 7 * 60, passo: 30, faixas: 24, alt: 30 };
 const PADRAO = 8 * 60; // sem horário no quadro: começa às 8h
 function previsto(t) {
   const txt = String(t.hora || '');
@@ -53,55 +53,90 @@ function previsto(t) {
   return { ini, dur };
 }
 const hhmm = (min) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
-// altura da caixinha: no mínimo 2 faixas (1h); 9 tarefas num dia ainda cabem nas 12h
-const largura = (dur) => Math.min(GRADE.faixas, Math.max(2, Math.round(dur / GRADE.passo)));
-// Posição de cada tarefa do dia: o horário escolhido (ou o do quadro); se duas caem no mesmo lugar,
-// a mais nova desce para a próxima faixa livre, para nenhuma ficar por cima da outra.
-function posicoesDoDia(lista, data, horarios) {
-  const ocupada = Array(GRADE.faixas).fill(false);
-  const itens = lista.map((t, i) => {
-    const p = previsto(t);
-    const escolhido = (horarios[data] || {})[t.id];
-    const span = largura(p.dur);
-    const ini = escolhido == null ? p.ini : escolhido;
-    const faixa = Math.max(0, Math.min(GRADE.faixas - span, Math.round((ini - GRADE.ini) / GRADE.passo)));
-    return { t, i, span, faixa, mudou: escolhido != null && escolhido !== p.ini };
-  }).sort((x, y) => x.faixa - y.faixa || x.i - y.i);
-  const livre = (f, span) => { for (let k = f; k < f + span; k++) if (ocupada[k]) return false; return f + span <= GRADE.faixas; };
-  for (const it of itens) {
-    let f = it.faixa;
-    while (f < GRADE.faixas && !livre(f, it.span)) f++;
-    if (f + it.span > GRADE.faixas) { f = it.faixa; while (f > 0 && !livre(f, it.span)) f--; }
-    it.faixa = f;
-    for (let k = f; k < Math.min(GRADE.faixas, f + it.span); k++) ocupada[k] = true;
-    it.ini = GRADE.ini + f * GRADE.passo;
-  }
-  return itens.map((it) => ({ t: it.t, p: { faixa: it.faixa, span: it.span, ini: it.ini, mudou: it.mudou } }));
+const durTxt = (min) => { const h = Math.floor(min / 60); const m = min % 60; return h ? `${h}h${m ? String(m).padStart(2, '0') : ''}` : `${m} min`; };
+const limitar = (v, a, b) => Math.max(a, Math.min(b, v));
+
+// Posição de uma tarefa (do dia d) no quadro, já com o que a pessoa ajustou
+function efetivo(t, d, horarios, dias) {
+  const p = previsto(t);
+  const o = (horarios[d] || {})[t.id] || {};
+  const dur = limitar(o.dur ?? p.dur, GRADE.passo, GRADE.faixas * GRADE.passo);
+  const span = Math.round(dur / GRADE.passo);
+  const faixa = limitar(Math.round(((o.ini ?? p.ini) - GRADE.ini) / GRADE.passo), 0, GRADE.faixas - span);
+  const dia = dias.includes(o.dia) ? o.dia : d;
+  return { t, d, dia, faixa, span, dur: span * GRADE.passo, ini: GRADE.ini + faixa * GRADE.passo, mudou: dia !== d || (o.ini != null && o.ini !== p.ini) || (o.dur != null && o.dur !== p.dur) };
 }
-function caixaTarefa(t, data, estado, hoje, prova, rotuloDia = '', pos = null) {
-  const btn = (v, txt, pressionado) => html`<button type="button" class="fn-b fn-${v}" data-check="${t.id}|${data}|${v}" aria-pressed="${pressionado ? 'true' : 'false'}" title="${pressionado ? 'Clique para desfazer' : ''}">${txt}</button>`;
-  let cls = 'sem'; let acoes;
-  const c = !!pos; // na linha do tempo os botões são só ícones
-  if (data > hoje) { cls = 'futuro'; acoes = ''; }
-  else if (estado === 'feito') { cls = 'ok'; acoes = btn('feito', c ? '✓' : '✓ Feito', true); }
-  else if (estado === 'nao') { cls = 'nao'; acoes = btn('nao', c ? '✕' : '✕ Não feito', true); }
-  else if (prova) { cls = 'ok'; acoes = html`<span class="fn-auto" title="${descreverProva(prova)}">${c ? '✓ auto' : '✓ automático'}</span>${btn('nao', c ? '✕' : '✕ Não', false)}`; }
-  else acoes = html`${btn('feito', c ? '✓' : '✓ Feito', false)}${btn('nao', c ? '✕' : '✕ Não', false)}`;
-  const meta = [rotuloDia, pos ? '' : t.hora].filter(Boolean).join(' · ');
-  const dica = [NOME_AREA[t.area] || t.area, t.processo && t.processo !== '—' ? `POP ${t.processo}` : '', descreverDias(t.dias), t.hora ? `quadro: ${t.hora}` : ''].filter(Boolean).join(' · ');
-  const hora = pos ? html`<div class="fn-hora ${pos.mudou ? 'mudou' : ''}">
-      <button type="button" class="fn-mv" data-hora="${t.id}|${data}|-30" title="30 min mais cedo" ${pos.faixa <= 0 ? html.seguro('disabled') : ''}>‹</button>
-      ${pos.mudou
-    ? html`<button type="button" class="fn-mv fn-volta" data-hora="${t.id}|${data}|volta" title="Horário mudado: clique para voltar ao do quadro (${t.hora || '08:00'})">${hhmm(pos.ini)}</button>`
-    : html`<span title="Arraste a caixinha ou use ‹ › para mudar de 30 em 30 min">${hhmm(pos.ini)}</span>`}
-      <button type="button" class="fn-mv" data-hora="${t.id}|${data}|30" title="30 min mais tarde" ${pos.faixa + pos.span >= GRADE.faixas ? html.seguro('disabled') : ''}>›</button>
-    </div>` : '';
-  const estilo = pos ? `grid-row:${pos.faixa + 1} / span ${pos.span}` : '';
-  return html`<div class="fn-caixa fn-${cls}" title="${dica}" style="${estilo}" draggable="${pos ? 'true' : 'false'}" data-arrasta="${pos ? `${t.id}|${data}|${pos.faixa}` : ''}">
+// Cartões que se sobrepõem dividem a largura da coluna (lane / n)
+function lados(itens) {
+  itens.sort((a, b) => a.faixa - b.faixa || b.span - a.span);
+  let grupo = []; let lanes = []; let fim = -1;
+  const fechar = () => { grupo.forEach((i) => { i.n = lanes.length; }); grupo = []; lanes = []; fim = -1; };
+  for (const it of itens) {
+    if (grupo.length && it.faixa >= fim) fechar();
+    let l = lanes.findIndex((f) => f <= it.faixa);
+    if (l < 0) { l = lanes.length; lanes.push(0); }
+    lanes[l] = it.faixa + it.span; it.lane = l; grupo.push(it); fim = Math.max(fim, it.faixa + it.span);
+  }
+  fechar();
+  return itens;
+}
+
+// Situação da tarefa no dia (cor do cartão + botões ✓ / ✕)
+function situacao(t, data, estado, hoje, prova, curto) {
+  const btn = (v, txt, pressionado) => html`<button type="button" class="fn-b fn-${v}" data-check="${t.id}|${data}|${v}" aria-pressed="${pressionado ? 'true' : 'false'}" title="${pressionado ? 'Clique para desfazer' : (v === 'feito' ? 'Marcar como feito' : 'Marcar como não feito')}">${txt}</button>`;
+  if (data > hoje) return { cls: 'futuro', marca: '', acoes: '' };
+  if (estado === 'feito') return { cls: 'ok', marca: '✓', acoes: btn('feito', curto ? '✓' : '✓ Feito', true) };
+  if (estado === 'nao') return { cls: 'nao', marca: '✕', acoes: btn('nao', curto ? '✕' : '✕ Não feito', true) };
+  if (prova) return { cls: 'ok', marca: '✓', acoes: html`<span class="fn-auto" title="${descreverProva(prova)}">${curto ? '✓ auto' : '✓ automático'}</span>${btn('nao', curto ? '✕' : '✕ Não', false)}` };
+  return { cls: 'sem', marca: '', acoes: html`${btn('feito', curto ? '✓' : '✓ Feito', false)}${btn('nao', curto ? '✕' : '✕ Não', false)}` };
+}
+const infoTarefa = (t) => [NOME_AREA[t.area] || t.area, t.processo && t.processo !== '—' ? `POP ${t.processo}` : '', descreverDias(t.dias), t.hora ? `quadro: ${t.hora}` : ''].filter(Boolean).join(' · ');
+
+// Cartão da lista "ficaram sem marcar" (sem horário)
+function caixaTarefa(t, data, estado, hoje, prova, rotuloDia = '') {
+  const { cls, acoes } = situacao(t, data, estado, hoje, prova, false);
+  const meta = [rotuloDia, t.hora].filter(Boolean).join(' · ');
+  return html`<div class="fn-caixa fn-${cls}" title="${infoTarefa(t)}">
     <div class="fn-nome">${textoTarefa(t)}</div>
     ${meta ? html`<div class="fn-meta">${meta}</div>` : ''}
-    ${pos ? html`<div class="fn-pe">${hora}${acoes ? html`<div class="fn-acoes">${acoes}</div>` : ''}</div>` : (acoes ? html`<div class="fn-acoes">${acoes}</div>` : '')}
+    ${acoes ? html`<div class="fn-acoes">${acoes}</div>` : ''}
   </div>`;
+}
+
+// Cartão no quadro
+function cartao(e, estado, hoje, prova) {
+  const { t } = e;
+  const altura = e.span * GRADE.alt - 2;
+  const grande = e.n === 1 && e.span >= 3;
+  const { cls, marca, acoes } = situacao(t, e.d, estado, hoje, prova, true);
+  const linhas = Math.max(1, Math.floor((altura - 8 - (grande ? 26 : 0) - (e.n === 1 && e.span >= 2 ? 13 : 0)) / 15));
+  const estilo = `top:${e.faixa * GRADE.alt}px;height:${altura}px;left:calc(${e.lane} * 100% / ${e.n} + 2px);width:calc(100% / ${e.n} - 4px);--l:${linhas}`;
+  return html`<div class="fq-card fn-${cls} ${e.mudou ? 'mudou' : ''}" style="${estilo}" title="${t.texto} — ${hhmm(e.ini)} a ${hhmm(e.ini + e.dur)} (${durTxt(e.dur)})" data-card="${t.id}|${e.d}" data-faixa="${e.faixa}" data-span="${e.span}">
+    ${marca ? html`<span class="fq-marca">${marca}</span>` : ''}
+    <div class="fq-nome">${t.texto}</div>
+    ${e.n === 1 && e.span >= 2 ? html`<div class="fn-meta">${hhmm(e.ini)}–${hhmm(e.ini + e.dur)}</div>` : ''}
+    ${grande && acoes ? html`<div class="fn-acoes">${acoes}</div>` : ''}
+    <div class="fq-alca" title="Puxe para mudar a duração"></div>
+  </div>`;
+}
+
+// Janelinha com os detalhes do cartão
+let popup = null; // { id, d }
+function janela(e, dias, hoje, estado, prova) {
+  const { t } = e;
+  const { acoes } = situacao(t, e.d, estado, hoje, prova, false);
+  const fmt = (d) => `${DIA_CURTO[dias.indexOf(d)]} ${d.slice(8, 10)}/${d.slice(5, 7)}`;
+  return html`<div class="fq-fundo" data-fn="fechar"></div>
+    <div class="fq-pop" role="dialog" aria-label="Detalhes da tarefa">
+      <button type="button" class="fq-x" data-fn="fechar" title="Fechar">×</button>
+      <div class="fq-pop-nome">${textoTarefa(t)}</div>
+      <p class="pequeno">${infoTarefa(t)}${e.dia !== e.d ? ` · previsto para ${fmt(e.d)}` : ''}</p>
+      <div class="fq-pop-linha"><span>Dia</span><div>${dias.map((d) => html`<button type="button" class="fn-b" data-fn="dia|${d}" aria-pressed="${d === e.dia ? 'true' : 'false'}">${fmt(d)}</button>`)}</div></div>
+      <div class="fq-pop-linha"><span>Início</span><div><button type="button" class="fn-b" data-fn="hora|-30">‹ 30 min</button> <b>${hhmm(e.ini)}</b> <button type="button" class="fn-b" data-fn="hora|30">30 min ›</button></div></div>
+      <div class="fq-pop-linha"><span>Duração</span><div><button type="button" class="fn-b" data-fn="dur|-30">− 30 min</button> <b>${durTxt(e.dur)}</b> <button type="button" class="fn-b" data-fn="dur|30">+ 30 min</button></div></div>
+      ${acoes ? html`<div class="fq-pop-linha"><span>Situação</span><div class="fn-acoes">${acoes}</div></div>` : html`<p class="pequeno">A marcação de feito/não feito abre no dia da tarefa.</p>`}
+      ${e.mudou ? html`<button type="button" class="botao" data-fn="volta">↺ Voltar ao quadro (${t.hora || '08:00'})</button>` : ''}
+    </div>`;
 }
 
 function funcoesSemana(ref, CFG) {
@@ -130,15 +165,20 @@ function funcoesSemana(ref, CFG) {
   if (!tarefas.length) return html`${nav}<p class="vazio">Nenhuma tarefa cadastrada para a sua função.</p>`;
 
   const horarios = lerHorarios(idPessoa());
-  const horas = Array.from({ length: GRADE.faixas / 2 }, (_, i) => html`<span style="grid-row:${i * 2 + 1} / span 2">${GRADE.ini / 60 + i}h</span>`);
-  const colunas = dias.map((d) => {
-    const l = posicoesDoDia(doDia(d), d, horarios);
-    return { d, l, fe: l.filter(({ t }) => feita(t, d)).length };
-  });
-  const cabecas = colunas.map(({ d, l, fe }, i) => html`<div class="fn-dia ${d === hoje ? 'hoje' : ''}"><b>${DIA_CURTO[i]} ${d.slice(8, 10)}/${d.slice(5, 7)}</b><small>${feriado(d) ? 'feriado' : l.length ? (d > hoje ? `${l.length} previstas` : `${fe} de ${l.length}`) : 'sem tarefas'}</small></div>`);
-  const trilhos = colunas.map(({ d, l }) => html`<div class="fn-trilho ${d === hoje ? 'hoje' : ''} ${l.length ? '' : 'vazio'}" data-trilho="${d}">
-      ${l.map(({ t, p }) => caixaTarefa(t, d, estadoDe(t, d), hoje, provaDoDia(t, d), '', p))}
-    </div>`);
+  const todos = [];
+  for (const d of dias) for (const t of doDia(d)) todos.push(efetivo(t, d, horarios, dias));
+  const colunas = dias.map((c) => { const l = lados(todos.filter((e) => e.dia === c)); return { c, l, fe: l.filter((e) => feita(e.t, e.d)).length }; });
+  const altTotal = GRADE.faixas * GRADE.alt;
+  const horas = Array.from({ length: GRADE.faixas / 2 }, (_, i) => html`<span style="top:${i * 2 * GRADE.alt}px">${GRADE.ini / 60 + i}h</span>`);
+  const cabecas = colunas.map(({ c, l, fe }, i) => html`<div class="fq-cab ${c === hoje ? 'hoje' : ''}"><b>${DIA_CURTO[i]} ${c.slice(8, 10)}/${c.slice(5, 7)}</b><small>${feriado(c) ? 'feriado' : l.length ? (c > hoje ? `${l.length} previstas` : `${fe} de ${l.length}`) : 'sem tarefas'}</small></div>`);
+  const trilhos = colunas.map(({ c, l }) => html`<div class="fq-trilho ${c === hoje ? 'hoje' : ''}" data-trilho="${c}" style="height:${altTotal}px">${l.map((e) => cartao(e, estadoDe(e.t, e.d), hoje, provaDoDia(e.t, e.d)))}</div>`);
+
+  let pop = '';
+  if (popup) {
+    const e = todos.find((x) => x.t.id === popup.id && x.d === popup.d);
+    if (e) pop = janela(e, dias, hoje, estadoDe(e.t, e.d), provaDoDia(e.t, e.d)); else popup = null;
+  }
+
   // ficaram sem marcar em semanas anteriores (até 4 semanas, desde que a pessoa começou a usar)
   const desde = primeiroDia(idPessoa(), hoje);
   const atrasadas = [];
@@ -153,19 +193,80 @@ function funcoesSemana(ref, CFG) {
       <header class="fn-cab"><h3>${f.nome}</h3>
         <span class="pequeno">${previstas ? `${feitas} de ${previstas} feitas até hoje` : 'nenhuma tarefa até hoje'}</span></header>
       ${previstas ? html`<div class="pct" style="margin:6px 0 12px"><i style="width:${Math.round((feitas / previstas) * 100)}%"></i></div>` : ''}
-      <div class="fn-semana">
-        <div class="fn-canto"></div>${cabecas}
-        <div class="fn-horas">${horas}</div>${trilhos}
-      </div>
-      <p class="legenda-semana">Arraste uma caixinha para o horário que cabe na sua semana, ou use ‹ › (de 30 em 30 min); ↺ volta ao horário do quadro. O horário fica guardado neste navegador. </p>
+      <div class="fq-quadro"><div class="fq-canto"></div>${cabecas}<div class="fq-horas" style="height:${altTotal}px">${horas}</div>${trilhos}</div>
+      <p class="legenda-semana">Arraste um cartão para outro dia ou horário; puxe a borda de baixo para mudar a duração; clique para ver os detalhes. Cartões no mesmo horário ficam lado a lado. O ajuste fica guardado neste navegador.</p>
       <p class="legenda-semana"><span class="lg lg-ok"></span> feito <span class="lg lg-abaixo"></span> não feito <span class="lg lg-sem"></span> falta marcar · "automático" = o sistema achou a prova (arquivo no Drive ou produtividade no grupo) · clique numa marcação para desfazer</p>
       ${atrasadas.length ? html`<h4 class="fn-sub">⚠ Ficaram sem marcar em semanas anteriores <span class="pequeno">${atrasadas.length} ${atrasadas.length > 1 ? 'tarefas' : 'tarefa'} — marque aqui ou em "Semana anterior"</span></h4>
         <div class="fn-grade">${atrasadas.map(({ t, d }) => caixaTarefa(t, d, undefined, hoje, null, nomeDia(d)))}</div>` : ''}
     </section>
+    ${pop}
     ${foraDoQuadro(f.id)}
     <p class="pequeno">Quadro de Tarefas Semanal (SL_TAREFAS_FUNC_R37 + POP R14). As marcações valem pontos no seu <a class="link" href="#/perfil">Perfil</a>: tarefa sem marcação conta como não entregue.</p>`;
 }
 
+// Ligações do quadro (uma vez só, no início): arrastar, puxar a borda, abrir e ajustar a janelinha.
+export function instalarQuadro(aoMudar) {
+  let a = null;
+  const reset = () => { if (a) { a.card.classList.remove('arrastando'); a.card.style.transform = ''; a = null; } };
+  document.addEventListener('pointerdown', (e) => {
+    if (e.button || a) return;
+    const card = e.target.closest && e.target.closest('.fq-card');
+    if (!card || e.target.closest('button')) return;
+    const trilho = card.parentElement;
+    a = { card, trilho, alca: !!e.target.closest('.fq-alca'), x0: e.clientX, y0: e.clientY, moveu: false,
+      h0: card.getBoundingClientRect().height, desloc: e.clientY - card.getBoundingClientRect().top };
+    const [id, d] = card.dataset.card.split('|');
+    a.id = id; a.d = d; a.span = Number(card.dataset.span);
+    if (a.alca) e.preventDefault();
+  });
+  document.addEventListener('pointermove', (e) => {
+    if (!a) return;
+    const dx = e.clientX - a.x0; const dy = e.clientY - a.y0;
+    if (!a.moveu && Math.hypot(dx, dy) < 5) return;
+    if (!a.moveu) { a.moveu = true; a.card.classList.add('arrastando'); }
+    e.preventDefault();
+    if (a.alca) a.card.style.height = `${Math.max(GRADE.alt - 2, a.h0 + dy)}px`;
+    else a.card.style.transform = `translate(${dx}px, ${dy}px)`;
+  });
+  document.addEventListener('pointerup', (e) => {
+    if (!a) return;
+    const x = a;
+    const pessoa = idPessoa();
+    if (!x.moveu) { reset(); if (!x.alca) { popup = { id: x.id, d: x.d }; aoMudar(); } return; }
+    if (x.alca) {
+      const span = Math.max(1, Math.round((x.h0 + (e.clientY - x.y0) + 2) / GRADE.alt));
+      moverHorario(pessoa, x.d, x.id, { dur: span * GRADE.passo });
+    } else {
+      const trilhos = [...document.querySelectorAll('.fq-trilho')];
+      const alvo = trilhos.find((t) => { const r = t.getBoundingClientRect(); return e.clientX >= r.left && e.clientX < r.right; }) || x.trilho;
+      const r = alvo.getBoundingClientRect();
+      const faixa = limitar(Math.round((e.clientY - x.desloc - r.top) / GRADE.alt), 0, GRADE.faixas - x.span);
+      moverHorario(pessoa, x.d, x.id, { dia: alvo.dataset.trilho, ini: GRADE.ini + faixa * GRADE.passo });
+    }
+    reset();
+    aoMudar();
+  });
+  document.addEventListener('pointercancel', reset);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && popup) { popup = null; aoMudar(); } });
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest && e.target.closest('[data-fn]');
+    if (!b || !popup) return;
+    const [acao, valor] = b.dataset.fn.split('|');
+    const pessoa = idPessoa();
+    if (acao === 'fechar') popup = null;
+    else if (acao === 'volta') moverHorario(pessoa, popup.d, popup.id, null);
+    else {
+      const t = TAREFAS.find((x) => x.id === popup.id);
+      const ini = inicioDaSemana(popup.d);
+      const dias = [0, 1, 2, 3, 4, 5].map((i) => somarDias(ini, i));
+      const atual = efetivo(t, popup.d, lerHorarios(pessoa), dias);
+      if (acao === 'dia') moverHorario(pessoa, popup.d, popup.id, { dia: valor });
+      else if (acao === 'hora') moverHorario(pessoa, popup.d, popup.id, { ini: atual.ini + Number(valor) });
+      else if (acao === 'dur') moverHorario(pessoa, popup.d, popup.id, { dur: limitar(atual.dur + Number(valor), GRADE.passo, (GRADE.faixas - atual.faixa) * GRADE.passo) });
+    }
+    aoMudar();
+  });
+}
 // Preencher é de quem está na obra. Sócio e coordenação consultam em Operação › Metas e produtividade.
 const veTodasAsObras = () => false;
 

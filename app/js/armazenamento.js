@@ -25,19 +25,29 @@ export function marcarCheck(pessoa, data, tarefa, valor, info = {}) {
   enviarCheck({ pessoa, data, tarefa, valor: valor || '', ...info });
 }
 
-// Horário que a pessoa escolheu para uma tarefa num dia (ajuste de 30 em 30 min no quadro da semana).
-// horarios[pessoa][data][tarefa] = minutos desde 00:00. Fica neste navegador.
+// Ajuste que a pessoa fez numa tarefa do quadro da semana (dia, horário de início, duração).
+// horarios[pessoa][data da tarefa][tarefa] = { dia?, ini? (minutos desde 00:00), dur? (minutos) }. Fica neste navegador.
 export function lerHorarios(pessoa) {
-  return lerJSON('solida.horarios', {})[pessoa] || {};
+  const tudo = lerJSON('solida.horarios', {})[pessoa] || {};
+  const r = {};
+  for (const [data, ts] of Object.entries(tudo)) {
+    r[data] = {};
+    for (const [t, v] of Object.entries(ts || {})) r[data][t] = typeof v === 'number' ? { ini: v } : (v || {});
+  }
+  return r;
 }
-export function moverHorario(pessoa, data, tarefa, minutos) {
+// patch = campos a mudar; null apaga todos os ajustes da tarefa naquele dia
+export function moverHorario(pessoa, data, tarefa, patch) {
   const tudo = lerJSON('solida.horarios', {});
   tudo[pessoa] = tudo[pessoa] || {};
   tudo[pessoa][data] = tudo[pessoa][data] || {};
-  if (minutos == null) delete tudo[pessoa][data][tarefa]; else tudo[pessoa][data][tarefa] = minutos;
+  if (patch == null) delete tudo[pessoa][data][tarefa];
+  else {
+    const atual = tudo[pessoa][data][tarefa];
+    tudo[pessoa][data][tarefa] = { ...(typeof atual === 'number' ? { ini: atual } : atual || {}), ...patch };
+  }
   gravarJSON('solida.horarios', tudo);
 }
-
 // ---------------------------------------------------------------- marcações compartilhadas (servidor)
 // O servidor guarda todas as marcações (dados/tarefas-feitas.jsonl); este navegador fica com uma cópia.
 import { NA_NUVEM, linhasTarefas, marcarTarefa } from './nuvem.js';
