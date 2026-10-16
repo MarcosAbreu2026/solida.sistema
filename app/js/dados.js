@@ -17,6 +17,15 @@ export async function carregarPainel() {
   return r.json();
 }
 
+// Planilha de ferramentas obrigatórias enviada no grupo de WhatsApp (lida pela verificação, só leitura).
+export async function carregarFerramentasChk() {
+  try {
+    if (NA_NUVEM) return (await baixar('ferramentas-checklist')) || { registros: [] };
+    const r = await fetch(`${PASTA}ferramentas-checklist.json`, { cache: 'no-store' });
+    return r.ok ? await r.json() : { registros: [] };
+  } catch { return { registros: [] }; }
+}
+
 // Produtividade lida nos grupos de WhatsApp das obras (programação do dia × relatório diário).
 // Preenchida pela verificação diária (Claude, toda manhã, do dia anterior). Ver docs/contrato-agentes.md.
 export async function carregarProdutividade() {

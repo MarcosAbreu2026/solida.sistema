@@ -85,3 +85,25 @@ A tela de metas só funciona para obras com a programação **separada por dia**
 `programacao.dias` e itens no formato `"Atividade: quantidade unidade"` (ex.:
 `"Pintura das paredes, 1ª demão: 19 m²"`). Hoje só a Mo533 vem assim; Mo531, Mo581 e Mo358 vêm sem
 divisão por dia, então aparecem com o alerta "sem meta diária separada por dia".
+
+## Agente de Transporte e logística: planilha de ferramentas obrigatórias por obra (pedido de 16/10)
+
+Toda quarta o Anderson manda no grupo "Sólida FERRAMENTAS" (ou "Gestão Ferramentas") a imagem da planilha
+de ferramentas obrigatórias preenchida, uma por obra, mais as do estoque e dos carros (Anderson,
+Nascimento e Enio). A tela Transporte e logística mostra um cartão por local dizendo se a da semana
+chegou até quarta. Quem lê o grupo (só leitura) grava `dados/json/ferramentas-checklist.json`:
+
+```json
+{ "verificadoEm": "2026-10-16T09:00",
+  "registros": [
+    { "local": "Mo533", "enviadoEm": "2026-10-14", "hora": "17:40", "por": "Anderson" },
+    { "local": "Estoque", "enviadoEm": "2026-10-14" },
+    { "local": "Carro do Enio", "enviadoEm": "2026-10-14" }
+  ] }
+```
+
+- `local`: código da obra (Mo533...) ou `Estoque`, `Carro do Anderson`, `Carro do Nascimento`, `Carro do Enio`.
+- `enviadoEm`: dia em que a imagem foi postada no grupo. Até quarta = no prazo; quinta em diante = com atraso.
+- `verificadoEm`: quando os grupos foram lidos pela última vez. Sem ele (ou lido antes da quarta), o cartão
+  mostra "ainda não verificado" em vez de "não enviada" — o sistema nunca afirma que faltou sem ter lido.
+- Um registro por envio; o histórico das últimas 4 semanas sai dos próprios registros.

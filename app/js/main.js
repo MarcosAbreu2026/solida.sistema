@@ -2,7 +2,8 @@
 // mais: perfis por função, "Meu dia" (quadro de funções), Operação › Metas e produtividade,
 // e no Pós-obra os detalhes da planilha integrada (dados/json).
 
-import { carregarDados, carregarPainel, carregarProdutividade, carregarDrive } from './dados.js';
+import { carregarDados, carregarPainel, carregarProdutividade, carregarDrive, carregarFerramentasChk } from './dados.js';
+import * as ferrChk from './telas/ferramentas-checklist.js';
 import { montarBase } from './regras.js';
 import { periodo, hojeISO, ehData } from './datas.js';
 import { html, esc, descreverPeriodo } from './formato.js';
@@ -418,6 +419,10 @@ function desenhar() {
         else out = deObra ? `<div>${depois}</div>` : T.telaArea(area, '', { semEstado: true, semAlertas: true, depoisIndicadores: depois });
       }
     }
+    else if (area && area.id === 'transporte') {
+      // Transporte: indicadores → planilha de ferramentas obrigatórias por obra (enviada toda quarta no grupo)
+      out = T.telaArea(area, '', { depoisIndicadores: ferrChk.cartoes(CFG, estado.ferrChk, deObra ? obrasDaPessoa() : null) });
+    }
     else if (area && area.id === 'planejamento') {
       // Planejamento: Resumo · Programação semanal · Produtividade · Diário de obra
       const visiveis = deObra ? obrasDaPessoa() : null;
@@ -513,7 +518,8 @@ function separarProjetos(cfg) {
 async function atualizar() {
   // marcações de tarefas de todos (pontuação do Perfil); quem está logado manda o que só tinha neste navegador
   const atual = logado() ? { pessoa: idPessoa(), nome: sessao().nome, funcao: funcaoAtual().id, teste: simulando(), obras: obrasDaPessoa() } : null;
-  const [painelR, baseR, prodR, driveR] = await Promise.allSettled([carregarPainel(), carregarDados(), carregarProdutividade(), carregarDrive(), sincronizarTarefas(atual), perfil.carregarFotos(), feed.carregar(), evidencias.carregar()]);
+  const [painelR, baseR, prodR, driveR, , , , , ferrR] = await Promise.allSettled([carregarPainel(), carregarDados(), carregarProdutividade(), carregarDrive(), sincronizarTarefas(atual), perfil.carregarFotos(), feed.carregar(), evidencias.carregar(), carregarFerramentasChk()]);
+  if (ferrR.status === 'fulfilled') estado.ferrChk = ferrR.value;
   if (prodR.status === 'fulfilled') estado.whats = prodR.value;
   if (driveR.status === 'fulfilled') estado.drive = driveR.value;
   if (painelR.status === 'fulfilled') {

@@ -1242,3 +1242,21 @@ a.card:hover .card-rotulo { color: var(--clique2); text-decoration: underline; }
 .fq-pop-linha > span { width: 62px; flex: none; font-size: 12px; color: var(--muted); }
 .fq-pop-linha > div { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
 .fq-pop .fn-b[aria-pressed="true"]:not(.fn-feito):not(.fn-nao) { background: #FFF6E3; border-color: #E0B04A; font-weight: 700; }
+/* Transporte › planilha de ferramentas obrigatórias (cartões por obra) */
+.fc-card { cursor: default; }
+.fc-card:hover { border-color: var(--linha2); box-shadow: none; }
+.fc-situacao { font-size: 13px; font-weight: 800; }
+.fc-ok .fc-situacao { color: #2F6B43; }
+.fc-atraso .fc-situacao { color: #8A6A12; }
+.fc-nao .fc-situacao { color: #9B3A33; }
+.fc-nv .fc-situacao, .fc-espera .fc-situacao { color: var(--muted); }
+.fc-card.fc-ok { border-left: 4px solid #4E8A62; }
+.fc-card.fc-atraso { border-left: 4px solid #E0B04A; }
+.fc-card.fc-nao { border-left: 4px solid #D9534F; }
+.fc-hist { display: flex; gap: 5px; margin-top: 2px; }
+.fc-b { display: inline-block; width: 11px; height: 11px; border-radius: 50%; background: #C9CFD6; vertical-align: -1px; }
+.fc-b.fc-ok { background: #4E8A62; }
+.fc-b.fc-atraso { background: #E0B04A; }
+.fc-b.fc-nao { background: #D9534F; }
+.fc-b.fc-nv { background: #C9CFD6; }
+.fc-b.fc-espera { background: #fff; box-shadow: inset 0 0 0 2px #C9CFD6; }
