@@ -13,7 +13,7 @@ dentro do sistema fica para a Fase 2.
 - `app/js/nuvem.js`: fora do localhost, as telas usam o Supabase; no computador do escritório (localhost) continua tudo local.
 - **Coletor** (este computador): `scripts/coletor.ps1`, aberto pelo `iniciar.bat`, a cada 10 min lê o Drive e roda
   `scripts/enviar-nuvem.mjs`, que manda os dados para o armazenamento "dados" do Supabase: `valores/` (completo) e
-  `todos/` (sem diárias, custos e área financeira). A chave de serviço fica em `config.local.json` (fora do GitHub).
+  `todos/` (sem diárias, custos e área financeira). O coletor entra no Supabase com a conta própria "coletor" (só grava no armazenamento "dados"); usuário e senha ficam em `config.local.json` (fora do GitHub). A cópia `todos/` sai sem diárias, custos e sem as colunas de valor das planilhas de escopo e aditivos.
 
 ## Na internet (Vercel + Supabase)
 - Endereço: https://sistema-solida.vercel.app — entra com e-mail @construcaosolida.com e senha ("Criar minha conta";

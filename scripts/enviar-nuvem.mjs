@@ -2,8 +2,10 @@
 // Cada arquivo vai para duas pastas do armazenamento "dados":
 //   valores/  completo — só sócio e financeiro conseguem ler (regra do banco)
 //   todos/    sem valores (diárias, custos, área financeira, indicadores marcados como restritos)
-// Chave de serviço: config.local.json (fica só neste computador, fora do GitHub):
-//   { "supabaseUrl": "https://....supabase.co", "serviceRoleKey": "..." }
+// Acesso: config.local.json (fica só neste computador, fora do GitHub). O coletor entra com a própria conta
+// ("coletor", que só consegue gravar no armazenamento "dados"):
+//   { "supabaseUrl": "https://....supabase.co", "chavePublica": "...", "coletorEmail": "...", "coletorSenha": "..." }
+// (ainda aceita { "serviceRoleKey": "..." } no lugar da conta do coletor)
 // Uso: node scripts/enviar-nuvem.mjs   (o servidor.ps1 roda sozinho a cada leitura do Drive)
 
 import { readFileSync, existsSync } from 'node:fs';
@@ -13,8 +15,20 @@ import { fileURLToPath } from 'node:url';
 const raiz = join(dirname(fileURLToPath(import.meta.url)), '..');
 const cfgArq = join(raiz, 'config.local.json');
 if (!existsSync(cfgArq)) { console.log('Sem config.local.json: nada enviado para a nuvem.'); process.exit(0); }
-const { supabaseUrl, serviceRoleKey } = JSON.parse(readFileSync(cfgArq, 'utf8').replace(/^﻿/, ''));
-if (!supabaseUrl || !serviceRoleKey || /COLE/.test(serviceRoleKey)) { console.log('config.local.json sem a chave de serviço: nada enviado.'); process.exit(0); }
+const cfg = JSON.parse(readFileSync(cfgArq, 'utf8').replace(/^﻿/, ''));
+const { supabaseUrl } = cfg;
+let chave = cfg.serviceRoleKey && !/COLE/.test(cfg.serviceRoleKey) ? cfg.serviceRoleKey : null;   // apikey + token
+let token = chave;
+if (!supabaseUrl || (!chave && !(cfg.chavePublica && cfg.coletorEmail && cfg.coletorSenha))) { console.log('config.local.json sem o acesso do coletor: nada enviado.'); process.exit(0); }
+if (!token) {
+  // entra com a conta do coletor (o token vale 1 hora; a cada rodada entra de novo)
+  const r = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
+    method: 'POST', headers: { apikey: cfg.chavePublica, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: cfg.coletorEmail, password: cfg.coletorSenha }),
+  });
+  if (!r.ok) { console.log(`Não consegui entrar com a conta do coletor (${r.status}): nada enviado.`); process.exit(1); }
+  token = (await r.json()).access_token; chave = cfg.chavePublica;
+}
 
 const ler = (arq) => (existsSync(arq) ? JSON.parse(readFileSync(arq, 'utf8').replace(/^﻿/, '')) : null);
 
@@ -30,10 +44,27 @@ function semValores(x) {
   return x;
 }
 
+// Escopo e aditivos: a grade da planilha traz as colunas de valor (material, mão de obra, locação, subtotal);
+// na cópia para todos elas saem (a tela já esconde, mas aqui não pode nem chegar no navegador)
+function semValoresProjetos(d) {
+  const limpaGrade = (g, cols) => {
+    if (!g || !Array.isArray(g.linhas)) return g;
+    const fora = new Set([].concat(cols || []));
+    return { ...g, linhas: g.linhas.map((l) => ({ ...l, c: (l.c || []).filter((x) => !fora.has(x[0])) })) };
+  };
+  const o = semValores(d);
+  for (const obra of o.obras || []) {
+    const e = obra.escopo; if (!e) continue;
+    e.grade = limpaGrade(e.grade, e.colunasValor);
+    for (const a of [].concat(e.aditivos || [])) { a.grade = limpaGrade(a.grade, a.colunasValor); delete a.total; }
+  }
+  return o;
+}
+
 async function enviar(caminho, obj) {
   const r = await fetch(`${supabaseUrl}/storage/v1/object/dados/${caminho}`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${serviceRoleKey}`, apikey: serviceRoleKey, 'Content-Type': 'application/json', 'x-upsert': 'true', 'Cache-Control': 'no-cache' },
+    headers: { Authorization: `Bearer ${token}`, apikey: chave, 'Content-Type': 'application/json', 'x-upsert': 'true', 'Cache-Control': 'no-cache' },
     body: JSON.stringify(obj),
   });
   if (!r.ok) throw new Error(`${caminho}: ${r.status} ${await r.text()}`);
@@ -54,7 +85,7 @@ for (const [nome, arq] of Object.entries(arquivos)) { const d = ler(join(pasta, 
 for (const [nome, d] of tarefas) {
   try {
     await enviar(`valores/${nome}.json`, d);
-    if (!SO_VALORES.has(nome)) await enviar(`todos/${nome}.json`, semValores(d));
+    if (!SO_VALORES.has(nome)) await enviar(`todos/${nome}.json`, nome === 'projetos' ? semValoresProjetos(d) : semValores(d));
     ok++;
   } catch (e) { erros.push(e.message); }
 }

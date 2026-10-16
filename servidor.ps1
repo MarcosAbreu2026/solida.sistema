@@ -84,6 +84,8 @@ $script:exportacao = $null
 $script:ultimaExportacao = [datetime]::MinValue
 function Atualizar-Drive {
   if ($script:exportacao -and -not $script:exportacao.HasExited) { return }
+  # o coletor (scripts/coletor.ps1) também lê o Drive: só uma leitura por vez, para não escreverem nos mesmos arquivos
+  if (@(Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -match 'exportar-drive.ps1' }).Count) { return }
   if (((Get-Date) - $script:ultimaExportacao).TotalMinutes -lt 10) { return }
   $script:ultimaExportacao = Get-Date
   $exp = Join-Path $raiz 'scripts\exportar-drive.ps1'
