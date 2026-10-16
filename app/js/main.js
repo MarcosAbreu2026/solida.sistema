@@ -955,21 +955,21 @@ desenhar();
 atualizar();
 setInterval(atualizar, ATUALIZAR_A_CADA_MS);
 
-// Quadro da semana › Funções: arrastar a caixinha para outro horário do mesmo dia (faixas de 30 min)
+// Quadro da semana › Funções: arrastar a caixinha para outro horário do mesmo dia (faixas de 30 min, na vertical)
 let arrastando = null;
 document.addEventListener('dragstart', (e) => {
   const c = e.target.closest && e.target.closest('.fn-caixa[data-arrasta]');
   if (!c || !c.dataset.arrasta) return;
   const [tarefa, dia, faixa] = c.dataset.arrasta.split('|');
   const r = c.getBoundingClientRect();
-  const larg = c.parentElement.getBoundingClientRect().width / GRADE.faixas;
-  arrastando = { tarefa, dia, deslocamento: Math.floor((e.clientX - r.left) / larg) };
+  const larg = c.parentElement.getBoundingClientRect().height / GRADE.faixas;
+  arrastando = { tarefa, dia, deslocamento: Math.floor((e.clientY - r.top) / larg) };
   c.classList.add('arrastando');
   try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', tarefa); } catch { /* sem dataTransfer */ }
 });
-const faixaDoPonteiro = (trilho, x) => {
+const faixaDoPonteiro = (trilho, y) => {
   const r = trilho.getBoundingClientRect();
-  return Math.floor(((x - r.left) / r.width) * GRADE.faixas) - (arrastando ? arrastando.deslocamento : 0);
+  return Math.floor(((y - r.top) / r.height) * GRADE.faixas) - (arrastando ? arrastando.deslocamento : 0);
 };
 document.addEventListener('dragover', (e) => {
   const tr = e.target.closest && e.target.closest('.fn-trilho');
@@ -980,7 +980,7 @@ document.addEventListener('drop', (e) => {
   const tr = e.target.closest && e.target.closest('.fn-trilho');
   if (!arrastando || !tr || tr.dataset.trilho !== arrastando.dia) { arrastando = null; return; }
   e.preventDefault();
-  const faixa = Math.max(0, faixaDoPonteiro(tr, e.clientX));
+  const faixa = Math.max(0, faixaDoPonteiro(tr, e.clientY));
   moverHorario(idPessoa(), arrastando.dia, arrastando.tarefa, GRADE.ini + faixa * GRADE.passo);
   arrastando = null;
   desenhar();

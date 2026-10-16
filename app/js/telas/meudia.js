@@ -38,9 +38,9 @@ export const ABAS = [
   { id: 'funcoes', nome: 'Funções' },
 ];
 
-// Quadro da semana: uma coluna por dia (seg a sáb); em cada dia, uma caixinha por tarefa com o nome dentro
+// Quadro da semana: uma coluna por dia (seg a sáb) e as horas na vertical; em cada dia, uma caixinha por tarefa com o nome dentro
 // e ✓ Feito / ✕ Não na própria caixinha (pedido do Felipe, 16/10). A semana inteira aparece de uma vez.
-// Linha do tempo de cada dia: das 7h às 19h, em faixas de 30 min. A caixinha pode ser movida (arrastando ou
+// Linha do tempo na vertical, das 7h às 19h, em faixas de 30 min. A caixinha pode ser movida (arrastando ou
 // com ‹ ›) para a pessoa ajustar a semana; o horário escolhido fica guardado por dia.
 export const GRADE = { ini: 7 * 60, passo: 30, faixas: 24 };
 const PADRAO = 8 * 60; // sem horário no quadro: começa às 8h
@@ -53,41 +53,54 @@ function previsto(t) {
   return { ini, dur };
 }
 const hhmm = (min) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
-// largura visual: no mínimo 4 faixas (2h), para o nome caber
-const largura = (dur) => Math.min(GRADE.faixas, Math.max(4, Math.round(dur / GRADE.passo)));
-function posicao(t, data, horarios) {
-  const p = previsto(t);
-  const escolhido = (horarios[data] || {})[t.id];
-  const span = largura(p.dur);
-  let ini = escolhido == null ? p.ini : escolhido;
-  let faixa = Math.round((ini - GRADE.ini) / GRADE.passo);
-  faixa = Math.max(0, Math.min(GRADE.faixas - span, faixa));
-  ini = GRADE.ini + faixa * GRADE.passo;
-  return { faixa, span, ini, mudou: escolhido != null && escolhido !== p.ini };
+// altura da caixinha: no mínimo 2 faixas (1h); 9 tarefas num dia ainda cabem nas 12h
+const largura = (dur) => Math.min(GRADE.faixas, Math.max(2, Math.round(dur / GRADE.passo)));
+// Posição de cada tarefa do dia: o horário escolhido (ou o do quadro); se duas caem no mesmo lugar,
+// a mais nova desce para a próxima faixa livre, para nenhuma ficar por cima da outra.
+function posicoesDoDia(lista, data, horarios) {
+  const ocupada = Array(GRADE.faixas).fill(false);
+  const itens = lista.map((t, i) => {
+    const p = previsto(t);
+    const escolhido = (horarios[data] || {})[t.id];
+    const span = largura(p.dur);
+    const ini = escolhido == null ? p.ini : escolhido;
+    const faixa = Math.max(0, Math.min(GRADE.faixas - span, Math.round((ini - GRADE.ini) / GRADE.passo)));
+    return { t, i, span, faixa, mudou: escolhido != null && escolhido !== p.ini };
+  }).sort((x, y) => x.faixa - y.faixa || x.i - y.i);
+  const livre = (f, span) => { for (let k = f; k < f + span; k++) if (ocupada[k]) return false; return f + span <= GRADE.faixas; };
+  for (const it of itens) {
+    let f = it.faixa;
+    while (f < GRADE.faixas && !livre(f, it.span)) f++;
+    if (f + it.span > GRADE.faixas) { f = it.faixa; while (f > 0 && !livre(f, it.span)) f--; }
+    it.faixa = f;
+    for (let k = f; k < Math.min(GRADE.faixas, f + it.span); k++) ocupada[k] = true;
+    it.ini = GRADE.ini + f * GRADE.passo;
+  }
+  return itens.map((it) => ({ t: it.t, p: { faixa: it.faixa, span: it.span, ini: it.ini, mudou: it.mudou } }));
 }
-
 function caixaTarefa(t, data, estado, hoje, prova, rotuloDia = '', pos = null) {
   const btn = (v, txt, pressionado) => html`<button type="button" class="fn-b fn-${v}" data-check="${t.id}|${data}|${v}" aria-pressed="${pressionado ? 'true' : 'false'}" title="${pressionado ? 'Clique para desfazer' : ''}">${txt}</button>`;
   let cls = 'sem'; let acoes;
+  const c = !!pos; // na linha do tempo os botões são só ícones
   if (data > hoje) { cls = 'futuro'; acoes = ''; }
-  else if (estado === 'feito') { cls = 'ok'; acoes = btn('feito', '✓ Feito', true); }
-  else if (estado === 'nao') { cls = 'nao'; acoes = btn('nao', '✕ Não feito', true); }
-  else if (prova) { cls = 'ok'; acoes = html`<span class="fn-auto" title="${descreverProva(prova)}">✓ automático</span>${btn('nao', '✕ Não', false)}`; }
-  else acoes = html`${btn('feito', '✓ Feito', false)}${btn('nao', '✕ Não', false)}`;
+  else if (estado === 'feito') { cls = 'ok'; acoes = btn('feito', c ? '✓' : '✓ Feito', true); }
+  else if (estado === 'nao') { cls = 'nao'; acoes = btn('nao', c ? '✕' : '✕ Não feito', true); }
+  else if (prova) { cls = 'ok'; acoes = html`<span class="fn-auto" title="${descreverProva(prova)}">${c ? '✓ auto' : '✓ automático'}</span>${btn('nao', c ? '✕' : '✕ Não', false)}`; }
+  else acoes = html`${btn('feito', c ? '✓' : '✓ Feito', false)}${btn('nao', c ? '✕' : '✕ Não', false)}`;
   const meta = [rotuloDia, pos ? '' : t.hora].filter(Boolean).join(' · ');
   const dica = [NOME_AREA[t.area] || t.area, t.processo && t.processo !== '—' ? `POP ${t.processo}` : '', descreverDias(t.dias), t.hora ? `quadro: ${t.hora}` : ''].filter(Boolean).join(' · ');
   const hora = pos ? html`<div class="fn-hora ${pos.mudou ? 'mudou' : ''}">
       <button type="button" class="fn-mv" data-hora="${t.id}|${data}|-30" title="30 min mais cedo" ${pos.faixa <= 0 ? html.seguro('disabled') : ''}>‹</button>
-      <span title="Arraste a caixinha ou use ‹ › para mudar de 30 em 30 min">${hhmm(pos.ini)}</span>
+      ${pos.mudou
+    ? html`<button type="button" class="fn-mv fn-volta" data-hora="${t.id}|${data}|volta" title="Horário mudado: clique para voltar ao do quadro (${t.hora || '08:00'})">${hhmm(pos.ini)}</button>`
+    : html`<span title="Arraste a caixinha ou use ‹ › para mudar de 30 em 30 min">${hhmm(pos.ini)}</span>`}
       <button type="button" class="fn-mv" data-hora="${t.id}|${data}|30" title="30 min mais tarde" ${pos.faixa + pos.span >= GRADE.faixas ? html.seguro('disabled') : ''}>›</button>
-      ${pos.mudou ? html`<button type="button" class="fn-mv fn-volta" data-hora="${t.id}|${data}|volta" title="Voltar ao horário do quadro">↺</button>` : ''}
     </div>` : '';
-  const estilo = pos ? `grid-column:${pos.faixa + 1} / span ${pos.span}` : '';
+  const estilo = pos ? `grid-row:${pos.faixa + 1} / span ${pos.span}` : '';
   return html`<div class="fn-caixa fn-${cls}" title="${dica}" style="${estilo}" draggable="${pos ? 'true' : 'false'}" data-arrasta="${pos ? `${t.id}|${data}|${pos.faixa}` : ''}">
-    ${hora}
     <div class="fn-nome">${textoTarefa(t)}</div>
     ${meta ? html`<div class="fn-meta">${meta}</div>` : ''}
-    ${acoes ? html`<div class="fn-acoes">${acoes}</div>` : ''}
+    ${pos ? html`<div class="fn-pe">${hora}${acoes ? html`<div class="fn-acoes">${acoes}</div>` : ''}</div>` : (acoes ? html`<div class="fn-acoes">${acoes}</div>` : '')}
   </div>`;
 }
 
@@ -117,18 +130,15 @@ function funcoesSemana(ref, CFG) {
   if (!tarefas.length) return html`${nav}<p class="vazio">Nenhuma tarefa cadastrada para a sua função.</p>`;
 
   const horarios = lerHorarios(idPessoa());
-  const horas = Array.from({ length: GRADE.faixas / 2 }, (_, i) => html`<span>${GRADE.ini / 60 + i}h</span>`);
-  const linhas = dias.map((d, i) => {
-    const l = doDia(d).map((t) => ({ t, p: posicao(t, d, horarios) })).sort((a, b) => a.p.ini - b.p.ini);
-    const fe = l.filter(({ t }) => feita(t, d)).length;
-    return html`<div class="fn-linha ${d === hoje ? 'hoje' : ''} ${d > hoje ? 'futuro' : ''}">
-      <div class="fn-dia"><b>${DIA_CURTO[i]} ${d.slice(8, 10)}/${d.slice(5, 7)}</b><small>${feriado(d) ? 'feriado' : l.length ? (d > hoje ? `${l.length} previstas` : `${fe} de ${l.length}`) : 'sem tarefas'}</small></div>
-      <div class="fn-trilho ${l.length ? '' : 'vazio'}" data-trilho="${d}">
-        ${l.map(({ t, p }) => caixaTarefa(t, d, estadoDe(t, d), hoje, provaDoDia(t, d), '', p))}
-      </div>
-    </div>`;
+  const horas = Array.from({ length: GRADE.faixas / 2 }, (_, i) => html`<span style="grid-row:${i * 2 + 1} / span 2">${GRADE.ini / 60 + i}h</span>`);
+  const colunas = dias.map((d) => {
+    const l = posicoesDoDia(doDia(d), d, horarios);
+    return { d, l, fe: l.filter(({ t }) => feita(t, d)).length };
   });
-
+  const cabecas = colunas.map(({ d, l, fe }, i) => html`<div class="fn-dia ${d === hoje ? 'hoje' : ''}"><b>${DIA_CURTO[i]} ${d.slice(8, 10)}/${d.slice(5, 7)}</b><small>${feriado(d) ? 'feriado' : l.length ? (d > hoje ? `${l.length} previstas` : `${fe} de ${l.length}`) : 'sem tarefas'}</small></div>`);
+  const trilhos = colunas.map(({ d, l }) => html`<div class="fn-trilho ${d === hoje ? 'hoje' : ''} ${l.length ? '' : 'vazio'}" data-trilho="${d}">
+      ${l.map(({ t, p }) => caixaTarefa(t, d, estadoDe(t, d), hoje, provaDoDia(t, d), '', p))}
+    </div>`);
   // ficaram sem marcar em semanas anteriores (até 4 semanas, desde que a pessoa começou a usar)
   const desde = primeiroDia(idPessoa(), hoje);
   const atrasadas = [];
@@ -144,8 +154,8 @@ function funcoesSemana(ref, CFG) {
         <span class="pequeno">${previstas ? `${feitas} de ${previstas} feitas até hoje` : 'nenhuma tarefa até hoje'}</span></header>
       ${previstas ? html`<div class="pct" style="margin:6px 0 12px"><i style="width:${Math.round((feitas / previstas) * 100)}%"></i></div>` : ''}
       <div class="fn-semana">
-        <div class="fn-linha fn-regua"><div class="fn-dia"></div><div class="fn-horas">${horas}</div></div>
-        ${linhas}
+        <div class="fn-canto"></div>${cabecas}
+        <div class="fn-horas">${horas}</div>${trilhos}
       </div>
       <p class="legenda-semana">Arraste uma caixinha para o horário que cabe na sua semana, ou use ‹ › (de 30 em 30 min); ↺ volta ao horário do quadro. O horário fica guardado neste navegador. </p>
       <p class="legenda-semana"><span class="lg lg-ok"></span> feito <span class="lg lg-abaixo"></span> não feito <span class="lg lg-sem"></span> falta marcar · "automático" = o sistema achou a prova (arquivo no Drive ou produtividade no grupo) · clique numa marcação para desfazer</p>

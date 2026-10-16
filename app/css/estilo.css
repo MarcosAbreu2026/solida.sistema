@@ -1177,3 +1177,29 @@ a.card:hover .card-rotulo { color: var(--clique2); text-decoration: underline; }
 .fn-semana > .fn-linha { min-width: 880px; }
 .fn-dia { position: sticky; left: 0; z-index: 2; }
 .fn-regua .fn-dia { background: transparent; }
+/* Quadro da semana, versão final: dias em colunas, horas na vertical (cada faixa = 30 min) */
+.fn-semana { display: grid; grid-template-columns: 40px repeat(6, minmax(128px, 1fr)); column-gap: 6px; row-gap: 6px; overflow-x: auto; }
+.fn-semana > .fn-linha { min-width: 0; }
+.fn-semana .fn-dia { position: static; background: var(--gesso); border-radius: 10px; padding: 7px 9px; display: flex; flex-direction: column; gap: 2px; justify-content: center; }
+.fn-semana .fn-dia.hoje { background: #FFF6E3; box-shadow: inset 0 0 0 2px #E0B04A; }
+.fn-semana .fn-dia.hoje b { color: #7A5A1E; }
+.fn-horas { display: grid; grid-template-rows: repeat(24, 40px); font-size: 11px; color: var(--muted); }
+.fn-horas span { border-top: 1px solid var(--linha2); padding-top: 2px; }
+.fn-trilho { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: repeat(24, 40px); grid-auto-flow: row; row-gap: 0; padding: 0; min-height: 0; border-radius: 10px; background-color: var(--gesso);
+  background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 79px, var(--linha2) 79px, var(--linha2) 80px); }
+.fn-trilho.hoje { background-color: #FFF6E3; }
+.fn-trilho.vazio { opacity: .6; }
+.fn-trilho .fn-caixa { margin: 2px 4px; overflow: hidden; min-height: 0; }
+.fn-trilho .fn-nome { flex: 1 1 auto; min-height: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+.fn-trilho .fn-acoes { flex: none; }
+.fn-trilho .fn-meta { display: none; }.fn-horas { grid-template-rows: repeat(24, 44px); }
+.fn-trilho { grid-template-rows: repeat(24, 44px); background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 87px, var(--linha2) 87px, var(--linha2) 88px); }
+.fn-trilho .fn-caixa { gap: 3px; padding: 5px 6px; }
+.fn-trilho .fn-nome { -webkit-line-clamp: 2; font-size: 12px; line-height: 1.25; }
+.fn-pe { display: flex; align-items: center; justify-content: space-between; gap: 4px; flex: none; }
+.fn-pe .fn-b { padding: 1px 6px; font-size: 12px; min-width: 24px; }
+.fn-pe .fn-acoes { flex-wrap: nowrap; gap: 3px; }
+.fn-pe .fn-auto { font-size: 10.5px; }
+.fn-pe .fn-hora { gap: 2px; }
+.fn-pe .fn-hora span, .fn-pe .fn-volta { min-width: 34px; }
+.fn-pe .fn-volta { width: auto; padding: 0 3px; font-size: 11px; font-weight: 700; color: #7A5A1E; background: #FFF6E3; border-color: #E0B04A; margin-left: 0; }
