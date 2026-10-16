@@ -1260,3 +1260,39 @@ a.card:hover .card-rotulo { color: var(--clique2); text-decoration: underline; }
 .fc-b.fc-nao { background: #D9534F; }
 .fc-b.fc-nv { background: #C9CFD6; }
 .fc-b.fc-espera { background: #fff; box-shadow: inset 0 0 0 2px #C9CFD6; }.fc-b.fc-sem { background: transparent; box-shadow: inset 0 0 0 1px #D8DCE1; }
+
+/* Transporte › Reposição de ferramentas */
+.rp-barra { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+.rp-barra p { margin: 0; }
+.rp-resumo { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-top: 10px; }
+.rp-kpi { background: #fff; border: 1px solid var(--linha2); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; }
+.rp-kpi b { font-size: 28px; line-height: 1.1; }
+.rp-kpi span { font-size: 13px; font-weight: 700; }
+.rp-kpi em { font-size: 11.5px; color: var(--muted); font-style: normal; }
+.rp-aviso { margin-top: 14px; }
+.rp-como ol { margin: 6px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; line-height: 1.4; }
+.rp-sub { margin: 22px 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.rp-local { margin-top: 8px; }
+.rp-local.rp-falta > summary .contador { background: #F8E1DF; color: #9B3A33; }
+.rp-velha { color: #9B3A33; font-weight: 700; }
+.rp-recente { color: #2F6B43; }
+.rp-tab th.n, .rp-tab td.n { text-align: right; white-space: nowrap; }
+.rp-via { display: inline-block; font-size: 12px; font-weight: 700; padding: 1px 8px; margin: 0 4px 3px 0; border-radius: 999px; background: var(--calcario); }
+.rp-via.rp-galpao { background: #E1EFE5; color: #2F6B43; }
+.rp-via.rp-obra { background: #E5ECF7; color: #2D4F86; }
+.rp-via.rp-compra { background: #FFF1D6; color: #7A5A1E; }
+.rp-obra-repoe { font-size: 12px; color: var(--muted); font-style: italic; }
+.rp-nota { margin: 8px 0 0; }
+.rp-sem { margin-top: 6px; }
+.rp-viagens { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; margin-top: 10px; }
+.rp-viagem .cartao-cab h3 { display: flex; align-items: center; gap: 8px; font-size: 14.5px; }
+.rp-n { display: inline-flex; width: 22px; height: 22px; border-radius: 50%; background: var(--grafite); color: #fff; font-size: 12px; align-items: center; justify-content: center; flex: none; }
+.rp-seta { color: var(--muted); }
+.rp-confirmar { margin-top: 12px; border-left: 4px solid #E0B04A; }
+@media print {
+  #nav, .topo, #ver-como, .subnav, .sair, #dica, .botao, [data-imprimir], .rp-barra button, .pedir-alteracao, #pedido { display: none !important; }
+  main { margin: 0 !important; padding: 0 !important; }
+  .rp-local, .rp-viagem, .cartao { break-inside: avoid; }
+  details.caixa:not([open]) > .caixa-corpo { display: block !important; }
+  body { background: #fff; }
+}

@@ -4,6 +4,7 @@
 
 import { carregarDados, carregarPainel, carregarProdutividade, carregarDrive, carregarFerramentasChk } from './dados.js';
 import * as ferrChk from './telas/ferramentas-checklist.js';
+import * as reposicao from './telas/reposicao.js';
 import { montarBase } from './regras.js';
 import { periodo, hojeISO, ehData } from './datas.js';
 import { html, esc, descreverPeriodo } from './formato.js';
@@ -421,7 +422,11 @@ function desenhar() {
     }
     else if (area && area.id === 'transporte') {
       // Transporte: indicadores → planilha de ferramentas obrigatórias por obra (enviada toda quarta no grupo)
-      out = T.telaArea(area, '', { depoisIndicadores: ferrChk.cartoes(CFG, estado.ferrChk, deObra ? obrasDaPessoa() : null) });
+      // abas: Resumo · Reposição de ferramentas (a reposição mostra carros e obras: só quem vê o estoque completo)
+      const veRepos = estoque.VE_ESTOQUE_COMPLETO.includes(f.id);
+      const abas = veRepos ? subnav(reposicao.ABAS_TRANSPORTE.map((a) => ({ ...a, href: `#/transporte${a.id ? `/${a.id}` : ''}` })), rota.sub === 'reposicao' ? 'reposicao' : '') : '';
+      if (veRepos && rota.sub === 'reposicao') out = `<div>${abas}<div style="margin-top:26px">${reposicao.render(estado.drive.estoque)}</div></div>`;
+      else out = T.telaArea(area, abas ? `<div style="margin-bottom:34px">${abas}</div>` : '', { depoisIndicadores: ferrChk.cartoes(CFG, estado.ferrChk, deObra ? obrasDaPessoa() : null) });
     }
     else if (area && area.id === 'planejamento') {
       // Planejamento: Resumo · Programação semanal · Produtividade · Diário de obra
@@ -675,6 +680,7 @@ function configurar() {
       if (campo) { campo.focus(); campo.select(); }
       return;
     }
+    if (e.target.closest('[data-imprimir]')) { window.print(); return; }
     const ck = e.target.closest('[data-check]');
     if (ck) {
       const [tarefa, dia, valor] = ck.dataset.check.split('|');
