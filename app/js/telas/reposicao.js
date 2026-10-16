@@ -10,7 +10,8 @@
 //   - prioridade para cobrir falta: sobra do galpão → sobra de outra obra → comprar;
 //   - obra finalizada devolve tudo o que tiver para o galpão;
 //   - quebrada/em conserto não conta como disponível;
-//   - consumíveis (CON) são repostos pela própria obra: aparecem como falta, mas não saem do galpão nem entram na compra;
+//   - consumíveis (categoria CON) não entram: a obra compra e repõe; esta tela é só para o que não é consumível;
+//   - a compra é uma só para todas as obras e tudo chega no galpão; de lá o Anderson leva para onde falta;
 //   - contagem em texto (escada "2-7D", "C") soma o número antes do traço e mostra o tipo; o que não dá para entender vai para "verificar";
 //   - célula vazia = não contado: nunca vira falta.
 
@@ -45,7 +46,7 @@ const mostra = (q) => (q.detalhe ? q.detalhe : q.n == null ? (q.texto || '—') 
 
 export function calcular(est) {
   const hoje = hojeISO();
-  const itens = ((est && est.itens) || []).filter((i) => num(i.minObra) > 0);
+  const itens = ((est && est.itens) || []).filter((i) => num(i.minObra) > 0 && i.categoria !== 'CON');
   const obrasCols = (est && est.obras) || [];
   const cad = (est && est.cadastroObras) || [];
   const finalizada = (o) => { const c = cad.find((x) => x.obra === o); return !!c && /finaliz|encerr|conclu|entreg/i.test(c.status || ''); };
@@ -195,7 +196,7 @@ export function render(est) {
   </article>`;
 
   return html`<div class="rp">
-    <div class="rp-barra"><p class="pequeno">Só itens <b>obrigatórios de obra</b> (${est.itens.filter((i) => num(i.minObra) > 0).length} itens). Planilha ${est.arquivo || ''}, lida do Drive.</p><button type="button" class="botao" data-imprimir>🖨 Imprimir</button></div>
+    <div class="rp-barra"><p class="pequeno">Só itens <b>obrigatórios de obra</b> (${est.itens.filter((i) => num(i.minObra) > 0 && i.categoria !== 'CON').length} itens, sem consumíveis). Planilha ${est.arquivo || ''}, lida do Drive.</p><button type="button" class="botao" data-imprimir>🖨 Imprimir</button></div>
 
     <section class="ob-sec rp-resumo">
       ${resumo(obrasComFalta, obrasComFalta === 1 ? 'obra com falta' : 'obras com falta', `de ${obras.length} ativas`)}
@@ -211,7 +212,8 @@ export function render(est) {
       <li><b>Obra finalizada</b> devolve tudo o que tiver para o galpão (e isso entra na conta antes de qualquer outra coisa).</li>
       <li><b>Quebrada ou em conserto</b> não conta como disponível.</li>
       <li><b>Cada "origem → destino"</b> é uma viagem do Anderson. Elas estão na ordem sugerida: devoluções, galpão para as obras, entre obras.</li>
-      <li><b>Consumíveis</b> obrigatórios (parafuso, fita, bucha…) aparecem como falta, mas a própria obra compra e repõe: não saem do galpão nem entram na compra.</li>
+      <li><b>Consumíveis</b> (parafuso, fita, bucha, disco…) não aparecem aqui: cada obra compra e repõe os seus.</li>
+      <li><b>A compra é uma só</b> para todas as obras e chega no galpão. Depois da compra, o Anderson leva para cada lugar o que está em "Onde falta".</li>
       <li><b>Escada:</b> a contagem vem como "2-7D" = 2 escadas de 7 degraus. O sistema soma as escadas e mostra os tipos; na hora de levar, escolher o tipo certo.</li>
       <li><b>Maquinário</b> (esmerilhadeira, extensão, laser…) é obrigatório, mas pode não estar em uso em todas as obras. Por isso a compra dele fica numa lista à parte, "confirmar antes de comprar".</li>
       <li>Item sem contagem na planilha <b>não conta como falta</b>: o sistema só cobra o que foi contado.</li>
@@ -229,7 +231,7 @@ export function render(est) {
     </section>
 
     <section class="ob-sec"><div class="painel-h"><h2>3 · O que comprar</h2><p>Depois de usar tudo o que dá para mover</p></div>
-      ${comprarJa.length ? html`<article class="cartao"><header class="cartao-cab"><h3>Comprar</h3><span class="pequeno">sem valores: só item e quantidade</span></header><table class="tab rp-tab"><thead><tr><th>Item</th><th class="n">Comprar</th><th>Onde falta</th></tr></thead><tbody>
+      ${comprarJa.length ? html`<article class="cartao"><header class="cartao-cab"><h3>Comprar (uma compra só, entrega no galpão)</h3><span class="pequeno">sem valores: só item e quantidade</span></header><table class="tab rp-tab"><thead><tr><th>Item</th><th class="n">Comprar</th><th>Onde falta</th></tr></thead><tbody>
         ${comprarJa.map((c) => html`<tr><td><b>${c.item}</b> <span class="pequeno">${c.cod}</span></td><td class="n"><b>${un(c.total)}</b></td><td class="pequeno">${c.onde.join(' · ')}</td></tr>`)}
       </tbody></table></article>` : html`<p class="pequeno">Nada para comprar agora.</p>`}
       ${confirmar.length ? html`<article class="cartao rp-confirmar"><header class="cartao-cab"><h3>Maquinário: confirmar antes de comprar</h3><span class="pequeno">obrigatório, mas pode não estar em uso em todas as obras</span></header><table class="tab rp-tab"><thead><tr><th>Maquinário</th><th class="n">Falta</th><th>Onde falta</th></tr></thead><tbody>
