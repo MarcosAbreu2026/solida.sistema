@@ -1296,3 +1296,18 @@ a.card:hover .card-rotulo { color: var(--clique2); text-decoration: underline; }
   details.caixa:not([open]) > .caixa-corpo { display: block !important; }
   body { background: #fff; }
 }
+/* Rota do Anderson */
+.rt-rota { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.rt-parada { display: flex; gap: 12px; background: #fff; border: 1px solid var(--linha2); border-radius: 10px; padding: 10px 14px; }
+.rt-parada.rt-volta { background: var(--gesso); }
+.rt-n { flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--grafite); color: #fff; font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+.rt-corpo { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.rt-local { font-size: 15px; }
+.rt-local em { font-weight: 500; font-style: normal; color: var(--muted); font-size: 12.5px; }
+.rt-linha { display: flex; flex-wrap: wrap; gap: 5px; align-items: baseline; }
+.rt-rot { flex: none; min-width: 52px; font-size: 11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+.rt-pegar.rt-rot { color: #2F6B43; } .rt-deixar.rt-rot { color: #2D4F86; } .rt-carro.rt-rot { color: #7A5A1E; }
+.rt-item { font-size: 13px; padding: 1px 9px; border-radius: 999px; background: var(--calcario); }
+.rt-item.rt-pegar { background: #E1EFE5; } .rt-item.rt-deixar { background: #E5ECF7; } .rt-item.rt-carro { background: #FFF1D6; }
+.rt-item i { font-style: normal; font-size: 11.5px; color: var(--muted); }
+@media print { .rp-detalhe, .rp-como { display: none !important; } .rt-parada { break-inside: avoid; } }
