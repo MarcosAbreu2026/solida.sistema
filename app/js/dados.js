@@ -30,7 +30,7 @@ export async function carregarFerramentasChk() {
 export async function carregarTerceirizados() {
   try {
     if (NA_NUVEM) return (await baixar('terceirizados')) || { empresas: [] };
-    const r = await fetch(`terceirizados.json`, { cache: 'no-store' });
+    const r = await fetch(`${PASTA}terceirizados.json`, { cache: 'no-store' });
     return r.ok ? await r.json() : { empresas: [] };
   } catch { return { empresas: [] }; }
 }

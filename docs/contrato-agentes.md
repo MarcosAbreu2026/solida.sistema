@@ -107,3 +107,18 @@ chegou até quarta. Quem lê o grupo (só leitura) grava `dados/json/ferramentas
 - `verificadoEm`: quando os grupos foram lidos pela última vez. Sem ele (ou lido antes da quarta), o cartão
   mostra "ainda não verificado" em vez de "não enviada" — o sistema nunca afirma que faltou sem ter lido.
 - Um registro por envio; o histórico das últimas 4 semanas sai dos próprios registros.
+## Agente de Operação: terceirizadas nas obras × contratos no Mais Controle (pedido de 16/10)
+
+Toda empresa vinculada a uma obra (cinza ou laranja) precisa ter contrato vinculado no Mais Controle e medição.
+O alerta vai para a Simone (processos 1.1 e 1.4). Não se compara época; só se a empresa tem contrato na obra e se
+já teve medição. Rotina (só leitura, no Chrome já logado em https://acessar.maiscontroleerp.com.br):
+
+1. Obras › Medição de Contratos › Contratos: clicar em CARREGAR até acabar a lista (228 contratos em 16/10) e
+   anotar por contrato: fornecedor, título, obra (ex.: "Mo531 (Laranja) - ADM"), status e % de medições aprovadas.
+   Não gravar valores em R$.
+2. Para cada empresa citada nas programações das obras (e nos relatórios do WhatsApp), procurar entre os contratos
+   daquela obra um fornecedor com o mesmo nome (ou parecido) e gravar em `dados/json/terceirizados.json`:
+   `{ "obra": "Mo531", "empresa": "Humber", "contrato": true|false, "medicao": true|false|null, "contratoNome": "…", "obs": "…" }`
+   (`contrato: false` = nenhum fornecedor com esse nome nos contratos da obra; usar `obs` para pedir conferência do nome).
+3. `verificadoEm` = quando leu o Mais Controle; `avisos` = observações gerais (ex.: obra com pouquíssimos contratos).
+Empresa que aparece na programação e não está no arquivo entra na tela sozinha como "ainda não conferida".

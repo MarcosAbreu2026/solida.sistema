@@ -1388,4 +1388,4 @@ a.card:hover .card-rotulo { color: var(--clique2); text-decoration: underline; }
 .ab-tab th, .ab-tab td { text-align: center; padding: 6px 4px; }
 .ab-tab th.ab-fn { text-align: left; white-space: nowrap; font-size: 12.5px; }
 .ab-col { font-size: 11px; vertical-align: bottom; } .ab-col span { display: inline-block; writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; }
-.ab-per { font-size: 10px; background: #FFF1D6; color: #7A5A1E; padding: 0 6px; border-radius: 999px; font-weight: 700; }
+.ab-per { font-size: 10px; background: #FFF1D6; color: #7A5A1E; padding: 0 6px; border-radius: 999px; font-weight: 700; }.tr-avisos { margin: 8px 0 12px; padding-left: 18px; font-size: 13px; color: #7A5A1E; display: flex; flex-direction: column; gap: 4px; }

@@ -73,6 +73,7 @@ export function render(CFG, dados, visiveis = null) {
   return html`<section class="secao tr-sec"><h2>Terceirizadas nas obras × contratos no Mais Controle</h2>
     <p class="pequeno">Toda empresa vinculada a uma obra (cinza ou laranja) precisa de contrato vinculado no Mais Controle, com medição na página de medição de contratos da obra. ${lido}.</p>
     ${alerta}
+    ${dados && Array.isArray(dados.avisos) && dados.avisos.length ? html`<ul class="tr-avisos">${dados.avisos.map((a) => html`<li>${a}</li>`)}</ul>` : ''}
     <div class="cards">
       <div class="card"><div class="card-valor ${n('sem') ? 'tom-ruim' : ''}">${n('sem')}</div><div class="card-rotulo">Sem contrato</div></div>
       <div class="card"><div class="card-valor">${n('semmed')}</div><div class="card-rotulo">Contrato sem medição</div></div>
