@@ -51,7 +51,7 @@ export function obrasDaPessoa() {
 export function podeVerArea(area) {
   if (!area) return false;
   if (area.restrita && !veValores()) return false;
-  if (funcaoAtual().porObra && !AREAS_DE_OBRA.includes(area.id)) return false;
+  if (funcaoAtual().porObra && !funcaoAtual().personalizada && !AREAS_DE_OBRA.includes(area.id)) return false;
   // cada função vê só os setores da sua lista (funcoes.js › areas); sem lista = todos (diretoria)
   const lista = funcaoAtual().areas;
   if (lista && !lista.includes(area.id)) return false;

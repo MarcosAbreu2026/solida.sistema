@@ -13,7 +13,7 @@ import { definirPerfil } from './componentes.js';
 import { normalizar, criarTelas, pt } from './painel-empresa.js';
 import { sessao, funcaoAtual, veValores, entrar, sair, logado, idPessoa, podeVerArea, obrasDaPessoa,
   podeVerComo, simulando, verComo, funcaoReal } from './sessao.js';
-import { FUNCOES, funcaoPorId, veBlocoGeral, INDICADORES_SO_GESTAO } from './funcoes.js';
+import { FUNCOES, funcaoPorId, veBlocoGeral, INDICADORES_SO_GESTAO, paginaVisivel, aplicarAbas, SETORES, PAGINAS } from './funcoes.js';
 import * as login from './telas/login.js';
 import { marcarCheck, gravarLancamento, apagarLancamento, gravarManual, vincularDia, sincronizarTarefas, lerPessoasTarefas } from './armazenamento.js';
 import * as perfil from './telas/perfil.js';
@@ -162,6 +162,12 @@ function fonteDoPosObra() {
   return `Lido do Drive: ${[f.operacional, f.cobranca, f.agenda].filter(Boolean).map(nome).join(' · ')}${f.lidoEm ? ` (leitura de ${new Date(f.lidoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })})` : ''}. Quando a equipe salva uma revisão nova, o sistema passa a ler a nova.`;
 }
 
+// obras que dá para vincular a uma pessoa: só as obras (Mo…), sem as encerradas no cadastro da planilha de ferramentas
+function obrasDeAcesso() {
+  const enc = new Set((((estado.drive || {}).estoque || {}).cadastroObras || []).filter((c) => /encerr|finaliz|conclu/i.test(c.status || '')).map((c) => c.obra));
+  return obrasDisponiveis().filter((o) => /^Mo\d/i.test(o) && !enc.has(o));
+}
+
 function desenharNav(sel) {
   const CFG = estado.cfg;
   const f = funcaoAtual();
@@ -172,13 +178,13 @@ function desenharNav(sel) {
   // perfil (primeira coisa do menu): bonequinho + nome; clicando abre a pontuação e as sugestões
   $('#nav').innerHTML = `<div class="marca"><img src="img/logo.png" alt="Sólida"><span>Painel da empresa</span></div>`
     + `<a class="nav-perfil${sel === 'perfil' ? ' sel' : ''}" href="#/perfil" title="Meu perfil">${perfil.avatar(s.nome, 38)}<span><b>${esc(s.nome)}</b><small>${esc(f.nome)}</small></span></a>`
-    + item('geral', 'Visão geral') + itemFeed() + (f.semMinhaSemana ? '' : item('meudia', 'Minha semana')) + (f.veQuadro ? item('quadro', 'Quadro de funções') : '')
+    + item('geral', 'Visão geral') + (paginaVisivel(f, 'feed') ? itemFeed() : '') + (!f.semMinhaSemana && paginaVisivel(f, 'meudia') ? item('meudia', 'Minha semana') : '') + (f.veQuadro ? item('quadro', 'Quadro de funções') : '')
     + '<div class="nav-sep"></div>'
     + (CFG ? CFG.areas.filter(podeVerArea).map((a) => item(a.id, a.nome, a.status)).join('') : '')
-    + item('estoque', 'Estoque')   // todo mundo vê
+    + (paginaVisivel(f, 'estoque') ? item('estoque', 'Estoque') : '')
     + '<div class="nav-sep"></div>'   // equipe: escritório virtual, treinamentos (e o que vier depois)
-    + item('escritorio', 'Escritório virtual')
-    + item('treinamentos', 'Treinamentos')
+    + (paginaVisivel(f, 'escritorio') ? item('escritorio', 'Escritório virtual') : '')
+    + (paginaVisivel(f, 'treinamentos') ? item('treinamentos', 'Treinamentos') : '')
     + (f.veAgentes ? `<div class="nav-sep"></div>${item('agentes', 'Agentes')}${nuvem.NA_NUVEM && funcaoReal().id === 'socio' ? item('acessos', 'Acessos') : ''}` : '')
     + `<div class="navfoot">${estado.sync.origem === 'link' ? 'Atualiza sozinho a cada 5 minutos.' : 'Mostrando os últimos dados baixados.'}</div>`;
   desenharAvatares($('#nav'));
@@ -329,6 +335,7 @@ function desenhar() {
   if (tela === 'agentes' && !f.veAgentes) tela = 'geral';
   if (tela === 'quadro' && !f.veQuadro) tela = 'meudia';
   if (tela === 'meudia' && f.semMinhaSemana) tela = 'geral';
+  if (['meudia', 'feed', 'estoque', 'escritorio', 'treinamentos'].includes(tela) && !paginaVisivel(f, tela)) tela = 'geral';   // aba que a diretoria tirou desta função
 
   let area = CFG && CFG.areas.find((a) => a.id === tela);
   if (area && !podeVerArea(area)) { area = null; tela = 'geral'; }   // setor fora do perfil: nem existe
@@ -363,7 +370,7 @@ function desenhar() {
   }
   if (tela === 'acessos' && nuvem.NA_NUVEM && funcaoReal().id === 'socio') {
     $('#conteudo').innerHTML = '<div class="carregando">Carregando a equipe…</div>';
-    nuvem.listarPerfis().then((ps) => { if (rotaAtual().tela === 'acessos') $('#conteudo').innerHTML = `<div>${acessos.render({ perfis: ps, obras: obrasDisponiveis(), msg: estado.acessosMsg || '', aviso: estado.acessosAviso })}</div>`; estado.acessosMsg = ''; estado.acessosAviso = null; });
+    nuvem.listarPerfis().then((ps) => { if (rotaAtual().tela === 'acessos') $('#conteudo').innerHTML = `<div>${acessos.render({ perfis: ps, obras: obrasDeAcesso(), meuId: nuvem.perfilAtual() && nuvem.perfilAtual().id, msg: estado.acessosMsg || '', aviso: estado.acessosAviso })}</div>`; estado.acessosMsg = ''; estado.acessosAviso = null; });
     return;
   }
   if (tela === 'treinamentos') { $('#conteudo').innerHTML = `<div>${treinamentos.render()}</div>`; return; }
@@ -524,6 +531,7 @@ function separarProjetos(cfg) {
 async function atualizar() {
   // marcações de tarefas de todos (pontuação do Perfil); quem está logado manda o que só tinha neste navegador
   const atual = logado() ? { pessoa: idPessoa(), nome: sessao().nome, funcao: funcaoAtual().id, teste: simulando(), obras: obrasDaPessoa() } : null;
+  if (nuvem.NA_NUVEM && logado()) { try { aplicarAbas(await nuvem.carregarAbas()); } catch { /* sem a tabela: fica o padrão de cada função */ } }
   const [painelR, baseR, prodR, driveR, , , , , ferrR, terR] = await Promise.allSettled([carregarPainel(), carregarDados(), carregarProdutividade(), carregarDrive(), sincronizarTarefas(atual), perfil.carregarFotos(), feed.carregar(), evidencias.carregar(), carregarFerramentasChk(), carregarTerceirizados()]);
   if (terR.status === 'fulfilled') estado.terceiros = terR.value;
   if (ferrR.status === 'fulfilled') estado.ferrChk = ferrR.value;
@@ -883,6 +891,38 @@ function configurar() {
       const usuario = b.closest('.ac-linha').querySelector('.ac-quem .pequeno b').textContent;
       estado.acessosAviso = { titulo: `Senha nova de ${nome}`, usuario, senha }; desenhar();
     } catch (err) { alert(`Não foi possível (${err.message || err}).`); }
+  });
+  // caixinhas de obras: "todas" / "nenhuma"
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-obras-todas]'); if (!t) return;
+    t.closest('.ac-chips').querySelectorAll('input[name="obras"]').forEach((c) => { c.checked = t.dataset.obrasTodas === '1'; });
+  });
+  // excluir login (apaga também o que a pessoa marcou no sistema)
+  document.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-excluir-login]'); if (!b) return;
+    const [id, nome] = b.dataset.excluirLogin.split('|');
+    if (!confirm(`Excluir o login de ${nome}?\n\nIsso apaga o acesso e tudo o que a pessoa marcou no sistema (tarefas, publicações). Não dá para desfazer.\nPara só impedir a entrada, use "ativo" desmarcado.`)) return;
+    try { await nuvem.excluirLogin(id); estado.acessosMsg = `Login de ${nome} excluído.`; desenhar(); }
+    catch (err) { alert(`Não foi possível excluir (${err.message || err}).`); }
+  });
+  // abas por função: voltar uma linha ao padrão e salvar a tabela
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-abas-padrao]'); if (!b) return;
+    const tr = b.closest('tr'); const padrao = (tr.dataset.padrao || '').split(',');
+    tr.querySelectorAll('input[type="checkbox"]').forEach((c) => { c.checked = padrao.includes(c.value); });
+  });
+  document.addEventListener('submit', async (e) => {
+    const f = e.target.closest('#ac-abas'); if (!f) return;
+    e.preventDefault();
+    const gravar = {}; const apagar = [];
+    for (const fn of FUNCOES.filter((x) => x.id !== 'socio')) {
+      const marcadas = [...f.querySelectorAll(`input[name="aba:${fn.id}"]:checked`)].map((c) => c.value);
+      const padrao = [...(fn.areasPadrao || SETORES.map((s) => s[0])), ...PAGINAS.map((p) => p[0]).filter((id) => !(id === 'meudia' && fn.semMinhaSemana))];
+      const igual = marcadas.length === padrao.length && marcadas.every((a) => padrao.includes(a));
+      if (igual) apagar.push(fn.id); else gravar[fn.id] = marcadas;
+    }
+    try { await nuvem.salvarAbas(gravar, apagar); aplicarAbas(await nuvem.carregarAbas()); estado.acessosMsg = 'Abas salvas. Valem na próxima vez que a pessoa abrir ou atualizar o sistema.'; desenhar(); }
+    catch (err) { alert(`Não foi possível salvar as abas (${err.message || err}).`); }
   });
   document.addEventListener('submit', async (e) => {
     const f = e.target.closest('[data-acesso]'); if (!f) return;

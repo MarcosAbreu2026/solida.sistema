@@ -1374,3 +1374,18 @@ a.card:hover .card-rotulo { color: var(--clique2); text-decoration: underline; }
 .tr-selo { font-size: 12px; font-weight: 700; padding: 1px 9px; border-radius: 999px; background: var(--calcario); color: var(--muted); white-space: nowrap; }
 .tr-selo.tr-ok { background: #E1EFE5; color: #2F6B43; } .tr-selo.tr-sem { background: #F8E1DF; color: #9B3A33; } .tr-selo.tr-semmed { background: #FFF1D6; color: #7A5A1E; }
 .tr-tab tr.tr-sem td { background: #FFFBFA; }
+/* Acessos: obras em caixinhas, excluir, abas por função */
+.ac-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ac-chip input { position: absolute; opacity: 0; pointer-events: none; }
+.ac-chip span { display: inline-block; padding: 3px 11px; border: 1px solid var(--linha); border-radius: 999px; font-size: 12.5px; background: #fff; cursor: pointer; user-select: none; }
+.ac-chip input:checked + span { background: #E1EFE5; border-color: #4E8A62; color: #2F6B43; font-weight: 700; }
+.ac-chip input:focus-visible + span { outline: 1.5px solid var(--bronze); outline-offset: 2px; }
+.ac-mini { font: inherit; font-size: 11.5px; padding: 1px 8px; border: 1px dashed var(--linha); border-radius: 999px; color: var(--muted); background: none; cursor: pointer; }
+.ac-mini:hover { color: var(--grafite); border-color: var(--clique); }
+.ac-rot { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.ac-excluir { color: #9B3A33; border-color: #E8B9B5; }
+.ac-excluir:hover { background: #F8E1DF; }
+.ab-tab th, .ab-tab td { text-align: center; padding: 6px 4px; }
+.ab-tab th.ab-fn { text-align: left; white-space: nowrap; font-size: 12.5px; }
+.ab-col { font-size: 11px; vertical-align: bottom; } .ab-col span { display: inline-block; writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; }
+.ab-per { font-size: 10px; background: #FFF1D6; color: #7A5A1E; padding: 0 6px; border-radius: 999px; font-weight: 700; }

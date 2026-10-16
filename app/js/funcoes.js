@@ -72,6 +72,28 @@ export function veBlocoGeral(funcao, titulo) {
 const ANTIGAS = { documentacao: 'gestor_obra' };
 export const funcaoPorId = (id) => FUNCOES.find((f) => f.id === (ANTIGAS[id] || id)) || FUNCOES[0];
 
+// Abas que cada função vê: setores + páginas gerais. O padrão está nas listas acima (areas); a diretoria pode
+// escolher outras na tela Acessos (guardado no banco, tabela funcao_abas) e isso passa a valer no lugar do padrão.
+export const SETORES = [['operacao', 'Operação'], ['posobra', 'Pós-obra'], ['transporte', 'Transporte e logística'], ['suprimentos', 'Suprimentos e compras'],
+  ['planejamento', 'Planejamento'], ['projetos', 'Projetos'], ['comercial', 'Comercial e orçamentos'], ['financeiro', 'Financeiro'], ['rh', 'RH']];
+export const PAGINAS = [['meudia', 'Minha semana'], ['feed', 'Feed'], ['estoque', 'Estoque'], ['escritorio', 'Escritório virtual'], ['treinamentos', 'Treinamentos']];
+const IDS_SETORES = SETORES.map((s) => s[0]);
+for (const f of FUNCOES) f.areasPadrao = f.areas;   // para poder voltar ao padrão
+export function abasPadrao(f) {
+  return [...(f.areasPadrao || IDS_SETORES), ...PAGINAS.map((p) => p[0]).filter((id) => !(id === 'meudia' && f.semMinhaSemana))];
+}
+export const abasDa = (f) => f.abas || abasPadrao(f);
+export const paginaVisivel = (f, id) => abasDa(f).includes(id);
+// mapa = { funcaoId: [ids de abas] } vindo do banco; função sem linha no mapa fica no padrão. Diretoria vê tudo sempre.
+export function aplicarAbas(mapa) {
+  for (const f of FUNCOES) {
+    if (f.id === 'socio') continue;
+    const l = mapa && mapa[f.id];
+    if (Array.isArray(l)) { f.abas = l; f.areas = l.filter((id) => IDS_SETORES.includes(id)); f.personalizada = true; }
+    else { delete f.abas; delete f.personalizada; f.areas = f.areasPadrao; }
+  }
+}
+
 // Quem é de obra só vê estes setores (e neles, só as suas obras; no RH, todos os funcionários).
 // Na Visão geral vê só os números, sem o detalhe de cada obra.
 export const AREAS_DE_OBRA = ['operacao', 'rh'];   // cronograma/programação das obras agora ficam na Operação

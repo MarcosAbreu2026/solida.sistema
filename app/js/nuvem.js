@@ -60,6 +60,27 @@ export async function redefinirSenha(id, senha) {
   const { error } = await sb.rpc('redefinir_senha', { p_id: id, p_senha: senha });
   if (error) throw new Error(error.message);
 }
+export async function excluirLogin(id) {
+  const { error } = await sb.rpc('excluir_login', { p_id: id });
+  if (error) throw new Error(error.message);
+}
+// abas por função (diretoria escolhe; todo mundo lê): { funcaoId: [ids] }
+export async function carregarAbas() {
+  const { data } = await sb.from('funcao_abas').select('funcao, abas');
+  const m = {}; for (const r of data || []) m[r.funcao] = r.abas || [];
+  return m;
+}
+export async function salvarAbas(gravar, apagar) {
+  if (Object.keys(gravar).length) {
+    const linhas = Object.entries(gravar).map(([funcao, abas]) => ({ funcao, abas, atualizado_em: new Date().toISOString() }));
+    const { error } = await sb.from('funcao_abas').upsert(linhas);
+    if (error) throw new Error(error.message);
+  }
+  if (apagar.length) {
+    const { error } = await sb.from('funcao_abas').delete().in('funcao', apagar);
+    if (error) throw new Error(error.message);
+  }
+}
 export function senhaProvisoria() {
   const L = 'abcdefghjkmnpqrstuvwxyz', N = '23456789', M = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
   const r = (s, n) => Array.from(crypto.getRandomValues(new Uint32Array(n)), (v) => s[v % s.length]).join('');
