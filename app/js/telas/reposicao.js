@@ -236,44 +236,47 @@ function rotaDaCompra(compras, por) {
 }
 
 // ---------------------------------------------------------------- rota em texto (para colar no WhatsApp)
-// data e horário de saída da rota de hoje (escolhidos na tela; ficam só enquanto a página está aberta)
-const cfgRota = { data: null, saida: '08:00' };
-export function ajustarRota(campo, valor) { if (campo === 'data') cfgRota.data = valor || null; else if (campo === 'saida') cfgRota.saida = valor || '08:00'; }
-const dataDaRota = () => {
-  if (cfgRota.data) return cfgRota.data;
-  let d = hojeISO(); // fim de semana: segunda-feira
-  const dow = new Date(`${d}T12:00:00`).getDay();
-  if (dow === 6) d = somarDias(d, 2); else if (dow === 0) d = somarDias(d, 1);
-  return d;
-};
+// dia e horário de saída (escolhidos na tela; ficam só enquanto a página está aberta)
+const cfgRota = { data: null, compra: null, saida: '08:00' };
+export function ajustarRota(campo, valor) {
+  if (campo === 'data') cfgRota.data = valor || null;
+  else if (campo === 'compra') cfgRota.compra = valor || null;
+  else if (campo === 'saida') cfgRota.saida = valor || '08:00';
+}
+const diaUtil = (d) => { const dow = new Date(`${d}T12:00:00`).getDay(); return dow === 6 ? somarDias(d, 2) : dow === 0 ? somarDias(d, 1) : d; };
+const dataDaRota = () => cfgRota.data || diaUtil(hojeISO());
+// entrega da compra: sem data certa; sugere uma semana depois da rota de hoje (a compra demora a chegar)
+const dataDaCompra = () => cfgRota.compra || diaUtil(somarDias(dataDaRota(), 7));
 const DIAS_SEMANA = ['DOMINGO', 'SEGUNDA-FEIRA', 'TERÇA-FEIRA', 'QUARTA-FEIRA', 'QUINTA-FEIRA', 'SEXTA-FEIRA', 'SÁBADO'];
 const hhmm = (min) => `${Math.floor(min / 60)}h${String(min % 60).padStart(2, '0')}`;
 const arredonda5 = (min) => Math.ceil(min / 5) * 5;
 const lista = (xs) => xs.map((m) => `${m.item} x${un(m.qtd)}`).join(', ');
 const nomeTxt = (id, nome, por) => ((por.get(id) || {}).tipo === 'obra' ? String(nome(id)).toUpperCase() : nome(id));
 const PARADA_GALPAO_MIN = 30; const PARADA_OBRA_MIN = 20;
+const cabecalhoDaRota = (dataIso) => `*ROTA ${DIAS_SEMANA[new Date(`${dataIso}T12:00:00`).getDay()]} ${fmtData(dataIso).slice(0, 5)}*`;
 
-// Uma linha por parada: "8h00 - Galpão - retirar ... para MO533 / retirar ... para MO581"
+// Uma linha por parada: "8h45 - MO533 - retirar: A x1, B x2 / deixar: C x1". Não diz para onde cada coisa vai:
+// só o que sai do galpão, o que retirar e deixar em cada obra e, no fim do dia, o que vai para os carros.
 function textoDaRota(paradas, titulo, cabecalho, nome, por, saidaMin) {
-  const tipo = (id) => (por.get(id) || {}).tipo;
-  const destino = (id) => (tipo(id) === 'galpao' ? 'o galpão' : tipo(id) === 'carro' ? nome(id).replace('Carro do ', 'o carro do ') : nomeTxt(id, nome, por));
-  const agrupa = (ms) => { const g = new Map(); for (const m of ms) { if (!g.has(m.para)) g.set(m.para, []); g.get(m.para).push(m); } return g; };
   const linhas = []; let relogio = saidaMin; let atual = 'galpao';
+  const carros = []; const devolver = [];
   paradas.forEach((p, k) => {
+    carros.push(...p.carros);
+    if (p.volta) { devolver.push(...p.deixar); atual = p.id; return; } // volta: vira o "final do dia"
     if (k > 0) relogio = arredonda5(relogio + tempoEntre(atual, p.id) / 60);
     atual = p.id;
     const acoes = [];
-    if (p.deixar.length) acoes.push(`Deixar ${lista(soma(p.deixar))}`);
-    for (const [para, ms] of agrupa(p.pegar)) acoes.push(`retirar ${lista(soma(ms))} para ${destino(para)}`);
-    if (p.carros.length) acoes.push(`${p.volta ? 'deixar nos carros' : 'colocar nos carros'}: ${p.carros.map((m) => `${m.item} x${un(m.qtd)} (${nome(m.para).replace('Carro do ', 'carro do ')})`).join(', ')}`);
-    const eFim = p.volta;
-    const acao = eFim ? ['voltar ao galpão', ...acoes].join(' / ') : (acoes.join(' / ') || '—');
-    linhas.push(`${hhmm(relogio)} - ${nomeTxt(p.id, nome, por)} - ${acao}`);
+    if (p.pegar.length) acoes.push(`retirar: ${lista(soma(p.pegar))}`);
+    if (p.deixar.length) acoes.push(`deixar: ${lista(soma(p.deixar))}`);
+    linhas.push(`${hhmm(relogio)} - ${nomeTxt(p.id, nome, por)} - ${acoes.join(' / ') || '—'}`);
     relogio += p.id === 'galpao' ? PARADA_GALPAO_MIN : PARADA_OBRA_MIN;
   });
+  const fim = [];
+  if (devolver.length) fim.push(`deixar: ${lista(soma(devolver))}`);
+  if (carros.length) fim.push(`colocar nos carros: ${lista(soma(carros))}`);
+  if (fim.length) linhas.push(`Final do dia - Galpão - ${fim.join(' / ')}`);
   return [cabecalho, '', titulo, '', ...linhas.flatMap((l) => [l, ''])].join('\n').trim();
 }
-
 export function render(est) {
   if (!est || est.erro || !Array.isArray(est.itens)) {
     return html`<p class="vazio">Não consegui ler a planilha de ferramentas${est && est.erro ? `: ${est.erro}` : ''}. Quando o coletor ler a planilha (pasta Pós-obra › Ferramentas › Listas), esta tela se monta sozinha.</p>`;
@@ -298,10 +301,9 @@ export function render(est) {
   const dataRota = dataDaRota();
   const [hh, mm] = cfgRota.saida.split(':').map(Number);
   const saidaMin = (hh || 8) * 60 + (mm || 0);
-  const dd = new Date(`${dataRota}T12:00:00`);
-  const cab1 = `*ROTA ${DIAS_SEMANA[dd.getDay()]} ${fmtData(dataRota).slice(0, 5)}*`;
-  const texto1 = rota1.length ? textoDaRota(rota1, 'Rota de Reposição de Ferramentas', cab1, nome, por, saidaMin) : '';
-  const texto2 = rota2.length ? textoDaRota(rota2, 'Rota de Reposição de Ferramentas (compra)', '*ROTA - ENTREGA DA COMPRA*', nome, por, saidaMin) : '';
+  const dataCompra = dataDaCompra();
+  const texto1 = rota1.length ? textoDaRota(rota1, 'Rota de Reposição de Ferramentas', cabecalhoDaRota(dataRota), nome, por, saidaMin) : '';
+  const texto2 = rota2.length ? textoDaRota(rota2, 'Rota de Reposição de Ferramentas - Entrega da compra', cabecalhoDaRota(dataCompra), nome, por, saidaMin) : '';
   const blocoTexto = (txt, n) => html`<div class="rt-texto-caixa"><pre class="rt-texto" data-texto-rota="${n}">${txt}</pre><button type="button" class="botao rt-copiar" data-copiar="${n}">Copiar texto</button></div>`;
 
   return html`<div class="rp">
@@ -335,6 +337,7 @@ export function render(est) {
     </section>
 
     <section class="ob-sec rp-rotas"><div class="painel-h"><h2>3 · Rota quando a compra chegar</h2><p>Leva do galpão o que foi comprado ou fabricado para quem precisa (sem o maquinário a confirmar)${rota2.totalMin ? ` · ≈ ${rota2.totalMin} min de estrada` : ''}</p></div>
+      <div class="rt-ajuste"><label>Dia da entrega <input type="date" value="${dataCompra}" data-rota="compra"></label><span class="pequeno">Sugestão: uma semana depois; ajuste quando souber quando a compra chega.</span></div>
       ${rota2.length ? blocoTexto(texto2, 2) : html`<p class="pequeno">Nada a levar depois da compra.</p>`}
     </section>
 

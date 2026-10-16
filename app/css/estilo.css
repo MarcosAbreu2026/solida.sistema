@@ -1330,6 +1330,7 @@ a.card:hover .card-rotulo { color: var(--clique2); text-decoration: underline; }
   .ob-sec .painel-h h2 { font-size: 10px; }
   /* página 1: lista de compras bem compacta */
   .rp-compras { break-after: page; }
+  .rp-rotas .rt-ajuste { display: none !important; }
   .rp-compras .cartao { padding: 0; border: 0; margin: 0 0 6px; }
   .rp-compras .cartao-cab { padding: 2px 0; }
   .rp-compras .cartao-cab h3 { font-size: 10px; }
