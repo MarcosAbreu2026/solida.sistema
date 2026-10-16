@@ -112,11 +112,11 @@ export function abaOrcamentos(dados, anoSel) {
   </section>`;
 
   const tabelaGrupo = (titulo, sub, grupos) => html`<section class="secao">
-    <div class="painel-h" style="margin-bottom:14px"><h2>${titulo}</h2><p>${sub}</p></div>
+    <div class="painel-h" style="margin-bottom:14px"><h2>${titulo}</h2><p>${sub} Orçados = fechados + não fechados + em aberto. Conversão = fechados ÷ (fechados + não fechados): o que ainda está em aberto não entra.</p></div>
     <div class="tabela-rolagem"><table class="tab ordenavel">
-      <thead><tr><th></th><th>Orçados</th><th>Fechados</th><th>Conversão</th><th>Valor médio orçado</th><th>Valor médio aprovado</th><th>Área média</th><th>Tempo médio</th></tr></thead>
+      <thead><tr><th></th><th>Orçados</th><th>Fechados</th><th title="Orçamentos que o cliente recusou ou não respondeu">Não fechados</th><th title="Ainda sem resposta: em orçamento, aguardando arquitetura/fornecedor ou enviados">Em aberto</th><th title="Fechados ÷ (fechados + não fechados). Os em aberto ainda não entram na conta.">Conversão</th><th>Valor médio orçado</th><th>Valor médio aprovado</th><th>Área média</th><th>Tempo médio</th></tr></thead>
       <tbody>${grupos.filter((g) => g.xs.length).map((g) => { const s = resumo(g.xs); return html`<tr>
-        <td><b>${g.nome}</b></td><td>${s.n}</td><td>${s.fech}</td>
+        <td><b>${g.nome}</b></td><td>${s.n}</td><td>${s.fech}</td><td>${s.nao}</td><td>${s.n - s.fech - s.nao}</td>
         <td>${s.conv == null ? html`<span class="muted">sem resposta</span>` : `${s.conv}%`}</td>
         <td>${fmtReais(s.valor)}</td><td>${fmtReais(s.valorFech)}</td>
         <td>${fmtNum(s.area, 'm²')}</td><td>${fmtNum(s.sem, 'sem.')}</td></tr>`; })}</tbody>
