@@ -15,6 +15,17 @@ dentro do sistema fica para a Fase 2.
   `scripts/enviar-nuvem.mjs`, que manda os dados para o armazenamento "dados" do Supabase: `valores/` (completo) e
   `todos/` (sem diárias, custos e área financeira). A chave de serviço fica em `config.local.json` (fora do GitHub).
 
+## Na internet (Vercel + Supabase)
+- Endereço: https://sistema-solida.vercel.app — entra com e-mail @construcaosolida.com e senha ("Criar minha conta";
+  a diretoria libera e define a função em **Acessos**). Código: GitHub MarcosAbreu2026/sistema-solida (privado);
+  cada envio ao GitHub publica sozinho no Vercel. Só a pasta  vai para o site ().
+- Supabase (projeto "App Solida Construção"): login, perfis, marcações, Feed, pedidos, fotos e presença.
+  Estrutura e regras de acesso em  (valores só para sócio e financeiro).
+- : fora do localhost, as telas usam o Supabase; no computador do escritório (localhost) continua tudo local.
+- **Coletor** (este computador): , aberto pelo O sistema j  est  aberto em outra janela. Abrindo o navegador..., a cada 10 min lê o Drive e roda
+  , que manda os dados para o armazenamento "dados" do Supabase:  (completo) e
+   (sem diárias, custos e área financeira). A chave de serviço fica em  (fora do GitHub).
+
 ## Como abrir
 Dê dois cliques em **`iniciar.bat`**. Abre uma janela preta (deixe aberta) e o navegador em
 `http://localhost:8080/app/`. Não precisa instalar nada.
