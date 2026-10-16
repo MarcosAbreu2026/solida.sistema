@@ -1148,3 +1148,32 @@ a.card:hover .card-rotulo { color: var(--clique2); text-decoration: underline; }
 .fn-auto { font-size: 11.5px; font-weight: 700; color: #2F6B43; }
 .fn-sub { margin: 18px 0 8px; font-size: 13.5px; }
 .fn-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+
+/* Quadro da semana › Funções: dias nas linhas (à esquerda), horas na horizontal, caixinhas móveis de 30 em 30 min */
+.fn-semana { display: flex; flex-direction: column; gap: 6px; overflow: visible; }
+.fn-linha { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 8px; align-items: stretch; }
+.fn-dia { background: var(--gesso); border-radius: 10px; padding: 8px 9px; display: flex; flex-direction: column; justify-content: center; gap: 2px; }
+.fn-dia b { font-size: 13px; }
+.fn-dia small { font-size: 11.5px; color: var(--muted); }
+.fn-linha.hoje .fn-dia { background: #FFF6E3; box-shadow: inset 0 0 0 2px #E0B04A; }
+.fn-linha.hoje .fn-dia b { color: #7A5A1E; }
+.fn-regua { margin-bottom: -2px; }
+.fn-horas { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); font-size: 11px; color: var(--muted); }
+.fn-horas span { border-left: 1px solid var(--linha2); padding-left: 4px; }
+.fn-trilho { display: grid; grid-template-columns: repeat(24, minmax(0, 1fr)); grid-auto-flow: row dense; row-gap: 6px; padding: 6px 0; min-height: 52px; border-radius: 10px; background-color: var(--gesso);
+  background-image: repeating-linear-gradient(to right, transparent 0, transparent calc(100% / 12 - 1px), var(--linha2) calc(100% / 12 - 1px), var(--linha2) calc(100% / 12)); }
+.fn-linha.hoje .fn-trilho { background-color: #FFF6E3; }
+.fn-trilho.vazio { min-height: 40px; opacity: .6; }
+.fn-trilho .fn-caixa { margin: 0 3px; cursor: grab; min-width: 0; }
+.fn-trilho .fn-caixa.arrastando { opacity: .45; }
+.fn-hora { display: flex; align-items: center; gap: 3px; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.fn-hora span { font-weight: 700; color: var(--grafite); min-width: 36px; text-align: center; }
+.fn-hora.mudou span { color: #7A5A1E; }
+.fn-mv { font: inherit; font-size: 13px; line-height: 1; width: 22px; height: 20px; padding: 0; border: 1px solid var(--linha); border-radius: 5px; background: #fff; cursor: pointer; color: var(--grafite); }
+.fn-mv:hover:not(:disabled) { border-color: var(--clique); }
+.fn-mv:disabled { opacity: .35; cursor: default; }
+.fn-volta { margin-left: auto; }/* telas estreitas: o quadro rola para o lado dentro do painel, com os dias fixos à esquerda */
+.fn-semana { overflow-x: auto; }
+.fn-semana > .fn-linha { min-width: 880px; }
+.fn-dia { position: sticky; left: 0; z-index: 2; }
+.fn-regua .fn-dia { background: transparent; }

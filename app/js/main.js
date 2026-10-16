@@ -12,7 +12,7 @@ import { sessao, funcaoAtual, veValores, entrar, sair, logado, idPessoa, podeVer
   podeVerComo, simulando, verComo, funcaoReal } from './sessao.js';
 import { FUNCOES, funcaoPorId, veBlocoGeral, INDICADORES_SO_GESTAO } from './funcoes.js';
 import * as login from './telas/login.js';
-import { marcarCheck, gravarLancamento, apagarLancamento, gravarManual, vincularDia, sincronizarTarefas, lerPessoasTarefas } from './armazenamento.js';
+import { moverHorario, marcarCheck, gravarLancamento, apagarLancamento, gravarManual, vincularDia, sincronizarTarefas, lerPessoasTarefas } from './armazenamento.js';
 import * as perfil from './telas/perfil.js';
 import * as nuvem from './nuvem.js';
 import * as acessos from './telas/acessos.js';
@@ -28,6 +28,7 @@ import * as agenda from './telas/agenda.js';
 import * as equipe from './telas/equipe.js';
 import * as financeiro from './telas/financeiro.js';
 import * as meudia from './telas/meudia.js';
+const { GRADE } = meudia;
 import * as quadro from './telas/quadro.js';
 import * as produtividade from './telas/produtividade.js';
 import * as operacao from './telas/operacao.js';
@@ -669,6 +670,19 @@ function configurar() {
       if (campo) { campo.focus(); campo.select(); }
       return;
     }
+    const mv = e.target.closest('[data-hora]');
+    if (mv) {
+      const [tarefa, dia, passo] = mv.dataset.hora.split('|');
+      const pessoa = idPessoa();
+      if (passo === 'volta') moverHorario(pessoa, dia, tarefa, null);
+      else {
+        const caixa = mv.closest('.fn-caixa');
+        const faixa = Number((caixa.dataset.arrasta || '').split('|')[2]);
+        moverHorario(pessoa, dia, tarefa, GRADE.ini + (faixa + Number(passo) / GRADE.passo) * GRADE.passo);
+      }
+      desenhar();
+      return;
+    }
     const ck = e.target.closest('[data-check]');
     if (ck) {
       const [tarefa, dia, valor] = ck.dataset.check.split('|');
@@ -940,3 +954,35 @@ if (nuvem.NA_NUVEM) {
 desenhar();
 atualizar();
 setInterval(atualizar, ATUALIZAR_A_CADA_MS);
+
+// Quadro da semana › Funções: arrastar a caixinha para outro horário do mesmo dia (faixas de 30 min)
+let arrastando = null;
+document.addEventListener('dragstart', (e) => {
+  const c = e.target.closest && e.target.closest('.fn-caixa[data-arrasta]');
+  if (!c || !c.dataset.arrasta) return;
+  const [tarefa, dia, faixa] = c.dataset.arrasta.split('|');
+  const r = c.getBoundingClientRect();
+  const larg = c.parentElement.getBoundingClientRect().width / GRADE.faixas;
+  arrastando = { tarefa, dia, deslocamento: Math.floor((e.clientX - r.left) / larg) };
+  c.classList.add('arrastando');
+  try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', tarefa); } catch { /* sem dataTransfer */ }
+});
+const faixaDoPonteiro = (trilho, x) => {
+  const r = trilho.getBoundingClientRect();
+  return Math.floor(((x - r.left) / r.width) * GRADE.faixas) - (arrastando ? arrastando.deslocamento : 0);
+};
+document.addEventListener('dragover', (e) => {
+  const tr = e.target.closest && e.target.closest('.fn-trilho');
+  if (!arrastando || !tr || tr.dataset.trilho !== arrastando.dia) return;
+  e.preventDefault();
+});
+document.addEventListener('drop', (e) => {
+  const tr = e.target.closest && e.target.closest('.fn-trilho');
+  if (!arrastando || !tr || tr.dataset.trilho !== arrastando.dia) { arrastando = null; return; }
+  e.preventDefault();
+  const faixa = Math.max(0, faixaDoPonteiro(tr, e.clientX));
+  moverHorario(idPessoa(), arrastando.dia, arrastando.tarefa, GRADE.ini + faixa * GRADE.passo);
+  arrastando = null;
+  desenhar();
+});
+document.addEventListener('dragend', () => { arrastando = null; document.querySelectorAll('.fn-caixa.arrastando').forEach((c) => c.classList.remove('arrastando')); });

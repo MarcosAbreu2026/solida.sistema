@@ -25,6 +25,19 @@ export function marcarCheck(pessoa, data, tarefa, valor, info = {}) {
   enviarCheck({ pessoa, data, tarefa, valor: valor || '', ...info });
 }
 
+// Horário que a pessoa escolheu para uma tarefa num dia (ajuste de 30 em 30 min no quadro da semana).
+// horarios[pessoa][data][tarefa] = minutos desde 00:00. Fica neste navegador.
+export function lerHorarios(pessoa) {
+  return lerJSON('solida.horarios', {})[pessoa] || {};
+}
+export function moverHorario(pessoa, data, tarefa, minutos) {
+  const tudo = lerJSON('solida.horarios', {});
+  tudo[pessoa] = tudo[pessoa] || {};
+  tudo[pessoa][data] = tudo[pessoa][data] || {};
+  if (minutos == null) delete tudo[pessoa][data][tarefa]; else tudo[pessoa][data][tarefa] = minutos;
+  gravarJSON('solida.horarios', tudo);
+}
+
 // ---------------------------------------------------------------- marcações compartilhadas (servidor)
 // O servidor guarda todas as marcações (dados/tarefas-feitas.jsonl); este navegador fica com uma cópia.
 import { NA_NUVEM, linhasTarefas, marcarTarefa } from './nuvem.js';
