@@ -681,6 +681,17 @@ function configurar() {
       return;
     }
     if (e.target.closest('[data-imprimir]')) { window.print(); return; }
+    const cp = e.target.closest('[data-copiar]');
+    if (cp) {
+      const el = document.querySelector(`[data-texto-rota="${cp.dataset.copiar}"]`);
+      const txt = el ? el.innerText : '';
+      const pronto = () => { const antes = cp.textContent; cp.textContent = '✓ Copiado'; setTimeout(() => { cp.textContent = antes; }, 1800); };
+      (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(pronto).catch(() => {
+        const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); pronto(); } catch { /* sem permissão */ } ta.remove();
+      });
+      return;
+    }
     const ck = e.target.closest('[data-check]');
     if (ck) {
       const [tarefa, dia, valor] = ck.dataset.check.split('|');
@@ -955,3 +966,11 @@ setInterval(atualizar, ATUALIZAR_A_CADA_MS);
 
 // Quadro da semana › Funções: arrastar, redimensionar e abrir os cartões
 meudia.instalarQuadro(() => desenhar());
+
+// Reposição › rota: dia e horário de saída (a rota em texto se refaz)
+document.addEventListener('change', (e) => {
+  const r = e.target.closest && e.target.closest('[data-rota]');
+  if (!r) return;
+  reposicao.ajustarRota(r.dataset.rota, r.value);
+  desenhar();
+});

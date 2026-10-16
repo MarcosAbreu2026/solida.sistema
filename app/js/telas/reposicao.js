@@ -16,7 +16,7 @@
 //   - célula vazia = não contado: nunca vira falta.
 
 import { html, numero, data as fmtData } from '../formato.js';
-import { hojeISO, diasEntre } from '../datas.js';
+import { hojeISO, diasEntre, somarDias } from '../datas.js';
 import { tempoEntre, enderecoDe } from '../geografia.js';
 
 export const ABAS_TRANSPORTE = [
@@ -28,7 +28,11 @@ const NOME_FIXO = { galpao: 'Galpão', anderson: 'Carro do Anderson', nascimento
 const DIAS_VELHO = 15; // aferição de 15 em 15 dias (a compra demora a chegar)
 // consumível = categoria CON + produtos de limpeza que se gastam (a obra compra); pá de lixo, rodo e vassoura continuam
 const GASTA = /[áa]gua sanit|[áa]lcool|desinfet|detergente|esponja|multiuso|papel higi|sab[ãa]o|saco de lixo|pano de ch[ãa]o/i;
-const consumivelItem = (i) => i.categoria === 'CON' || (i.categoria === 'LIM' && GASTA.test(i.item || ''));
+// Bucha, parafuso e prego (unidades) entram na reposição, mesmo sendo CON: toda obra tem que ter pelo menos 50 de cada, além de 1 caixa de cada
+const ENTRAM = new Set(['CON9', 'CON61', 'CON67']);
+const consumivelItem = (i) => !ENTRAM.has(i.cod) && (i.categoria === 'CON' || (i.categoria === 'LIM' && GASTA.test(i.item || '')));
+// Feito no próprio galpão: não se compra, fabrica (mesa do escritório)
+const FABRICA = new Set(['ESC3']);
 const num =(v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 
 // Quantidade de uma célula: número, vazio (não contado) ou texto tipo "2-7D" / "7-7D, 2-5D"
@@ -71,8 +75,8 @@ export function calcular(est) {
   const nomeDe = (id) => (por.get(id) ? por.get(id).nome : id);
 
   const movs = new Map(); // `${de}>${para}|${cod}`
-  const compras = [];
-  const mover = (i, de, para, n, nota = '') => {
+  const compras = []; const fabricar = [];
+  const mover =(i, de, para, n, nota = '') => {
     if (n <= 0) return;
     const k = `${de}>${para}|${i.cod}`;
     const m = movs.get(k) || { cod: i.cod, item: i.item, cat: i.categoria, de, para, qtd: 0, nota };
@@ -123,12 +127,12 @@ export function calcular(est) {
         }
       }
       let comprar = 0;
-      if (resta > 0 && !consumivel) { comprar = resta; compras.push({ cod: i.cod, item: i.item, cat: i.categoria, para: f.id, qtd: resta }); }
+      if (resta > 0 && !consumivel) { comprar = resta; (FABRICA.has(i.cod) ? fabricar : compras).push({ cod: i.cod, item: i.item, cat: i.categoria, para: f.id, qtd: resta }); }
       l.faltas.push({ cod: i.cod, item: i.item, cat: i.categoria, tem: mostra(f.tem), min: f.min, falta: f.falta, como, comprar, repoeObra: consumivel && l.tipo === 'obra' });
     }
   }
   // sobra de obra que ficou sem destino e o galpão está abaixo do mínimo já foi tratada como falta do galpão
-  return { locais, movs: [...movs.values()], compras, nomeDe };
+  return { locais, movs: [...movs.values()], compras, fabricar, nomeDe };
 }
 
 // ---------------------------------------------------------------- tela
@@ -147,7 +151,7 @@ function blocoLocal(l, nomeDe) {
   const comoTxt = (f) => {
     if (f.repoeObra) return html`<span class="rp-obra-repoe">a obra compra e repõe</span>`;
     const partes = f.como.map((c) => html`<span class="rp-via rp-${c.de === 'galpao' ? 'galpao' : 'obra'}">${c.de === 'galpao' ? 'Galpão' : nomeDe(c.de)} envia ${un(c.qtd)}</span>`);
-    if (f.comprar) partes.push(html`<span class="rp-via rp-compra">comprar ${un(f.comprar)}</span>`);
+    if (f.comprar) partes.push(html`<span class="rp-via rp-compra">${FABRICA.has(f.cod) ? 'fabricar' : 'comprar'} ${un(f.comprar)}</span>`);
     return html`${partes}`;
   };
   return html`<details class="caixa rp-local ${nFalta ? 'rp-falta' : 'rp-ok'}" ${nFalta && !l.finalizada ? html.seguro('open') : ''}>
@@ -225,10 +229,49 @@ function rotaDaCompra(compras, por) {
   let ids = [...new Set(daObra.map((c) => c.para))];
   if (!ids.length && !dosCarros.length) return [];
   if (ids.length <= 7) { let melhorC = Infinity; for (const o of permutacoes(ids)) { const c = custoDaRota(o); if (c < melhorC) { melhorC = c; ids = o; } } }
-  const paradas = [{ id: 'galpao', pegar: soma(daObra), deixar: [], carros: dosCarros.map((c) => ({ ...c, para: c.para })) }];
+  const paradas = [{ id: 'galpao', pegar: daObra.map((c) => ({ cod: c.cod, item: c.item, qtd: c.qtd, para: c.para })), deixar: [], carros: dosCarros.map((c) => ({ ...c, para: c.para })) }];
   for (const id of ids) paradas.push({ id, pegar: [], deixar: soma(daObra.filter((c) => c.para === id)), carros: [] });
   paradas.push({ id: 'galpao', volta: true, pegar: [], deixar: [], carros: [] });
   return marcarTempos(paradas.filter((p, k) => k === 0 || p.volta || p.pegar.length || p.deixar.length || p.carros.length));
+}
+
+// ---------------------------------------------------------------- rota em texto (para colar no WhatsApp)
+// data e horário de saída da rota de hoje (escolhidos na tela; ficam só enquanto a página está aberta)
+const cfgRota = { data: null, saida: '08:00' };
+export function ajustarRota(campo, valor) { if (campo === 'data') cfgRota.data = valor || null; else if (campo === 'saida') cfgRota.saida = valor || '08:00'; }
+const dataDaRota = () => {
+  if (cfgRota.data) return cfgRota.data;
+  let d = hojeISO(); // fim de semana: segunda-feira
+  const dow = new Date(`${d}T12:00:00`).getDay();
+  if (dow === 6) d = somarDias(d, 2); else if (dow === 0) d = somarDias(d, 1);
+  return d;
+};
+const DIAS_SEMANA = ['DOMINGO', 'SEGUNDA-FEIRA', 'TERÇA-FEIRA', 'QUARTA-FEIRA', 'QUINTA-FEIRA', 'SEXTA-FEIRA', 'SÁBADO'];
+const hhmm = (min) => `${Math.floor(min / 60)}h${String(min % 60).padStart(2, '0')}`;
+const arredonda5 = (min) => Math.ceil(min / 5) * 5;
+const lista = (xs) => xs.map((m) => `${m.item} x${un(m.qtd)}`).join(', ');
+const nomeTxt = (id, nome, por) => ((por.get(id) || {}).tipo === 'obra' ? String(nome(id)).toUpperCase() : nome(id));
+const PARADA_GALPAO_MIN = 30; const PARADA_OBRA_MIN = 20;
+
+// Uma linha por parada: "8h00 - Galpão - retirar ... para MO533 / retirar ... para MO581"
+function textoDaRota(paradas, titulo, cabecalho, nome, por, saidaMin) {
+  const tipo = (id) => (por.get(id) || {}).tipo;
+  const destino = (id) => (tipo(id) === 'galpao' ? 'o galpão' : tipo(id) === 'carro' ? nome(id).replace('Carro do ', 'o carro do ') : nomeTxt(id, nome, por));
+  const agrupa = (ms) => { const g = new Map(); for (const m of ms) { if (!g.has(m.para)) g.set(m.para, []); g.get(m.para).push(m); } return g; };
+  const linhas = []; let relogio = saidaMin; let atual = 'galpao';
+  paradas.forEach((p, k) => {
+    if (k > 0) relogio = arredonda5(relogio + tempoEntre(atual, p.id) / 60);
+    atual = p.id;
+    const acoes = [];
+    if (p.deixar.length) acoes.push(`Deixar ${lista(soma(p.deixar))}`);
+    for (const [para, ms] of agrupa(p.pegar)) acoes.push(`retirar ${lista(soma(ms))} para ${destino(para)}`);
+    if (p.carros.length) acoes.push(`${p.volta ? 'deixar nos carros' : 'colocar nos carros'}: ${p.carros.map((m) => `${m.item} x${un(m.qtd)} (${nome(m.para).replace('Carro do ', 'carro do ')})`).join(', ')}`);
+    const eFim = p.volta;
+    const acao = eFim ? ['voltar ao galpão', ...acoes].join(' / ') : (acoes.join(' / ') || '—');
+    linhas.push(`${hhmm(relogio)} - ${nomeTxt(p.id, nome, por)} - ${acao}`);
+    relogio += p.id === 'galpao' ? PARADA_GALPAO_MIN : PARADA_OBRA_MIN;
+  });
+  return [cabecalho, '', titulo, '', ...linhas.flatMap((l) => [l, ''])].join('\n').trim();
 }
 
 export function render(est) {
@@ -241,30 +284,29 @@ export function render(est) {
   const encerradas = r.locais.filter((l) => l.tipo === 'obra' && l.finalizada);
   const outros = r.locais.filter((l) => l.tipo !== 'obra');
   const nome = r.nomeDe;
-  const compraPorItem = new Map();
-  for (const c of r.compras) { const x = compraPorItem.get(c.cod) || { cod: c.cod, item: c.item, cat: c.cat, total: 0, onde: [] }; x.total += c.qtd; x.onde.push(`${nome(c.para)}: ${un(c.qtd)}`); compraPorItem.set(c.cod, x); }
-  const compras = [...compraPorItem.values()].sort((a, b) => a.cod.localeCompare(b.cod, 'pt-BR', { numeric: true }));
+  const agrupar = (lista0) => { const m = new Map(); for (const c of lista0) { const x = m.get(c.cod) || { cod: c.cod, item: c.item, cat: c.cat, total: 0, onde: [] }; x.total += c.qtd; x.onde.push(`${nome(c.para)}: ${un(c.qtd)}`); m.set(c.cod, x); } return [...m.values()].sort((a, b) => a.cod.localeCompare(b.cod, 'pt-BR', { numeric: true })); };
+  const compras = agrupar(r.compras);
   const comprarJa = compras.filter((c) => c.cat !== 'MAQ');
   const confirmar = compras.filter((c) => c.cat === 'MAQ');
+  const fabricar = agrupar(r.fabricar);
   const rota1 = r.movs.length ? montarRota(r.movs, por) : [];
-  const rota2 = rotaDaCompra(r.compras, por);
+  const rota2 = rotaDaCompra([...r.compras, ...r.fabricar], por);
   const obrasComFalta = obras.filter((o) => o.faltas.length).length;
   const velhas = r.locais.filter((l) => l.velha && !l.finalizada);
   const resumo = (v, r1, r2 = '') => html`<div class="rp-kpi"><b>${v}</b><span>${r1}</span>${r2 ? html`<em>${r2}</em>` : ''}</div>`;
 
-  const chips = (lista, cls) => lista.map((m) => html`<span class="rt-item rt-${cls}" title="${m.nota || ''}">${m.item} <b>×${un(m.qtd)}</b>${m.nota ? html` <i>(${m.nota})</i>` : ''}</span>`);
-  const nomeCarro = (id) => nome(id).replace('Carro do ', 'carro do ');
-  const parada = (p, n) => html`<li class="rt-parada ${p.volta ? 'rt-volta' : ''}"><span class="rt-n">${n}</span><div class="rt-corpo">
-      <b class="rt-local">${nome(p.id)}${p.volta ? html` <em>(voltar)</em>` : ''}${p.min ? html` <em>· ≈ ${p.min} min de carro</em>` : ''}</b>
-      ${enderecoDe(p.id) ? html`<div class="rt-end">${enderecoDe(p.id)}</div>` : ''}
-      ${p.pegar.length ? html`<div class="rt-linha"><span class="rt-rot rt-pegar">pegar</span>${chips(soma(p.pegar), 'pegar')}</div>` : ''}
-      ${p.deixar.length ? html`<div class="rt-linha"><span class="rt-rot rt-deixar">deixar</span>${chips(p.id === 'galpao' ? soma(p.deixar) : p.deixar.length ? soma(p.deixar) : [], 'deixar')}</div>` : ''}
-      ${p.carros.length ? html`<div class="rt-linha"><span class="rt-rot rt-carro">${p.volta ? 'deixar nos carros' : 'colocar nos carros'}</span>${chips(p.carros.map((m) => ({ ...m, item: `${m.item} (${nomeCarro(m.para)})` })), 'carro')}</div>` : ''}
-    </div></li>`;
+  const dataRota = dataDaRota();
+  const [hh, mm] = cfgRota.saida.split(':').map(Number);
+  const saidaMin = (hh || 8) * 60 + (mm || 0);
+  const dd = new Date(`${dataRota}T12:00:00`);
+  const cab1 = `*ROTA ${DIAS_SEMANA[dd.getDay()]} ${fmtData(dataRota).slice(0, 5)}*`;
+  const texto1 = rota1.length ? textoDaRota(rota1, 'Rota de Reposição de Ferramentas', cab1, nome, por, saidaMin) : '';
+  const texto2 = rota2.length ? textoDaRota(rota2, 'Rota de Reposição de Ferramentas (compra)', '*ROTA - ENTREGA DA COMPRA*', nome, por, saidaMin) : '';
+  const blocoTexto = (txt, n) => html`<div class="rt-texto-caixa"><pre class="rt-texto" data-texto-rota="${n}">${txt}</pre><button type="button" class="botao rt-copiar" data-copiar="${n}">Copiar texto</button></div>`;
 
   return html`<div class="rp">
-    <div class="rp-cab-imp"><h1>Reposição de ferramentas obrigatórias · Rota e compras</h1><p>Impresso em ${fmtData(hojeISO())} · planilha ${est.arquivo || ''} · Sólida Construção</p></div>
-    <div class="rp-barra"><p class="pequeno">Só itens <b>obrigatórios de obra</b> (${est.itens.filter((i) => num(i.minObra) > 0 && !consumivelItem(i)).length} itens, sem consumíveis). Planilha ${est.arquivo || ''}, lida do Drive.</p><button type="button" class="botao" data-imprimir>🖨 Imprimir</button></div>
+    <div class="rp-cab-imp"><h1>Reposição de ferramentas obrigatórias</h1><p>Impresso em ${fmtData(hojeISO())} · planilha ${est.arquivo || ''} · Sólida Construção</p></div>
+    <div class="rp-barra"><p class="pequeno">Só itens <b>obrigatórios de obra</b> (${est.itens.filter((i) => num(i.minObra) > 0 && !consumivelItem(i)).length} itens, sem consumíveis; bucha, parafuso e prego entram). Planilha ${est.arquivo || ''}, lida do Drive.</p><button type="button" class="botao" data-imprimir>🖨 Imprimir</button></div>
 
     <section class="ob-sec rp-resumo">
       ${resumo(comprarJa.length, comprarJa.length === 1 ? 'item para comprar' : 'itens para comprar', `${un(comprarJa.reduce((s, c) => s + c.total, 0))} unidades`)}
@@ -275,21 +317,25 @@ export function render(est) {
     ${velhas.length ? html`<p class="aviso rp-aviso">⚠ <b>Contagem antiga ou sem data</b> em: ${velhas.map((l) => `${l.nome}${l.conferido ? ` (${dm(l.conferido)})` : ''}`).join(', ')}. Quanto mais velha a contagem, menos confiável a lista abaixo; atualize a planilha de ferramentas obrigatórias dessas obras.</p>` : ''}
     ${encerradas.length ? html`<p class="pequeno rp-nota">Obras encerradas, fora desta lista: <b>${encerradas.map((l) => l.nome).join(', ')}</b>.</p>` : ''}
 
-    <section class="ob-sec"><div class="painel-h"><h2>1 · Lista de compras</h2><p>Uma compra só para todas as obras; tudo chega no galpão. Sem valores.</p></div>
+    <section class="ob-sec rp-compras"><div class="painel-h"><h2>1 · Lista de compras</h2><p>Uma compra só para todas as obras; tudo chega no galpão. Sem valores.</p></div>
       ${comprarJa.length ? html`<article class="cartao"><table class="tab rp-tab"><thead><tr><th>Item</th><th class="n">Comprar</th><th>Para repor em</th></tr></thead><tbody>
         ${comprarJa.map((c) => html`<tr><td><b>${c.item}</b> <span class="pequeno">${c.cod}</span></td><td class="n"><b>${un(c.total)}</b></td><td class="pequeno">${c.onde.join(' · ')}</td></tr>`)}
       </tbody></table></article>` : html`<p class="pequeno">Nada para comprar agora.</p>`}
-      ${confirmar.length ? html`<article class="cartao rp-confirmar"><header class="cartao-cab"><h3>Maquinário: confirmar antes de comprar</h3><span class="pequeno">obrigatório, mas pode não estar em uso em todas as obras</span></header><table class="tab rp-tab"><thead><tr><th>Maquinário</th><th class="n">Falta</th><th>Onde falta</th></tr></thead><tbody>
+      ${fabricar.length ? html`<article class="cartao rp-confirmar"><header class="cartao-cab"><h3>Fabricar no galpão (não comprar)</h3></header><table class="tab rp-tab"><tbody>
+        ${fabricar.map((c) => html`<tr><td><b>${c.item}</b> <span class="pequeno">${c.cod}</span></td><td class="n"><b>${un(c.total)}</b></td><td class="pequeno">${c.onde.join(' · ')}</td></tr>`)}
+      </tbody></table></article>` : ''}
+      ${confirmar.length ? html`<article class="cartao rp-confirmar"><header class="cartao-cab"><h3>Maquinário: confirmar antes de comprar</h3><span class="pequeno">obrigatório, mas pode não estar em uso em todas as obras</span></header><table class="tab rp-tab"><tbody>
         ${confirmar.map((c) => html`<tr><td><b>${c.item}</b> <span class="pequeno">${c.cod}</span></td><td class="n"><b>${un(c.total)}</b></td><td class="pequeno">${c.onde.join(' · ')}</td></tr>`)}
       </tbody></table><p class="pequeno">Pergunte ao gestor de cada obra se a obra usa mesmo; só compre o que for confirmado.</p></article>` : ''}
     </section>
 
-    <section class="ob-sec"><div class="painel-h"><h2>2 · Rota de hoje</h2><p>Com o que já existe: sai do galpão, passa por cada obra e volta${rota1.totalMin ? ` · ≈ ${rota1.totalMin} min de estrada` : ''}</p></div>
-      ${rota1.length ? html`<ol class="rt-rota">${rota1.map((p, k) => parada(p, k + 1))}</ol>` : html`<p class="pequeno">Nenhuma movimentação necessária com o que já existe.</p>`}
+    <section class="ob-sec rp-rotas"><div class="painel-h"><h2>2 · Rota de hoje</h2><p>Com o que já existe: sai do galpão, passa por cada obra e volta${rota1.totalMin ? ` · ≈ ${rota1.totalMin} min de estrada` : ''}</p></div>
+      <div class="rt-ajuste"><label>Dia <input type="date" value="${dataRota}" data-rota="data"></label><label>Saída do galpão <input type="time" value="${cfgRota.saida}" data-rota="saida"></label><span class="pequeno">Horários estimados: tempo de carro + ${PARADA_GALPAO_MIN} min no galpão e ${PARADA_OBRA_MIN} min em cada obra.</span></div>
+      ${rota1.length ? blocoTexto(texto1, 1) : html`<p class="pequeno">Nenhuma movimentação necessária com o que já existe.</p>`}
     </section>
 
-    <section class="ob-sec"><div class="painel-h"><h2>3 · Rota quando a compra chegar</h2><p>Leva do galpão o que foi comprado para quem precisa (sem o maquinário a confirmar)${rota2.totalMin ? ` · ≈ ${rota2.totalMin} min de estrada` : ''}</p></div>
-      ${rota2.length ? html`<ol class="rt-rota">${rota2.map((p, k) => parada(p, k + 1))}</ol>` : html`<p class="pequeno">Nada a levar depois da compra.</p>`}
+    <section class="ob-sec rp-rotas"><div class="painel-h"><h2>3 · Rota quando a compra chegar</h2><p>Leva do galpão o que foi comprado ou fabricado para quem precisa (sem o maquinário a confirmar)${rota2.totalMin ? ` · ≈ ${rota2.totalMin} min de estrada` : ''}</p></div>
+      ${rota2.length ? blocoTexto(texto2, 2) : html`<p class="pequeno">Nada a levar depois da compra.</p>`}
     </section>
 
     <details class="caixa rp-detalhe"><summary><span class="caixa-tit">Detalhe: o que falta em cada lugar</span><span class="contador">${obrasComFalta}</span><span class="pequeno">${obrasComFalta} de ${obras.length} obras com falta · clique para ver item por item</span></summary><div class="caixa-corpo">
@@ -301,9 +347,9 @@ export function render(est) {
     <details class="caixa rp-como"><summary><span class="caixa-tit">Como ler esta tela</span><span class="pequeno">clique para ver</span></summary><div class="caixa-corpo"><ol>
       <li><b>Mínimo:</b> cada lugar (obra, carro, galpão) tem uma quantidade mínima de cada item. <b>Sobra</b> é o que passa do mínimo; <b>falta</b> é o que está abaixo.</li>
       <li><b>Ordem para resolver uma falta:</b> 1º a sobra do galpão · 2º a sobra de outra obra · 3º comprar. Obra abaixo do mínimo nunca cede; carro nunca cede.</li>
-      <li><b>Rota de hoje:</b> uma saída só. Em cada parada, "pegar" é o que carrega ali e "deixar" é o que entrega ali; as paradas estão na ordem em que o que uma obra cede chega na outra.</li>
-      <li><b>Rota quando a compra chegar:</b> a compra é uma só e entra no galpão; então o Anderson leva para cada lugar o que falta, de uma vez.</li>
-      <li><b>Quebrada ou em conserto</b> não conta como disponível. <b>Consumíveis</b> não aparecem: cada obra compra os seus.</li>
+      <li><b>Rotas em texto:</b> uma saída só, na ordem que gasta menos tempo de carro. Cada linha é uma parada com o horário estimado; use "Copiar texto" para mandar no WhatsApp.</li>
+      <li><b>Rota quando a compra chegar:</b> a compra é uma só e entra no galpão; então o Anderson leva para cada lugar o que falta, de uma vez. A mesa do escritório é fabricada no galpão.</li>
+      <li><b>Quebrada ou em conserto</b> não conta como disponível. <b>Consumíveis</b> não aparecem (cada obra compra os seus), exceto bucha, parafuso e prego: toda obra precisa de 1 caixa de cada e de pelo menos 50 de cada.</li>
       <li><b>Escada:</b> a contagem vem como "2-7D" = 2 escadas de 7 degraus; o sistema soma e mostra o tipo.</li>
       <li><b>Maquinário</b> é obrigatório, mas pode não estar em uso em todas as obras; fica à parte para confirmar antes de comprar.</li>
       <li><b>A contagem é de 15 em 15 dias</b>, porque a compra demora a chegar. Item sem contagem na planilha <b>não conta como falta</b>.</li>
