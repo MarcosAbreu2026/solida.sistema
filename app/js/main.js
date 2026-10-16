@@ -6,6 +6,7 @@ import { carregarDados, carregarPainel, carregarProdutividade, carregarDrive, ca
 import * as terceiros from './telas/terceirizados.js';
 import * as ferrChk from './telas/ferramentas-checklist.js';
 import * as reposicao from './telas/reposicao.js';
+import * as ordenar from './ordenar.js';
 import { montarBase } from './regras.js';
 import { periodo, hojeISO, ehData } from './datas.js';
 import { html, esc, descreverPeriodo } from './formato.js';
@@ -479,6 +480,7 @@ function desenhar() {
     out = `<div class="erro">Erro ao montar esta tela: ${esc(e.message)}</div>`;
   }
   $('#conteudo').innerHTML = out;
+  ordenar.aplicar();   // tabelas ordenáveis: reaplica a ordem escolhida
   desenharPedido();
   // Projetos: clicar numa obra do ranking abre as disciplinas dela
   const obraAberta = tela === 'projetos' && rota.sub === 'obras' && rota.params.get('obra');
@@ -1015,6 +1017,7 @@ setInterval(atualizar, ATUALIZAR_A_CADA_MS);
 
 // Quadro da semana › Funções: arrastar, redimensionar e abrir os cartões
 meudia.instalarQuadro(() => desenhar());
+ordenar.instalar();
 
 // Reposição › rota: dia e horário de saída (a rota em texto se refaz)
 document.addEventListener('change', (e) => {

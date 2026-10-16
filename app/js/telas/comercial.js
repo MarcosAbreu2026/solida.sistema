@@ -113,7 +113,7 @@ export function abaOrcamentos(dados, anoSel) {
 
   const tabelaGrupo = (titulo, sub, grupos) => html`<section class="secao">
     <div class="painel-h" style="margin-bottom:14px"><h2>${titulo}</h2><p>${sub}</p></div>
-    <div class="tabela-rolagem"><table class="tab">
+    <div class="tabela-rolagem"><table class="tab ordenavel">
       <thead><tr><th></th><th>Orçados</th><th>Fechados</th><th>Conversão</th><th>Valor médio orçado</th><th>Valor médio aprovado</th><th>Área média</th><th>Tempo médio</th></tr></thead>
       <tbody>${grupos.filter((g) => g.xs.length).map((g) => { const s = resumo(g.xs); return html`<tr>
         <td><b>${g.nome}</b></td><td>${s.n}</td><td>${s.fech}</td>
@@ -131,7 +131,7 @@ export function abaOrcamentos(dados, anoSel) {
   ];
 
   const lista = html`<details class="caixa"><summary><span class="caixa-tit">Todos os orçamentos de ${ano} (${xs.length})</span><span class="pequeno">clique para ver</span></summary>
-    <div class="tabela-rolagem" style="margin:0 22px 18px"><table class="tab">
+    <div class="tabela-rolagem" style="margin:0 22px 18px"><table class="tab ordenavel">
       <thead><tr><th>Ref.</th><th>Arquitetura</th><th>Cliente</th><th>Tipo</th><th>Área</th><th>Valor</th><th>Tempo</th><th>Situação</th><th>Observações</th></tr></thead>
       <tbody>${[...xs].reverse().map((x) => html`<tr>
         <td class="cod">${x.ref}</td><td>${x.arq || html`<span class="muted">—</span>`}</td><td>${x.cliente || ''}</td><td>${x.tipo || ''}</td>
@@ -205,7 +205,7 @@ export function abaArquiteturas(dados) {
         <b>Reatar contato: ${reatar.length} arquiteturas que mandavam orçamentos e pararam ou caíram em ${atual}</b>
         <span class="pequeno" style="color:inherit">Primeiro as que já fecharam obra com a Sólida.</span>
       </div>
-      <div class="tabela-rolagem"><table class="tab">
+      <div class="tabela-rolagem"><table class="tab ordenavel">
         <thead><tr><th>Arquitetura</th>${anos.map((a) => html`<th>${a}</th>`)}<th>Fechou com a Sólida</th><th>Último orçamento</th></tr></thead>
         <tbody>${reatar.map((a) => html`<tr>
           <td><b>${a.nome}</b></td>${linhaAnos(a)}
@@ -216,7 +216,7 @@ export function abaArquiteturas(dados) {
 
     <section class="secao">
       <div class="painel-h" style="margin-bottom:14px"><h2>Quem mais envia em ${atual}</h2><p>As 10 arquiteturas com mais orçamentos no ano.</p></div>
-      <div class="tabela-rolagem"><table class="tab">
+      <div class="tabela-rolagem"><table class="tab ordenavel">
         <thead><tr><th>Arquitetura</th>${anos.map((a) => html`<th>${a}</th>`)}<th>Fechados (todos os anos)</th><th>Conversão</th></tr></thead>
         <tbody>${topAtual.map((a) => html`<tr><td><b>${a.nome}</b></td>${linhaAnos(a)}<td>${a.fech}</td><td>${a.conv == null ? html`<span class="muted">—</span>` : `${a.conv}%`}</td></tr>`)}</tbody>
       </table></div>
@@ -224,7 +224,7 @@ export function abaArquiteturas(dados) {
 
     ${menosAtual.length ? html`<section class="secao">
       <div class="painel-h" style="margin-bottom:14px"><h2>Quem menos enviou em ${atual}</h2><p>Mandaram só 1 orçamento no ano e já tinham mandado antes. As que caíram muito estão em "Reatar contato".</p></div>
-      <div class="tabela-rolagem"><table class="tab">
+      <div class="tabela-rolagem"><table class="tab ordenavel">
         <thead><tr><th>Arquitetura</th>${anos.map((a) => html`<th>${a}</th>`)}<th>Fechados (todos os anos)</th></tr></thead>
         <tbody>${menosAtual.filter((a) => a.antes).map((a) => html`<tr><td><b>${a.nome}</b></td>${linhaAnos(a)}<td>${a.fech}</td></tr>`)}</tbody>
       </table></div>
@@ -233,7 +233,7 @@ export function abaArquiteturas(dados) {
     </section>` : ''}
 
     <details class="caixa"><summary><span class="caixa-tit">Todas as arquiteturas (${arqs.length})</span><span class="pequeno">clique para ver</span></summary>
-      <div class="tabela-rolagem" style="margin:0 22px 18px"><table class="tab">
+      <div class="tabela-rolagem" style="margin:0 22px 18px"><table class="tab ordenavel">
         <thead><tr><th>Arquitetura</th>${anos.map((a) => html`<th>${a}</th>`)}<th>Total</th><th>Fechados</th><th>Conversão</th></tr></thead>
         <tbody>${[...arqs].sort((a, b) => b.total - a.total).map((a) => html`<tr><td>${a.nome}</td>${linhaAnos(a)}<td>${a.total}</td><td>${a.fech}</td><td>${a.conv == null ? '—' : `${a.conv}%`}</td></tr>`)}</tbody>
       </table></div></details>
