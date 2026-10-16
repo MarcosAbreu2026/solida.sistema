@@ -61,3 +61,8 @@ Gráficos: obras em aberto por situação; diárias por semana (8 semanas até a
 - **Controle Operacional Pós-Obra R06** (planilha do Ênio, 09/10/2026): situação, relato, obs, responsável, prazos, materiais e a coluna "agenda" (virou a Agenda de 12 a 19/10).
 - **PO_CONTROLE_COBRANÇA R40**: aba ANDAMENTO inteira e aba FINALIZADO a partir de 17/08/2026 → Financeiro.
 - Divergências encontradas entre as duas (ficou valendo o Controle Operacional): drenagem do Junior (FINALIZADO na cobrança × Planejamento na operação); Po88 ("finalizado, cobrar final" × Execução); laudo ArpoBrasil (recebido × obs "aguardando pagamento").
+
+## 9. Atualização (16/10/2026): leitura direta dos arquivos de origem
+A planilha Integrada R01 foi uma consolidação feita à mão e parou em 13/10. A equipe continua atualizando as planilhas de origem
+(Controle Operacional R08, Controle de Cobrança R42, Agenda semanal M11), então o sistema agora lê direto delas (`scripts/posobra.ps1`).
+As regras de cálculo (§2 a §7) continuam as mesmas; muda só a origem dos dados e a padronização dos nomes de obra.

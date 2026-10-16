@@ -144,12 +144,20 @@ function telaPosObraPlanilha(rota) {
   return {
     abas,
     conteudo: String(html`<div class="pagina" style="margin-top:26px">
-      <p class="pequeno" style="margin:0">Planilha SL_Pos Obra_Controle Integrado (exportada em dados/json).</p>
+      <p class="pequeno" style="margin:0">${fonteDoPosObra()}</p>
       ${barra}${corpo}</div>`),
   };
 }
 
 // ---------------------------------------------------------------- desenho
+
+// de onde vêm os dados do pós-obra: os arquivos mais novos da pasta PÓS OBRA do Drive
+function fonteDoPosObra() {
+  const f = estado.base && estado.base.fonte;
+  if (!f) return 'Dados do pós-obra lidos da planilha integrada (cópia de 13/10).';
+  const nome = (x) => String(x || '').replace(/.xlsx$/i, '');
+  return `Lido do Drive: ${[f.operacional, f.cobranca, f.agenda].filter(Boolean).map(nome).join(' · ')}${f.lidoEm ? ` (leitura de ${new Date(f.lidoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })})` : ''}. Quando a equipe salva uma revisão nova, o sistema passa a ler a nova.`;
+}
 
 function desenharNav(sel) {
   const CFG = estado.cfg;

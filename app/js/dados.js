@@ -48,5 +48,8 @@ export async function carregarDados() {
       return [t, await r.json()];
     }),
   );
-  return Object.fromEntries(partes);
+  const dados = Object.fromEntries(partes);
+  // de quais arquivos do Drive o pós-obra foi lido (Controle Operacional, Cobrança e Agenda: sempre a revisão mais nova)
+  try { dados._fonte = NA_NUVEM ? await baixar('posobra-estado') : await (await fetch(`${PASTA}posobra-estado.json`, { cache: 'no-store' })).json(); } catch { dados._fonte = null; }
+  return dados;
 }

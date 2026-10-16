@@ -26,6 +26,18 @@ dentro do sistema fica para a Fase 2.
   , que manda os dados para o armazenamento "dados" do Supabase:  (completo) e
    (sem diárias, custos e área financeira). A chave de serviço fica em  (fora do GitHub).
 
+## Pós-obra: lido direto dos arquivos que a equipe atualiza
+- `scripts/posobra.ps1` (chamado por `exportar-drive.ps1`) lê, a cada rodada, a revisão de **maior número** de:
+  `PÓS OBRACONTROLEControle Operacional Pós-Obra_R<nn>` (obras e serviços: uma linha = uma OS),
+  `PÓS OBRAPO_CONTROLE_COBRANÇA_R<nn>` (financeiro: aba ANDAMENTO + FINALIZADO de 17/08/2026 em diante) e
+  `PÓS OBRACONTROLEAgendaPAS_Programação da Agenda Semanal_M<nn>` (agenda: uma aba por semana).
+  Quando a equipe salva uma revisão nova (R09, R43, M12…), o sistema passa a ler a nova sozinho. Só relê se algum arquivo mudou.
+- Gera `obras.json`, `servicos.json`, `agenda.json` e `financeiro.json` no mesmo formato de antes. `equipe.json` (nomes, apelidos e
+  diárias) e `listas.json` não vêm desses arquivos e continuam como estão: nome novo na agenda precisa entrar em `equipe.json` para contar diária.
+- Os nomes de obra mudam de um arquivo para o outro ("Po288 Quinzenal", "PO_88_2026…"): o número da obra manda; sem número vale a
+  tabela de apelidos no começo de `posobra.ps1`. A cópia antiga (planilha Integrada R01) fica em `dados/posobra-r01-backup/`.
+- O controle operacional não tem a data de conclusão de cada OS: "serviços concluídos no período" não conta as OS novas concluídas.
+
 ## Como abrir
 Dê dois cliques em **`iniciar.bat`**. Abre uma janela preta (deixe aberta) e o navegador em
 `http://localhost:8080/app/`. Não precisa instalar nada.

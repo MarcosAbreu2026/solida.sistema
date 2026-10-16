@@ -411,7 +411,7 @@ function Ler-Escopo([string]$pastaObra, [string]$codigo) {
   }
   return [ordered]@{ v = $VERSAO_LEITURA; arquivo = $arq.Name; modificado = $arq.LastWriteTime.ToString('o'); aba = $base; rev = $rev; data = $data; cliente = $cliente
     obs = if ($principal) { @($principal.obs) } else { @() }; grupos = if ($principal) { @($principal.grupos) } else { @() }; aditivos = $aditivos
-    abaGrade = $abaGrade; grade = $grades[$abaGrade]; colunasValor = (Colunas-Valor $abas[$abaGrade]) }
+    abaGrade = $abaGrade; grade = $(if ($abaGrade) { $grades[$abaGrade] } else { $null }); colunasValor = $(if ($abaGrade) { Colunas-Valor $abas[$abaGrade] } else { @() }) }
 }
 
 # coluna final da planilha de escopo/aditivo: S.total, ou a seguinte quando ela tem texto (situação/observação)
@@ -446,6 +446,7 @@ function Ler-Programacao([string]$pastaObra, [string]$codigo) {
   return [ordered]@{ v = $VERSAO_LEITURA; arquivo = $arq.Name; modificado = $arq.LastWriteTime.ToString('o'); tipo = $tipo; titulo = $tb.titulo; nota = $tb.nota; secoes = $tb.secoes }
 }
 . (Join-Path $PSScriptRoot 'evidencias.ps1')
+. (Join-Path $PSScriptRoot 'posobra.ps1')
 $obras = New-Object Collections.ArrayList
 foreach ($pasta in Get-ChildItem $pastaObras -Directory | Where-Object { $_.Name -match '^(Mo\d+[A-Z]?)[_ ]' -and $_.Name -notlike 'Moxxx*' }) {
   $codigo = [regex]::Match($pasta.Name, '^(Mo\d+[A-Z]?)').Groups[1].Value
@@ -482,6 +483,9 @@ foreach ($pasta in Get-ChildItem $pastaObras -Directory | Where-Object { $_.Name
 $jsonProj = [ordered]@{ geradoEm = (Get-Date).ToString('o'); pasta = 'SOLIDA GERAL\OPERACOES\OBRAS\<obra>\PROJETO'; obras = $obras }
 [IO.File]::WriteAllText((Join-Path $Saida 'projetos.json'), ($jsonProj | ConvertTo-Json -Depth 20 -Compress), $utf8)
 Gravar-Evidencias
+
+# Pós-obra: obras, serviços, agenda e financeiro, direto dos arquivos mais novos da pasta PÓS OBRA
+try { Exportar-PosObra $Saida } catch { Write-Host "Pós-obra: erro ao ler ($($_.Exception.Message))" }
 
 # ---------------------------------------------------------------- estoque de ferramentas
 

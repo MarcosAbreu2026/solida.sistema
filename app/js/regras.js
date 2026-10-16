@@ -180,6 +180,7 @@ export function montarBase(dados, hoje) {
     obras,
     obraPorNome: new Map(obras.map((o) => [o.obra, o])),
     listas: dados.listas || {},
+    fonte: dados._fonte || null,
   };
 }
 
