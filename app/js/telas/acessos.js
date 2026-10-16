@@ -21,8 +21,7 @@ export function render({ perfis = [], obras = [], msg = '', aviso = null, meuId 
     <div class="ac-quem"><b>${p.nome || p.usuario}</b><span class="pequeno">usuário: <b>${p.usuario || p.email}</b>${p.trocar_senha ? ' · ainda não criou a senha' : ''}${p.ativo === false ? ' · bloqueado' : ''}${p.id === meuId ? ' · você' : ''}</span></div>
     <label>Função<select name="funcao"><option value="">— escolher —</option>${opcoesFuncao(p.funcao)}</select></label>
     <div class="ac-obras"><span class="ac-rot">Obras <span class="pequeno">(funções de obra)</span></span>${caixinhasObras(obras, p.obras || [])}</div>
-    <label class="check"><input type="checkbox" name="ativo" ${p.ativo === false ? '' : html.seguro('checked')}> ativo</label>
-    <span class="ac-botoes"><button type="submit" class="botao on">Salvar</button>
+   <span class="ac-botoes"><button type="submit" class="botao on">Salvar</button>
       <button type="button" class="botao" data-redefinir-senha="${p.id}|${p.nome || p.usuario}">Nova senha</button>
       ${protegido ? '' : html`<button type="button" class="botao ac-excluir" data-excluir-login="${p.id}|${p.nome || p.usuario}">Excluir</button>`}</span>
     ${funcaoPorId(p.funcao || '').porObra && p.funcao && !(p.obras || []).length ? html`<span class="pequeno pendente">escolha as obras</span>` : ''}
@@ -51,7 +50,7 @@ export function render({ perfis = [], obras = [], msg = '', aviso = null, meuId 
       <p class="pequeno">O sistema gera uma senha provisória e mostra aqui uma vez. Usuário: letras minúsculas, sem acento (pode ter ponto, ex.: pedro.novais).</p>
     </section>
     <section class="secao"><h2>Equipe <span class="pequeno">${perfis.length}</span></h2>
-      <p class="pequeno">Excluir apaga o login e tudo o que a pessoa marcou no sistema (tarefas, publicações do feed). Para só impedir a entrada, desmarque "ativo".</p>
+      <p class="pequeno">Quem saiu da empresa: use <b>Excluir</b>. Isso apaga o login e tudo o que a pessoa marcou no sistema (tarefas, publicações do feed).</p>
       ${perfis.map(linha)}</section>
     <section class="secao"><h2>Abas de cada função</h2>
       <p class="pequeno">Marque o que cada função enxerga no menu. A Visão geral e o Perfil aparecem para todos; a diretoria vê tudo. Sem mexer, vale o padrão de cada função.</p>

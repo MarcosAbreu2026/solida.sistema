@@ -1395,3 +1395,10 @@ table.ordenavel th { cursor: pointer; user-select: none; white-space: nowrap; }
 table.ordenavel th:hover { color: var(--grafite); }
 table.ordenavel th.ord-asc::after { content: ' ▲'; font-size: 9px; }
 table.ordenavel th.ord-desc::after { content: ' ▼'; font-size: 9px; }
+
+/* Treinamentos */
+.tn-card { margin-top: 10px; }
+.tn-card.tn-feito > summary .caixa-tit { color: var(--muted); }
+.tn-ok { font-size: 11.5px; font-weight: 700; color: #2F6B43; background: #E1EFE5; padding: 1px 9px; border-radius: 999px; }
+.tn-passos { margin: 8px 0 14px; padding-left: 20px; display: flex; flex-direction: column; gap: 7px; font-size: 14px; line-height: 1.45; }
+.tn-ideias { margin: 8px 0; padding-left: 18px; display: flex; flex-direction: column; gap: 5px; font-size: 14px; }

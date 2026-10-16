@@ -374,7 +374,7 @@ function desenhar() {
     nuvem.listarPerfis().then((ps) => { if (rotaAtual().tela === 'acessos') $('#conteudo').innerHTML = `<div>${acessos.render({ perfis: ps, obras: obrasDeAcesso(), meuId: nuvem.perfilAtual() && nuvem.perfilAtual().id, msg: estado.acessosMsg || '', aviso: estado.acessosAviso })}</div>`; estado.acessosMsg = ''; estado.acessosAviso = null; });
     return;
   }
-  if (tela === 'treinamentos') { $('#conteudo').innerHTML = `<div>${treinamentos.render()}</div>`; return; }
+  if (tela === 'treinamentos') { $('#conteudo').innerHTML = `<div>${treinamentos.render({ todos: rota.params.get('todos') === '1', aberto: estado.treinAberto })}</div>`; return; }
   if (tela === 'perfil') {
     const eu = { chave: idPessoa(), nome: sessao().nome, funcao: funcaoAtual().id, obras: obrasDaPessoa() };
     const pAlvo = rota.params.get('p'); const reg = lerPessoasTarefas();
@@ -700,6 +700,8 @@ function configurar() {
       window.print();
       return;
     }
+    const tn = e.target.closest('[data-trein]');
+    if (tn) { treinamentos.alternarFeito(tn.dataset.trein); estado.treinAberto = tn.dataset.trein; desenhar(); return; }
     const cp = e.target.closest('[data-copiar]');
     if (cp) {
       const el = document.querySelector(`[data-texto-rota="${cp.dataset.copiar}"]`);
@@ -933,7 +935,7 @@ function configurar() {
     const funcao = fd.get('funcao') || null; const obras = fd.getAll('obras');
     if (!funcao) { alert('Escolha a função da pessoa.'); return; }
     if (funcaoPorId(funcao).porObra && !obras.length) { alert('Escolha pelo menos uma obra para esta função.'); return; }
-    try { await nuvem.salvarPerfil(f.dataset.acesso, { funcao, obras, ativo: !!fd.get('ativo') }); estado.acessosMsg = 'Salvo.'; desenhar(); }
+    try { await nuvem.salvarPerfil(f.dataset.acesso, { funcao, obras }); estado.acessosMsg = 'Salvo.'; desenhar(); }
     catch (err) { alert(`Não foi possível salvar (${err.message || err}).`); }
   });
   // Feed: publicar, comentar, curtir, fixar e apagar
