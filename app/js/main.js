@@ -1055,6 +1055,24 @@ document.addEventListener('change', (e) => {
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && e.target.matches && e.target.matches('input[data-atas-filtro]')) { e.preventDefault(); trocarQuery({ [e.target.dataset.atasFiltro]: e.target.value || null }); }
 });
+// reprogramar o prazo de uma pendência (guarda o prazo original; vira "reprogramada")
+document.addEventListener('change', async (e) => {
+  const d = e.target.closest && e.target.closest('[data-pend-prazo]'); if (!d || !d.value) return;
+  try { await atas.reprogramar(d.dataset.pendPrazo, d.value); desenhar(); } catch (err) { alert(`Não foi possível mudar o prazo (${err.message || err}).`); }
+});
+// nova pendência avulsa (sem ata), aberta pelo + de cada caixinha do quadro por prazo
+document.addEventListener('click', (e) => {
+  const nova = e.target.closest && e.target.closest('[data-av-nova]');
+  if (nova) {
+    const antigo = document.getElementById('at-modal'); if (antigo) antigo.remove();
+    const m = document.createElement('div'); m.id = 'at-modal'; m.className = 'at-modal';
+    m.innerHTML = `<div class="at-modal-caixa">${String(atas.formAvulsa(obrasDeAtas(), nova.dataset.avNova))}</div>`;
+    document.body.appendChild(m); const campo = m.querySelector('[name="p_assunto"]'); if (campo) campo.focus();
+    return;
+  }
+  if ((e.target.closest && e.target.closest('[data-av-fechar]')) || (e.target.id === 'at-modal')) { const m = document.getElementById('at-modal'); if (m) m.remove(); }
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { const m = document.getElementById('at-modal'); if (m) m.remove(); } });
 document.addEventListener('click', async (e) => {
   const add = e.target.closest('[data-pf-add]');
   if (add) { document.getElementById('pend-linhas').insertAdjacentHTML('beforeend', atas.linhaForm()); return; }
@@ -1078,6 +1096,7 @@ document.addEventListener('submit', async (e) => {
       if (!setorA) { alert('Escolha o departamento da ata.'); f.setor.focus(); return; }
       const itens = [...f.querySelectorAll('.pf-linha')].map((l) => lerLinhaPendencia(l)).filter((p) => p.descricao);
       if (itens.some((p) => p.semAssunto || p.semDescritivo)) { alert('Cada item precisa do assunto e do descritivo (as duas caixinhas).'); return; }
+      itens.forEach((p, i) => { p.item = i + 1; });
       const informativos = itens.filter((p) => p.kind === 'informativo');
       if (informativos.some((p) => (p.externoTipo === '' && !p.responsavel) || (p.externoTipo === 'terceirizado' && !p.externoCategoria && !p.externoNome))) { alert('Todo informativo precisa de quem informou: escolha a pessoa da Sólida, o terceirizado ou o cliente.'); return; }
       const pendencias = itens.filter((p) => p.kind !== 'informativo');
@@ -1097,7 +1116,11 @@ document.addEventListener('submit', async (e) => {
       if (p.semAssunto || p.semDescritivo) { alert('A pendência precisa do assunto e do descritivo (as duas caixinhas).'); return; }
       if (p.descricao && !p.prazo) { alert('Toda pendência precisa de uma data limite.'); return; }
       if (!p.descricao || (p.externoTipo === '' && !p.responsavel) || (p.externoTipo === 'terceirizado' && !p.externoCategoria && !p.externoNome)) { alert('Escreva a pendência e escolha o responsável.'); return; }
-      await atas.criarPendencia({ ata_id: Number(g.dataset.ata), ...p, obra: g.dataset.obra, setor: g.dataset.setor });
+      if (g.dataset.avulsa) {
+        const setorV = String(new FormData(g).get('av_setor') || ''); if (!setorV) { alert('Escolha o departamento da pendência.'); return; }
+        await atas.criarPendencia({ ata_id: null, ...p, obra: String(new FormData(g).get('av_obra') || ''), setor: setorV });
+        const mod = document.getElementById('at-modal'); if (mod) mod.remove();
+      } else await atas.criarPendencia({ ata_id: Number(g.dataset.ata), ...p, obra: g.dataset.obra, setor: g.dataset.setor });
     }
     desenhar();
   } catch (err) { alert(`Não foi possível salvar (${err.message || err}).`); }
@@ -1152,6 +1175,7 @@ function marcarFaltas(f) {
   const vazio = (el) => !el || !String(el.value || '').trim();
   if (f.id === 'ata-form') for (const n of ['data', 'obra', 'setor', 'local', 'participantes']) marca(f.elements[n], vazio(f.elements[n]));
   const unica = f.id === 'pend-form';
+  if (f.dataset.avulsa) marca(f.elements.av_setor, vazio(f.elements.av_setor));
   for (const l of f.querySelectorAll('.pf-linha')) {
     const q = (s) => l.querySelector(s); const v = (s) => (q(s) ? String(q(s).value || '').trim() : '');
     const tipo = v('[name="p_tipo"]'); const info = v('[name="p_kind"]') === 'informativo';

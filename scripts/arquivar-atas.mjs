@@ -69,37 +69,52 @@ const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<
 const neg = (t) => { const s = String(t ?? ''); const i = s.indexOf(','); return i > 0 && i < 60 ? `<b>${esc(s.slice(0, i).toLocaleUpperCase('pt-BR'))}</b>${esc(s.slice(i))}` : esc(s); };
 const dbr = (iso) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : '');
 const ROT = { terceirizado: 'Terceirizado', cliente: 'Cliente', arquitetura: 'Arquitetura', outro: 'Externo' };
+const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+const dMes = (iso) => (iso ? `${iso.slice(8, 10)}/${MESES[Number(iso.slice(5, 7)) - 1]}` : '');
+// mesmo padrão da ata da Sólida (cabeçalho com logo, ITEM | TIPO | descrição | RESPONSÁVEL | DATA LIMITE), com visual novo
 function htmlDaAta(a, pends) {
   const logo = existsSync(join(raiz, 'app', 'img', 'logo.png')) ? `data:image/png;base64,${readFileSync(join(raiz, 'app', 'img', 'logo.png')).toString('base64')}` : '';
-  const quem = (p) => `${esc(p.responsavel_nome || '—')}${p.responsavel_tipo && p.responsavel_tipo !== 'solida' ? ` <small>(${esc(ROT[p.responsavel_tipo] || 'Externo')}${p.responsavel_categoria ? ` · ${esc(p.responsavel_categoria)}` : ''})</small>` : ' <small>(Sólida)</small>'}`;
-  const infos = (a.informativos || []).map((t, i) => `<tr><td class="c">${pends.length + i + 1}</td><td class="c info">INFORMATIVO</td><td>${neg(typeof t === 'string' ? t : t.texto)}</td><td>${typeof t === 'string' || !t.quem ? '—' : quem({ responsavel_nome: t.quem, responsavel_tipo: t.tipo, responsavel_categoria: t.categoria })}</td><td class="c">—</td></tr>`).join('');
-  const linhas = pends.map((p, i) => `<tr><td class="c">${i + 1}</td><td class="c pend">PENDÊNCIA</td><td>${neg(p.descricao)}</td><td>${quem(p)}</td><td class="c">${p.prazo ? dbr(p.prazo).slice(0, 5) + (p.prazo.slice(0, 4) !== a.data.slice(0, 4) ? `/${p.prazo.slice(0, 4)}` : '') : ''}</td></tr>`).join('');
+  const sub = (tipo, cat) => (tipo && tipo !== 'solida' ? `<small>${esc(ROT[tipo] || 'Externo')}${cat ? ` · ${esc(cat)}` : ''}</small>` : '');
+  const itens = [...pends.map((p, i) => ({ k: 'p', p, n: Number(p.item) || 0, i })), ...((a.informativos || []).map((x, i) => ({ k: 'i', x, n: (x && x.n) || 0, i: 1000 + i })))].sort((x, y) => ((x.n || 1e6) - (y.n || 1e6)) || (x.i - y.i));
+  const linhas = itens.map((r, k) => {
+    if (r.k === 'i') { const t = typeof r.x === 'string' ? { texto: r.x } : r.x; return `<tr><td class="c">${k + 1}</td><td class="c info">INFORMATIVO</td><td>${neg(t.texto)}</td><td class="c">${t.quem ? `${esc(String(t.quem).toLocaleUpperCase('pt-BR'))}${sub(t.tipo, t.categoria)}` : '—'}</td><td class="c"></td></tr>`; }
+    const p = r.p; const rep = p.prazo_original && p.prazo_original !== p.prazo;
+    return `<tr><td class="c">${k + 1}</td><td class="c pend">PENDÊNCIA</td><td>${neg(p.descricao)}</td><td class="c">${esc(String(p.responsavel_nome || '—').toLocaleUpperCase('pt-BR'))}${sub(p.responsavel_tipo || 'solida', p.responsavel_categoria)}</td><td class="c${rep ? ' repro' : ''}">${dMes(p.prazo)}${rep ? `<small>↻ era ${dMes(p.prazo_original)}</small>` : ''}</td></tr>`;
+  }).join('');
+  const partes = (a.participantes || []).map((t) => { const m = String(t).match(/^(.*?)\s*(\(.*\))\s*$/); return m ? `${esc(m[1])} <span class="papel">${esc(m[2])}</span>` : esc(t); }).join(', ');
+  const rev = `R${String(Number(a.revisao) || 0).padStart(2, '0')}`;
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${esc(a.titulo)}</title><style>
-@page { size: A4; margin: 14mm 14mm 16mm; }
-body { font: 11px/1.4 Arial, Helvetica, sans-serif; color: #111; margin: 0; }
-.logo { height: 38px; width: 130px; background: #1B4F72; -webkit-mask: url(${logo}) no-repeat left center / contain; mask: url(${logo}) no-repeat left center / contain; }
-h1 { font-size: 16px; margin: 6px 0 2px; } .sub { font-size: 11px; color: #444; margin: 0 0 10px; }
-.meta p { margin: 2px 0; } .meta b { color: #1B4F72; }
-h2 { font-size: 12px; color: #1B4F72; margin: 14px 0 4px; text-transform: uppercase; letter-spacing: .04em; }
-.texto { white-space: pre-wrap; }
-table { width: 100%; border-collapse: collapse; margin-top: 4px; table-layout: fixed; }
-th { background: #1B4F72; color: #fff; font-size: 10.5px; padding: 5px 4px; border: 1px solid #1B4F72; }
-td { border: 1px solid #aaa; padding: 4px 5px; vertical-align: middle; } td.c { text-align: center; }
-th:nth-child(1) { width: 6%; } th:nth-child(2) { width: 13%; } th:nth-child(4) { width: 21%; } th:nth-child(5) { width: 11%; }
-small { color: #555; } td.pend { background: #FDE8E7; color: #A12622; font-weight: 700; } td.info { background: #E3F3E7; color: #1F6B3A; font-weight: 700; } tr { break-inside: avoid; }
-.rodape { margin-top: 18px; font-size: 9px; color: #666; }
+@page { size: A4; margin: 12mm; }
+* { box-sizing: border-box; }
+body { font: 11px/1.35 "Segoe UI", Arial, Helvetica, sans-serif; color: #1c2430; margin: 0; }
+.folha { border: 1px solid #C9D3DD; border-radius: 10px; overflow: hidden; }
+.cab { display: grid; grid-template-columns: 150px 1fr 105px 62px; background: #F4F7FB; border-bottom: 1px solid #C9D3DD; }
+.cab > div { padding: 6px 10px; }
+.logo { grid-row: 1 / 4; height: 62px; margin: 6px 6px; padding: 0 !important; background: #1B4F72; -webkit-mask: url(${logo}) no-repeat center / 128px auto; mask: url(${logo}) no-repeat center / 128px auto; }
+.tit { font-size: 17px; font-weight: 800; color: #1B4F72; }
+.cod { font-weight: 700; text-align: center; align-self: center; color: #1B4F72; }
+.linha { grid-column: 2 / -1; border-top: 1px solid #E1E8F0; font-size: 11px; }
+.linha b { color: #1B4F72; } .papel { color: #8A939D; }
+table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+th { background: #1B4F72; color: #fff; font-size: 10px; letter-spacing: .05em; padding: 5px 4px; }
+th:nth-child(1) { width: 38px; } th:nth-child(2) { width: 88px; } th:nth-child(4) { width: 118px; } th:nth-child(5) { width: 74px; }
+td { padding: 5px 7px; border-top: 1px solid #E1E8F0; vertical-align: middle; }
+td.c { text-align: center; } tr { break-inside: avoid; }
+td.pend { background: #FDE8E7; color: #A12622; font-weight: 700; } td.info { background: #E3F3E7; color: #1F6B3A; font-weight: 700; }
+td.repro { background: #FFF4D6; } small { display: block; color: #8A939D; font-size: 8.5px; } td.repro small { color: #9A6A00; }
+.rodape { margin-top: 10px; font-size: 8.5px; color: #8A939D; }
 </style></head><body>
-<div class="logo"></div>
-<h1>ATA DE REUNIÃO ${esc(dbr(a.data).replace(/\//g, '.'))} ${esc(a.obra || a.setor || '')} R${String(Number(a.revisao) || 0).padStart(2, '0')}</h1>
-<p class="sub">${esc(a.titulo)}</p>
-<div class="meta">${a.local || a.horario ? `<p><b>LOCAL:</b> ${esc([a.local, a.horario].filter(Boolean).join(' - '))}</p>` : ''}
-${a.participantes && a.participantes.length ? `<p><b>PARTICIPANTES:</b> ${esc(a.participantes.join(', '))}</p>` : ''}</div>
-${a.resumo ? `<h2>Resumo e informativos</h2><div class="texto">${esc(a.resumo)}</div>` : ''}
-${pends.length || infos ? `<h2>Itens da ata</h2><table><thead><tr><th>ITEM</th><th>TIPO</th><th>DESCRIÇÃO</th><th>RESPONSÁVEL</th><th>DATA LIMITE</th></tr></thead><tbody>${linhas}${infos}</tbody></table>` : ''}
-<p class="rodape">Ata registrada no Sistema Sólida${a.criado_por_nome ? ` por ${esc(a.criado_por_nome)}` : ''} em ${dbr(String(a.criado_em || '').slice(0, 10))}.</p>
+<div class="folha">
+<div class="cab">
+<div class="logo"></div><div class="tit">ATA DE REUNIÃO ${esc(dbr(a.data).replace(/\//g, '.'))}</div><div class="cod">${esc(a.obra || a.setor || '')}</div><div class="cod">${rev}</div>
+<div class="linha"><b>LOCAL:</b> ${esc(a.local || '—')}${a.setor ? ` · <b>DEPARTAMENTO:</b> ${esc(a.setor)}` : ''}</div>
+<div class="linha"><b>PARTICIPANTES:</b> ${partes || '—'}</div>
+</div>
+<table><thead><tr><th>ITEM</th><th>TIPO</th><th></th><th>RESPONSÁVEL</th><th>DATA LIMITE</th></tr></thead><tbody>${linhas}</tbody></table>
+</div>
+<p class="rodape">${esc(a.titulo)} · registrada no Sistema Sólida${a.criado_por_nome ? ` por ${esc(a.criado_por_nome)}` : ''} em ${dbr(String(a.criado_em || '').slice(0, 10))}.</p>
 </body></html>`;
-}
-function acharNavegador() {
+}function acharNavegador() {
   return ['C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe', 'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe', 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', 'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe'].find((p) => existsSync(p));
 }
 function gerarPdf(html, destino) {

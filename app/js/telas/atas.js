@@ -82,9 +82,9 @@ export function atualizarNomeDoForm(form) {
 
 export async function criarAta({ titulo, data, tipo, obra, setor, participantes, resumo, pendencias, informativos = [], tipoReuniao, revisao, local, horario }) {
   // informativo = texto + quem informou (Sólida, terceirizado ou cliente)
-  informativos = informativos.map((p) => ({ texto: p.descricao, quem: p.responsavel ? nomeDe(p.responsavel) : (p.externoNome || p.externoCategoria || (p.externoTipo === 'cliente' ? 'Cliente' : '')), tipo: p.responsavel ? 'solida' : (p.externoTipo || 'terceirizado'), categoria: p.responsavel ? null : (p.externoCategoria || null) }));
+  informativos = informativos.map((p) => ({ n: p.item || null, texto: p.descricao, quem: p.responsavel ? nomeDe(p.responsavel) : (p.externoNome || p.externoCategoria || (p.externoTipo === 'cliente' ? 'Cliente' : '')), tipo: p.responsavel ? 'solida' : (p.externoTipo || 'terceirizado'), categoria: p.responsavel ? null : (p.externoCategoria || null) }));
   const ata = { informativos, titulo, data, tipo, obra: obra || null, setor: setor || null, participantes, resumo, tipo_reuniao: tipoReuniao || 'REUNIÃO', revisao: Number(revisao) || 0, local: local || null, horario: horario || null };
-  const pends = pendencias.map((p) => ({ descricao: p.descricao, responsavel: p.responsavel || null, responsavel_nome: p.responsavel ? nomeDe(p.responsavel) : (p.externoNome || p.externoCategoria || (p.externoTipo === 'cliente' ? 'Cliente' : null)), responsavel_tipo: p.responsavel ? 'solida' : (p.externoTipo || 'terceirizado'), responsavel_categoria: p.responsavel ? null : (p.externoCategoria || null), prazo: p.prazo || null, status: 'aberta' }));
+  const pends = pendencias.map((p) => ({ item: p.item || null, descricao: p.descricao, responsavel: p.responsavel || null, responsavel_nome: p.responsavel ? nomeDe(p.responsavel) : (p.externoNome || p.externoCategoria || (p.externoTipo === 'cliente' ? 'Cliente' : null)), responsavel_tipo: p.responsavel ? 'solida' : (p.externoTipo || 'terceirizado'), responsavel_categoria: p.responsavel ? null : (p.externoCategoria || null), prazo: p.prazo || null, status: 'aberta' }));
   let nova;
   if (NA_NUVEM) nova = await criarAtaNuvem(ata, pends);
   else {
@@ -100,6 +100,7 @@ export async function criarAta({ titulo, data, tipo, obra, setor, participantes,
 }
 export async function criarPendencia({ ata_id, descricao, responsavel, externoNome, externoTipo, externoCategoria, prazo, obra, setor }) {
   const p = { ata_id: ata_id || null, descricao, responsavel: responsavel || null, responsavel_nome: responsavel ? nomeDe(responsavel) : (externoNome || externoCategoria || (externoTipo === 'cliente' ? 'Cliente' : null)), responsavel_tipo: responsavel ? 'solida' : (externoTipo || 'terceirizado'), responsavel_categoria: responsavel ? null : (externoCategoria || null), prazo: prazo || null, status: 'aberta', obra: obra || null, setor: setor || null };
+  if (ata_id) { const a = dados.atas.find((x) => String(x.id) === String(ata_id)); const ns = [...dados.pendencias.filter((x) => String(x.ata_id) === String(ata_id)).map((x) => Number(x.item) || 0), ...((a && a.informativos) || []).map((x) => (x && x.n) || 0)]; p.item = Math.max(0, ...ns) + 1; }
   if (NA_NUVEM) await criarPendenciaNuvem(p);
   else { const l = lerLocal(); l.pendencias.push({ id: l.seq++, ...p, criado_por: idPessoa(), criado_em: new Date().toISOString(), concluida_em: null }); gravarLocal(l); }
   await carregar();
@@ -209,25 +210,58 @@ function barraFiltros(params, obras, aba) {
   </div>`;
 }
 
+// reprogramar: o prazo pode mudar, mas fica guardado o prazo original e cada troca (a pendência vira "reprogramada")
+const reprogramada = (p) => !!p.prazo_original && p.prazo_original !== p.prazo;
+const tituloRepro = (p) => `Prazo original ${dm(p.prazo_original)}${(p.reprogramacoes || []).length ? ` · ${(p.reprogramacoes || []).length} ${(p.reprogramacoes || []).length === 1 ? 'reprogramação' : 'reprogramações'}: ${(p.reprogramacoes || []).map((r) => `${dm(r.de)} → ${dm(r.para)}${r.por ? ` (${r.por})` : ''}`).join('; ')}` : ''}`;
+const seletorPrazo = (p) => html`<label class="ac-mini at-repro" title="Reprogramar o prazo (fica registrado como data alterada)">↻ <input type="date" data-pend-prazo="${p.id}" value="${p.prazo || ''}"></label>`;
+export async function reprogramar(id, novo) {
+  const p = dados.pendencias.find((x) => String(x.id) === String(id)); if (!p || !novo || novo === p.prazo) return;
+  const mud = { prazo: novo, prazo_original: p.prazo_original || p.prazo || null, reprogramacoes: [...(p.reprogramacoes || []), { de: p.prazo || null, para: novo, em: new Date().toISOString(), por: sessao().nome || '' }] };
+  if (!p.prazo) { mud.prazo_original = null; mud.reprogramacoes = p.reprogramacoes || []; }   // primeira data dada a uma pendência sem prazo não é reprogramação
+  if (NA_NUVEM) await atualizarPendenciaNuvem(id, mud);
+  else { const l = lerLocal(); const q = l.pendencias.find((x) => String(x.id) === String(id)); if (q) Object.assign(q, mud); gravarLocal(l); }
+  await carregar();
+}
+
 function cartao(p, hoje) {
   const a = ataDe(p); const col = coluna(p, hoje);
   const dias = p.prazo ? diasEntre(hoje, p.prazo) : null;
   const rotuloPrazo = !p.prazo ? 'Sem prazo' : col === 'vencido' ? `${dm(p.prazo)} · ${Math.abs(dias)} ${Math.abs(dias) === 1 ? 'dia' : 'dias'} de atraso` : col === 'hoje' ? 'Hoje' : dm(p.prazo);
   return html`<article class="at-card at-${col}">
     <div class="at-tit">${descRica(p.descricao)}</div>
-    <div class="at-meta"><span class="at-prazo at-p-${col}">${rotuloPrazo}</span>${onde(p) ? html`<span class="at-chip">${onde(p)}</span>` : ''}</div>
+    <div class="at-meta"><span class="at-prazo at-p-${col}">${rotuloPrazo}</span>${reprogramada(p) ? html`<span class="at-repro-tag" title="${tituloRepro(p)}">↻ Reprogramada (era ${dm(p.prazo_original).slice(0, 5)})</span>` : ''}${onde(p) ? html`<span class="at-chip">${onde(p)}</span>` : ''}</div>
     <div class="at-quem"><span class="at-pessoa">${nomeDe(p.responsavel, p.responsavel_nome)}</span>${p.responsavel_tipo && p.responsavel_tipo !== 'solida' ? html`<span class="at-tipo at-t-${p.responsavel_tipo}">${ROTULO_TIPO[p.responsavel_tipo] || 'Externo'}${p.responsavel_categoria ? ` · ${p.responsavel_categoria}` : ''}</span>` : ''}${a ? html`<a class="at-ata" href="#/atas?aba=atas&ata=${a.id}" title="Ata de origem">ata ${dm(a.data).slice(0, 5)}</a>` : ''}</div>
     <div class="at-acoes">
-      ${p.status === 'feita' ? html`<button type="button" class="ac-mini" data-pend="${p.id}|aberta">↺ reabrir</button>` : html`<button type="button" class="ac-mini at-ok" data-pend="${p.id}|feita">✓ concluir</button>`}
+      ${p.status === 'feita' ? html`<button type="button" class="ac-mini" data-pend="${p.id}|aberta">↺ reabrir</button>` : html`<button type="button" class="ac-mini at-ok" data-pend="${p.id}|feita">✓ concluir</button>${seletorPrazo(p)}`}
       <button type="button" class="ac-mini" data-pend-del="${p.id}" title="Excluir esta pendência">excluir</button>
     </div></article>`;
+}
+
+// prazo sugerido ao criar uma pendência pela caixinha (pendência nem sempre vem de uma ata)
+function prazoDaColuna(id, hoje) {
+  const seg = inicioDaSemana(hoje);
+  if (id === 'hoje') return hoje;
+  if (id === 'semana') { const sex = somarDias(seg, 4); return sex >= hoje ? sex : somarDias(seg, 6); }
+  if (id === 'proxima') return somarDias(seg, 11);
+  if (id === 'duas') return somarDias(seg, 18);
+  return '';
+}
+// formulário de pendência avulsa (sem ata): obra, departamento e a linha da pendência
+export function formAvulsa(obras, prazo) {
+  return html`<form class="at-nova-pend at-avulsa" id="pend-form" data-avulsa="1">
+    <h3>Nova pendência</h3>
+    <div class="at-av-linha"><label>Obra<select name="av_obra"><option value="">Nenhuma</option>${obras.map((o) => html`<option value="${o}">${o}</option>`)}</select></label>
+      <label>Departamento<select name="av_setor" required><option value="">— escolher —</option>${SETORES_ATA.map((s) => html`<option value="${s}">${s}</option>`)}</select></label></div>
+    ${html.seguro(linhaForm({ semKind: true, prazo }))}
+    <p><button type="submit" class="botao on">Criar pendência</button> <button type="button" class="botao" data-av-fechar>Cancelar</button></p></form>`;
 }
 
 function vistaPrazo(lista, hoje) {
   return html`<div class="at-quadro">${COLUNAS.map(([id, nome]) => {
     let itens = lista.filter((p) => coluna(p, hoje) === id);
     if (id === 'concluido') itens = itens.sort((a, b) => String(b.concluida_em).localeCompare(String(a.concluida_em))).slice(0, 30);
-    return html`<section class="at-col at-c-${id}"><header><b>${nome}</b><span>${lista.filter((p) => coluna(p, hoje) === id).length}</span></header>
+    const pz = prazoDaColuna(id, hoje);
+    return html`<section class="at-col at-c-${id}"><header><b>${nome}</b><span>${lista.filter((p) => coluna(p, hoje) === id).length}</span>${pz ? html`<button type="button" class="at-col-mais" data-av-nova="${pz}" title="Nova pendência com prazo ${dm(pz)}">+</button>` : ''}</header>
       <div class="at-itens">${itens.map((p) => cartao(p, hoje))}</div></section>`;
   })}</div>`;
 }
@@ -238,10 +272,10 @@ function vistaLista(lista, hoje, params) {
   return html`<div class="at-lista-topo"><label>Mostrar<select data-atas-filtro="status"><option value="abertas" ${st === 'abertas' ? html.seguro('selected') : ''}>Abertas</option><option value="feitas" ${st === 'feitas' ? html.seguro('selected') : ''}>Concluídas</option><option value="todas" ${st === 'todas' ? html.seguro('selected') : ''}>Todas</option></select></label></div>
     <div class="tabela-rolagem"><table class="tab ordenavel at-tab"><thead><tr><th>Pendência</th><th>Responsável</th><th>Prazo</th><th>Obra / setor</th><th>Ata</th><th>Situação</th><th></th></tr></thead><tbody>
       ${itens.map((p) => { const col = coluna(p, hoje); const a = ataDe(p); return html`<tr><td>${descRica(p.descricao)}</td><td>${nomeDe(p.responsavel, p.responsavel_nome)}</td>
-        <td class="${col === 'vencido' ? 'pendente' : ''}">${p.prazo ? dm(p.prazo) : html`<span class="muted">—</span>`}</td><td>${onde(p)}</td>
+        <td class="${col === 'vencido' ? 'pendente' : ''}">${p.prazo ? dm(p.prazo) : html`<span class="muted">—</span>`}${reprogramada(p) ? html` <span class="at-repro-tag" title="${tituloRepro(p)}">↻ era ${dm(p.prazo_original).slice(0, 5)}</span>` : ''}</td><td>${onde(p)}</td>
         <td>${a ? html`<a class="link" href="#/atas?aba=atas&ata=${a.id}">${dm(a.data).slice(0, 5)}</a>` : ''}</td>
         <td>${p.status === 'feita' ? 'Concluída' : col === 'vencido' ? 'Atrasada' : 'Aberta'}</td>
-        <td class="at-acoes">${p.status === 'feita' ? html`<button type="button" class="ac-mini" data-pend="${p.id}|aberta">↺</button>` : html`<button type="button" class="ac-mini at-ok" data-pend="${p.id}|feita">✓ concluir</button>`} <button type="button" class="ac-mini" data-pend-del="${p.id}">excluir</button></td></tr>`; })}
+        <td class="at-acoes">${p.status === 'feita' ? html`<button type="button" class="ac-mini" data-pend="${p.id}|aberta">↺</button>` : html`<button type="button" class="ac-mini at-ok" data-pend="${p.id}|feita">✓ concluir</button> ${seletorPrazo(p)}`} <button type="button" class="ac-mini" data-pend-del="${p.id}">excluir</button></td></tr>`; })}
     </tbody></table></div>${itens.length ? '' : html`<p class="vazio">Nenhuma pendência com esses filtros.</p>`}`;
 }
 
@@ -254,6 +288,15 @@ function listaAtas(params, obras) {
       <span class="at-contagem ${ab ? 'tem' : ''}">${ps.length ? `${ab} aberta${ab === 1 ? '' : 's'} de ${ps.length}` : 'sem pendências'}</span></a>`; })}</div>` : html`<p class="vazio">Nenhuma ata ainda. Crie a primeira em "Nova ata".</p>`}`;
 }
 
+const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+const dMes = (iso) => (iso ? `${iso.slice(8, 10)}/${MESES[Number(iso.slice(5, 7)) - 1]}` : '');
+// participantes no padrão da Sólida: "Nome" em preto e "(papel)" em cinza
+const participantesRico = (lista) => (lista && lista.length ? lista.map((t, i) => { const m = String(t).match(/^(.*?)\s*(\(.*\))\s*$/); return html`${i ? ', ' : ''}${m ? html`${m[1]} <span class="sd-papel">${m[2]}</span>` : t}`; }) : '—');
+// itens da ata na ordem em que foram lançados (pendências e informativos misturados, como na ata da Sólida)
+function linhasDaAta(a, ps) {
+  const itens = [...ps.map((p, i) => ({ kind: 'pend', p, n: Number(p.item) || 0, i })), ...((a.informativos || []).map((x, i) => ({ kind: 'info', x, n: (x && x.n) || 0, i: 1000 + i })))];
+  return itens.sort((x, y) => ((x.n || 1e6) - (y.n || 1e6)) || (x.i - y.i));
+}
 function detalheAta(id, hoje, obras) {
   const a = dados.atas.find((x) => String(x.id) === String(id));
   if (!a) return html`<p class="vazio">Ata não encontrada (ou você não tem acesso a ela). <a class="link" href="#/atas?aba=atas">Voltar às atas</a></p>`;
@@ -262,14 +305,23 @@ function detalheAta(id, hoje, obras) {
   return html`<p><a class="link" href="#/atas?aba=atas">← Todas as atas</a></p>
     <article class="at-ata-det">
       <h2>${a.titulo}</h2>
-      <p class="pequeno at-drive ${a.arquivada_em ? 'ok' : a.arquivo_erro ? 'erro' : ''}">${a.arquivada_em ? html`✓ Salva no Drive (${new Date(a.arquivada_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}): ${a.arquivo || a.titulo + '.pdf'}` : a.arquivo_erro ? html`Não consegui salvar no Drive: ${a.arquivo_erro}. Vou tentar de novo no próximo ciclo.` : a.obra ? 'Aguardando ser salva no Drive (o computador do escritório salva a cada 10 minutos).' : 'Ata de departamento: fica só no sistema (pasta no Drive ainda não definida).'}</p>
-      <p class="pequeno">${dm(a.data)} · ${a.tipo === 'obra' ? 'Obra' : 'Departamento'}: <b>${onde(a) || '—'}</b>${a.criado_por_nome ? ` · registrada por ${a.criado_por_nome}` : ''}</p>
-      ${a.participantes && a.participantes.length ? html`<p class="pequeno">Participantes: ${a.participantes.join(', ')}</p>` : ''}
+      <p class="pequeno at-drive ${a.arquivada_em ? 'ok' : a.arquivo_erro ? 'erro' : ''}">${a.arquivada_em ? html`✓ Salva no Drive (${new Date(a.arquivada_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}): ${a.arquivo || a.titulo + '.pdf'}` : a.arquivo_erro ? html`Não consegui salvar no Drive: ${a.arquivo_erro}. Vou tentar de novo no próximo ciclo.` : a.obra ? 'Aguardando ser salva no Drive (o computador do escritório salva a cada 10 minutos).' : 'Ata sem obra: fica só no sistema.'}${a.criado_por_nome ? ` Registrada por ${a.criado_por_nome}.` : ''}</p>
       ${a.resumo ? html`<div class="at-resumo">${textoRico(a.resumo)}</div>` : ''}
-      ${a.informativos && a.informativos.length ? html`<h3>Informativos <span class="pequeno">${a.informativos.length}</span></h3><ol class="at-infos">${a.informativos.map((x) => typeof x === 'string' ? html`<li>${descRica(x)}</li>` : html`<li>${descRica(x.texto)}${x.quem ? html` <span class="at-info-quem">— informado por <b>${x.quem}</b>${x.tipo && x.tipo !== 'solida' ? ` (${ROTULO_TIPO[x.tipo] || 'Externo'}${x.categoria ? ` · ${x.categoria}` : ''})` : ''}</span>` : ''}</li>`)}</ol>` : ''}
-      <h3>Pendências desta ata <span class="pequeno">${ps.length}</span></h3>
-      <div class="at-quadro-ata">${ps.length ? ps.map((p) => cartao(p, hoje)) : html`<p class="pequeno">Nenhuma pendência saiu desta ata.</p>`}</div>
-      <form class="at-nova-pend" id="pend-form" data-ata="${a.id}" data-obra="${a.obra || ''}" data-setor="${a.setor || ''}">${html.seguro(linhaForm({ semKind: true }))}<button type="submit" class="botao">Acrescentar pendência</button></form>
+      <div class="sd-folha">
+        <div class="sd-cab">
+          <div class="sd-logo"></div>
+          <div class="sd-tit">ATA DE REUNIÃO ${dm(a.data).replace(/\//g, '.')}</div><div class="sd-cod">${a.obra || a.setor || ''}</div><div class="sd-cod">R${String(Number(a.revisao) || 0).padStart(2, '0')}</div>
+          <div class="sd-linha"><b>LOCAL:</b> ${a.local || '—'}${a.setor ? html` · <b>DEPARTAMENTO:</b> ${a.setor}` : ''}</div>
+          <div class="sd-linha"><b>PARTICIPANTES:</b> ${participantesRico(a.participantes)}</div>
+        </div>
+        <div class="tabela-rolagem"><table class="sd-tab"><thead><tr><th>ITEM</th><th>TIPO</th><th></th><th>RESPONSÁVEL</th><th>DATA LIMITE</th><th class="sd-sem-pdf"></th></tr></thead><tbody>
+          ${linhasDaAta(a, ps).map((r, k) => r.kind === 'info' ? html`<tr><td class="c">${k + 1}</td><td class="c sd-t-info">INFORMATIVO</td><td>${descRica(typeof r.x === 'string' ? r.x : r.x.texto)}</td><td class="c">${typeof r.x === 'string' || !r.x.quem ? '—' : html`${String(r.x.quem).toLocaleUpperCase('pt-BR')}${r.x.tipo && r.x.tipo !== 'solida' ? html`<small>${ROTULO_TIPO[r.x.tipo] || 'Externo'}${r.x.categoria ? ` · ${r.x.categoria}` : ''}</small>` : ''}`}</td><td class="c"></td><td class="sd-sem-pdf"></td></tr>`
+            : html`<tr class="${r.p.status === 'feita' ? 'sd-feita' : ''}"><td class="c">${k + 1}</td><td class="c sd-t-pend">PENDÊNCIA</td><td>${descRica(r.p.descricao)}</td><td class="c">${String(nomeDe(r.p.responsavel, r.p.responsavel_nome)).toLocaleUpperCase('pt-BR')}${r.p.responsavel_tipo && r.p.responsavel_tipo !== 'solida' ? html`<small>${ROTULO_TIPO[r.p.responsavel_tipo] || 'Externo'}${r.p.responsavel_categoria ? ` · ${r.p.responsavel_categoria}` : ''}</small>` : ''}</td>
+              <td class="c ${reprogramada(r.p) ? 'sd-repro' : ''}" ${reprogramada(r.p) ? html.seguro(`title="${tituloRepro(r.p).replace(/"/g, '')}"`) : ''}>${r.p.prazo ? dMes(r.p.prazo) : ''}${reprogramada(r.p) ? html`<small>↻ era ${dMes(r.p.prazo_original)}</small>` : ''}</td>
+              <td class="sd-sem-pdf at-acoes">${r.p.status === 'feita' ? html`<button type="button" class="ac-mini" data-pend="${r.p.id}|aberta">↺</button>` : html`<button type="button" class="ac-mini at-ok" data-pend="${r.p.id}|feita" title="Concluir">✓</button>${seletorPrazo(r.p)}`}<button type="button" class="ac-mini" data-pend-del="${r.p.id}" title="Excluir esta pendência">×</button></td></tr>`)}
+        </tbody></table></div>
+      </div>
+      <h3>Acrescentar pendência</h3>      <form class="at-nova-pend" id="pend-form" data-ata="${a.id}" data-obra="${a.obra || ''}" data-setor="${a.setor || ''}">${html.seguro(linhaForm({ semKind: true }))}<button type="submit" class="botao">Acrescentar pendência</button></form>
       ${podeApagar ? html`<p style="margin-top:18px"><button type="button" class="botao at-excluir" data-ata-del="${a.id}">Excluir esta ata e as pendências dela</button></p>` : ''}
     </article>`;
 }
