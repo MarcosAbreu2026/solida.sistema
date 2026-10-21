@@ -56,30 +56,32 @@ const nomeDe = (id, reserva) => ((dados.pessoas.find((p) => p.id === id) || {}).
 // Salva no Drive, na pasta da obra: GERENCIAMENTO\ATA (obra) ou PÓS OBRA\PO_OBRAS\<ano>\Po_NNN\GERENCIAMENTO\ATA (pós-obra).
 export const TIPOS_REUNIAO = ['REUNIÃO', 'ARQUITETURA', 'CLIENTE', 'ARQUITETURA-CLIENTE', 'TERCEIRIZADO', 'PLANEJAMENTO'];
 const semAcento = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '');
-const baseDoVinculo = (v) => { const [k, ...r] = String(v || '').split(':'); const x = r.join(':'); return k === 'obra' ? x : semAcento(x).replace(/\s*\/\s*/g, '-').replace(/\s+/g, ''); };
+// A ata é da obra E do departamento (a obra manda no nome e na pasta do Drive); reunião só do escritório não tem nenhum dos dois.
+const semEspaco = (s) => semAcento(s).replace(/\s*\/\s*/g, '-').replace(/\s+/g, '');
+const baseDe = ({ obra, setor }) => obra || semEspaco(setor || '') || 'ESCRITORIO';
 export const rev2 = (n) => `R${String(Number(n) || 0).padStart(2, '0')}`;
-export function proximaRevisao({ vinculo, data, tipo }) {
-  const base = baseDoVinculo(vinculo); if (!base) return 0;
-  const iguais = dados.atas.filter((a) => (a.obra || semAcento(a.setor || '').replace(/\s*\/\s*/g, '-').replace(/\s+/g, '')) === base && a.data === data && (a.tipo_reuniao || 'REUNIÃO') === tipo);
+export function proximaRevisao({ obra, setor, data, tipo }) {
+  const base = baseDe({ obra, setor });
+  const iguais = dados.atas.filter((a) => baseDe(a) === base && a.data === data && (a.tipo_reuniao || 'REUNIÃO') === tipo);
   return iguais.length ? Math.max(...iguais.map((a) => Number(a.revisao) || 0)) + 1 : 0;
 }
-export function nomePadrao({ vinculo, data, tipo, revisao }) {
-  const base = baseDoVinculo(vinculo); if (!base || !data) return '';
-  return `${base}_${String(data).replace(/-/g, '.')}_ATA_${tipo || 'REUNIÃO'}_${rev2(revisao)}`;
+export function nomePadrao({ obra, setor, data, tipo, revisao }) {
+  if (!data) return '';
+  return `${baseDe({ obra, setor })}_${String(data).replace(/-/g, '.')}_ATA_${tipo || 'REUNIÃO'}_${rev2(revisao)}`;
 }
 // atualiza o nome mostrado no formulário (e a revisão, se a pessoa não mexeu nela)
 export function atualizarNomeDoForm(form) {
-  const v = form.vinculo.value; const data = form.data.value; const tipo = form.tipo_reuniao.value;
-  if (!form.revisao.dataset.manual) form.revisao.value = proximaRevisao({ vinculo: v, data, tipo });
-  const nome = nomePadrao({ vinculo: v, data, tipo, revisao: form.revisao.value });
-  const el = document.getElementById('ata-nome'); if (el) el.textContent = nome ? `${nome}.pdf` : 'escolha a obra (ou o departamento) e a data';
+  const obra = form.obra.value; const setor = form.setor.value; const data = form.data.value; const tipo = form.tipo_reuniao.value;
+  if (!form.revisao.dataset.manual) form.revisao.value = proximaRevisao({ obra, setor, data, tipo });
+  const nome = nomePadrao({ obra, setor, data, tipo, revisao: form.revisao.value });
+  const el = document.getElementById('ata-nome'); if (el) el.textContent = nome ? `${nome}.pdf` : 'escolha a data';
   const dest = document.getElementById('ata-destino');
-  if (dest) dest.textContent = v.startsWith('obra:') ? (/^Po/i.test(v.slice(5)) ? 'Vai para a pasta do pós-obra: PÓS OBRA › PO_OBRAS › ano › obra › GERENCIAMENTO › ATA.' : 'Vai para a pasta da obra: OPERACOES › OBRAS › obra › GERENCIAMENTO › ATA.') : v ? 'Ata de departamento: fica só no sistema (a pasta no Drive ainda não foi definida).' : '';
+  if (dest) dest.textContent = obra ? (/^Po/i.test(obra) ? 'Vai para a pasta do pós-obra: PÓS OBRA › PO_OBRAS › ano › obra › GERENCIAMENTO › ATA.' : 'Vai para a pasta da obra: OPERACOES › OBRAS › obra › GERENCIAMENTO › ATA.') : 'Sem obra: fica só no sistema (reunião do escritório ou de departamento).';
   return nome;
 }
 
 export async function criarAta({ titulo, data, tipo, obra, setor, participantes, resumo, pendencias, tipoReuniao, revisao, local, horario }) {
-  const ata = { titulo, data, tipo, obra: tipo === 'obra' ? obra : null, setor: tipo === 'departamento' ? setor : null, participantes, resumo, tipo_reuniao: tipoReuniao || 'REUNIÃO', revisao: Number(revisao) || 0, local: local || null, horario: horario || null };
+  const ata = { titulo, data, tipo, obra: obra || null, setor: setor || null, participantes, resumo, tipo_reuniao: tipoReuniao || 'REUNIÃO', revisao: Number(revisao) || 0, local: local || null, horario: horario || null };
   const pends = pendencias.map((p) => ({ descricao: p.descricao, responsavel: p.responsavel || null, responsavel_nome: p.responsavel ? nomeDe(p.responsavel) : (p.externoNome || p.externoCategoria || (p.externoTipo === 'cliente' ? 'Cliente' : null)), responsavel_tipo: p.responsavel ? 'solida' : (p.externoTipo || 'terceirizado'), responsavel_categoria: p.responsavel ? null : (p.externoCategoria || null), prazo: p.prazo || null, status: 'aberta' }));
   let nova;
   if (NA_NUVEM) nova = await criarAtaNuvem(ata, pends);
@@ -265,7 +267,6 @@ function detalheAta(id, hoje, obras) {
 
 function formNova(obras) {
   const hoje = hojeISO(); const r = rascunho;
-  const vinc = r ? (r.obra ? `obra:${r.obra}` : r.setor ? `dep:${r.setor}` : '') : '';
   const linhasIniciais = r && r.pendencias.length ? r.pendencias.map((p) => linhaForm(p)).join('') : linhaForm();
   const importador = html`<details class="caixa at-importar" ${r ? '' : html.seguro('open')}><summary><span class="caixa-tit">Importar uma ata pronta</span><span class="pequeno">PDF ou texto: eu leio e já separo as pendências</span></summary>
     <div class="caixa-corpo">
@@ -281,12 +282,11 @@ function formNova(obras) {
       <label>Data<input type="date" name="data" value="${r ? r.data : hoje}" required></label>
       <label>Tipo da reunião<select name="tipo_reuniao">${TIPOS_REUNIAO.map((x) => html`<option ${(r && r.tipoReuniao ? r.tipoReuniao : 'REUNIÃO') === x ? html.seguro('selected') : ''}>${x}</option>`)}</select></label>
       <label>Revisão<input name="revisao" type="number" min="0" max="99" value="0" title="R00 é a primeira; se refizer a mesma ata, sobe sozinho"></label>
-      <label>Ligada a<select name="vinculo" required><option value="">— escolher —</option>
-        <optgroup label="Obra">${(r && r.obra && !obras.includes(r.obra) ? [...obras, r.obra] : obras).map((o) => html`<option value="obra:${o}" ${vinc === `obra:${o}` ? html.seguro('selected') : ''}>${o}</option>`)}</optgroup>
-        <optgroup label="Departamento">${SETORES_ATA.map((s) => html`<option value="dep:${s}" ${vinc === `dep:${s}` ? html.seguro('selected') : ''}>${s}</option>`)}</optgroup></select></label>
+      <label>Obra<select name="obra"><option value="">— nenhuma (reunião do escritório) —</option>${(r && r.obra && !obras.includes(r.obra) ? [...obras, r.obra] : obras).map((o) => html`<option value="${o}" ${r && r.obra === o ? html.seguro('selected') : ''}>${o}</option>`)}</select></label>
+      <label>Departamento<select name="setor"><option value="">— nenhum —</option>${SETORES_ATA.map((s) => html`<option value="${s}" ${r && r.setor === s ? html.seguro('selected') : ''}>${s}</option>`)}</select></label>
     </div>
-    <p class="at-nome-linha">Nome da ata: <b id="ata-nome">escolha a obra (ou o departamento) e a data</b> <span class="pequeno" id="ata-destino"></span></p>
-    <div class="at-form-grade2"><label>Local<input name="local" autocomplete="off" placeholder="ex.: online, ou o endereço" value="${r && r.local ? r.local : ''}"></label><label>Horário<input name="horario" autocomplete="off" placeholder="ex.: 11h00" value="${r && r.horario ? r.horario : ''}"></label></div>
+    <p class="at-nome-linha">Nome da ata: <b id="ata-nome">escolha a data</b> <span class="pequeno" id="ata-destino"></span></p>
+    <div class="at-form-grade2"><label>Local<input name="local" autocomplete="off" placeholder="ex.: online, ou o endereço" value="${r && r.local ? r.local : ''}"></label></div>
     <label>Participantes <span class="pequeno">escreva os nomes separados por vírgula; pode pôr a empresa entre parênteses</span><input name="participantes" autocomplete="off" placeholder="ex.: Marcos (Sólida), Fernanda (Arquitetura), Julio (Cliente)" value="${r ? r.participantes.join(', ') : ''}"></label>
     <label>O que foi tratado (pauta e decisões)<textarea name="resumo" rows="${r ? 12 : 7}" placeholder="Escreva ou cole o texto da ata…">${r ? r.resumo : ''}</textarea></label>
     <h3>Pendências <span class="pequeno">o que precisa de ação: quem faz e até quando</span></h3>

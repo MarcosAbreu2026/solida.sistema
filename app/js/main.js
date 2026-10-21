@@ -1074,13 +1074,12 @@ document.addEventListener('submit', async (e) => {
   try {
     if (f) {
       const fd = new FormData(f);
-      const [tipoV, ...resto] = String(fd.get('vinculo') || '').split(':'); const valor = resto.join(':');
-      if (!valor) { alert('Escolha a obra ou o departamento da ata.'); return; }
+      const obraA = String(fd.get('obra') || ''); const setorA = String(fd.get('setor') || '');
       const pendencias = [...f.querySelectorAll('.pf-linha')].map((l) => lerLinhaPendencia(l)).filter((p) => p.descricao);
       if (pendencias.some((p) => p.externoTipo === '' && !p.responsavel)) { alert('Toda pendência precisa de um responsável: escolha a pessoa da Sólida.'); return; }
       if (pendencias.some((p) => p.externoTipo === 'terceirizado' && !p.externoCategoria && !p.externoNome)) { alert('Pendência de terceirizado: escolha o tipo de serviço ou escreva o nome da empresa.'); return; }
-      const nome = atas.atualizarNomeDoForm(f); if (!nome) { alert('Escolha a obra (ou o departamento) e a data: o nome da ata sai deles.'); return; }
-      const nova = await atas.criarAta({ titulo: nome, tipoReuniao: fd.get('tipo_reuniao'), revisao: fd.get('revisao'), local: String(fd.get('local') || '').trim(), horario: String(fd.get('horario') || '').trim(), data: fd.get('data'), tipo: tipoV === 'obra' ? 'obra' : 'departamento', obra: valor, setor: valor, participantes: String(fd.get('participantes') || '').split(/[,;]/).map((x) => x.trim()).filter(Boolean), resumo: String(fd.get('resumo') || ''), pendencias });
+      const nome = atas.atualizarNomeDoForm(f); if (!nome) { alert('Escolha a data: o nome da ata sai dela.'); return; }
+      const nova = await atas.criarAta({ titulo: nome, tipoReuniao: fd.get('tipo_reuniao'), revisao: fd.get('revisao'), local: String(fd.get('local') || '').trim(), data: fd.get('data'), tipo: obraA ? 'obra' : 'departamento', obra: obraA, setor: setorA, participantes: String(fd.get('participantes') || '').split(/[,;]/).map((x) => x.trim()).filter(Boolean), resumo: String(fd.get('resumo') || ''), pendencias });
       estado.atasMsg = `Ata salva${pendencias.length ? ` com ${pendencias.length} ${pendencias.length === 1 ? 'pendência' : 'pendências'}` : ''}.`;
       estado.atasMsgHash = `#/atas?aba=atas&ata=${nova.id}`; location.hash = estado.atasMsgHash;
     } else {
@@ -1132,7 +1131,7 @@ document.addEventListener('change', (e) => {
 // nome padrão da ata: atualiza ao mexer na obra/departamento, data, tipo ou revisão
 document.addEventListener('change', (e) => {
   const f = e.target.closest && e.target.closest('#ata-form');
-  if (f && ['vinculo', 'data', 'tipo_reuniao', 'revisao'].includes(e.target.name)) atas.atualizarNomeDoForm(f);
+  if (f && ['obra', 'setor', 'data', 'tipo_reuniao', 'revisao'].includes(e.target.name)) atas.atualizarNomeDoForm(f);
 });
 document.addEventListener('input', (e) => {
   if (e.target && e.target.name === 'revisao' && e.target.closest && e.target.closest('#ata-form')) { e.target.dataset.manual = '1'; atas.atualizarNomeDoForm(e.target.form); }
