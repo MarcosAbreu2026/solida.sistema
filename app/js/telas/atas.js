@@ -422,7 +422,6 @@ function detalheAta(id, hoje, obras) {
               <td class="sd-sem-pdf at-acoes">${r.p.status === 'feita' ? html`<button type="button" class="ac-mini" data-pend="${r.p.id}|aberta">↺</button>` : html`<button type="button" class="ac-mini at-ok" data-pend="${r.p.id}|feita" title="Concluir">✓</button>`}${naLista(r.p) ? '' : html`<button type="button" class="ac-mini" data-pend-lista="${r.p.id}" title="Voltar esta pendência para a lista de pendências">+ lista</button>`}</td></tr>`)}
         </tbody></table></div>
       </div>
-      <h3>Acrescentar pendência</h3>      <form class="at-nova-pend" id="pend-form" data-ata="${a.id}" data-obra="${a.obra || ''}" data-setor="${a.setor || ''}">${html.seguro(linhaForm({ semKind: true }))}<button type="submit" class="botao">Acrescentar pendência</button></form>
       ${podeApagar ? html`<p style="margin-top:18px"><a class="botao on" href="#/atas?aba=nova&revisar=${a.id}">Criar revisão ${rev2((Number(a.revisao) || 0) + 1)}</a> <button type="button" class="botao at-excluir" data-ata-del="${a.id}">Excluir esta ata e as pendências dela</button></p>` : ''}
     </article>`;
 }
