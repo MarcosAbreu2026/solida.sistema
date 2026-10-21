@@ -102,15 +102,15 @@ function resolverResponsavel(texto, participantes, pessoas) {
   const um = (parte) => {
     const pn = primeiroNome(parte);
     const part = participantes.find((p) => primeiroNome(p.nome) === pn && pn.length >= 3);
-    if (part && part.papel && part.papel !== 'solida') return { externoNome: part.nome, externoTipo: part.papel };
+    if (part && part.papel && part.papel !== 'solida') return part.papel === 'arquitetura' ? { externoNome: part.nome, externoTipo: 'terceirizado', externoCategoria: 'Arquitetura' } : { externoNome: part.nome, externoTipo: part.papel };
     const achados = un(parte);
     if (achados.length === 1) return { responsavel: achados[0].id };
     if (achados.length > 1) return { ambiguo: pn };
     if (part) return { externoNome: part.nome, externoTipo: 'solida' };      // da Sólida, mas sem login no sistema
-    return { externoNome: capitalizar(parte), externoTipo: parte.trim().split(/\s+/).length >= 2 ? 'terceirizado' : 'outro' };
+    return { externoNome: capitalizar(parte), externoTipo: 'terceirizado' };
   };
   const r = um(partes[0]);
-  return { responsavel: r.responsavel || '', externoNome: r.externoNome || '', externoTipo: r.externoTipo || '', ambiguo: r.ambiguo || '', extras: partes.slice(1) };
+  return { responsavel: r.responsavel || '', externoNome: r.externoNome || '', externoTipo: r.externoTipo || '', externoCategoria: r.externoCategoria || '', ambiguo: r.ambiguo || '', extras: partes.slice(1) };
 }
 
 // ---------------------------------------------------------------- tabela do PDF (padrão de ata da Sólida)
@@ -204,6 +204,14 @@ export function analisarAta(texto, { pessoas = [], obras = [], setores = [], hoj
   }
   if (!parts.length) parts = participantesEmTabela(linhas);
   const participantes = parts.map((p) => p.texto);
+  // local e horário ("LOCAL: online - 11H00", "Horário: 10h"); tipo da reunião pelos papéis dos participantes
+  const lLocal = linhas.find((l) => /^\s*local\s*:/iu.test(l)) || '';
+  const lHora = linhas.find((l) => /^\s*hor[áa]rio\s*:/iu.test(l)) || '';
+  const hm = (lHora || lLocal).match(/(\d{1,2})\s*(?:h|:)\s*(\d{2})?/i);
+  const horario = hm ? `${Number(hm[1])}h${hm[2] || '00'}` : '';
+  const local = lLocal.replace(/^\s*local\s*:\s*/iu, '').replace(/\s*[-–]\s*\d{1,2}\s*(?:h|:)\s*\d{0,2}.*$/i, '').trim();
+  const papeis = new Set(parts.map((p) => p.papel));
+  const tipoReuniao = papeis.has('cliente') && papeis.has('arquitetura') ? 'ARQUITETURA-CLIENTE' : papeis.has('cliente') ? 'CLIENTE' : papeis.has('arquitetura') ? 'ARQUITETURA' : 'REUNIÃO';
 
   // 1) tabela do padrão da Sólida
   const tabela = paginas ? lerTabela(paginas) : null;
@@ -215,11 +223,11 @@ export function analisarAta(texto, { pessoas = [], obras = [], setores = [], hoj
       const r = resolverResponsavel(x.responsavel, parts, pessoas);
       let descricao = x.descricao.charAt(0).toUpperCase() + x.descricao.slice(1);
       if (r.extras.length) descricao += ` (também: ${r.extras.map(capitalizar).join(', ')})`;
-      return { descricao, responsavel: r.responsavel, responsavelAmbiguo: r.ambiguo, externoNome: r.externoNome, externoTipo: r.externoTipo, prazo: x.prazo ? acharPrazo(x.prazo, hoje, data) : '', item: x.n };
+      return { descricao, responsavel: r.responsavel, responsavelAmbiguo: r.ambiguo, externoNome: r.externoNome, externoTipo: r.externoTipo, externoCategoria: r.externoCategoria, prazo: x.prazo ? acharPrazo(x.prazo, hoje, data) : '', item: x.n };
     });
     const resumo = [local, participantes.length ? `Participantes: ${participantes.join(', ')}` : '', infos.length ? `\nInformativos:\n${infos.map((x) => `${x.n}. ${x.descricao}${x.responsavel ? ` (${capitalizar(x.responsavel)})` : ''}`).join('\n')}` : '',
       `\nPendências:\n${pend.map((x) => `${x.n}. ${x.descricao}${x.responsavel ? ` — ${capitalizar(x.responsavel)}` : ''}${x.prazo ? ` — até ${x.prazo}` : ''}`).join('\n')}`].filter(Boolean).join('\n');
-    return { titulo, data, obra, obraForaDaLista: !!obra && !obras.some((o) => o.toLowerCase() === obra.toLowerCase()), setor, participantes, resumo, pendencias, lidoDaTabela: true, informativos: infos.length };
+    return { titulo, data, obra, obraForaDaLista: !!obra && !obras.some((o) => o.toLowerCase() === obra.toLowerCase()), setor, participantes, resumo, pendencias, lidoDaTabela: true, informativos: infos.length, local, horario, tipoReuniao };
   }
 
   // 2) texto corrido: acha as linhas que parecem ação
@@ -241,9 +249,9 @@ export function analisarAta(texto, { pessoas = [], obras = [], setores = [], hoj
     const chave = norm(descricao);
     if (descricao.length < 6 || vistas.has(chave)) continue;
     vistas.add(chave);
-    pendencias.push({ descricao: descricao.charAt(0).toUpperCase() + descricao.slice(1), responsavel: resp && !resp.ambiguo ? resp.id : '', responsavelAmbiguo: resp && resp.ambiguo ? resp.nome : '', externoNome: '', externoTipo: '', prazo });
+    pendencias.push({ descricao: descricao.charAt(0).toUpperCase() + descricao.slice(1), responsavel: resp && !resp.ambiguo ? resp.id : '', responsavelAmbiguo: resp && resp.ambiguo ? resp.nome : '', externoNome: '', externoTipo: '', externoCategoria: '', prazo });
   }
-  return { titulo, data, obra, obraForaDaLista: !!obra && !obras.some((o) => o.toLowerCase() === obra.toLowerCase()), setor, participantes, resumo: String(texto || '').trim(), pendencias, lidoDaTabela: false, informativos: 0 };
+  return { titulo, data, obra, obraForaDaLista: !!obra && !obras.some((o) => o.toLowerCase() === obra.toLowerCase()), setor, participantes, resumo: String(texto || '').trim(), pendencias, lidoDaTabela: false, informativos: 0, local, horario, tipoReuniao };
 }
 
 // ---------------------------------------------------------------- arquivos

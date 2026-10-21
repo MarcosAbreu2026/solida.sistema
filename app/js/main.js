@@ -382,8 +382,9 @@ function desenhar() {
     return;
   }
   if (tela === 'atas') {
-    $('#conteudo').innerHTML = `<div>${atas.render({ params: rota.params, obras: obrasDeAtas(), msg: estado.atasMsgHash === location.hash ? (estado.atasMsg || '') : '' })}</div>`;
+    $('#conteudo').innerHTML = `<div>${atas.render({ params: rota.params, obras: obrasDeAtas(), sugestoes: ((estado.terceiros && estado.terceiros.empresas) || []).map((e) => e.empresa), msg: estado.atasMsgHash === location.hash ? (estado.atasMsg || '') : '' })}</div>`;
     ordenar.aplicar();
+    { const fm = document.getElementById('ata-form'); if (fm) atas.atualizarNomeDoForm(fm); }
     if (estado.atasVisitada !== location.hash) {   // ao entrar na tela (ou mudar de aba), busca os dados mais novos
       estado.atasVisitada = location.hash;
       atas.carregar().then(() => { const a = document.activeElement; if (rotaAtual().tela === 'atas' && !(a && a.closest && a.closest('#ata-form, #pend-form'))) desenhar(); });
@@ -1076,13 +1077,15 @@ document.addEventListener('submit', async (e) => {
       const [tipoV, ...resto] = String(fd.get('vinculo') || '').split(':'); const valor = resto.join(':');
       if (!valor) { alert('Escolha a obra ou o departamento da ata.'); return; }
       const pendencias = [...f.querySelectorAll('.pf-linha')].map((l) => lerLinhaPendencia(l)).filter((p) => p.descricao);
-      if (pendencias.some((p) => !p.responsavel && !p.externoNome)) { alert('Toda pendência precisa de um responsável (da Sólida ou, em "Outro", o nome de quem é de fora).'); return; }
-      const nova = await atas.criarAta({ titulo: String(fd.get('titulo')).trim(), data: fd.get('data'), tipo: tipoV === 'obra' ? 'obra' : 'departamento', obra: valor, setor: valor, participantes: fd.getAll('participantes'), resumo: String(fd.get('resumo') || ''), pendencias });
+      if (pendencias.some((p) => p.externoTipo === '' && !p.responsavel)) { alert('Toda pendência precisa de um responsável: escolha a pessoa da Sólida.'); return; }
+      if (pendencias.some((p) => p.externoTipo === 'terceirizado' && !p.externoCategoria && !p.externoNome)) { alert('Pendência de terceirizado: escolha o tipo de serviço ou escreva o nome da empresa.'); return; }
+      const nome = atas.atualizarNomeDoForm(f); if (!nome) { alert('Escolha a obra (ou o departamento) e a data: o nome da ata sai deles.'); return; }
+      const nova = await atas.criarAta({ titulo: nome, tipoReuniao: fd.get('tipo_reuniao'), revisao: fd.get('revisao'), local: String(fd.get('local') || '').trim(), horario: String(fd.get('horario') || '').trim(), data: fd.get('data'), tipo: tipoV === 'obra' ? 'obra' : 'departamento', obra: valor, setor: valor, participantes: String(fd.get('participantes') || '').split(/[,;]/).map((x) => x.trim()).filter(Boolean), resumo: String(fd.get('resumo') || ''), pendencias });
       estado.atasMsg = `Ata salva${pendencias.length ? ` com ${pendencias.length} ${pendencias.length === 1 ? 'pendência' : 'pendências'}` : ''}.`;
       estado.atasMsgHash = `#/atas?aba=atas&ata=${nova.id}`; location.hash = estado.atasMsgHash;
     } else {
       const p = lerLinhaPendencia(g.querySelector('.pf-linha'));
-      if (!p.descricao || (!p.responsavel && !p.externoNome)) { alert('Escreva a pendência e escolha o responsável.'); return; }
+      if (!p.descricao || (p.externoTipo === '' && !p.responsavel) || (p.externoTipo === 'terceirizado' && !p.externoCategoria && !p.externoNome)) { alert('Escreva a pendência e escolha o responsável.'); return; }
       await atas.criarPendencia({ ata_id: Number(g.dataset.ata), ...p, obra: g.dataset.obra, setor: g.dataset.setor });
     }
     desenhar();
@@ -1105,17 +1108,32 @@ document.addEventListener('click', (e) => {
 
 // uma linha de pendência do formulário (responsável da Sólida ou "Outro": cliente, arquitetura, terceirizado…)
 function lerLinhaPendencia(l) {
-  const r = l.querySelector('[name="p_resp"]').value; const ext = r === '__outro';
+  const tipo = l.querySelector('[name="p_tipo"]').value;
   return {
-    descricao: l.querySelector('[name="p_desc"]').value.trim(), responsavel: ext ? '' : r,
-    externoNome: ext ? l.querySelector('[name="p_ext_nome"]').value.trim() : '', externoTipo: ext ? l.querySelector('[name="p_ext_tipo"]').value : '',
+    descricao: l.querySelector('[name="p_desc"]').value.trim(),
+    responsavel: tipo === 'solida' ? l.querySelector('[name="p_resp"]').value : '',
+    externoTipo: tipo === 'solida' ? '' : tipo,
+    externoCategoria: tipo === 'terceirizado' ? l.querySelector('[name="p_cat"]').value : '',
+    externoNome: tipo === 'solida' ? '' : l.querySelector('[name="p_nome"]').value.trim(),
     prazo: l.querySelector('[name="p_prazo"]').value,
   };
 }
+// trocar Sólida / Terceirizado / Cliente mostra os campos certos da mesma linha
 document.addEventListener('change', (e) => {
-  const sel = e.target.closest && e.target.closest('[data-pf-resp]');
+  const sel = e.target.closest && e.target.closest('[data-pf-tipo]');
   if (!sel) return;
-  const ext = sel.closest('.pf-linha').querySelector('.pf-ext');
-  if (ext) { ext.hidden = sel.value !== '__outro'; if (!ext.hidden) ext.querySelector('input').focus(); }
-  sel.classList.remove('pf-falta');
+  const l = sel.closest('.pf-linha'); const tipo = sel.value; l.dataset.tipo = tipo;
+  l.querySelector('.pf-sol').hidden = tipo !== 'solida';
+  l.querySelector('.pf-ter').hidden = tipo !== 'terceirizado';
+  const nome = l.querySelector('.pf-ext'); nome.hidden = tipo === 'solida';
+  nome.placeholder = tipo === 'cliente' ? 'Nome do cliente' : 'Nome ou empresa';
+});
+
+// nome padrão da ata: atualiza ao mexer na obra/departamento, data, tipo ou revisão
+document.addEventListener('change', (e) => {
+  const f = e.target.closest && e.target.closest('#ata-form');
+  if (f && ['vinculo', 'data', 'tipo_reuniao', 'revisao'].includes(e.target.name)) atas.atualizarNomeDoForm(f);
+});
+document.addEventListener('input', (e) => {
+  if (e.target && e.target.name === 'revisao' && e.target.closest && e.target.closest('#ata-form')) { e.target.dataset.manual = '1'; atas.atualizarNomeDoForm(e.target.form); }
 });

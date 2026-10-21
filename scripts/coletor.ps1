@@ -16,7 +16,8 @@ while ($true) {
     # se o servidor já está lendo o Drive, espera terminar (só uma leitura por vez)
     for ($i = 0; $i -lt 120 -and @(Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" | Where-Object { $_.CommandLine -match 'exportar-drive\.ps1' }).Count; $i++) { Start-Sleep -Seconds 5 }
     & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $raiz 'scripts\exportar-drive.ps1') | Out-Null
-    if ($node) { $saida = & $node (Join-Path $raiz 'scripts\enviar-nuvem.mjs') 2>&1; Registrar ($saida -join ' ') }
+    if ($node) { $saida = & $node (Join-Path $raiz 'scripts\enviar-nuvem.mjs') 2>&1; Registrar ($saida -join ' ')
+      $saida = & $node (Join-Path $raiz 'scripts\arquivar-atas.mjs') 2>&1; Registrar ($saida -join ' ') }
     else { Registrar 'Node.js não encontrado: nada enviado para a nuvem' }
   } catch { Registrar "Erro: $($_.Exception.Message)" }
   Start-Sleep -Seconds 600

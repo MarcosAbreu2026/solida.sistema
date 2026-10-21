@@ -51,9 +51,36 @@ export async function carregar() {
 }
 const nomeDe = (id, reserva) => ((dados.pessoas.find((p) => p.id === id) || {}).nome) || reserva || '—';
 
-export async function criarAta({ titulo, data, tipo, obra, setor, participantes, resumo, pendencias }) {
-  const ata = { titulo, data, tipo, obra: tipo === 'obra' ? obra : null, setor: tipo === 'departamento' ? setor : null, participantes, resumo };
-  const pends = pendencias.map((p) => ({ descricao: p.descricao, responsavel: p.responsavel || null, responsavel_nome: p.responsavel ? nomeDe(p.responsavel) : (p.externoNome || null), responsavel_tipo: p.responsavel ? 'solida' : (p.externoTipo || 'outro'), prazo: p.prazo || null, status: 'aberta' }));
+// ---------------------------------------------------------------- nome padrão da ata
+// Obra (ou pós-obra) _ aaaa.mm.dd _ ATA _ tipo _ Rnn   ex.: Mo344_2026.07.10_ATA_ARQUITETURA-CLIENTE_R00
+// Salva no Drive, na pasta da obra: GERENCIAMENTO\ATA (obra) ou PÓS OBRA\PO_OBRAS\<ano>\Po_NNN\GERENCIAMENTO\ATA (pós-obra).
+export const TIPOS_REUNIAO = ['REUNIÃO', 'ARQUITETURA', 'CLIENTE', 'ARQUITETURA-CLIENTE', 'TERCEIRIZADO', 'PLANEJAMENTO'];
+const semAcento = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '');
+const baseDoVinculo = (v) => { const [k, ...r] = String(v || '').split(':'); const x = r.join(':'); return k === 'obra' ? x : semAcento(x).replace(/\s*\/\s*/g, '-').replace(/\s+/g, ''); };
+export const rev2 = (n) => `R${String(Number(n) || 0).padStart(2, '0')}`;
+export function proximaRevisao({ vinculo, data, tipo }) {
+  const base = baseDoVinculo(vinculo); if (!base) return 0;
+  const iguais = dados.atas.filter((a) => (a.obra || semAcento(a.setor || '').replace(/\s*\/\s*/g, '-').replace(/\s+/g, '')) === base && a.data === data && (a.tipo_reuniao || 'REUNIÃO') === tipo);
+  return iguais.length ? Math.max(...iguais.map((a) => Number(a.revisao) || 0)) + 1 : 0;
+}
+export function nomePadrao({ vinculo, data, tipo, revisao }) {
+  const base = baseDoVinculo(vinculo); if (!base || !data) return '';
+  return `${base}_${String(data).replace(/-/g, '.')}_ATA_${tipo || 'REUNIÃO'}_${rev2(revisao)}`;
+}
+// atualiza o nome mostrado no formulário (e a revisão, se a pessoa não mexeu nela)
+export function atualizarNomeDoForm(form) {
+  const v = form.vinculo.value; const data = form.data.value; const tipo = form.tipo_reuniao.value;
+  if (!form.revisao.dataset.manual) form.revisao.value = proximaRevisao({ vinculo: v, data, tipo });
+  const nome = nomePadrao({ vinculo: v, data, tipo, revisao: form.revisao.value });
+  const el = document.getElementById('ata-nome'); if (el) el.textContent = nome ? `${nome}.pdf` : 'escolha a obra (ou o departamento) e a data';
+  const dest = document.getElementById('ata-destino');
+  if (dest) dest.textContent = v.startsWith('obra:') ? (/^Po/i.test(v.slice(5)) ? 'Vai para a pasta do pós-obra: PÓS OBRA › PO_OBRAS › ano › obra › GERENCIAMENTO › ATA.' : 'Vai para a pasta da obra: OPERACOES › OBRAS › obra › GERENCIAMENTO › ATA.') : v ? 'Ata de departamento: fica só no sistema (a pasta no Drive ainda não foi definida).' : '';
+  return nome;
+}
+
+export async function criarAta({ titulo, data, tipo, obra, setor, participantes, resumo, pendencias, tipoReuniao, revisao, local, horario }) {
+  const ata = { titulo, data, tipo, obra: tipo === 'obra' ? obra : null, setor: tipo === 'departamento' ? setor : null, participantes, resumo, tipo_reuniao: tipoReuniao || 'REUNIÃO', revisao: Number(revisao) || 0, local: local || null, horario: horario || null };
+  const pends = pendencias.map((p) => ({ descricao: p.descricao, responsavel: p.responsavel || null, responsavel_nome: p.responsavel ? nomeDe(p.responsavel) : (p.externoNome || p.externoCategoria || (p.externoTipo === 'cliente' ? 'Cliente' : null)), responsavel_tipo: p.responsavel ? 'solida' : (p.externoTipo || 'terceirizado'), responsavel_categoria: p.responsavel ? null : (p.externoCategoria || null), prazo: p.prazo || null, status: 'aberta' }));
   let nova;
   if (NA_NUVEM) nova = await criarAtaNuvem(ata, pends);
   else {
@@ -67,8 +94,8 @@ export async function criarAta({ titulo, data, tipo, obra, setor, participantes,
   await carregar();
   return nova;
 }
-export async function criarPendencia({ ata_id, descricao, responsavel, externoNome, externoTipo, prazo, obra, setor }) {
-  const p = { ata_id: ata_id || null, descricao, responsavel: responsavel || null, responsavel_nome: responsavel ? nomeDe(responsavel) : (externoNome || null), responsavel_tipo: responsavel ? 'solida' : (externoTipo || 'outro'), prazo: prazo || null, status: 'aberta', obra: obra || null, setor: setor || null };
+export async function criarPendencia({ ata_id, descricao, responsavel, externoNome, externoTipo, externoCategoria, prazo, obra, setor }) {
+  const p = { ata_id: ata_id || null, descricao, responsavel: responsavel || null, responsavel_nome: responsavel ? nomeDe(responsavel) : (externoNome || externoCategoria || (externoTipo === 'cliente' ? 'Cliente' : null)), responsavel_tipo: responsavel ? 'solida' : (externoTipo || 'terceirizado'), responsavel_categoria: responsavel ? null : (externoCategoria || null), prazo: prazo || null, status: 'aberta', obra: obra || null, setor: setor || null };
   if (NA_NUVEM) await criarPendenciaNuvem(p);
   else { const l = lerLocal(); l.pendencias.push({ id: l.seq++, ...p, criado_por: idPessoa(), criado_em: new Date().toISOString(), concluida_em: null }); gravarLocal(l); }
   await carregar();
@@ -120,27 +147,37 @@ const COLUNAS = [
 
 const opcoesPessoas = (sel = '') => dados.pessoas.map((p) => html`<option value="${p.id}" ${p.id === sel ? html.seguro('selected') : ''}>${p.nome}</option>`);
 
-export const TIPOS_EXTERNOS = [['cliente', 'Cliente'], ['arquitetura', 'Arquitetura'], ['terceirizado', 'Terceirizado / fornecedor'], ['outro', 'Outro']];
-const ROTULO_TIPO = { cliente: 'Cliente', arquitetura: 'Arquitetura', terceirizado: 'Terceirizado', outro: 'Externo' };
+export const CATEGORIAS_TERC = ['Arquitetura', 'Ar-condicionado', 'Automação', 'ACM / fachada', 'Elétrica', 'Hidráulica', 'Iluminação', 'Esquadrias / vidros', 'Gesso / forro', 'Impermeabilização', 'Marcenaria', 'Marmoraria / pedras', 'Paisagismo', 'Pintura', 'Piscina', 'Revestimentos', 'Serralheria', 'Limpeza', 'Outro'];
+const ROTULO_TIPO = { terceirizado: 'Terceirizado', cliente: 'Cliente', arquitetura: 'Arquitetura', outro: 'Externo' };
+let sugestoesNomes = [];   // nomes de terceirizados já conhecidos (programações e pendências anteriores) para completar o campo
+export const definirSugestoes = (lista) => { sugestoesNomes = lista; };
+const nomesConhecidos = () => [...new Set([...sugestoesNomes, ...dados.pendencias.filter((p) => p.responsavel_tipo && p.responsavel_tipo !== 'solida' && p.responsavel_nome).map((p) => p.responsavel_nome)])].sort((x, y) => x.localeCompare(y, 'pt-BR'));
 
-// Uma linha de pendência. O responsável pode ser da Sólida (lista) ou "Outro": cliente, arquitetura, terceirizado…
+// Uma linha de pendência, tudo em uma linha: pendência · quem (Sólida, Terceirizado ou Cliente) · detalhe · prazo
+// Sólida → escolhe a pessoa. Terceirizado → escolhe o tipo de serviço (arquitetura, elétrica, ACM…) e, se quiser, o nome/empresa.
+// Cliente → nome (opcional).
 export function linhaForm(v = {}) {
-  const externo = !v.responsavel && !!v.externoNome && v.externoTipo !== 'solida';
-  const falta = v.descricao && !v.responsavel && !externo;
-  const tipoSel = v.externoTipo && v.externoTipo !== 'solida' ? v.externoTipo : 'cliente';
-  return String(html`<div class="pf-linha"><input name="p_desc" placeholder="O que precisa ser feito" autocomplete="off" value="${v.descricao || ''}">
-    <select name="p_resp" class="${falta ? 'pf-falta' : ''}" data-pf-resp ${falta ? html.seguro(`title="${v.responsavelAmbiguo ? `Há mais de um ${v.responsavelAmbiguo}: escolha quem` : 'Escolha o responsável'}"`) : ''}><option value="">Responsável…</option>${opcoesPessoas(v.responsavel || '')}<option value="__outro" ${externo ? html.seguro('selected') : ''}>Outro (cliente, arquitetura, terceirizado…)</option></select>
-    <input type="date" name="p_prazo" title="Prazo" value="${v.prazo || ''}"><button type="button" class="pf-x" data-pf-del title="Tirar esta linha">×</button>
-    <div class="pf-ext" ${externo ? '' : html.seguro('hidden')}><input name="p_ext_nome" placeholder="Nome (pessoa ou empresa)" autocomplete="off" value="${externo ? v.externoNome : (v.externoTipo === 'solida' ? v.externoNome : '')}">
-      <select name="p_ext_tipo">${TIPOS_EXTERNOS.map(([id, nome]) => html`<option value="${id}" ${tipoSel === id ? html.seguro('selected') : ''}>${nome}</option>`)}</select></div></div>`);
+  const tipo = v.responsavel ? 'solida' : (v.externoTipo === 'cliente' ? 'cliente' : (v.externoTipo === 'terceirizado' || v.externoTipo === 'arquitetura' || v.externoTipo === 'outro') ? 'terceirizado' : 'solida');
+  const categoria = v.externoCategoria || (v.externoTipo === 'arquitetura' ? 'Arquitetura' : '');
+  const nome = tipo === 'solida' ? '' : (v.externoNome || '');
+  const falta = !!v.descricao && tipo === 'solida' && !v.responsavel;
+  const dica = v.responsavelAmbiguo ? `Há mais de um ${v.responsavelAmbiguo}: escolha quem` : v.externoNome && v.externoTipo === 'solida' ? `${v.externoNome} não tem login no sistema: escolha outra pessoa` : 'Escolha o responsável';
+  return String(html`<div class="pf-linha" data-tipo="${tipo}"><input name="p_desc" placeholder="O que precisa ser feito" autocomplete="off" value="${v.descricao || ''}" title="${v.descricao || ''}">
+    <select name="p_tipo" data-pf-tipo title="Quem é o responsável"><option value="solida" ${tipo === 'solida' ? html.seguro('selected') : ''}>Sólida</option><option value="terceirizado" ${tipo === 'terceirizado' ? html.seguro('selected') : ''}>Terceirizado</option><option value="cliente" ${tipo === 'cliente' ? html.seguro('selected') : ''}>Cliente</option></select>
+    <select name="p_resp" class="pf-sol ${falta ? 'pf-falta' : ''}" title="${falta ? dica : ''}" ${tipo === 'solida' ? '' : html.seguro('hidden')}><option value="">Pessoa da Sólida…</option>${opcoesPessoas(v.responsavel || '')}</select>
+    <select name="p_cat" class="pf-ter" ${tipo === 'terceirizado' ? '' : html.seguro('hidden')}><option value="">Tipo de serviço…</option>${CATEGORIAS_TERC.map((c) => html`<option ${categoria === c ? html.seguro('selected') : ''}>${c}</option>`)}</select>
+    <input name="p_nome" class="pf-ext" list="dl-terceiros" placeholder="${tipo === 'cliente' ? 'Nome do cliente' : 'Nome ou empresa'}" autocomplete="off" value="${nome}" ${tipo === 'solida' ? html.seguro('hidden') : ''}>
+    <input type="date" name="p_prazo" title="Prazo" value="${v.prazo || ''}"><button type="button" class="pf-x" data-pf-del title="Tirar esta linha">×</button></div>`);
 }
+export const datalistTerceiros = () => html`<datalist id="dl-terceiros">${nomesConhecidos().map((n) => html`<option value="${n}">`)}</datalist>`;
 function filtrar(params) {
   const q = (params.get('q') || '').trim().toLocaleLowerCase('pt-BR');
   const pessoa = params.get('pessoa') || ''; const setor = params.get('setor') || ''; const obra = params.get('obra') || '';
   const eu = souEu();
   return dados.pendencias.filter((p) => {
     if (p.status === 'cancelada') return false;
-    if (pessoa.startsWith('tipo:')) { if ((p.responsavel_tipo || 'solida') !== pessoa.slice(5)) return false; }
+    if (pessoa.startsWith('cat:')) { if (p.responsavel_categoria !== pessoa.slice(4)) return false; }
+    else if (pessoa.startsWith('tipo:')) { if ((p.responsavel_tipo || 'solida') !== pessoa.slice(5)) return false; }
     else if (pessoa === 'eu' ? p.responsavel !== eu : pessoa && p.responsavel !== pessoa) return false;
     if (setor && p.setor !== setor) return false;
     if (obra && p.obra !== obra) return false;
@@ -155,7 +192,7 @@ function barraFiltros(params, obras, aba) {
   const vista = params.get('vista') === 'lista' ? 'lista' : 'prazo';
   return html`<div class="at-filtros">
     ${aba === 'atas' ? '' : html`<div class="subnav" role="tablist"><a role="tab" class="${vista === 'prazo' ? 'on' : ''}" href="#/atas?vista=prazo">Prazo</a><a role="tab" class="${vista === 'lista' ? 'on' : ''}" href="#/atas?vista=lista">Lista</a></div>`}
-    ${aba === 'atas' ? '' : sel('pessoa', 'Responsável', [['eu', 'Só as minhas'], ['tipo:solida', 'Equipe da Sólida'], ['tipo:cliente', 'Clientes'], ['tipo:arquitetura', 'Arquitetura'], ['tipo:terceirizado', 'Terceirizados'], ...dados.pessoas.map((p) => [p.id, p.nome])], params.get('pessoa') || '')}
+    ${aba === 'atas' ? '' : sel('pessoa', 'Responsável', [['eu', 'Só as minhas'], ['tipo:solida', 'Equipe da Sólida'], ['tipo:terceirizado', 'Terceirizados (todos)'], ['tipo:cliente', 'Clientes'], ...CATEGORIAS_TERC.map((c) => [`cat:${c}`, `Terc.: ${c}`]), ...dados.pessoas.map((p) => [p.id, p.nome])], params.get('pessoa') || '')}
     ${sel('setor', 'Setor', SETORES_ATA.map((s) => [s, s]), params.get('setor') || '')}
     ${sel('obra', 'Obra', obras.map((o) => [o, o]), params.get('obra') || '')}
     <label>Procurar<input type="search" data-atas-filtro="q" value="${params.get('q') || ''}" placeholder="texto…"></label>
@@ -169,7 +206,7 @@ function cartao(p, hoje) {
   return html`<article class="at-card at-${col}">
     <div class="at-tit">${p.descricao}</div>
     <div class="at-meta"><span class="at-prazo at-p-${col}">${rotuloPrazo}</span>${onde(p) ? html`<span class="at-chip">${onde(p)}</span>` : ''}</div>
-    <div class="at-quem"><span class="at-pessoa">${nomeDe(p.responsavel, p.responsavel_nome)}</span>${p.responsavel_tipo && p.responsavel_tipo !== 'solida' ? html`<span class="at-tipo at-t-${p.responsavel_tipo}">${ROTULO_TIPO[p.responsavel_tipo] || 'Externo'}</span>` : ''}${a ? html`<a class="at-ata" href="#/atas?aba=atas&ata=${a.id}" title="Ata de origem">ata ${dm(a.data).slice(0, 5)}</a>` : ''}</div>
+    <div class="at-quem"><span class="at-pessoa">${nomeDe(p.responsavel, p.responsavel_nome)}</span>${p.responsavel_tipo && p.responsavel_tipo !== 'solida' ? html`<span class="at-tipo at-t-${p.responsavel_tipo}">${ROTULO_TIPO[p.responsavel_tipo] || 'Externo'}${p.responsavel_categoria ? ` · ${p.responsavel_categoria}` : ''}</span>` : ''}${a ? html`<a class="at-ata" href="#/atas?aba=atas&ata=${a.id}" title="Ata de origem">ata ${dm(a.data).slice(0, 5)}</a>` : ''}</div>
     <div class="at-acoes">
       ${p.status === 'feita' ? html`<button type="button" class="ac-mini" data-pend="${p.id}|aberta">↺ reabrir</button>` : html`<button type="button" class="ac-mini at-ok" data-pend="${p.id}|feita">✓ concluir</button>`}
       <button type="button" class="ac-mini" data-pend-del="${p.id}" title="Excluir esta pendência">excluir</button>
@@ -215,6 +252,7 @@ function detalheAta(id, hoje, obras) {
   return html`<p><a class="link" href="#/atas?aba=atas">← Todas as atas</a></p>
     <article class="at-ata-det">
       <h2>${a.titulo}</h2>
+      <p class="pequeno at-drive ${a.arquivada_em ? 'ok' : a.arquivo_erro ? 'erro' : ''}">${a.arquivada_em ? html`✓ Salva no Drive (${new Date(a.arquivada_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}): ${a.arquivo || a.titulo + '.pdf'}` : a.arquivo_erro ? html`Não consegui salvar no Drive: ${a.arquivo_erro}. Vou tentar de novo no próximo ciclo.` : a.obra ? 'Aguardando ser salva no Drive (o computador do escritório salva a cada 10 minutos).' : 'Ata de departamento: fica só no sistema (pasta no Drive ainda não definida).'}</p>
       <p class="pequeno">${dm(a.data)} · ${a.tipo === 'obra' ? 'Obra' : 'Departamento'}: <b>${onde(a) || '—'}</b>${a.criado_por_nome ? ` · registrada por ${a.criado_por_nome}` : ''}</p>
       ${a.participantes && a.participantes.length ? html`<p class="pequeno">Participantes: ${a.participantes.join(', ')}</p>` : ''}
       <div class="at-resumo">${a.resumo ? textoRico(a.resumo) : html`<span class="muted">Sem texto.</span>`}</div>
@@ -240,14 +278,16 @@ function formNova(obras) {
   ${r ? html`<p class="aviso at-aviso-imp">Ata lida${r.lidoDaTabela ? ' (padrão de ata da Sólida)' : ''}: encontrei <b>${r.pendencias.length}</b> ${r.pendencias.length === 1 ? 'pendência' : 'pendências'}${r.informativos ? `, mais ${r.informativos} informativo${r.informativos === 1 ? '' : 's'} que ficaram no texto da ata` : ''}${r.pendencias.some((p) => !p.responsavel && !p.externoNome) ? ', algumas sem responsável (em destaque)' : ''}. Confira, corrija o que precisar e salve. <button type="button" class="ac-mini" data-ata-descartar>descartar e começar do zero</button></p>` : ''}
   <form class="at-form" id="ata-form">
     <div class="at-form-grade">
-      <label>Título da ata<input name="titulo" required placeholder="ex.: Reunião de obra Mo531" autocomplete="off" value="${r ? r.titulo : ''}"></label>
       <label>Data<input type="date" name="data" value="${r ? r.data : hoje}" required></label>
+      <label>Tipo da reunião<select name="tipo_reuniao">${TIPOS_REUNIAO.map((x) => html`<option ${(r && r.tipoReuniao ? r.tipoReuniao : 'REUNIÃO') === x ? html.seguro('selected') : ''}>${x}</option>`)}</select></label>
+      <label>Revisão<input name="revisao" type="number" min="0" max="99" value="0" title="R00 é a primeira; se refizer a mesma ata, sobe sozinho"></label>
       <label>Ligada a<select name="vinculo" required><option value="">— escolher —</option>
         <optgroup label="Obra">${(r && r.obra && !obras.includes(r.obra) ? [...obras, r.obra] : obras).map((o) => html`<option value="obra:${o}" ${vinc === `obra:${o}` ? html.seguro('selected') : ''}>${o}</option>`)}</optgroup>
         <optgroup label="Departamento">${SETORES_ATA.map((s) => html`<option value="dep:${s}" ${vinc === `dep:${s}` ? html.seguro('selected') : ''}>${s}</option>`)}</optgroup></select></label>
     </div>
-    <fieldset class="at-part"><legend>Participantes</legend>${dados.pessoas.map((p) => html`<label class="ac-chip"><input type="checkbox" name="participantes" value="${p.nome}" ${r && r.participantes.includes(p.nome) ? html.seguro('checked') : ''}><span>${p.nome}</span></label>`)}
-      ${r ? r.participantes.filter((n) => !dados.pessoas.some((p) => p.nome === n)).map((n) => html`<label class="ac-chip"><input type="checkbox" name="participantes" value="${n}" checked><span>${n}</span></label>`) : ''}</fieldset>
+    <p class="at-nome-linha">Nome da ata: <b id="ata-nome">escolha a obra (ou o departamento) e a data</b> <span class="pequeno" id="ata-destino"></span></p>
+    <div class="at-form-grade2"><label>Local<input name="local" autocomplete="off" placeholder="ex.: online, ou o endereço" value="${r && r.local ? r.local : ''}"></label><label>Horário<input name="horario" autocomplete="off" placeholder="ex.: 11h00" value="${r && r.horario ? r.horario : ''}"></label></div>
+    <label>Participantes <span class="pequeno">escreva os nomes separados por vírgula; pode pôr a empresa entre parênteses</span><input name="participantes" autocomplete="off" placeholder="ex.: Marcos (Sólida), Fernanda (Arquitetura), Julio (Cliente)" value="${r ? r.participantes.join(', ') : ''}"></label>
     <label>O que foi tratado (pauta e decisões)<textarea name="resumo" rows="${r ? 12 : 7}" placeholder="Escreva ou cole o texto da ata…">${r ? r.resumo : ''}</textarea></label>
     <h3>Pendências <span class="pequeno">o que precisa de ação: quem faz e até quando</span></h3>
     <div id="pend-linhas">${html.seguro(linhasIniciais)}</div>
@@ -255,7 +295,8 @@ function formNova(obras) {
     <p style="margin-top:14px"><button type="submit" class="botao on">Salvar ata</button> <span class="pequeno at-msg"></span></p>
   </form>`;
 }
-export function render({ params, obras = [], msg = '' }) {
+export function render({ params, obras = [], msg = '', sugestoes = [] }) {
+  definirSugestoes(sugestoes);
   const hoje = hojeISO();
   const aba = ABAS.some(([id]) => id === params.get('aba')) ? params.get('aba') : 'pendencias';
   const abertas = dados.pendencias.filter((p) => p.status === 'aberta');
@@ -274,6 +315,7 @@ export function render({ params, obras = [], msg = '' }) {
       ${params.get('vista') === 'lista' ? vistaLista(lista, hoje, params) : vistaPrazo(lista, hoje)}`;
   }
   return html`<div class="pagina atas">
+    ${datalistTerceiros()}
     ${dados.erro ? html`<p class="erro">Não consegui carregar: ${dados.erro}</p>` : ''}
     ${msg ? html`<p class="msg ok">${msg}</p>` : ''}
     ${topo}<div style="margin-top:16px">${corpo}</div>

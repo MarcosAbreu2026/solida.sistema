@@ -1453,7 +1453,21 @@ table.ordenavel th.ord-desc::after { content: ' ▼'; font-size: 9px; }
 .at-aviso-imp { max-width: 880px; }
 .pf-falta { border-color: #D9534F !important; background: #FFF3F2; }
 
-.pf-ext { grid-column: 1 / -1; display: grid; grid-template-columns: 3fr 1.6fr; gap: 8px; }
-.pf-ext[hidden] { display: none; }
 .at-tipo { font-size: 10.5px; font-weight: 700; padding: 0 7px; border-radius: 999px; background: #EEE; color: #555; }
 .at-t-cliente { background: #FFF1D6; color: #7A5A1E; } .at-t-arquitetura { background: #E8E1F7; color: #5B3F99; } .at-t-terceirizado { background: #E0F1F4; color: #1F6B7A; }
+
+/* linha de pend�ncia do formul�rio: tudo em uma linha */
+.at-form { max-width: none; }
+.pf-linha { display: grid; grid-template-columns: minmax(260px, 1fr) 116px 170px 170px 140px 24px; gap: 8px; align-items: center; margin-bottom: 8px; }
+.pf-linha > * { min-width: 0; }
+.pf-linha input, .pf-linha select { height: 34px; padding: 0 9px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.pf-linha .pf-sol { grid-column: span 2; }
+.pf-linha[data-tipo="cliente"] .pf-ext { grid-column: span 2; }
+.pf-linha [hidden] { display: none !important; }
+@media (max-width: 900px) { .pf-linha { grid-template-columns: 1fr 1fr; } .pf-linha > :first-child { grid-column: 1 / -1; } .pf-linha .pf-sol, .pf-linha[data-tipo="cliente"] .pf-ext { grid-column: auto; } }
+
+.at-form-grade { grid-template-columns: 2fr 1fr 1.4fr .9fr; }
+.at-form-grade2 { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }
+.at-nome-linha { margin: 0; font-size: 13px; } .at-nome-linha b { font-family: ui-monospace, Consolas, monospace; font-size: 13px; background: var(--calcario); padding: 2px 8px; border-radius: 6px; }
+.at-drive.ok { color: #2F6B43; } .at-drive.erro { color: #9B3A33; }
+.at-form-grade { grid-template-columns: 1fr 1.4fr .6fr 2fr; }
