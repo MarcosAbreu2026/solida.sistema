@@ -27,7 +27,32 @@ export const TOPICOS = [
 // treinamentos com slides (imagem + legenda). Cada um aparece no bloco do menu a que pertence (campo topico).
 export const SUBTOPICOS = [
       {
-        id: 'ata-criar', topico: 'atas', funcoes: 'todos', titulo: 'Como criar uma ata no sistema', para: 'Todos',
+        id: 'funcoes-usar', topico: 'funcoes', funcoes: 'todos', titulo: 'Como usar a página Minhas funções', para: 'Todos',
+        resumo: 'Suas tarefas da semana: como ver, marcar o que foi feito e o que não foi, e mudar o horário de cada uma.',
+        slides: [
+          { imagem: img('func-01-menu'), titulo: 'Onde fica', texto: 'Minhas funções é a página onde você controla o seu trabalho do dia a dia. No menu da esquerda, clique em Minhas funções.',
+            legenda: ['Minhas funções: as tarefas da sua função, de segunda a sábado.', 'Treinamentos: aqui você revê este passo a passo quando quiser.'] },
+          { imagem: img('func-02-quadro'), titulo: 'A sua semana', texto: 'Cada coluna é um dia e cada cartão é uma tarefa da sua função. A barra mostra quantas você já marcou como feitas na semana.',
+            legenda: ['O seu nome e a sua função.', 'Barra de progresso: tarefas feitas até hoje.', 'Cada coluna é um dia. A de hoje fica destacada em amarelo e mostra quantas você já fez.', 'Um cartão = uma tarefa, com o horário previsto.'],
+            dica: 'Tarefas de dias que ainda não chegaram aparecem em cinza: só dá para marcar de hoje para trás.' },
+          { imagem: img('func-03-marcar'), titulo: 'Marque cada tarefa: feito ou não feito', texto: 'Em cada cartão há dois botões. O sistema não marca nada por você: só vale o que você marcar.',
+            legenda: ['O nome completo da tarefa.', 'Fez a tarefa? Clique em ✓ Feito.', 'Não deu para fazer? Clique em ✕ Não.'],
+            dica: 'Errou? Clique de novo no botão já marcado para desfazer.' },
+          { imagem: img('func-04-cores'), titulo: 'As cores dos cartões', texto: 'Depois de marcar, o cartão muda de cor para você bater o olho e ver o que falta.',
+            legenda: ['Verde: você marcou como feita.', 'Vermelho: você marcou como não feita.', 'Amarelo: ainda falta você marcar (tarefa sem marcação conta como não entregue).'],
+            dica: 'Sempre marque no mesmo dia: é mais fácil de lembrar e o seu progresso fica certo.' },
+          { imagem: img('func-07-semanas'), titulo: 'Semanas anteriores e próximas', texto: 'Esqueceu de marcar alguma coisa? Volte à semana anterior e marque lá. Você também vê a semana que vem.',
+            legenda: ['Semana anterior: volta e permite marcar o que ficou pendente.', 'A semana que você está vendo.', 'Próxima semana: só para consultar.'],
+            dica: 'Tarefas sem marcação das últimas semanas aparecem num aviso abaixo: "Ficaram sem marcar".' },
+          { imagem: img('func-08-fora'), titulo: 'Tarefas fora do quadro', texto: 'Algumas tarefas não têm dia certo (mensais, quinzenais, ocasionais). Elas ficam numa lista no fim da página, junto com as observações da sua função.',
+            legenda: ['Fora do quadro: tarefas mensais e ocasionais e as observações da sua função.'] },
+          { imagem: img('func-09-treinamento'), titulo: 'Pronto: é só isso', texto: 'Todo dia, abra Minhas funções e marque ✓ Feito ou ✕ Não feito em cada tarefa. A marcação vale ponto e mostra para a diretoria como a semana está andando.',
+            legenda: ['Para rever este passo a passo, clique em "Como funciona esta página", no fim da página.'],
+            dica: 'Dúvida? Fale com o seu gestor ou use o botão "Pedir alteração" para sugerir uma melhoria.' },
+        ],
+      },
+      {
+        id: 'ata-criar', topico: 'atas', funcoes: 'todos', oculto: true, titulo: 'Como criar uma ata no sistema', para: 'Todos',
         resumo: 'Do menu até a ata pronta: dados, itens, gravação do áudio, PDF e pauta da próxima reunião.',
         slides: [
           { imagem: img('ata-01-menu'), titulo: 'Onde ficam as atas', texto: 'Toda reunião vira uma ata no sistema, e quem faz a ata é qualquer pessoa da equipe. No menu da esquerda, clique em Atas e pendências.',

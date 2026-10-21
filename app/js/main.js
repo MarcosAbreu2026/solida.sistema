@@ -16,7 +16,7 @@ import { definirPerfil } from './componentes.js';
 import { normalizar, criarTelas, pt } from './painel-empresa.js';
 import { sessao, funcaoAtual, veValores, entrar, sair, logado, idPessoa, podeVerArea, obrasDaPessoa,
   podeVerComo, simulando, verComo, funcaoReal } from './sessao.js';
-import { FUNCOES, funcaoPorId, veBlocoGeral, INDICADORES_SO_GESTAO, paginaVisivel, aplicarAbas, abasPadrao } from './funcoes.js';
+import { FUNCOES, funcaoPorId, veBlocoGeral, INDICADORES_SO_GESTAO, paginaVisivel, aplicarAbas, abasPadrao, soMinhasFuncoes } from './funcoes.js';
 import * as marketing from './telas/marketing.js';
 import * as login from './telas/login.js';
 import { marcarCheck, gravarLancamento, apagarLancamento, gravarManual, vincularDia, sincronizarTarefas, lerPessoasTarefas } from './armazenamento.js';
@@ -245,6 +245,15 @@ function desenharNav(sel) {
   const itemAtas = () => { const n = atas.minhasAbertas(); return `<a class="nav-item${sel === 'atas' ? ' sel' : ''}" href="#/atas"><span>Atas e pendências</span>${n ? `<span class="nav-n">${n}</span>` : ''}</a>`; };
   const item =(id, nome, status) => `<a class="nav-item${id === sel ? ' sel' : ''}" href="#/${esc(id)}"${id === sel ? ' aria-current="page"' : ''}><span>${esc(nome)}</span>${status ? pt(status) : ''}</a>`;
   const s = sessao();
+  // acesso restrito (por enquanto, quase todo mundo): só Minhas funções e Treinamentos
+  if (soMinhasFuncoes(f)) {
+    $('#nav').innerHTML = `<div class="marca"><img src="img/logo.png" alt="Sólida"><span>Painel da empresa</span></div>`
+      + `<div class="nav-perfil">${perfil.avatar(s.nome, 38)}<span><b>${esc(s.nome)}</b><small>${esc(f.nome)}</small></span></div>`
+      + item('funcoes', 'Minhas funções') + item('treinamentos', 'Treinamentos')
+      + `<div class="navfoot">${estado.sync.origem === 'link' ? 'Atualiza sozinho a cada 5 minutos.' : 'Mostrando os últimos dados baixados.'}</div>`;
+    desenharAvatares($('#nav'));
+    return;
+  }
   // perfil (primeira coisa do menu): bonequinho + nome; clicando abre a pontuação e as sugestões
   $('#nav').innerHTML = `<div class="marca"><img src="img/logo.png" alt="Sólida"><span>Painel da empresa</span></div>`
     + `<a class="nav-perfil${sel === 'perfil' ? ' sel' : ''}" href="#/perfil" title="Meu perfil">${perfil.avatar(s.nome, 38)}<span><b>${esc(s.nome)}</b><small>${esc(f.nome)}</small></span></a>`
@@ -383,7 +392,7 @@ async function loginNuvem(form) {
     }
     estado.loginNuvem = { modo: 'entrar' };
     estado.dia = hojeISO();
-    if (logado()) { location.hash = funcaoAtual().semMinhaSemana ? '#/geral' : '#/meudia'; atualizar(); }
+    if (logado()) { location.hash = soMinhasFuncoes(funcaoAtual()) ? '#/funcoes' : (funcaoAtual().semMinhaSemana ? '#/geral' : '#/meudia'); atualizar(); }
     desenhar();
   } catch (err) {
     if (msg) msg.textContent = err.message || String(err);
@@ -409,6 +418,7 @@ function desenhar() {
   if (tela === 'meudia' && !f.editaProdutividade) tela = 'funcoes';   // quem não lança produtividade só tem as funções
   if (tela === 'funcoes' && !paginaVisivel(f, 'meudia')) tela = 'geral';
   if (['meudia', 'feed', 'estoque', 'escritorio', 'treinamentos', 'atas', 'marketing'].includes(tela) && !paginaVisivel(f, tela)) tela = 'geral';   // aba que a diretoria tirou desta função
+  if (soMinhasFuncoes(f)) tela = tela === 'treinamentos' ? 'treinamentos' : 'funcoes';   // por enquanto: só Minhas funções e Treinamentos (o resto é da diretoria e do Administrativo)
 
   let area = CFG && CFG.areas.find((a) => a.id === tela);
   if (area && !podeVerArea(area)) { area = null; tela = 'geral'; }   // setor fora do perfil: nem existe
@@ -709,7 +719,7 @@ function configurar() {
     definirPerfil(veValores());
     estado.quadro.funcao = null;
     estado.dia = hojeISO();
-    location.hash = funcaoPorId(funcao).semMinhaSemana ? '#/geral' : '#/meudia';
+    location.hash = soMinhasFuncoes(funcaoPorId(funcao)) ? '#/funcoes' : (funcaoPorId(funcao).semMinhaSemana ? '#/geral' : '#/meudia');
     desenhar();
   });
   $('#login').addEventListener('click', async (e) => {

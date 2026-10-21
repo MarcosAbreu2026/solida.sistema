@@ -5,7 +5,7 @@
 
 import { html, data as fmtData } from '../formato.js';
 import { somarDias, hojeISO, inicioDaSemana } from '../datas.js';
-import { TAREFAS, valeNoDia, descreverDias, naGrade, OBSERVACOES, diaSemana } from '../funcoes.js';
+import { TAREFAS, valeNoDia, descreverDias, naGrade, OBSERVACOES, diaSemana, soMinhasFuncoes } from '../funcoes.js';
 import { sessao, funcaoAtual, idPessoa, obrasDaPessoa } from '../sessao.js';
 import { lerChecks, lerHorarios, moverHorario, primeiroDia } from '../armazenamento.js';
 import { programacoes } from '../programacao.js';
@@ -42,7 +42,7 @@ export const ABAS = [
 // Cada tarefa é um cartão: arrastar muda o dia/horário, puxar a borda de baixo muda a duração, clicar abre
 // uma janelinha com os detalhes (e os mesmos ajustes, para quem está no celular). Cartões no mesmo horário
 // ficam lado a lado, com o texto cortado em "…". O ajuste fica guardado neste navegador, por dia da tarefa.
-export const GRADE = { ini: 7 * 60, passo: 30, faixas: 24, alt: 30 };
+export const GRADE = { ini: 7 * 60, passo: 30, faixas: 24, alt: 52 };   // alt = altura de cada meia hora (maior = cartões com o texto inteiro)
 const PADRAO = 8 * 60; // sem horário no quadro: começa às 8h
 function previsto(t) {
   const txt = String(t.hora || '');
@@ -55,6 +55,11 @@ function previsto(t) {
 const hhmm = (min) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
 const durTxt = (min) => { const h = Math.floor(min / 60); const m = min % 60; return h ? `${h}h${m ? String(m).padStart(2, '0') : ''}` : `${m} min`; };
 const limitar = (v, a, b) => Math.max(a, Math.min(b, v));
+
+// Como a pessoa vê as tarefas: 'lista' (padrão, texto inteiro) ou 'quadro' (por horário). Guardado neste navegador.
+const CHAVE_VISTA = 'solida.funcoesVista';
+let vista = 'lista';   // 21/10: a vista "Por horário" (quadro com horas) foi desligada: com várias tarefas no mesmo horário o texto ficava cortado e sobreposto
+function trocarVista() { vista = 'lista'; try { localStorage.removeItem(CHAVE_VISTA); } catch { /* sem armazenamento */ } }
 
 // Posição de uma tarefa (do dia d) no quadro, já com o que a pessoa ajustou
 function efetivo(t, d, horarios, dias) {
@@ -109,7 +114,7 @@ function cartao(e, estado, hoje, prova) {
   const altura = e.span * GRADE.alt - 2;
   const grande = e.n === 1 && e.span >= 3;
   const { cls, marca, acoes } = situacao(t, e.d, estado, hoje, prova, true);
-  const linhas = Math.max(1, Math.floor((altura - 8 - (grande ? 26 : 0) - (e.n === 1 && e.span >= 2 ? 13 : 0)) / 15));
+  const linhas = Math.max(1, Math.floor((altura - 8 - (grande ? 28 : 0) - (e.n === 1 && e.span >= 2 ? 14 : 0)) / 17));
   const estilo = `top:${e.faixa * GRADE.alt}px;height:${altura}px;left:calc(${e.lane} * 100% / ${e.n} + 2px);width:calc(100% / ${e.n} - 4px);--l:${linhas}`;
   return html`<div class="fq-card fn-${cls} ${e.mudou ? 'mudou' : ''}" style="${estilo}" title="${t.texto} — ${hhmm(e.ini)} a ${hhmm(e.ini + e.dur)} (${durTxt(e.dur)})" data-card="${t.id}|${e.d}" data-faixa="${e.faixa}" data-span="${e.span}">
     ${marca ? html`<span class="fq-marca">${marca}</span>` : ''}
@@ -146,7 +151,8 @@ function funcoesSemana(ref, CFG) {
   const dias = [0, 1, 2, 3, 4, 5].map((i) => somarDias(ini, i));
   const tarefas = TAREFAS.filter((t) => t.funcao === f.id && naGrade(t));
   const estadoDe = (t, d) => (checks[d] || {})[t.id];
-  const provaDoDia = (t, d) => (!estadoDe(t, d) && d <= hoje && !feriado(d) && valeNoDia(t, d) ? provaDe(t, d, eu, CFG) : null);
+  // Pedido do Felipe (21/10): o sistema NÃO marca nada sozinho. Só vale o que a pessoa marcar: ✓ feito ou ✕ não feito.
+  const provaDoDia = () => null;
   const feita = (t, d) => estadoDe(t, d) === 'feito' || (!estadoDe(t, d) && !!provaDoDia(t, d));
   const doDia = (d) => (feriado(d) ? [] : tarefas.filter((t) => valeNoDia(t, d)));
 
@@ -171,8 +177,19 @@ function funcoesSemana(ref, CFG) {
   const cabecas = colunas.map(({ c, l, fe }, i) => html`<div class="fq-cab ${c === hoje ? 'hoje' : ''}"><b>${DIA_CURTO[i]} ${c.slice(8, 10)}/${c.slice(5, 7)}</b><small>${feriado(c) ? 'feriado' : l.length ? (c > hoje ? `${l.length} previstas` : `${fe} de ${l.length}`) : 'sem tarefas'}</small></div>`);
   const trilhos = colunas.map(({ c, l }) => html`<div class="fq-trilho ${c === hoje ? 'hoje' : ''}" data-trilho="${c}" style="height:${altTotal}px">${l.map((e) => cartao(e, estadoDe(e.t, e.d), hoje, provaDoDia(e.t, e.d)))}</div>`);
 
+  // Vista em lista (padrão, 21/10): um cartão por tarefa, com o texto inteiro e os botões ✓ Feito / ✕ Não feito na própria tarefa.
+  // A vista "Por horário" (quadro com horas) continua disponível para quem quer arrastar e mudar horários.
+  const dispo = (e) => hhmm(e.ini) + '–' + hhmm(e.ini + e.dur);
+  const vistaLista = html`<div class="fl-lista">${colunas.map(({ c, l, fe }, i) => html`<div class="fl-col ${c === hoje ? 'hoje' : ''}">
+      <div class="fq-cab ${c === hoje ? 'hoje' : ''}"><b>${DIA_CURTO[i]} ${c.slice(8, 10)}/${c.slice(5, 7)}</b><small>${feriado(c) ? 'feriado' : l.length ? (c > hoje ? `${l.length} previstas` : `${fe} de ${l.length} feitas`) : 'sem tarefas'}</small></div>
+      ${[...l].sort((a, b) => a.ini - b.ini).map((e) => caixaTarefa(e.t, e.d, estadoDe(e.t, e.d), hoje, null, dispo(e)))}
+    </div>`)}</div>`;
+  const botoesVista = html`<div class="fl-vista" role="group" aria-label="Como ver as tarefas"><span class="pequeno">Ver:</span>
+    <button type="button" class="botao ${vista === 'lista' ? 'on' : ''}" data-vista-fn="lista">Lista por dia</button>
+    <button type="button" class="botao ${vista === 'quadro' ? 'on' : ''}" data-vista-fn="quadro">Por horário</button></div>`;
+
   let pop = '';
-  if (popup) {
+  if (popup && vista === 'quadro') {
     const e = todos.find((x) => x.t.id === popup.id && x.d === popup.d);
     if (e) pop = janela(e, dias, hoje, estadoDe(e.t, e.d), provaDoDia(e.t, e.d)); else popup = null;
   }
@@ -191,15 +208,16 @@ function funcoesSemana(ref, CFG) {
       <header class="fn-cab"><h3>${f.nome}</h3>
         <span class="pequeno">${previstas ? `${feitas} de ${previstas} feitas até hoje` : 'nenhuma tarefa até hoje'}</span></header>
       ${previstas ? html`<div class="pct" style="margin:6px 0 12px"><i style="width:${Math.round((feitas / previstas) * 100)}%"></i></div>` : ''}
-      <div class="fq-quadro"><div class="fq-canto"></div>${cabecas}<div class="fq-horas" style="height:${altTotal}px">${horas}</div>${trilhos}</div>
-      <p class="legenda-semana">Arraste um cartão para outro dia ou horário; puxe a borda de baixo para mudar a duração; clique para ver os detalhes. Cartões no mesmo horário ficam lado a lado. O ajuste fica guardado neste navegador.</p>
-      <p class="legenda-semana"><span class="lg lg-ok"></span> feito <span class="lg lg-abaixo"></span> não feito <span class="lg lg-sem"></span> falta marcar · "automático" = o sistema achou a prova (arquivo no Drive ou produtividade no grupo) · clique numa marcação para desfazer</p>
+      ${vista === 'lista' ? vistaLista : html`<div class="fq-quadro"><div class="fq-canto"></div>${cabecas}<div class="fq-horas" style="height:${altTotal}px">${horas}</div>${trilhos}</div>
+      <p class="legenda-semana">Arraste um cartão para outro dia ou horário; puxe a borda de baixo para mudar a duração; clique para ver os detalhes. Cartões no mesmo horário ficam lado a lado. O ajuste fica guardado neste navegador.</p>`}
+      <p class="legenda-semana"><span class="lg lg-ok"></span> feito <span class="lg lg-abaixo"></span> não feito <span class="lg lg-sem"></span> falta marcar · você mesmo marca cada tarefa: ✓ Feito ou ✕ Não feito · clique numa marcação para desfazer</p>
       ${atrasadas.length ? html`<h4 class="fn-sub">⚠ Ficaram sem marcar em semanas anteriores <span class="pequeno">${atrasadas.length} ${atrasadas.length > 1 ? 'tarefas' : 'tarefa'} — marque aqui ou em "Semana anterior"</span></h4>
         <div class="fn-grade">${atrasadas.map(({ t, d }) => caixaTarefa(t, d, undefined, hoje, null, nomeDia(d)))}</div>` : ''}
     </section>
     ${pop}
     ${foraDoQuadro(f.id)}
-    <p class="pequeno">Quadro de Tarefas Semanal (SL_TAREFAS_FUNC_R37 + POP R14). As marcações valem pontos no seu <a class="link" href="#/perfil">Perfil</a>: tarefa sem marcação conta como não entregue.</p>`;
+    <p class="pequeno">Quadro de Tarefas Semanal (SL_TAREFAS_FUNC_R37 + POP R14). As marcações valem pontos${soMinhasFuncoes(f) ? '' : html` no seu <a class="link" href="#/perfil">Perfil</a>`}: tarefa sem marcação conta como não entregue.
+      <button type="button" class="botao" data-trein-slides="funcoes-usar" style="margin-left:8px">▶ Como funciona esta página</button></p>`;
 }
 
 // Ligações do quadro (uma vez só, no início): arrastar, puxar a borda, abrir e ajustar a janelinha.
@@ -247,6 +265,8 @@ export function instalarQuadro(aoMudar) {
   document.addEventListener('pointercancel', reset);
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && popup) { popup = null; aoMudar(); } });
   document.addEventListener('click', (e) => {
+    const v = e.target.closest && e.target.closest('[data-vista-fn]');
+    if (v) { trocarVista(v.dataset.vistaFn); aoMudar(); return; }
     const b = e.target.closest && e.target.closest('[data-fn]');
     if (!b || !popup) return;
     const [acao, valor] = b.dataset.fn.split('|');

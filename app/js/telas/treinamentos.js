@@ -18,7 +18,7 @@ const topicoVisivel = (t, f) => (t.tipo === 'setor' ? !f.areas || f.areas.includ
 export function render() {
   const f = funcaoAtual();
   const vistosSet = slidesVistos();
-  const doTopico = (t) => SUBTOPICOS.filter((s) => s.topico === t.id && seApplica(s, f.id));
+  const doTopico = (t) => SUBTOPICOS.filter((s) => !s.oculto && s.topico === t.id && seApplica(s, f.id));   // oculto: guardado, mas não aparece (ex.: o da ata, por enquanto)
   const topicos = TOPICOS.filter((t) => topicoVisivel(t, f) && doTopico(t).length);
   const linha = (s) => html`<tr><td class="tr-tit"><button type="button" class="tr-abrir" data-trein-slides="${s.id}">${s.titulo}</button></td>
     <td>${s.slides.length} ${s.slides.length === 1 ? 'passo' : 'passos'}</td>

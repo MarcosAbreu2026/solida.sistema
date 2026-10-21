@@ -18,7 +18,8 @@ const DIAS = ['', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
 
 // Pontuação de uma pessoa entre duas datas (inclusive)
 // ctx = { obras, CFG }: com isso, tarefa sem marcação mas com prova (arquivo no Drive, produtividade no grupo) conta como feita
-export function pontuar(pessoa, funcaoId, de, ate, checksTodos = lerTodosChecks(), ctx = null) {
+export function pontuar(pessoa, funcaoId, de, ate, checksTodos = lerTodosChecks(), _ctx = null) {
+  const ctx = null;   // 21/10: nada é marcado sozinho; só vale o que a pessoa marcou (✓ ou ✕)
   const checks = checksTodos[pessoa] || {};
   const hoje = hojeISO();
   const marcadas = Object.keys(checks).filter((d) => Object.keys(checks[d] || {}).length).sort();

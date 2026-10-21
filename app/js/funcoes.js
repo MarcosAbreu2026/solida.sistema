@@ -59,6 +59,10 @@ export const FUNCOES = [
   { id: 'encarregado', nome: 'Encarregado', pop: 'CARLOS · WANDERSON · MAURÍLIO', veValores: false, porObra: true, editaProdutividade: true, geral: OBRA, areas: DE_OBRA },
   { id: 'ajudante', nome: 'Ajudante de obra', veValores: false, porObra: true, geral: OBRA, areas: DE_OBRA },
 ];
+// Por enquanto (pedido do Felipe, 21/10): todo mundo entra no sistema só para preencher "Minhas funções" e ver os Treinamentos.
+// As demais abas são só da diretoria (sócio) e do perfil Administrativo.
+export const ACESSO_COMPLETO = ['socio', 'administrativo'];
+export const soMinhasFuncoes = (f) => !ACESSO_COMPLETO.includes(f.id);
 // Indicadores da Visão geral que quem é de obra não precisa ver (são de gestão da empresa)
 export const INDICADORES_SO_GESTAO = [/setores em dia/i, /convers/i, /fechad/i, /or[çc]ament/i];
 
