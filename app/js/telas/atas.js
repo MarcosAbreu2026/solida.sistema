@@ -176,9 +176,20 @@ export async function mudarStatus(id, status) {
   else { const l = lerLocal(); const p = l.pendencias.find((x) => String(x.id) === String(id)); if (p) Object.assign(p, mud); gravarLocal(l); }
   await carregar();
 }
+// "Excluir" na lista de pendências NÃO mexe na ata: se a pendência veio de uma ata, só sai da lista (continua no item da ata);
+// só a pendência avulsa (sem ata) é apagada de verdade. Para tirar um item da ata, é pela revisão da ata.
 export async function apagarPendencia(id) {
-  if (NA_NUVEM) await apagarPendenciaNuvem(id);
-  else { const l = lerLocal(); l.pendencias = l.pendencias.filter((x) => String(x.id) !== String(id)); gravarLocal(l); }
+  const p = pendenciaPorId(id);
+  if (p && p.ata_id) await mudarNaLista(id, false);
+  else {
+    if (NA_NUVEM) await apagarPendenciaNuvem(id);
+    else { const l = lerLocal(); l.pendencias = l.pendencias.filter((x) => String(x.id) !== String(id)); gravarLocal(l); }
+    await carregar();
+  }
+}
+export async function mudarNaLista(id, valor) {
+  if (NA_NUVEM) await atualizarPendenciaNuvem(id, { na_lista: valor });
+  else { const l = lerLocal(); const p = l.pendencias.find((x) => String(x.id) === String(id)); if (p) p.na_lista = valor; gravarLocal(l); }
   await carregar();
 }
 export async function apagarAta(id) {
@@ -190,7 +201,7 @@ export async function apagarAta(id) {
 // quantas pendências abertas são minhas (para a bolinha do menu)
 export function minhasAbertas() {
   const eu = souEu();
-  return dados.pendencias.filter((p) => p.status === 'aberta' && p.responsavel && p.responsavel === eu).length;
+  return dados.pendencias.filter((p) => naLista(p) && p.status === 'aberta' && p.responsavel && p.responsavel === eu).length;
 }
 
 // ---------------------------------------------------------------- apoio
@@ -250,7 +261,7 @@ function filtrar(params) {
   const pessoa = params.get('pessoa') || ''; const setor = params.get('setor') || ''; const obra = params.get('obra') || '';
   const eu = souEu();
   return dados.pendencias.filter((p) => {
-    if (p.status === 'cancelada') return false;
+    if (p.status === 'cancelada' || !naLista(p)) return false;
     if (pessoa.startsWith('cat:')) { if (p.responsavel_categoria !== pessoa.slice(4)) return false; }
     else if (pessoa.startsWith('tipo:')) { if ((p.responsavel_tipo || 'solida') !== pessoa.slice(5)) return false; }
     else if (pessoa === 'eu' ? p.responsavel !== eu : pessoa && p.responsavel !== pessoa) return false;
@@ -264,11 +275,11 @@ function filtrar(params) {
 }
 
 // só aparecem nos filtros as pessoas e os terceirizados que realmente têm pendência (senão a lista fica enorme)
-const pessoasComPendencia = () => { const ids = new Set(dados.pendencias.filter((p) => p.status !== 'cancelada' && p.responsavel).map((p) => p.responsavel)); return dados.pessoas.filter((p) => ids.has(p.id)).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')); };
+const pessoasComPendencia = () => { const ids = new Set(dados.pendencias.filter((p) => naLista(p) && p.status !== 'cancelada' && p.responsavel).map((p) => p.responsavel)); return dados.pessoas.filter((p) => ids.has(p.id)).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')); };
 // o campo "Terceirizado" aparece depois de escolher "Terceirizados (todos)" em Responsável: só nomes de empresa ou pessoa
 // (sem tipo de serviço, para a lista não ficar enorme)
 function seletorTerceirizado(atual) {
-  const terc = dados.pendencias.filter((p) => p.status !== 'cancelada' && !p.responsavel && p.responsavel_tipo !== 'cliente' && p.responsavel_tipo !== 'arquitetura');
+  const terc = dados.pendencias.filter((p) => naLista(p) && p.status !== 'cancelada' && !p.responsavel && p.responsavel_tipo !== 'cliente' && p.responsavel_tipo !== 'arquitetura');
   const nomes = [...new Set([...nomesConhecidos(), ...terc.map((p) => p.responsavel_nome)].filter((n) => n && !CATEGORIAS_TERC.includes(n)))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
   return html`<label class="at-terc-sel">Terceirizado<select data-atas-filtro="terc"><option value="">Todos os terceirizados</option>
     ${nomes.map((n) => html`<option value="nome:${n}" ${atual === `nome:${n}` ? html.seguro('selected') : ''}>${n}</option>`)}</select></label>`;
@@ -292,6 +303,7 @@ const reprogramada = (p) => !!p.prazo_original && p.prazo_original !== p.prazo;
 const tituloRepro = (p) => `Prazo original ${dm(p.prazo_original)}${(p.reprogramacoes || []).length ? ` · ${(p.reprogramacoes || []).length} ${(p.reprogramacoes || []).length === 1 ? 'reprogramação' : 'reprogramações'}: ${(p.reprogramacoes || []).map((r) => `${dm(r.de)} → ${dm(r.para)}${r.por ? ` (${r.por})` : ''}`).join('; ')}` : ''}`;
 // clicar na data abre o mini calendário (com feriados) para reprogramar; só nas pendências abertas
 const prazoBtn = (p, conteudo, cls = '') => (p.status === 'feita' ? html`<span class="${cls}">${conteudo}</span>` : html`<button type="button" class="at-data-btn ${cls}" data-cal-prazo="${p.id}" title="Clique para reprogramar (escolher outra data)">${conteudo}</button>`);
+const naLista = (p) => p.na_lista !== false;   // false = tirada da lista de pendências (continua só na ata)
 export const pendenciaPorId = (id) => dados.pendencias.find((x) => String(x.id) === String(id));
 export async function reprogramar(id, novo) {
   const p = dados.pendencias.find((x) => String(x.id) === String(id)); if (!p || !novo || novo === p.prazo) return;
@@ -312,7 +324,7 @@ function cartao(p, hoje) {
     <div class="at-quem"><span class="at-pessoa">${nomeDe(p.responsavel, p.responsavel_nome)}</span>${p.responsavel_tipo && p.responsavel_tipo !== 'solida' ? html`<span class="at-tipo at-t-${p.responsavel_tipo}">${ROTULO_TIPO[p.responsavel_tipo] || 'Externo'}${p.responsavel_categoria ? ` · ${p.responsavel_categoria}` : ''}</span>` : ''}${a ? html`<a class="at-ata" href="#/atas?aba=atas&ata=${a.id}" title="Ata de origem">ata ${dm(a.data).slice(0, 5)}</a>` : ''}</div>
     <div class="at-acoes">
       ${p.status === 'feita' ? html`<button type="button" class="ac-mini" data-pend="${p.id}|aberta">↺ reabrir</button>` : html`<button type="button" class="ac-mini at-ok" data-pend="${p.id}|feita">✓ concluir</button>`}
-      <button type="button" class="ac-mini" data-pend-del="${p.id}" title="Excluir esta pendência">excluir</button>
+      <button type="button" class="ac-mini" data-pend-del="${p.id}" title="${p.ata_id ? 'Tirar da lista de pendências (o item continua na ata)' : 'Excluir esta pendência'}">${p.ata_id ? 'tirar da lista' : 'excluir'}</button>
     </div></article>`;
 }
 
@@ -364,7 +376,7 @@ function vistaLista(lista, hoje, params) {
         <td class="${col === 'vencido' ? 'pendente' : ''}">${prazoBtn(p, p.prazo ? dm(p.prazo) : html`<span class="muted">sem prazo</span>`)}${reprogramada(p) ? html` <span class="at-repro-tag" title="${tituloRepro(p)}">↻ era ${dm(p.prazo_original).slice(0, 5)}</span>` : ''}</td><td>${onde(p)}</td>
         <td>${a ? html`<a class="link" href="#/atas?aba=atas&ata=${a.id}">${dm(a.data).slice(0, 5)}</a>` : ''}</td>
         <td>${p.status === 'feita' ? 'Concluída' : col === 'vencido' ? 'Atrasada' : 'Aberta'}</td>
-        <td class="at-acoes">${p.status === 'feita' ? html`<button type="button" class="ac-mini" data-pend="${p.id}|aberta">↺</button>` : html`<button type="button" class="ac-mini at-ok" data-pend="${p.id}|feita">✓ concluir</button>`} <button type="button" class="ac-mini" data-pend-del="${p.id}">excluir</button></td></tr>`; })}
+        <td class="at-acoes">${p.status === 'feita' ? html`<button type="button" class="ac-mini" data-pend="${p.id}|aberta">↺</button>` : html`<button type="button" class="ac-mini at-ok" data-pend="${p.id}|feita">✓ concluir</button>`} <button type="button" class="ac-mini" data-pend-del="${p.id}" title="${p.ata_id ? 'Tirar da lista de pendências (o item continua na ata)' : 'Excluir esta pendência'}">${p.ata_id ? 'tirar da lista' : 'excluir'}</button></td></tr>`; })}
     </tbody></table></div>${itens.length ? '' : html`<p class="vazio">Nenhuma pendência com esses filtros.</p>`}`;
 }
 
@@ -405,9 +417,9 @@ function detalheAta(id, hoje, obras) {
         </div>
         <div class="tabela-rolagem"><table class="sd-tab"><thead><tr><th>ITEM</th><th>TIPO</th><th></th><th>RESPONSÁVEL</th><th>DATA LIMITE</th><th class="sd-sem-pdf"></th></tr></thead><tbody>
           ${linhasDaAta(a, ps).map((r, k) => r.kind === 'info' ? html`<tr><td class="c">${k + 1}</td><td class="c sd-t-info">INFORMATIVO</td><td>${descRica(typeof r.x === 'string' ? r.x : r.x.texto)}</td><td class="c">${typeof r.x === 'string' || !r.x.quem ? '—' : html`${String(r.x.quem).toLocaleUpperCase('pt-BR')}${r.x.tipo && r.x.tipo !== 'solida' ? html`<small>${ROTULO_TIPO[r.x.tipo] || 'Externo'}${r.x.categoria ? ` · ${r.x.categoria}` : ''}</small>` : ''}`}</td><td class="c"></td><td class="sd-sem-pdf"></td></tr>`
-            : html`<tr class="${r.p.status === 'feita' ? 'sd-feita' : ''}"><td class="c">${k + 1}</td><td class="c sd-t-pend">PENDÊNCIA</td><td>${descRica(r.p.descricao)}</td><td class="c">${String(nomeDe(r.p.responsavel, r.p.responsavel_nome)).toLocaleUpperCase('pt-BR')}${r.p.responsavel_tipo && r.p.responsavel_tipo !== 'solida' ? html`<small>${ROTULO_TIPO[r.p.responsavel_tipo] || 'Externo'}${r.p.responsavel_categoria ? ` · ${r.p.responsavel_categoria}` : ''}</small>` : ''}</td>
+            : html`<tr class="${r.p.status === 'feita' ? 'sd-feita' : ''}"><td class="c">${k + 1}</td><td class="c sd-t-pend">PENDÊNCIA</td><td>${descRica(r.p.descricao)}${naLista(r.p) ? '' : html` <span class="at-fora-lista" title="Tirada da lista de pendências; continua nesta ata">fora da lista</span>`}</td><td class="c">${String(nomeDe(r.p.responsavel, r.p.responsavel_nome)).toLocaleUpperCase('pt-BR')}${r.p.responsavel_tipo && r.p.responsavel_tipo !== 'solida' ? html`<small>${ROTULO_TIPO[r.p.responsavel_tipo] || 'Externo'}${r.p.responsavel_categoria ? ` · ${r.p.responsavel_categoria}` : ''}</small>` : ''}</td>
               <td class="c ${reprogramada(r.p) ? 'sd-repro' : ''}" ${reprogramada(r.p) ? html.seguro(`title="${tituloRepro(r.p).replace(/"/g, '')}"`) : ''}>${prazoBtn(r.p, r.p.prazo ? dMes(r.p.prazo) : '—')}${reprogramada(r.p) ? html`<small>↻ era ${dMes(r.p.prazo_original)}</small>` : ''}</td>
-              <td class="sd-sem-pdf at-acoes">${r.p.status === 'feita' ? html`<button type="button" class="ac-mini" data-pend="${r.p.id}|aberta">↺</button>` : html`<button type="button" class="ac-mini at-ok" data-pend="${r.p.id}|feita" title="Concluir">✓</button>`}<button type="button" class="ac-mini" data-pend-del="${r.p.id}" title="Excluir esta pendência">×</button></td></tr>`)}
+              <td class="sd-sem-pdf at-acoes">${r.p.status === 'feita' ? html`<button type="button" class="ac-mini" data-pend="${r.p.id}|aberta">↺</button>` : html`<button type="button" class="ac-mini at-ok" data-pend="${r.p.id}|feita" title="Concluir">✓</button>`}${naLista(r.p) ? '' : html`<button type="button" class="ac-mini" data-pend-lista="${r.p.id}" title="Voltar esta pendência para a lista de pendências">+ lista</button>`}</td></tr>`)}
         </tbody></table></div>
       </div>
       <h3>Acrescentar pendência</h3>      <form class="at-nova-pend" id="pend-form" data-ata="${a.id}" data-obra="${a.obra || ''}" data-setor="${a.setor || ''}">${html.seguro(linhaForm({ semKind: true }))}<button type="submit" class="botao">Acrescentar pendência</button></form>
@@ -453,7 +465,7 @@ export function render({ params, obras = [], msg = '', sugestoes = [] }) {
   definirSugestoes(sugestoes);
   const hoje = hojeISO();
   const aba = ABAS.some(([id]) => id === params.get('aba')) ? params.get('aba') : 'pendencias';
-  const abertas = dados.pendencias.filter((p) => p.status === 'aberta');
+  const abertas = dados.pendencias.filter((p) => naLista(p) && p.status === 'aberta');
   const atrasadas = abertas.filter((p) => p.prazo && p.prazo < hoje).length;
   const minhas = minhasAbertas();
   const topo = html`<div class="subnav at-abas" role="tablist">${ABAS.map(([id, nome]) => html`<a role="tab" class="${id === aba ? 'on' : ''}" href="#/atas${id === 'pendencias' ? '' : `?aba=${id}`}">${nome}${id === 'pendencias' ? html` <span class="est-n">${abertas.length}</span>` : id === 'atas' ? html` <span class="est-n">${dados.atas.length}</span>` : ''}</a>`)}</div>`;

@@ -1088,7 +1088,15 @@ document.addEventListener('click', async (e) => {
   const st = e.target.closest('[data-pend]');
   if (st) { const [id, status] = st.dataset.pend.split('|'); try { await atas.mudarStatus(id, status); desenhar(); } catch (err) { alert(`Não foi possível (${err.message || err}). Só quem é o responsável, quem criou ou a diretoria pode mudar.`); } return; }
   const pd = e.target.closest('[data-pend-del]');
-  if (pd) { if (!confirm('Excluir esta pendência?')) return; try { await atas.apagarPendencia(pd.dataset.pendDel); desenhar(); } catch (err) { alert(`Não foi possível excluir (${err.message || err}).`); } return; }
+  if (pd) {
+    const dePendencia = atas.pendenciaPorId(pd.dataset.pendDel);
+    const daAta = dePendencia && dePendencia.ata_id;
+    if (!confirm(daAta ? 'Tirar esta pendência da sua lista de pendências? O item continua na ata, que não muda.' : 'Excluir esta pendência?')) return;
+    try { await atas.apagarPendencia(pd.dataset.pendDel); desenhar(); } catch (err) { alert(`Não foi possível ${daAta ? 'tirar da lista' : 'excluir'} (${err.message || err}).`); }
+    return;
+  }
+  const volta = e.target.closest('[data-pend-lista]');
+  if (volta) { try { await atas.mudarNaLista(volta.dataset.pendLista, true); desenhar(); } catch (err) { alert(`Não foi possível (${err.message || err}).`); } return; }
   const ad = e.target.closest('[data-ata-del]');
   if (ad) { if (!confirm('Excluir esta ata e todas as pendências dela? Não dá para desfazer.')) return; try { await atas.apagarAta(ad.dataset.ataDel); estado.atasMsg = 'Ata excluída.'; estado.atasMsgHash = '#/atas?aba=atas'; location.hash = estado.atasMsgHash; desenhar(); } catch (err) { alert(`Não foi possível excluir (${err.message || err}).`); } }
 });
