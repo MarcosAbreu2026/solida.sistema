@@ -12,6 +12,7 @@ import { hojeISO, inicioDaSemana, somarDias, diasEntre } from '../datas.js';
 export const LOCAIS_FIXOS = ['Estoque', 'Carro do Anderson', 'Carro do Nascimento', 'Carro do Enio'];
 export const CICLO_DIAS = 14;
 const CICLOS = 4; // o atual + os 3 anteriores (bolinhas do histórico)
+const SEMANAS = 4; // tabela "semana a semana": esta semana + as 3 anteriores
 const DIA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
 
 const chave = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/^carro\s+(do|da|de)?\s*/, 'carro ').replace(/\s+/g, ' ').trim();
@@ -73,9 +74,31 @@ export function cartoes(CFG, dados, visiveis = null, estoque = null) {
   const nOk = locais.filter((l) => ['ok', 'atraso'].includes(estado(regsTodos.filter((x) => chave(x.local) === chave(l)), ini).cod)).length;
   const lido = verificadoEm ? `Grupos lidos em ${fmtData(String(verificadoEm).slice(0, 10))}${String(verificadoEm).length > 10 ? `, ${String(verificadoEm).slice(11, 16)}` : ''}` : 'Os grupos ainda não foram lidos para este controle';
   const proximo = somarDias(ini, CICLO_DIAS + 2);
+  // semana a semana (segunda a domingo): o que chegou de fato, para a diretoria ver o histórico das últimas 4 semanas
+  const semanaAtual = inicioDaSemana(hoje);
+  const notas = new Map(((dados && dados.semanas) || []).map((s) => [s.ini, s.nota]));
+  const semanas = Array.from({ length: SEMANAS }, (_, i) => somarDias(semanaAtual, -7 * (SEMANAS - 1 - i)));
+  const linhaSemana = (s) => {
+    const fim = somarDias(s, 6);
+    const dela = regsTodos.filter((r) => r.enviadoEm >= s && r.enviadoEm <= fim);
+    const enviados = locais.filter((l) => dela.some((r) => chave(r.local) === chave(l)));
+    const lidoAteFim = String(verificadoEm || '').slice(0, 10) >= (fim < hoje ? fim : hoje);
+    const atual = s === semanaAtual;
+    const cod = !lidoAteFim ? 'nv' : enviados.length ? 'atraso' : 'nao';
+    const quando = [...new Set(dela.map((r) => diaCurto(r.enviadoEm)))].join(', ');
+    const resumo = !lidoAteFim ? 'Ainda não verificado'
+      : enviados.length ? `${enviados.length} de ${locais.length} locais (${quando})`
+        : atual ? 'Nada enviado até agora' : 'Nada enviado';
+    return html`<tr><td class="fs-sem">${fmtData(s).slice(0, 5)} a ${fmtData(fim).slice(0, 5)}${atual ? html` <span class="muted">(esta semana)</span>` : ''}</td>
+      <td><span class="fc-b fc-${cod}"></span> ${resumo}</td><td class="fs-nota">${notas.get(s) || ''}</td></tr>`;
+  };
+  const historico = html`<div class="fs-bloco"><h3>Semana a semana</h3>
+    <table class="fs-tab"><thead><tr><th>Semana</th><th>O que o Anderson enviou</th><th>Observação</th></tr></thead><tbody>${semanas.map(linhaSemana)}</tbody></table>
+    <p class="legenda-semana">Conta o que chegou nos grupos e no privado, em qualquer dia da semana. A cobrança oficial continua de 15 em 15 dias (próxima: ${diaCurto(proximo)}).</p></div>`;
   return html`<section class="ob-sec">
     <div class="painel-h"><h2>Planilha de ferramentas obrigatórias</h2><p>De 15 em 15 dias, enviada pelo Anderson no grupo do WhatsApp · ciclo de ${fmtData(ini).slice(0, 5)} a ${fmtData(somarDias(ini, CICLO_DIAS - 1)).slice(0, 5)} (próxima: ${diaCurto(proximo)}) · ${nOk} de ${locais.length} neste ciclo · ${lido}</p></div>
     <div class="ob-cards">${locais.map(card)}</div>
     <p class="legenda-semana"><span class="fc-b fc-ok"></span> no prazo <span class="fc-b fc-atraso"></span> com atraso <span class="fc-b fc-nao"></span> não enviada <span class="fc-b fc-nv"></span> não verificado <span class="fc-b fc-espera"></span> ainda no prazo · bolinhas: últimos 4 ciclos</p>
+    ${visiveis ? '' : historico}
   </section>`;
 }

@@ -1887,3 +1887,13 @@ button.at-prazo:hover { filter: brightness(.96); box-shadow: 0 0 0 2px rgba(45, 
 .tr-ideias { margin-top: 18px; } .tr-ideias summary { cursor: pointer; color: var(--muted); font-size: 13px; }
 
 .tr-tab col.tr-c-tit { width: auto; } .tr-tab col.tr-c-pas { width: 110px; } .tr-tab col.tr-c-sit { width: 130px; } .tr-tab col.tr-c-acao { width: 120px; }
+
+/* ---- ferramentas: semana a semana ---- */
+.fs-bloco { margin-top: 18px; }
+.fs-bloco h3 { margin: 0 0 8px; font-size: 14px; }
+.fs-tab { width: 100%; border-collapse: collapse; font-size: 13px; }
+.fs-tab th { text-align: left; font-weight: 600; color: var(--texto2, #5b6470); padding: 6px 8px; border-bottom: 1px solid var(--linha2); }
+.fs-tab td { padding: 8px; border-bottom: 1px solid var(--linha2); vertical-align: top; }
+.fs-tab .fs-sem { white-space: nowrap; font-weight: 600; }
+.fs-tab .fs-nota { color: var(--texto2, #5b6470); max-width: 520px; }
+.fs-tab .fc-b { display: inline-block; vertical-align: -1px; margin-right: 4px; }
