@@ -9,7 +9,7 @@ import { html, data as fmtData } from '../formato.js';
 import { hojeISO, somarDias, inicioDaSemana, diasEntre } from '../datas.js';
 import { NA_NUVEM, perfilAtual, listarAtasPendencias, criarAtaNuvem, criarPendenciaNuvem, atualizarPendenciaNuvem, atualizarAtaNuvem, apagarPendenciaNuvem, apagarAtaNuvem } from '../nuvem.js';
 import { SETORES } from '../funcoes.js';
-import { sessao, idPessoa, funcaoReal } from '../sessao.js';
+import { sessao, idPessoa, funcaoReal, funcaoAtual } from '../sessao.js';
 import { lerPessoasTarefas } from '../armazenamento.js';
 import { analisarAta, lerArquivoAta } from '../ata-leitor.js';
 
@@ -42,10 +42,28 @@ function pessoasLocais() {
 }
 const souEu = () => (NA_NUVEM ? perfilAtual() && perfilAtual().id : idPessoa());
 
+// Quem vê o quê: só sócios e administrativo veem as pendências e atas de outras pessoas da Sólida fora da própria obra
+// ou departamento. Os demais veem o que é seu (responsável ou criador), da(s) sua(s) obra(s) e, quem não é de obra,
+// do(s) departamento(s) da sua função. O banco já aplica esta regra para valer (tabelas atas e pendencias); aqui ela
+// também vale no modo teste e no "ver como", para a tela mostrar o mesmo.
+function visivelParaMim(x, ehAta, pendDaAta) {
+  const f = funcaoAtual();
+  if (['socio', 'administrativo'].includes(f.id)) return true;
+  const eu = souEu();
+  if (x.criado_por === eu || (!ehAta && x.responsavel === eu)) return true;
+  if (x.obra && (sessao().obras || []).includes(x.obra)) return true;
+  if (!f.porObra && x.setor) {
+    const nomes = SETORES.filter(([id]) => (f.areas || []).includes(id)).map(([, nome]) => nome);
+    if (nomes.includes(x.setor)) return true;
+  }
+  return ehAta && pendDaAta.some((p) => String(p.ata_id) === String(x.id) && p.responsavel === eu);
+}
 export async function carregar() {
   try {
     if (NA_NUVEM) dados = { ...(await listarAtasPendencias()), erro: '' };
     else { const l = lerLocal(); dados = { atas: [...l.atas].sort((a, b) => String(b.data).localeCompare(String(a.data)) || b.id - a.id), pendencias: l.pendencias, pessoas: pessoasLocais(), erro: '' }; }
+    const todasPend = dados.pendencias;
+    dados = { ...dados, pendencias: todasPend.filter((p) => visivelParaMim(p, false, [])), atas: dados.atas.filter((a) => visivelParaMim(a, true, todasPend)) };
   } catch (e) { dados = { ...dados, erro: String(e.message || e) }; }
   return dados;
 }
@@ -237,11 +255,26 @@ function filtrar(params) {
     if (pessoa.startsWith('cat:')) { if (p.responsavel_categoria !== pessoa.slice(4)) return false; }
     else if (pessoa.startsWith('tipo:')) { if ((p.responsavel_tipo || 'solida') !== pessoa.slice(5)) return false; }
     else if (pessoa === 'eu' ? p.responsavel !== eu : pessoa && p.responsavel !== pessoa) return false;
+    const terc = params.get('terc') || '';
+    if (terc && (p.responsavel || (terc.startsWith('cat:') ? p.responsavel_categoria !== terc.slice(4) : p.responsavel_nome !== terc.slice(5)))) return false;
     if (setor && p.setor !== setor) return false;
     if (obra && p.obra !== obra) return false;
     if (q && !`${p.descricao} ${nomeDe(p.responsavel, p.responsavel_nome)} ${onde(p)} ${(ataDe(p) || {}).titulo || ''}`.toLocaleLowerCase('pt-BR').includes(q)) return false;
     return true;
   });
+}
+
+// só aparecem nos filtros as pessoas e os terceirizados que realmente têm pendência (senão a lista fica enorme)
+const pessoasComPendencia = () => { const ids = new Set(dados.pendencias.filter((p) => p.status !== 'cancelada' && p.responsavel).map((p) => p.responsavel)); return dados.pessoas.filter((p) => ids.has(p.id)).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')); };
+function seletorTerceirizado(atual) {
+  const terc = dados.pendencias.filter((p) => p.status !== 'cancelada' && !p.responsavel && p.responsavel_tipo !== 'cliente');
+  const cats = [...new Set(terc.map((p) => p.responsavel_categoria).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  const nomes = [...new Set(terc.map((p) => p.responsavel_nome).filter((n) => n && !cats.includes(n)))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  if (!cats.length && !nomes.length) return '';
+  const opt = (v, t) => html`<option value="${v}" ${atual === v ? html.seguro('selected') : ''}>${t}</option>`;
+  return html`<label>Terceirizado<select data-atas-filtro="terc"><option value="">Todos</option>
+    ${cats.length ? html`<optgroup label="Tipo de serviço">${cats.map((c) => opt(`cat:${c}`, c))}</optgroup>` : ''}
+    ${nomes.length ? html`<optgroup label="Empresa / nome">${nomes.map((n) => opt(`nome:${n}`, n))}</optgroup>` : ''}</select></label>`;
 }
 
 // ---------------------------------------------------------------- telas
@@ -250,7 +283,8 @@ function barraFiltros(params, obras, aba) {
   const vista = params.get('vista') === 'lista' ? 'lista' : 'prazo';
   return html`<div class="at-filtros">
     ${aba === 'atas' ? '' : html`<div class="subnav" role="tablist"><a role="tab" class="${vista === 'prazo' ? 'on' : ''}" href="#/atas?vista=prazo">Prazo</a><a role="tab" class="${vista === 'lista' ? 'on' : ''}" href="#/atas?vista=lista">Lista</a></div>`}
-    ${aba === 'atas' ? '' : sel('pessoa', 'Responsável', [['eu', 'Só as minhas'], ['tipo:solida', 'Equipe da Sólida'], ['tipo:terceirizado', 'Terceirizados (todos)'], ['tipo:cliente', 'Clientes'], ...CATEGORIAS_TERC.map((c) => [`cat:${c}`, `Terc.: ${c}`]), ...dados.pessoas.map((p) => [p.id, p.nome])], params.get('pessoa') || '')}
+    ${aba === 'atas' ? '' : sel('pessoa', 'Responsável', [['eu', 'Só as minhas'], ['tipo:solida', 'Equipe da Sólida'], ['tipo:terceirizado', 'Terceirizados (todos)'], ['tipo:cliente', 'Clientes'], ...pessoasComPendencia().map((p) => [p.id, p.nome])], params.get('pessoa') || '')}
+    ${aba === 'atas' ? '' : seletorTerceirizado(params.get('terc') || '')}
     ${sel('setor', 'Setor', SETORES_ATA.map((s) => [s, s]), params.get('setor') || '')}
     ${sel('obra', 'Obra', obras.map((o) => [o, o]), params.get('obra') || '')}
     <label>Procurar<input type="search" data-atas-filtro="q" value="${params.get('q') || ''}" placeholder="texto…"></label>

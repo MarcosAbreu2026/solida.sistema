@@ -678,6 +678,7 @@ function configurar() {
       verComo(nova, ehDeObra ? [obrasDaPessoa()[0] || obraPadrao()].filter(Boolean) : []);
       definirPerfil(veValores());
       estado.quadro.funcao = null;
+      estado.atasVisitada = null;   // as atas e pendências dependem de quem está vendo: recarrega
       desenhar();
       return;
     }

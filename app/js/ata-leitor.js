@@ -1,4 +1,4 @@
-// Leitor de atas: transforma o texto de uma ata (PDF, .txt ou colado) num rascunho de ata com pendências.
+﻿// Leitor de atas: transforma o texto de uma ata (PDF, .txt ou colado) num rascunho de ata com pendências.
 // Sem IA paga (regra do projeto): são regras de leitura, em duas camadas.
 //  1. Padrão de ata da Sólida (tabela ITEM · TIPO · RESPONSÁVEL · DATA LIMITE, com "ATA DE REUNIÃO dd.mm.aaaa MoXXX
 //     R00", LOCAL e PARTICIPANTES com a empresa entre parênteses): lê a tabela pela posição de cada coluna no PDF.
@@ -217,7 +217,6 @@ export function analisarAta(texto, { pessoas = [], obras = [], setores = [], hoj
   const tabela = paginas ? lerTabela(paginas) : null;
   if (tabela && tabela.some((x) => /^PEND|^A[ÇC]|^PROVID/iu.test(x.tipo))) {
     const infos = tabela.filter((x) => /^INFORM|^DECIS/iu.test(x.tipo));
-    const local = (linhas.find((l) => /^\s*local\s*:/iu.test(l)) || '').trim();
     const pend = tabela.filter((x) => /^PEND|^A[ÇC]|^PROVID/iu.test(x.tipo) && x.descricao);
     const pendencias = pend.map((x) => {
       const r = resolverResponsavel(x.responsavel, parts, pessoas);
