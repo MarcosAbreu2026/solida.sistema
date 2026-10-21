@@ -1497,3 +1497,20 @@ table.ordenavel th.ord-desc::after { content: ' ▼'; font-size: 9px; }
 
 .at-form-grade { grid-template-columns: 1fr 1.3fr 1.3fr 1.3fr; }
 @media (max-width: 700px) { .at-form-grade { grid-template-columns: 1fr; } }
+
+/* linha de pendência/informativo mais compacta: cabe na página e mostra mais do exemplo */
+.pf-linha { grid-template-columns: 92px 104px minmax(150px, 1fr) 98px 124px 124px 118px 20px; gap: 6px; }
+#pend-form .pf-linha { grid-template-columns: 104px minmax(150px, 1fr) 98px 124px 124px 118px 20px; }
+.pf-linha input, .pf-linha select { font-size: 13px; padding: 0 6px; }
+.pf-linha input::placeholder { font-size: 12px; }
+.pf-linha input[type="date"] { padding: 0 4px; }
+
+/* quando o formulário é estreito, a linha quebra em duas: tipo + assunto + descritivo em cima, quem e prazo embaixo */
+#ata-form, #pend-form { container-type: inline-size; }
+@container (max-width: 1000px) {
+  .pf-linha { grid-template-columns: 92px 104px 1fr 1fr 130px 22px; }
+  .pf-linha > [name="p_desc"], .pf-linha[data-kind="informativo"] > [name="p_desc"] { grid-column: 3 / -1 !important; }
+  #pend-form .pf-linha { grid-template-columns: 104px 1fr 1fr 130px 22px; }
+  #pend-form .pf-linha > [name="p_desc"] { grid-column: 2 / -1 !important; }
+  .pf-linha { padding-bottom: 8px; border-bottom: 1px dashed var(--linha2); }
+}
