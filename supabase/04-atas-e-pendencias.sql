@@ -1,0 +1,6 @@
+﻿-- Atas e pendencias (migracao "atas_e_pendencias", aplicada em 21/10/2026)
+-- atas(titulo, data, tipo obra|departamento, obra, setor, participantes, resumo) e pendencias(ata_id, descricao,
+-- responsavel, prazo, status aberta|feita|cancelada, obra, setor). Quem e de obra so ve as atas e pendencias das
+-- suas obras (e as que sao dele); os demais veem tudo. Ajudante nao cria. Editar/excluir: quem criou ou a diretoria;
+-- mudar o status da pendencia: responsavel, quem criou ou a diretoria. Codigo completo na migracao do painel do
+-- Supabase > Database > Migrations.

@@ -98,6 +98,43 @@ export async function salvarPerfil(id, mudancas) {
   if (error) throw new Error(error.message);
 }
 
+// ---------------------------------------------------------------- atas e pendências (as regras de quem vê ficam no banco)
+export async function listarAtasPendencias() {
+  const [a, p, q] = await Promise.all([
+    sb.from('atas').select('*').order('data', { ascending: false }).order('id', { ascending: false }),
+    sb.from('pendencias').select('*').order('prazo', { ascending: true, nullsFirst: false }).order('id', { ascending: false }),
+    sb.from('perfis').select('id, nome, funcao, obras'),
+  ]);
+  if (a.error) throw new Error(a.error.message);
+  if (p.error) throw new Error(p.error.message);
+  return { atas: a.data || [], pendencias: p.data || [], pessoas: (q.data || []).filter((x) => x.funcao && x.funcao !== 'coletor') };
+}
+export async function criarAtaNuvem(ata, pendencias) {
+  const { data, error } = await sb.from('atas').insert({ ...ata, criado_por: perfil.id, criado_por_nome: perfil.nome }).select().single();
+  if (error) throw new Error(error.message);
+  if (pendencias.length) {
+    const linhas = pendencias.map((x) => ({ ...x, ata_id: data.id, criado_por: perfil.id, obra: ata.obra || null, setor: ata.setor || null }));
+    const { error: e2 } = await sb.from('pendencias').insert(linhas);
+    if (e2) throw new Error(e2.message);
+  }
+  return data;
+}
+export async function criarPendenciaNuvem(p) {
+  const { error } = await sb.from('pendencias').insert({ ...p, criado_por: perfil.id });
+  if (error) throw new Error(error.message);
+}
+export async function atualizarPendenciaNuvem(id, mudancas) {
+  const { error } = await sb.from('pendencias').update(mudancas).eq('id', id);
+  if (error) throw new Error(error.message);
+}
+export async function apagarPendenciaNuvem(id) {
+  const { error } = await sb.from('pendencias').delete().eq('id', id);
+  if (error) throw new Error(error.message);
+}
+export async function apagarAtaNuvem(id) {
+  const { error } = await sb.from('atas').delete().eq('id', id);
+  if (error) throw new Error(error.message);
+}
 // ---------------------------------------------------------------- dados lidos do Drive
 // O computador do escritório manda cada arquivo em duas pastas: todos/ (sem valores) e valores/ (completo,
 // só sócio e financeiro conseguem ler — regra do banco).

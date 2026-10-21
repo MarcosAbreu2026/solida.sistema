@@ -1402,3 +1402,48 @@ table.ordenavel th.ord-desc::after { content: ' ▼'; font-size: 9px; }
 .tn-ok { font-size: 11.5px; font-weight: 700; color: #2F6B43; background: #E1EFE5; padding: 1px 9px; border-radius: 999px; }
 .tn-passos { margin: 8px 0 14px; padding-left: 20px; display: flex; flex-direction: column; gap: 7px; font-size: 14px; line-height: 1.45; }
 .tn-ideias { margin: 8px 0; padding-left: 18px; display: flex; flex-direction: column; gap: 5px; font-size: 14px; }
+
+/* Atas e pendências */
+.at-abas { margin-bottom: 4px; }
+.at-cards { margin-bottom: 14px; }
+.at-filtros { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin: 10px 0 14px; }
+.at-filtros label, .at-lista-topo label { display: flex; flex-direction: column; gap: 2px; font-size: 11.5px; color: var(--muted); }
+.at-filtros select, .at-filtros input, .at-lista-topo select { font: inherit; font-size: 13px; padding: 4px 8px; border: 1px solid var(--linha); border-radius: 6px; background: #fff; color: var(--grafite); min-width: 140px; }
+.at-quadro { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(230px, 1fr); gap: 10px; overflow-x: auto; padding-bottom: 8px; align-items: start; }
+.at-col { background: #EEEBE6; border-radius: 10px; padding: 0 0 8px; min-height: 120px; }
+.at-col > header { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-radius: 10px 10px 0 0; font-size: 13px; color: #fff; background: #8C95A1; }
+.at-col > header span { background: rgba(255, 255, 255, .28); border-radius: 999px; padding: 0 8px; font-size: 12px; }
+.at-c-vencido > header { background: #E5594F; } .at-c-hoje > header { background: #6FB400; } .at-c-semana > header { background: #2FA8E0; }
+.at-c-proxima > header { background: #4DB6C7; } .at-c-sem > header { background: #9AA2AD; } .at-c-duas > header { background: #3B7FD6; } .at-c-concluido > header { background: #8A93A0; }
+.at-itens { display: flex; flex-direction: column; gap: 8px; padding: 8px; max-height: 70vh; overflow-y: auto; }
+.at-card { background: #fff; border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 7px; box-shadow: 0 1px 2px rgba(0, 0, 0, .08); }
+.at-tit { font-size: 13.5px; line-height: 1.35; font-weight: 600; word-break: break-word; }
+.at-meta { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.at-prazo { font-size: 11.5px; padding: 1px 9px; border-radius: 999px; border: 1px solid #A9C7EA; color: #2D5E9E; background: #F2F8FF; }
+.at-p-vencido { border-color: #F2B8B3; color: #B53B33; background: #FFF3F2; } .at-p-hoje { border-color: #BDDC7E; color: #4C7A00; background: #F6FBE9; }
+.at-p-sem { border-color: #D8DCE1; color: var(--muted); background: #FAFAFA; }
+.at-chip { font-size: 11px; padding: 1px 8px; border-radius: 999px; background: var(--calcario); color: var(--muted); }
+.at-quem { display: flex; justify-content: space-between; gap: 8px; align-items: center; font-size: 12px; }
+.at-pessoa { font-weight: 700; color: #2D4F86; } .at-ata { color: var(--muted); font-size: 11.5px; }
+.at-acoes { display: flex; gap: 6px; }
+.ac-mini.at-ok { color: #2F6B43; border-color: #A9D1B6; }
+.at-card.at-concluido { opacity: .75; }
+.at-tab td { vertical-align: top; }
+.at-lista-topo { margin-bottom: 10px; }
+.at-atas { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.at-ata-card { display: flex; flex-direction: column; gap: 5px; background: #fff; border: 1px solid var(--linha2); border-radius: 10px; padding: 12px 14px; text-decoration: none; color: var(--grafite); }
+.at-ata-card:hover { border-color: var(--clique); }
+.at-contagem { font-size: 12px; font-weight: 700; color: var(--muted); } .at-contagem.tem { color: #9B3A33; }
+.at-ata-det { background: #fff; border: 1px solid var(--linha2); border-radius: 12px; padding: 18px 20px; }
+.at-ata-det h2 { margin: 0 0 4px; } .at-ata-det h3 { margin: 22px 0 8px; }
+.at-resumo { margin-top: 12px; line-height: 1.55; font-size: 14.5px; }
+.at-quadro-ata { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.at-nova-pend { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.at-form { background: #fff; border: 1px solid var(--linha2); border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; max-width: 880px; }
+.at-form label { display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; color: var(--muted); }
+.at-form input, .at-form select, .at-form textarea { font: inherit; font-size: 14px; padding: 6px 9px; border: 1px solid var(--linha); border-radius: 7px; color: var(--grafite); background: #fff; }
+.at-form-grade { display: grid; grid-template-columns: 2fr 1fr 1.4fr; gap: 12px; }
+.at-part { border: 1px solid var(--linha2); border-radius: 8px; padding: 8px 12px; display: flex; flex-wrap: wrap; gap: 6px; } .at-part legend { font-size: 12px; color: var(--muted); padding: 0 6px; }
+.pf-linha { display: grid; grid-template-columns: 3fr 1.6fr 1fr auto; gap: 8px; margin-bottom: 8px; align-items: center; }
+.pf-x { font-size: 20px; line-height: 1; color: var(--muted); border: 0; background: none; cursor: pointer; }
+@media (max-width: 700px) { .at-form-grade, .pf-linha { grid-template-columns: 1fr; } }

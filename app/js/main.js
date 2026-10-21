@@ -7,6 +7,7 @@ import * as terceiros from './telas/terceirizados.js';
 import * as ferrChk from './telas/ferramentas-checklist.js';
 import * as reposicao from './telas/reposicao.js';
 import * as ordenar from './ordenar.js';
+import * as atas from './telas/atas.js';
 import { montarBase } from './regras.js';
 import { periodo, hojeISO, ehData } from './datas.js';
 import { html, esc, descreverPeriodo } from './formato.js';
@@ -164,6 +165,9 @@ function fonteDoPosObra() {
 }
 
 // obras que dá para vincular a uma pessoa: só as obras (Mo…), sem as encerradas no cadastro da planilha de ferramentas
+// obras nas atas: quem é de obra só as suas; os demais, todas as obras ativas
+function obrasDeAtas() { return funcaoAtual().porObra ? obrasDaPessoa() : obrasDeAcesso(); }
+
 function obrasDeAcesso() {
   const enc = new Set((((estado.drive || {}).estoque || {}).cadastroObras || []).filter((c) => /encerr|finaliz|conclu/i.test(c.status || '')).map((c) => c.obra));
   return obrasDisponiveis().filter((o) => /^Mo\d/i.test(o) && !enc.has(o));
@@ -174,12 +178,13 @@ function desenharNav(sel) {
   const f = funcaoAtual();
   // Feed com a bolinha de publicações novas
   const itemFeed = () => { const n = sel === 'feed' ? 0 : feed.novas(s.nome); return `<a class="nav-item${sel === 'feed' ? ' sel' : ''}" href="#/feed"><span>Feed</span>${n ? `<span class="nav-n">${n}</span>` : ''}</a>`; };
+  const itemAtas = () => { const n = atas.minhasAbertas(); return `<a class="nav-item${sel === 'atas' ? ' sel' : ''}" href="#/atas"><span>Atas e pendências</span>${n ? `<span class="nav-n">${n}</span>` : ''}</a>`; };
   const item =(id, nome, status) => `<a class="nav-item${id === sel ? ' sel' : ''}" href="#/${esc(id)}"${id === sel ? ' aria-current="page"' : ''}><span>${esc(nome)}</span>${status ? pt(status) : ''}</a>`;
   const s = sessao();
   // perfil (primeira coisa do menu): bonequinho + nome; clicando abre a pontuação e as sugestões
   $('#nav').innerHTML = `<div class="marca"><img src="img/logo.png" alt="Sólida"><span>Painel da empresa</span></div>`
     + `<a class="nav-perfil${sel === 'perfil' ? ' sel' : ''}" href="#/perfil" title="Meu perfil">${perfil.avatar(s.nome, 38)}<span><b>${esc(s.nome)}</b><small>${esc(f.nome)}</small></span></a>`
-    + item('geral', 'Visão geral') + (paginaVisivel(f, 'feed') ? itemFeed() : '') + (!f.semMinhaSemana && paginaVisivel(f, 'meudia') ? item('meudia', 'Minha semana') : '') + (f.veQuadro ? item('quadro', 'Quadro de funções') : '')
+    + item('geral', 'Visão geral') + (paginaVisivel(f, 'feed') ? itemFeed() : '') + (paginaVisivel(f, 'atas') ? itemAtas() : '') + (!f.semMinhaSemana && paginaVisivel(f, 'meudia') ? item('meudia', 'Minha semana') : '') + (f.veQuadro ? item('quadro', 'Quadro de funções') : '')
     + '<div class="nav-sep"></div>'
     + (CFG ? CFG.areas.filter(podeVerArea).map((a) => item(a.id, a.nome, a.status)).join('') : '')
     + (paginaVisivel(f, 'estoque') ? item('estoque', 'Estoque') : '')
@@ -336,12 +341,12 @@ function desenhar() {
   if (tela === 'agentes' && !f.veAgentes) tela = 'geral';
   if (tela === 'quadro' && !f.veQuadro) tela = 'meudia';
   if (tela === 'meudia' && f.semMinhaSemana) tela = 'geral';
-  if (['meudia', 'feed', 'estoque', 'escritorio', 'treinamentos'].includes(tela) && !paginaVisivel(f, tela)) tela = 'geral';   // aba que a diretoria tirou desta função
+  if (['meudia', 'feed', 'estoque', 'escritorio', 'treinamentos', 'atas'].includes(tela) && !paginaVisivel(f, tela)) tela = 'geral';   // aba que a diretoria tirou desta função
 
   let area = CFG && CFG.areas.find((a) => a.id === tela);
   if (area && !podeVerArea(area)) { area = null; tela = 'geral'; }   // setor fora do perfil: nem existe
   const ehObraPlan = tela === 'planejamento' && rota.sub === 'obra';
-  const fixas = ['agentes', 'meudia', 'quadro', 'estoque', 'escritorio', 'perfil', 'feed', 'treinamentos', 'acessos'];
+  const fixas = ['agentes', 'meudia', 'quadro', 'estoque', 'escritorio', 'perfil', 'feed', 'treinamentos', 'acessos', 'atas'];
   const sel = tela === 'funcionarios' ? 'rh' : (area || fixas.includes(tela)) ? tela : 'geral';
   desenharNav(sel);
   desenharPerfil();
@@ -352,7 +357,7 @@ function desenhar() {
   $('#data').textContent = d.charAt(0).toUpperCase() + d.slice(1);
   const titulo = ehObraPlan ? rota.arg
     : area ? area.nome
-    : ({ agentes: 'Agentes', funcionarios: 'Funcionários por obra', meudia: 'Minha semana', quadro: 'Quadro de funções', estoque: 'Estoque', escritorio: 'Escritório virtual', perfil: 'Perfil', feed: 'Feed', treinamentos: 'Treinamentos', acessos: 'Acessos' }[tela] || 'Visão geral');
+    : ({ agentes: 'Agentes', funcionarios: 'Funcionários por obra', meudia: 'Minha semana', quadro: 'Quadro de funções', estoque: 'Estoque', escritorio: 'Escritório virtual', perfil: 'Perfil', feed: 'Feed', treinamentos: 'Treinamentos', acessos: 'Acessos', atas: 'Atas e pendências' }[tela] || 'Visão geral');
   $('#titulo').textContent = titulo;
   document.title = `${titulo} · Sólida`;
 
@@ -372,6 +377,15 @@ function desenhar() {
   if (tela === 'acessos' && nuvem.NA_NUVEM && funcaoReal().id === 'socio') {
     $('#conteudo').innerHTML = '<div class="carregando">Carregando a equipe…</div>';
     nuvem.listarPerfis().then((ps) => { if (rotaAtual().tela === 'acessos') $('#conteudo').innerHTML = `<div>${acessos.render({ perfis: ps, obras: obrasDeAcesso(), meuId: nuvem.perfilAtual() && nuvem.perfilAtual().id, msg: estado.acessosMsg || '', aviso: estado.acessosAviso })}</div>`; estado.acessosMsg = ''; estado.acessosAviso = null; });
+    return;
+  }
+  if (tela === 'atas') {
+    $('#conteudo').innerHTML = `<div>${atas.render({ params: rota.params, obras: obrasDeAtas(), msg: estado.atasMsgHash === location.hash ? (estado.atasMsg || '') : '' })}</div>`;
+    ordenar.aplicar();
+    if (estado.atasVisitada !== location.hash) {   // ao entrar na tela (ou mudar de aba), busca os dados mais novos
+      estado.atasVisitada = location.hash;
+      atas.carregar().then(() => { const a = document.activeElement; if (rotaAtual().tela === 'atas' && !(a && a.closest && a.closest('#ata-form, #pend-form'))) desenhar(); });
+    }
     return;
   }
   if (tela === 'treinamentos') { $('#conteudo').innerHTML = `<div>${treinamentos.render({ todos: rota.params.get('todos') === '1', aberto: estado.treinAberto })}</div>`; return; }
@@ -534,7 +548,7 @@ async function atualizar() {
   // marcações de tarefas de todos (pontuação do Perfil); quem está logado manda o que só tinha neste navegador
   const atual = logado() ? { pessoa: idPessoa(), nome: sessao().nome, funcao: funcaoAtual().id, teste: simulando(), obras: obrasDaPessoa() } : null;
   if (nuvem.NA_NUVEM && logado()) { try { aplicarAbas(await nuvem.carregarAbas()); } catch { /* sem a tabela: fica o padrão de cada função */ } }
-  const [painelR, baseR, prodR, driveR, , , , , ferrR, terR] = await Promise.allSettled([carregarPainel(), carregarDados(), carregarProdutividade(), carregarDrive(), sincronizarTarefas(atual), perfil.carregarFotos(), feed.carregar(), evidencias.carregar(), carregarFerramentasChk(), carregarTerceirizados()]);
+  const [painelR, baseR, prodR, driveR, , , , , ferrR, terR] = await Promise.allSettled([carregarPainel(), carregarDados(), carregarProdutividade(), carregarDrive(), sincronizarTarefas(atual), perfil.carregarFotos(), feed.carregar(), evidencias.carregar(), carregarFerramentasChk(), carregarTerceirizados(), atas.carregar()]);
   if (terR.status === 'fulfilled') estado.terceiros = terR.value;
   if (ferrR.status === 'fulfilled') estado.ferrChk = ferrR.value;
   if (prodR.status === 'fulfilled') estado.whats = prodR.value;
@@ -1027,4 +1041,48 @@ document.addEventListener('change', (e) => {
   if (!r) return;
   reposicao.ajustarRota(r.dataset.rota, r.value);
   desenhar();
+});
+
+// Atas e pendências: filtros, nova ata, concluir/reabrir/excluir pendência
+document.addEventListener('change', (e) => {
+  const f = e.target.closest && e.target.closest('[data-atas-filtro]');
+  if (f) trocarQuery({ [f.dataset.atasFiltro]: f.value || null });
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target.matches && e.target.matches('input[data-atas-filtro]')) { e.preventDefault(); trocarQuery({ [e.target.dataset.atasFiltro]: e.target.value || null }); }
+});
+document.addEventListener('click', async (e) => {
+  const add = e.target.closest('[data-pf-add]');
+  if (add) { document.getElementById('pend-linhas').insertAdjacentHTML('beforeend', atas.linhaForm()); return; }
+  const del = e.target.closest('[data-pf-del]');
+  if (del) { const l = del.closest('.pf-linha'); const box = l.parentElement; if (box.id === 'pend-linhas' && box.children.length === 1) { l.querySelectorAll('input,select').forEach((c) => { c.value = ''; }); } else if (box.id === 'pend-linhas') l.remove(); return; }
+  const st = e.target.closest('[data-pend]');
+  if (st) { const [id, status] = st.dataset.pend.split('|'); try { await atas.mudarStatus(id, status); desenhar(); } catch (err) { alert(`Não foi possível (${err.message || err}). Só quem é o responsável, quem criou ou a diretoria pode mudar.`); } return; }
+  const pd = e.target.closest('[data-pend-del]');
+  if (pd) { if (!confirm('Excluir esta pendência?')) return; try { await atas.apagarPendencia(pd.dataset.pendDel); desenhar(); } catch (err) { alert(`Não foi possível excluir (${err.message || err}).`); } return; }
+  const ad = e.target.closest('[data-ata-del]');
+  if (ad) { if (!confirm('Excluir esta ata e todas as pendências dela? Não dá para desfazer.')) return; try { await atas.apagarAta(ad.dataset.ataDel); estado.atasMsg = 'Ata excluída.'; estado.atasMsgHash = '#/atas?aba=atas'; location.hash = estado.atasMsgHash; desenhar(); } catch (err) { alert(`Não foi possível excluir (${err.message || err}).`); } }
+});
+document.addEventListener('submit', async (e) => {
+  const f = e.target.closest('#ata-form'); const g = e.target.closest('#pend-form');
+  if (!f && !g) return;
+  e.preventDefault();
+  try {
+    if (f) {
+      const fd = new FormData(f);
+      const [tipoV, ...resto] = String(fd.get('vinculo') || '').split(':'); const valor = resto.join(':');
+      if (!valor) { alert('Escolha a obra ou o departamento da ata.'); return; }
+      const pendencias = [...f.querySelectorAll('.pf-linha')].map((l) => ({ descricao: l.querySelector('[name="p_desc"]').value.trim(), responsavel: l.querySelector('[name="p_resp"]').value, prazo: l.querySelector('[name="p_prazo"]').value }))
+        .filter((p) => p.descricao);
+      if (pendencias.some((p) => !p.responsavel)) { alert('Toda pendência precisa de um responsável.'); return; }
+      const nova = await atas.criarAta({ titulo: String(fd.get('titulo')).trim(), data: fd.get('data'), tipo: tipoV === 'obra' ? 'obra' : 'departamento', obra: valor, setor: valor, participantes: fd.getAll('participantes'), resumo: String(fd.get('resumo') || ''), pendencias });
+      estado.atasMsg = `Ata salva${pendencias.length ? ` com ${pendencias.length} ${pendencias.length === 1 ? 'pendência' : 'pendências'}` : ''}.`;
+      estado.atasMsgHash = `#/atas?aba=atas&ata=${nova.id}`; location.hash = estado.atasMsgHash;
+    } else {
+      const l = g.querySelector('.pf-linha'); const descricao = l.querySelector('[name="p_desc"]').value.trim(); const responsavel = l.querySelector('[name="p_resp"]').value;
+      if (!descricao || !responsavel) { alert('Escreva a pendência e escolha o responsável.'); return; }
+      await atas.criarPendencia({ ata_id: Number(g.dataset.ata), descricao, responsavel, prazo: l.querySelector('[name="p_prazo"]').value, obra: g.dataset.obra, setor: g.dataset.setor });
+    }
+    desenhar();
+  } catch (err) { alert(`Não foi possível salvar (${err.message || err}).`); }
 });
