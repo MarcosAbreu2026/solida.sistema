@@ -1054,7 +1054,7 @@ document.addEventListener('change', (e) => {
 // Atas e pendências: filtros, nova ata, concluir/reabrir/excluir pendência
 document.addEventListener('change', (e) => {
   const f = e.target.closest && e.target.closest('[data-atas-filtro]');
-  if (f) trocarQuery({ [f.dataset.atasFiltro]: f.value || null });
+  if (f) trocarQuery({ [f.dataset.atasFiltro]: f.value || null, ...(f.dataset.atasFiltro === 'pessoa' ? { terc: null } : {}) });   // trocar o responsável limpa o terceirizado escolhido
 });
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && e.target.matches && e.target.matches('input[data-atas-filtro]')) { e.preventDefault(); trocarQuery({ [e.target.dataset.atasFiltro]: e.target.value || null }); }

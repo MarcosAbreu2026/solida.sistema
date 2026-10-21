@@ -266,17 +266,17 @@ function filtrar(params) {
 
 // só aparecem nos filtros as pessoas e os terceirizados que realmente têm pendência (senão a lista fica enorme)
 const pessoasComPendencia = () => { const ids = new Set(dados.pendencias.filter((p) => p.status !== 'cancelada' && p.responsavel).map((p) => p.responsavel)); return dados.pessoas.filter((p) => ids.has(p.id)).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')); };
+// o campo "Terceirizado" aparece depois de escolher "Terceirizados (todos)" em Responsável: lista os tipos de serviço
+// (arquitetura, elétrica, ACM…) e as empresas já conhecidas, para filtrar um terceirizado específico
 function seletorTerceirizado(atual) {
   const terc = dados.pendencias.filter((p) => p.status !== 'cancelada' && !p.responsavel && p.responsavel_tipo !== 'cliente');
-  const cats = [...new Set(terc.map((p) => p.responsavel_categoria).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
-  const nomes = [...new Set(terc.map((p) => p.responsavel_nome).filter((n) => n && !cats.includes(n)))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
-  if (!cats.length && !nomes.length) return '';
+  const cats = [...new Set([...CATEGORIAS_TERC.filter((c) => c !== 'Outro'), ...terc.map((p) => p.responsavel_categoria).filter(Boolean)])].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  const nomes = [...new Set([...nomesConhecidos(), ...terc.map((p) => p.responsavel_nome)].filter((n) => n && !cats.includes(n)))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
   const opt = (v, t) => html`<option value="${v}" ${atual === v ? html.seguro('selected') : ''}>${t}</option>`;
-  return html`<label>Terceirizado<select data-atas-filtro="terc"><option value="">Todos</option>
-    ${cats.length ? html`<optgroup label="Tipo de serviço">${cats.map((c) => opt(`cat:${c}`, c))}</optgroup>` : ''}
+  return html`<label class="at-terc-sel">Terceirizado específico<select data-atas-filtro="terc"><option value="">Todos os terceirizados</option>
+    <optgroup label="Tipo de serviço">${cats.map((c) => opt(`cat:${c}`, c))}</optgroup>
     ${nomes.length ? html`<optgroup label="Empresa / nome">${nomes.map((n) => opt(`nome:${n}`, n))}</optgroup>` : ''}</select></label>`;
 }
-
 // ---------------------------------------------------------------- telas
 function barraFiltros(params, obras, aba) {
   const sel = (nome, rotulo, opcoes, atual) => html`<label>${rotulo}<select data-atas-filtro="${nome}"><option value="">Todos</option>${opcoes.map(([v, t]) => html`<option value="${v}" ${atual === v ? html.seguro('selected') : ''}>${t}</option>`)}</select></label>`;
@@ -284,7 +284,7 @@ function barraFiltros(params, obras, aba) {
   return html`<div class="at-filtros">
     ${aba === 'atas' ? '' : html`<div class="subnav" role="tablist"><a role="tab" class="${vista === 'prazo' ? 'on' : ''}" href="#/atas?vista=prazo">Prazo</a><a role="tab" class="${vista === 'lista' ? 'on' : ''}" href="#/atas?vista=lista">Lista</a></div>`}
     ${aba === 'atas' ? '' : sel('pessoa', 'Responsável', [['eu', 'Só as minhas'], ['tipo:solida', 'Equipe da Sólida'], ['tipo:terceirizado', 'Terceirizados (todos)'], ['tipo:cliente', 'Clientes'], ...pessoasComPendencia().map((p) => [p.id, p.nome])], params.get('pessoa') || '')}
-    ${aba === 'atas' ? '' : seletorTerceirizado(params.get('terc') || '')}
+    ${aba !== 'atas' && params.get('pessoa') === 'tipo:terceirizado' ? seletorTerceirizado(params.get('terc') || '') : ''}
     ${sel('setor', 'Setor', SETORES_ATA.map((s) => [s, s]), params.get('setor') || '')}
     ${sel('obra', 'Obra', obras.map((o) => [o, o]), params.get('obra') || '')}
     <label>Procurar<input type="search" data-atas-filtro="q" value="${params.get('q') || ''}" placeholder="texto…"></label>

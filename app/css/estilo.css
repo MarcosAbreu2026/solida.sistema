@@ -1685,3 +1685,5 @@ button.at-prazo:hover { filter: brightness(.96); box-shadow: 0 0 0 2px rgba(45, 
 .at-avulsa label > input, .at-avulsa label > select { border-radius: 4px; }
 .falta { border-radius: 4px; box-shadow: 0 0 0 2px rgba(155, 58, 51, .4) !important; border-color: #9B3A33 !important; }
 .at-ata-card { border-radius: 4px; }
+
+.at-terc-sel { min-width: 220px; }
