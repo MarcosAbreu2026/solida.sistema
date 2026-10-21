@@ -1480,3 +1480,8 @@ table.ordenavel th.ord-desc::after { content: ' ▼'; font-size: 9px; }
 .pf-linha[data-kind="informativo"] > [name="p_kind"] { background: #EEF3F8; }
 .at-infos { margin: 4px 0 14px; padding-left: 22px; } .at-infos li { margin: 3px 0; }
 @media (max-width: 900px) { .pf-linha[data-kind="informativo"] > [name="p_desc"] { grid-column: 1 / -1; } }
+
+/* cores do padrão da ata da Sólida: pendência vermelho, informativo verde */
+.pf-linha[data-kind="pendencia"] > [name="p_kind"] { background: #FDE8E7; color: #A12622; border-color: #E8A9A6; font-weight: 700; }
+.pf-linha[data-kind="informativo"] > [name="p_kind"] { background: #E3F3E7; color: #1F6B3A; border-color: #9CCFAB; font-weight: 700; }
+.at-infos li::marker { color: #1F6B3A; font-weight: 700; }

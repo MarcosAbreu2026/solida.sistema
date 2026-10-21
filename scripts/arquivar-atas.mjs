@@ -1,4 +1,4 @@
-// Salva no Drive as atas feitas no sistema (pedido de 21/10): PDF com o nome padrão
+﻿// Salva no Drive as atas feitas no sistema (pedido de 21/10): PDF com o nome padrão
 //   <obra>_<aaaa.mm.dd>_ATA_<tipo>_R<nn>.pdf   ex.: Mo344_2026.07.10_ATA_ARQUITETURA-CLIENTE_R00.pdf
 // na pasta da obra: OPERACOES\OBRAS\<MoXXX_...>\GERENCIAMENTO\ATA  (pós-obra: PÓS OBRA\PO_OBRAS\<ano>\<Po_XXX...>\GERENCIAMENTO\ATA).
 // Roda dentro do coletor (a cada 10 minutos): entra com a conta do coletor, pega as atas de obra ainda não salvas,
@@ -71,8 +71,8 @@ const ROT = { terceirizado: 'Terceirizado', cliente: 'Cliente', arquitetura: 'Ar
 function htmlDaAta(a, pends) {
   const logo = existsSync(join(raiz, 'app', 'img', 'logo.png')) ? `data:image/png;base64,${readFileSync(join(raiz, 'app', 'img', 'logo.png')).toString('base64')}` : '';
   const quem = (p) => `${esc(p.responsavel_nome || '—')}${p.responsavel_tipo && p.responsavel_tipo !== 'solida' ? ` <small>(${esc(ROT[p.responsavel_tipo] || 'Externo')}${p.responsavel_categoria ? ` · ${esc(p.responsavel_categoria)}` : ''})</small>` : ' <small>(Sólida)</small>'}`;
-  const infos = (a.informativos || []).map((t, i) => `<tr><td class="c">${pends.length + i + 1}</td><td class="c">INFORMATIVO</td><td>${esc(t)}</td><td class="c">—</td><td class="c">—</td></tr>`).join('');
-  const linhas = pends.map((p, i) => `<tr><td class="c">${i + 1}</td><td class="c">PENDÊNCIA</td><td>${esc(p.descricao)}</td><td>${quem(p)}</td><td class="c">${p.prazo ? dbr(p.prazo).slice(0, 5) + (p.prazo.slice(0, 4) !== a.data.slice(0, 4) ? `/${p.prazo.slice(0, 4)}` : '') : ''}</td></tr>`).join('');
+  const infos = (a.informativos || []).map((t, i) => `<tr><td class="c">${pends.length + i + 1}</td><td class="c info">INFORMATIVO</td><td>${esc(t)}</td><td class="c">—</td><td class="c">—</td></tr>`).join('');
+  const linhas = pends.map((p, i) => `<tr><td class="c">${i + 1}</td><td class="c pend">PENDÊNCIA</td><td>${esc(p.descricao)}</td><td>${quem(p)}</td><td class="c">${p.prazo ? dbr(p.prazo).slice(0, 5) + (p.prazo.slice(0, 4) !== a.data.slice(0, 4) ? `/${p.prazo.slice(0, 4)}` : '') : ''}</td></tr>`).join('');
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${esc(a.titulo)}</title><style>
 @page { size: A4; margin: 14mm 14mm 16mm; }
 body { font: 11px/1.4 Arial, Helvetica, sans-serif; color: #111; margin: 0; }
@@ -85,7 +85,7 @@ table { width: 100%; border-collapse: collapse; margin-top: 4px; table-layout: f
 th { background: #1B4F72; color: #fff; font-size: 10.5px; padding: 5px 4px; border: 1px solid #1B4F72; }
 td { border: 1px solid #aaa; padding: 4px 5px; vertical-align: middle; } td.c { text-align: center; }
 th:nth-child(1) { width: 6%; } th:nth-child(2) { width: 13%; } th:nth-child(4) { width: 21%; } th:nth-child(5) { width: 11%; }
-small { color: #555; } tr { break-inside: avoid; }
+small { color: #555; } td.pend { background: #FDE8E7; color: #A12622; font-weight: 700; } td.info { background: #E3F3E7; color: #1F6B3A; font-weight: 700; } tr { break-inside: avoid; }
 .rodape { margin-top: 18px; font-size: 9px; color: #666; }
 </style></head><body>
 <div class="logo"></div>
@@ -139,3 +139,4 @@ for (const a of atas) {
 }
 console.log(`Atas: ${ok} salva${ok === 1 ? '' : 's'} no Drive${falhas.length ? ` · falhas: ${falhas.join(' | ')}` : ''}`);
 process.exit(falhas.length ? 1 : 0);
+
