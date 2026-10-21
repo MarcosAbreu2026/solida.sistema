@@ -1,4 +1,4 @@
-// Atas e pendências (pedido de 21/10, primeira prioridade da reunião): o Bitrix está sendo pouco usado, então as
+﻿// Atas e pendências (pedido de 21/10, primeira prioridade da reunião): o Bitrix está sendo pouco usado, então as
 // atas e as ações que saem delas ficam aqui. Cada ata é ligada a uma obra ou a um departamento. Item que exige
 // ação vira pendência, com responsável e prazo, que dá para filtrar por pessoa, setor ou obra.
 // Pendências em quadro por prazo (como o Bitrix: Vencido · Hoje · Esta semana · Próxima semana · Sem prazo ·
@@ -149,6 +149,8 @@ const COLUNAS = [
   ['sem', 'Sem prazo'], ['duas', 'Vencimento em duas semanas ou mais'], ['concluido', 'Concluído'],
 ];
 
+// padrão da Sólida: o assunto vem primeiro, em negrito, e depois da vírgula o que é ("ACM, Retirar da área gourmet")
+const descRica = (t) => { const s = String(t || ''); const i = s.indexOf(','); return i > 0 && i < 60 ? html`<b>${s.slice(0, i)}</b>${s.slice(i)}` : s; };
 const opcoesPessoas = (sel = '') => dados.pessoas.map((p) => html`<option value="${p.id}" ${p.id === sel ? html.seguro('selected') : ''}>${p.nome}</option>`);
 
 export const CATEGORIAS_TERC = ['Arquitetura', 'Ar-condicionado', 'Automação', 'ACM / fachada', 'Elétrica', 'Hidráulica', 'Iluminação', 'Esquadrias / vidros', 'Gesso / forro', 'Impermeabilização', 'Marcenaria', 'Marmoraria / pedras', 'Paisagismo', 'Pintura', 'Piscina', 'Revestimentos', 'Serralheria', 'Limpeza', 'Outro'];
@@ -167,7 +169,7 @@ export function linhaForm(v = {}) {
   const falta = !!v.descricao && tipo === 'solida' && !v.responsavel;
   const dica = v.responsavelAmbiguo ? `Há mais de um ${v.responsavelAmbiguo}: escolha quem` : v.externoNome && v.externoTipo === 'solida' ? `${v.externoNome} não tem login no sistema: escolha outra pessoa` : 'Escolha o responsável';
   const info = v.kind === 'informativo';
-  return String(html`<div class="pf-linha" data-tipo="${tipo}" data-kind="${info ? 'informativo' : 'pendencia'}"><select name="p_kind" data-pf-kind ${v.semKind ? html.seguro('hidden') : ''} title="Pendência vai para as pendências das pessoas; informativo só fica registrado na ata"><option value="pendencia" ${info ? '' : html.seguro('selected')}>Pendência</option><option value="informativo" ${info ? html.seguro('selected') : ''}>Informativo</option></select><input name="p_desc" placeholder="${info ? 'Informação a registrar' : 'O que precisa ser feito'}" autocomplete="off" value="${v.descricao || ''}" title="${v.descricao || ''}">
+  return String(html`<div class="pf-linha" data-tipo="${tipo}" data-kind="${info ? 'informativo' : 'pendencia'}"><select name="p_kind" data-pf-kind ${v.semKind ? html.seguro('hidden') : ''} title="Pendência vai para as pendências das pessoas; informativo só fica registrado na ata"><option value="pendencia" ${info ? '' : html.seguro('selected')}>Pendência</option><option value="informativo" ${info ? html.seguro('selected') : ''}>Informativo</option></select><input name="p_desc" placeholder="${info ? 'Assunto, informação (ex.: ACM, Fachada liberada)' : 'Assunto, o que fazer (ex.: ACM, Retirar da área gourmet)'}" autocomplete="off" value="${v.descricao || ''}" title="${v.descricao || ''}">
     <select name="p_tipo" data-pf-tipo title="Quem é o responsável"><option value="solida" ${tipo === 'solida' ? html.seguro('selected') : ''}>Sólida</option><option value="terceirizado" ${tipo === 'terceirizado' ? html.seguro('selected') : ''}>Terceirizado</option><option value="cliente" ${tipo === 'cliente' ? html.seguro('selected') : ''}>Cliente</option></select>
     <select name="p_resp" class="pf-sol ${falta ? 'pf-falta' : ''}" title="${falta ? dica : ''}" ${tipo === 'solida' ? '' : html.seguro('hidden')}><option value="">Pessoa da Sólida…</option>${opcoesPessoas(v.responsavel || '')}</select>
     <select name="p_cat" class="pf-ter" ${tipo === 'terceirizado' ? '' : html.seguro('hidden')}><option value="">Tipo de serviço…</option>${CATEGORIAS_TERC.map((c) => html`<option ${categoria === c ? html.seguro('selected') : ''}>${c}</option>`)}</select>
@@ -209,7 +211,7 @@ function cartao(p, hoje) {
   const dias = p.prazo ? diasEntre(hoje, p.prazo) : null;
   const rotuloPrazo = !p.prazo ? 'Sem prazo' : col === 'vencido' ? `${dm(p.prazo)} · ${Math.abs(dias)} ${Math.abs(dias) === 1 ? 'dia' : 'dias'} de atraso` : col === 'hoje' ? 'Hoje' : dm(p.prazo);
   return html`<article class="at-card at-${col}">
-    <div class="at-tit">${p.descricao}</div>
+    <div class="at-tit">${descRica(p.descricao)}</div>
     <div class="at-meta"><span class="at-prazo at-p-${col}">${rotuloPrazo}</span>${onde(p) ? html`<span class="at-chip">${onde(p)}</span>` : ''}</div>
     <div class="at-quem"><span class="at-pessoa">${nomeDe(p.responsavel, p.responsavel_nome)}</span>${p.responsavel_tipo && p.responsavel_tipo !== 'solida' ? html`<span class="at-tipo at-t-${p.responsavel_tipo}">${ROTULO_TIPO[p.responsavel_tipo] || 'Externo'}${p.responsavel_categoria ? ` · ${p.responsavel_categoria}` : ''}</span>` : ''}${a ? html`<a class="at-ata" href="#/atas?aba=atas&ata=${a.id}" title="Ata de origem">ata ${dm(a.data).slice(0, 5)}</a>` : ''}</div>
     <div class="at-acoes">
@@ -232,7 +234,7 @@ function vistaLista(lista, hoje, params) {
   const itens = lista.filter((p) => (st === 'todas' ? true : st === 'feitas' ? p.status === 'feita' : p.status === 'aberta'));
   return html`<div class="at-lista-topo"><label>Mostrar<select data-atas-filtro="status"><option value="abertas" ${st === 'abertas' ? html.seguro('selected') : ''}>Abertas</option><option value="feitas" ${st === 'feitas' ? html.seguro('selected') : ''}>Concluídas</option><option value="todas" ${st === 'todas' ? html.seguro('selected') : ''}>Todas</option></select></label></div>
     <div class="tabela-rolagem"><table class="tab ordenavel at-tab"><thead><tr><th>Pendência</th><th>Responsável</th><th>Prazo</th><th>Obra / setor</th><th>Ata</th><th>Situação</th><th></th></tr></thead><tbody>
-      ${itens.map((p) => { const col = coluna(p, hoje); const a = ataDe(p); return html`<tr><td>${p.descricao}</td><td>${nomeDe(p.responsavel, p.responsavel_nome)}</td>
+      ${itens.map((p) => { const col = coluna(p, hoje); const a = ataDe(p); return html`<tr><td>${descRica(p.descricao)}</td><td>${nomeDe(p.responsavel, p.responsavel_nome)}</td>
         <td class="${col === 'vencido' ? 'pendente' : ''}">${p.prazo ? dm(p.prazo) : html`<span class="muted">—</span>`}</td><td>${onde(p)}</td>
         <td>${a ? html`<a class="link" href="#/atas?aba=atas&ata=${a.id}">${dm(a.data).slice(0, 5)}</a>` : ''}</td>
         <td>${p.status === 'feita' ? 'Concluída' : col === 'vencido' ? 'Atrasada' : 'Aberta'}</td>
@@ -261,7 +263,7 @@ function detalheAta(id, hoje, obras) {
       <p class="pequeno">${dm(a.data)} · ${a.tipo === 'obra' ? 'Obra' : 'Departamento'}: <b>${onde(a) || '—'}</b>${a.criado_por_nome ? ` · registrada por ${a.criado_por_nome}` : ''}</p>
       ${a.participantes && a.participantes.length ? html`<p class="pequeno">Participantes: ${a.participantes.join(', ')}</p>` : ''}
       ${a.resumo ? html`<div class="at-resumo">${textoRico(a.resumo)}</div>` : ''}
-      ${a.informativos && a.informativos.length ? html`<h3>Informativos <span class="pequeno">${a.informativos.length}</span></h3><ol class="at-infos">${a.informativos.map((x) => typeof x === 'string' ? html`<li>${x}</li>` : html`<li>${x.texto}${x.quem ? html` <span class="at-info-quem">— informado por <b>${x.quem}</b>${x.tipo && x.tipo !== 'solida' ? ` (${ROTULO_TIPO[x.tipo] || 'Externo'}${x.categoria ? ` · ${x.categoria}` : ''})` : ''}</span>` : ''}</li>`)}</ol>` : ''}
+      ${a.informativos && a.informativos.length ? html`<h3>Informativos <span class="pequeno">${a.informativos.length}</span></h3><ol class="at-infos">${a.informativos.map((x) => typeof x === 'string' ? html`<li>${descRica(x)}</li>` : html`<li>${descRica(x.texto)}${x.quem ? html` <span class="at-info-quem">— informado por <b>${x.quem}</b>${x.tipo && x.tipo !== 'solida' ? ` (${ROTULO_TIPO[x.tipo] || 'Externo'}${x.categoria ? ` · ${x.categoria}` : ''})` : ''}</span>` : ''}</li>`)}</ol>` : ''}
       <h3>Pendências desta ata <span class="pequeno">${ps.length}</span></h3>
       <div class="at-quadro-ata">${ps.length ? ps.map((p) => cartao(p, hoje)) : html`<p class="pequeno">Nenhuma pendência saiu desta ata.</p>`}</div>
       <form class="at-nova-pend" id="pend-form" data-ata="${a.id}" data-obra="${a.obra || ''}" data-setor="${a.setor || ''}">${html.seguro(linhaForm({ semKind: true }))}<button type="submit" class="botao">Acrescentar pendência</button></form>

@@ -1,4 +1,4 @@
-// Sistema Sólida — mostra o mesmo que o Painel da Empresa (dados.json do Drive, preenchido pelos agentes),
+﻿// Sistema Sólida — mostra o mesmo que o Painel da Empresa (dados.json do Drive, preenchido pelos agentes),
 // mais: perfis por função, "Meu dia" (quadro de funções), Operação › Metas e produtividade,
 // e no Pós-obra os detalhes da planilha integrada (dados/json).
 
@@ -1131,7 +1131,7 @@ function lerLinhaPendencia(l) {
 // trocar Sólida / Terceirizado / Cliente mostra os campos certos da mesma linha
 document.addEventListener('change', (e) => {
   const kind = e.target.closest && e.target.closest('[data-pf-kind]');
-  if (kind) { const l = kind.closest('.pf-linha'); l.dataset.kind = kind.value; l.querySelector('[name="p_desc"]').placeholder = kind.value === 'informativo' ? 'Informação a registrar' : 'O que precisa ser feito'; return; }
+  if (kind) { const l = kind.closest('.pf-linha'); l.dataset.kind = kind.value; l.querySelector('[name="p_desc"]').placeholder = kind.value === 'informativo' ? 'Assunto, informação (ex.: ACM, Fachada liberada)' : 'Assunto, o que fazer (ex.: ACM, Retirar da área gourmet)'; return; }
   const sel = e.target.closest && e.target.closest('[data-pf-tipo]');
   if (!sel) return;
   const l = sel.closest('.pf-linha'); const tipo = sel.value; l.dataset.tipo = tipo;
