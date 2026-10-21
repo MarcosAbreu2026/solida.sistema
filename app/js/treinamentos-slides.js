@@ -24,10 +24,10 @@ export const TOPICOS = [
   { id: 'marketing', nome: 'Marketing', tipo: 'pagina', pagina: 'marketing', icone: '📣' },
 ];
 
-// treinamentos com slides (imagem + legenda). Os guias de texto de treinamentos.js entram aqui também (registrar) e abrem na mesma apresentação.
+// treinamentos com slides (imagem + legenda). Cada um aparece no bloco do menu a que pertence (campo topico).
 export const SUBTOPICOS = [
       {
-        id: 'ata-criar', topico: 'atas', funcoes: 'todos', titulo: 'Como criar uma ata no sistema', min: 6, para: 'Todos',
+        id: 'ata-criar', topico: 'atas', funcoes: 'todos', titulo: 'Como criar uma ata no sistema', para: 'Todos',
         resumo: 'Do menu até a ata pronta: dados, itens, gravação do áudio, PDF e pauta da próxima reunião.',
         slides: [
           { imagem: img('ata-01-menu'), titulo: 'Onde ficam as atas', texto: 'Toda reunião vira uma ata no sistema, e quem faz a ata é qualquer pessoa da equipe. No menu da esquerda, clique em Atas e pendências.',

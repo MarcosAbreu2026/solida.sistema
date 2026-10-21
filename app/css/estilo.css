@@ -1885,3 +1885,5 @@ button.at-prazo:hover { filter: brightness(.96); box-shadow: 0 0 0 2px rgba(45, 
 .tr-visto { color: #1E4D2B; font-weight: 700; }
 .tr-ico { margin-right: 8px; } .tr-topico > summary .pl-tit { font-size: 15px; font-weight: 700; color: #14283C; }
 .tr-ideias { margin-top: 18px; } .tr-ideias summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+
+.tr-tab col.tr-c-tit { width: auto; } .tr-tab col.tr-c-pas { width: 110px; } .tr-tab col.tr-c-sit { width: 130px; } .tr-tab col.tr-c-acao { width: 120px; }
