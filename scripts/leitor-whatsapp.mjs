@@ -12,6 +12,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { extrair } from './whatsapp-extrator.mjs';
+import { lerEfetivo } from './efetivo-parser.mjs';
 
 const raiz = join(dirname(fileURLToPath(import.meta.url)), '..');
 const pastaWpp = join(raiz, 'dados', 'whatsapp');
@@ -38,10 +39,10 @@ if (!EDGE) { gravarStatus({ ok: false, motivo: 'Microsoft Edge não encontrado' 
 // configuração padrão das conversas lidas (editável): "tipo: ferramentas" também alimenta o controle de ferramentas
 if (!existsSync(cfgArq)) {
   gravarJSON(cfgArq, {
-    comentario: 'Conversas que o leitor abre. ativo=false desliga. privado=true não guarda o texto bruto. tipo=ferramentas alimenta o controle de ferramentas obrigatórias.',
+    comentario: 'Conversas que o leitor abre. ativo=false desliga. busca=texto digitado na pesquisa (padrão: o nome; use um trecho único se o nome der muitos resultados). privado=true não guarda o texto bruto. tipo=ferramentas alimenta o controle de ferramentas obrigatórias.',
     conversas: [
       { nome: 'GESTAO ferramentas', tipo: 'ferramentas', ativo: true },
-      { nome: 'Sólida FERRAMENTAS', tipo: 'ferramentas', ativo: true },
+      { nome: 'Sólida FERRAMENTAS', busca: 'ferrament', tipo: 'ferramentas', ativo: true },
       { nome: 'Anderson Bandeira', tipo: 'ferramentas', ativo: true, privado: true },
     ],
   });
@@ -60,7 +61,10 @@ let ws; let seq = 0; const pend = new Map();
 try { ws = new WebSocket(await pronto()); } catch (e) { gravarStatus({ ok: false, motivo: e.message }); console.log(e.message); encerrar(1); }
 await new Promise((res, rej) => { ws.onopen = res; ws.onerror = () => rej(new Error('CDP')); });
 ws.onmessage = (m) => { const d = JSON.parse(m.data); if (d.id && pend.has(d.id)) { pend.get(d.id)(d); pend.delete(d.id); } };
-const cdp = (metodo, params = {}) => new Promise((res, rej) => { const id = ++seq; pend.set(id, (d) => (d.error ? rej(new Error(d.error.message)) : res(d.result))); ws.send(JSON.stringify({ id, method: metodo, params })); });
+const cdp = (metodo, params = {}) => new Promise((res, rej) => {
+  const id = ++seq; const t = setTimeout(() => { pend.delete(id); rej(new Error(`${metodo}: sem resposta do navegador`)); }, 20000);   // evita travar se a página trocar no meio
+  pend.set(id, (d) => { clearTimeout(t); return d.error ? rej(new Error(d.error.message)) : res(d.result); }); ws.send(JSON.stringify({ id, method: metodo, params }));
+});
 const avaliar = async (expr) => { const r = await cdp('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true }); if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception ? r.exceptionDetails.exception.description : r.exceptionDetails.text); return r.result.value; };
 const esperar = async (expr, ms = 30000) => { const fim = Date.now() + ms; while (Date.now() < fim) { try { if (await avaliar(expr)) return true; } catch { /* página trocando */ } await espera(400); } return false; };
 async function clicar(expr) {   // expr devolve o elemento; clica no centro dele com o mouse
@@ -71,11 +75,15 @@ async function clicar(expr) {   // expr devolve o elemento; clica no centro dele
   await cdp('Input.dispatchMouseEvent', { type: 'mouseReleased', x: r.x, y: r.y, button: 'left', clickCount: 1 });
   return true;
 }
+async function tecla(key, code, modifiers = 0) { try { await cdp('Input.dispatchKeyEvent', { type: 'rawKeyDown', key, code, modifiers }); await cdp('Input.dispatchKeyEvent', { type: 'keyUp', key, code, modifiers }); } catch { /* tecla sem resposta: segue */ } }
+process.on('uncaughtException', (e) => { try { gravarStatus({ ok: false, motivo: e.message }); } catch { /* sem status */ } console.log(e.message); encerrar(1); });
+process.on('unhandledRejection', (e) => { try { gravarStatus({ ok: false, motivo: String(e && e.message || e) }); } catch { /* sem status */ } console.log(String(e && e.message || e)); encerrar(1); });
 await cdp('Emulation.setUserAgentOverride', { userAgent: UA, platform: 'Windows' });
 await cdp('Page.enable');
 await cdp('Page.navigate', { url: 'https://web.whatsapp.com/' });
 
 const LISTA = '#pane-side';
+const BUSCA = `document.querySelector('#side input[data-tab="3"], #side input[aria-label^="Pesquisar"], #side div[contenteditable="true"][data-tab="3"]')`;
 const QR = 'canvas[aria-label], [data-ref], [data-testid="qrcode"]';
 if (MODO_LOGIN) {
   console.log('Escaneie o QR code com o WhatsApp do celular (Aparelhos conectados > Conectar um aparelho). Esperando até 10 minutos...');
@@ -91,21 +99,38 @@ if (!logado) {
   gravarStatus({ ok: false, motivo }); console.log(motivo); encerrar(2);
 }
 await espera(sorteio(3000, 6000));
+if (process.argv.includes('--diag')) {   // diagnóstico: mostra como está a lateral do WhatsApp Web (não digita nada)
+  console.log(await avaliar(`JSON.stringify({ campos: [...document.querySelectorAll('[contenteditable], input')].map((e) => e.tagName + '|' + (e.getAttribute('data-tab') || '') + '|' + (e.getAttribute('aria-label') || '') + '|' + (e.closest('#side') ? 'side' : e.closest('#main') ? 'main' : '?')), icones: [...document.querySelectorAll('#side [data-icon]')].slice(0, 14).map((e) => e.getAttribute('data-icon')), testids: [...document.querySelectorAll('#side [data-testid]')].slice(0, 14).map((e) => e.getAttribute('data-testid')), botoes: [...document.querySelectorAll('#side button, #side [role=button]')].slice(0, 10).map((e) => e.getAttribute('aria-label') || e.innerText.slice(0, 20)) })`));
+  encerrar(0);
+}
 
 const cfg = lerJSON(cfgArq, { conversas: [] });
 const resultado = [];
 const novasFerramentas = [];   // mensagens do Anderson (ferramentas) a avaliar
+const gruposEfetivo = [];      // grupos de obra lidos agora (para o efetivo do dia)
 for (const conv of (cfg.conversas || []).filter((c) => c && c.ativo !== false && c.nome)) {
   const alvo = semAcento(conv.nome);
   try {
     // busca o nome e abre a conversa
-    await clicar(`document.querySelector('[data-testid="chat-list-search"], div[contenteditable="true"][data-tab="3"]')`);
-    await cdp('Input.dispatchKeyEvent', { type: 'keyDown', key: 'a', code: 'KeyA', modifiers: 2 }); await cdp('Input.dispatchKeyEvent', { type: 'keyUp', key: 'a', code: 'KeyA', modifiers: 2 });
-    await cdp('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Backspace', code: 'Backspace' }); await cdp('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Backspace', code: 'Backspace' });
-    await cdp('Input.insertText', { text: conv.nome });
-    await espera(1800);
-    const achou = await clicar(`[...document.querySelectorAll('${LISTA} span[title]')].find((s) => ${semAcentoJS()}(s.title) === ${JSON.stringify(alvo)})`);
-    if (!achou) { resultado.push({ nome: conv.nome, erro: 'conversa não encontrada na busca' }); continue; }
+    // só digita se o foco estiver mesmo no campo de busca (nunca no campo de mensagem de uma conversa)
+    if (!(await clicar(BUSCA))) await clicar(`document.querySelector('[data-icon="search"], [data-icon="search-refreshed"], [aria-label="Pesquisar"], [aria-label="Search"]')`);
+    await espera(600);
+    if (!(await clicar(BUSCA)) || !(await avaliar(`!!document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.isContentEditable) && !!document.activeElement.closest('#side')`))) { const diag = await avaliar(`JSON.stringify({ ativo: (document.activeElement || {}).outerHTML ? document.activeElement.outerHTML.slice(0, 140) : '', busca: ${BUSCA} ? ${BUSCA}.outerHTML.slice(0, 140) : null, editaveis: [...document.querySelectorAll('[contenteditable=true]')].map((e) => (e.getAttribute('data-tab') || '') + ':' + (e.closest('#side') ? 'side' : e.closest('#main') ? 'main' : '?')) })`).catch(() => '?'); resultado.push({ nome: conv.nome, erro: `campo de busca não encontrado (nada foi digitado) ${diag}` }); continue; }
+    // limpa a busca pelo próprio campo (Ctrl+A/Backspace não funcionam no navegador sem tela) e avisa o WhatsApp
+    await avaliar(`(() => { const e = ${BUSCA}; if (!e) return; e.focus(); if (e.tagName === 'INPUT') { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(e, ''); e.dispatchEvent(new Event('input', { bubbles: true })); } else { e.textContent = ''; e.dispatchEvent(new Event('input', { bubbles: true })); } })()`);
+    await espera(600);
+    await cdp('Input.insertText', { text: conv.busca || conv.nome });
+    await espera(1500);
+    let achou = false;   // os resultados da busca demoram: tenta por até ~10 segundos
+    for (let tentativa = 0; tentativa < 10 && !achou; tentativa++) {
+      achou = await clicar(`[...document.querySelectorAll('${LISTA} span[title]')].find((s) => ${semAcentoJS()}(s.title) === ${JSON.stringify(alvo)})`);
+      if (!achou) await espera(900);
+    }
+    if (!achou) {
+      const vistos = await avaliar(`[...document.querySelectorAll('${LISTA} span[title]')].map((s) => s.title.slice(0, 30)).slice(0, 5)`).catch(() => []);
+      const campo = await avaliar(`(${BUSCA} || {}).value`).catch(() => '?');
+      resultado.push({ nome: conv.nome, erro: `conversa não encontrada na busca (campo: "${campo}"; vi: ${vistos.join(' | ')})` }); continue;
+    }
     const abriu = await esperar(`(() => { const t = document.querySelector('#main [data-testid="conversation-info-header-chat-title"]') || document.querySelector('#main header span[title]'); return !!t && ${semAcentoJS()}(t.innerText || t.title) === ${JSON.stringify(alvo)}; })()`, 10000);
     if (!abriu) { resultado.push({ nome: conv.nome, erro: 'não consegui abrir a conversa' }); continue; }
     await espera(1500);
@@ -118,14 +143,20 @@ for (const conv of (cfg.conversas || []).filter((c) => c && c.ativo !== false &&
     const rolar = (acao) => avaliar(`(() => { const main = document.querySelector('#main'); const sc = [...main.querySelectorAll('div')].find((d) => d.scrollHeight > d.clientHeight + 200 && getComputedStyle(d).overflowY !== 'visible' && d.querySelector('[role=row]')); if (!sc) return -1; ${acao}; return sc.scrollTop; })()`);
     await rolar('sc.scrollTop = sc.scrollHeight');
     await espera(800);
+    const completa = (m) => !!(m.hora || m.texto || m.midia);   // linha da tela ainda sem conteúdo = não terminou de carregar: não guarda, lê de novo depois
+    const ler = async () => {
+      await espera(900);
+      let lote = await avaliar(`(${extrair.toString()})()`);
+      if (lote.mensagens.some((m) => !completa(m))) { await espera(1200); lote = await avaliar(`(${extrair.toString()})()`); }
+      let conhecida = false;
+      for (const m of lote.mensagens) { if (conhecidas.has(m.id)) conhecida = true; if (completa(m)) lidas.set(m.id, m); }
+      return conhecida;
+    };
     for (let passo = 0; passo < 14; passo++) {
-      const lote = await avaliar(`(${extrair.toString()})()`);
-      let jaConhecida = false;
-      for (const m of lote.mensagens) { if (conhecidas.has(m.id)) jaConhecida = true; lidas.set(m.id, m); }
+      const jaConhecida = await ler();
       if (jaConhecida && passo > 0) break;
       const topo = await rolar('sc.scrollTop = Math.max(0, sc.scrollTop - sc.clientHeight * 0.7)');
-      await espera(sorteio(500, 900));
-      if (topo <= 0) { const lote2 = await avaliar(`(${extrair.toString()})()`); for (const m of lote2.mensagens) lidas.set(m.id, m); break; }
+      if (topo <= 0) { await ler(); break; }
     }
     const novas = [...lidas.values()].filter((m) => !conhecidas.has(m.id));
     if (!conv.privado) {
@@ -133,10 +164,35 @@ for (const conv of (cfg.conversas || []).filter((c) => c && c.ativo !== false &&
       gravarJSON(arqConv, { conversa: conv.nome, lidoEm: agora(), mensagens: todas });
     }
     if (conv.tipo === 'ferramentas') for (const m of lidas.values()) novasFerramentas.push({ ...m, conversa: conv.nome });
+    if (conv.tipo === 'efetivo') { const cod = (conv.nome.match(/\b(mo|po)\s*-?\s*(\d{3})/i) || []); if (cod[2]) gruposEfetivo.push({ codigo: `${cod[1].toLowerCase() === 'po' ? 'Po' : 'Mo'}${cod[2]}`, arq: arqConv, lidoEm: agora() }); }
     resultado.push({ nome: conv.nome, lidas: lidas.size, novas: novas.length });
   } catch (e) { resultado.push({ nome: conv.nome, erro: e.message }); }
-  await cdp('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape' }); await cdp('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape' });
+  await tecla('Escape', 'Escape');
   await espera(sorteio(3000, 7000));   // pausa irregular entre uma conversa e outra
+}
+
+// ---------------------------------------------------------------- efetivo do dia (RH)
+// Cada obra posta o efetivo no grupo até as 12h. Daqui sai dados/json/efetivo.json (a tela do RH mostra quem enviou, quantas pessoas
+// e quem NÃO enviou). "leituras" diz quando cada grupo foi lido: o sistema só afirma que faltou se o grupo foi mesmo lido.
+if (gruposEfetivo.length) {
+  const efArq = join(raiz, 'dados', 'json', 'efetivo.json');
+  const ef = lerJSON(efArq, {});
+  ef.prazo = '12:00'; ef.dias = ef.dias || {}; ef.leituras = ef.leituras || {}; ef.obras = [...new Set([...(ef.obras || []), ...gruposEfetivo.map((g) => g.codigo)])].sort();
+  const corte = (() => { const d = new Date(); d.setDate(d.getDate() - 14); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; })();
+  for (const g of gruposEfetivo) {
+    ef.leituras[g.codigo] = g.lidoEm;
+    const msgs = lerJSON(g.arq, { mensagens: [] }).mensagens || [];
+    const porDia = new Map();
+    for (const m of msgs) {
+      const e = lerEfetivo(m.texto, m.data); if (!e || !e.data || e.data < corte) continue;
+      const antigo = porDia.get(e.data); const chave = `${m.data || ''}${m.hora || ''}`;
+      if (!antigo || chave >= antigo.chave) porDia.set(e.data, { chave, hora: m.hora || '', por: m.autor || '', postadoEm: m.data || e.data, ...e });   // "retificando": vale a última mensagem do dia
+    }
+    for (const [dia, e] of porDia) { ef.dias[dia] = ef.dias[dia] || {}; ef.dias[dia][g.codigo] = { hora: e.hora, por: e.por, postadoEm: e.postadoEm, solida: e.solida, terceiros: e.terceiros, total: e.total }; }
+  }
+  for (const dia of Object.keys(ef.dias)) if (dia < corte) delete ef.dias[dia];
+  ef.atualizadoEm = agora(); ef.fonte = 'WhatsApp · grupos das obras (leitura automática, só leitura)';
+  gravarJSON(efArq, ef);
 }
 
 // ---------------------------------------------------------------- ferramentas obrigatórias
@@ -159,10 +215,13 @@ let adicionados = 0;
 for (const m of novasFerramentas) {
   if (m.minha || !m.data || m.data < limite || !/anderson/i.test(m.autor || '')) continue;
   const texto = String(m.texto || '').trim();
-  if (/deixando|retirando|retirado|quebrad|rota|reuni/i.test(texto)) continue;
-  const curto = /^(mo|po)\s*-?\s*\d{3}\s*$/i.test(texto) || /^ferramentas?\b/i.test(texto);
+  if (/deixando|retirando|retirado|quebrad|queimad|defeit|danific|falha|estragad|rota|reuni/i.test(texto)) continue;
+  // só vale a folha: legenda é só o código da obra ("Mo 581"), ou fala em ferramentas/folha/checklist/galpão/carro. Foto de uma peça com o nome da obra NÃO é a folha.
+  const soCodigo = /^(mo|po)\s*-?\s*\d{3}\s*$/i.test(texto);
+  const dizFolha = /\b(ferramentas?|folha|checklist|lista|galp\w*|estoque|carro|strada)\b/i.test(texto);
   const eMidia = m.midia === 'imagem' || m.midia === 'documento';
-  if (!eMidia && !curto) continue;
+  const curto = soCodigo || /^ferramentas?\b/i.test(texto);
+  if (eMidia ? !(soCodigo || dizFolha || !texto) : !curto) continue;
   const local = identificarLocal(texto);
   if (!local) { if (eMidia) check.naoIdentificadas.push({ enviadoEm: m.data, hora: m.hora, conversa: m.conversa, midia: m.midia, encaminhada: m.encaminhada, legenda: texto }); continue; }
   const ja = check.registros.some((r) => r.enviadoEm === m.data && (r.local === local || String(r.local).startsWith(local)));

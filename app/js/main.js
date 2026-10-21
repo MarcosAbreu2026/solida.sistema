@@ -1,10 +1,11 @@
-﻿// Sistema Sólida — mostra o mesmo que o Painel da Empresa (dados.json do Drive, preenchido pelos agentes),
+// Sistema Sólida — mostra o mesmo que o Painel da Empresa (dados.json do Drive, preenchido pelos agentes),
 // mais: perfis por função, "Meu dia" (quadro de funções), Operação › Metas e produtividade,
 // e no Pós-obra os detalhes da planilha integrada (dados/json).
 
-import { carregarDados, carregarPainel, carregarProdutividade, carregarDrive, carregarFerramentasChk, carregarTerceirizados } from './dados.js';
+import { carregarDados, carregarPainel, carregarProdutividade, carregarDrive, carregarFerramentasChk, carregarTerceirizados, carregarEfetivo } from './dados.js';
 import * as terceiros from './telas/terceirizados.js';
 import * as ferrChk from './telas/ferramentas-checklist.js';
+import * as efetivoTela from './telas/efetivo.js';
 import * as reposicao from './telas/reposicao.js';
 import * as ordenar from './ordenar.js';
 import * as atas from './telas/atas.js';
@@ -521,6 +522,10 @@ function desenhar() {
       if (veRepos && rota.sub === 'reposicao') out = `<div>${abas}<div style="margin-top:26px">${reposicao.render(estado.drive.estoque)}</div></div>`;
       else out = T.telaArea(area, abas ? `<div style="margin-bottom:34px">${abas}</div>` : '', { depoisIndicadores: ferrChk.cartoes(CFG, estado.ferrChk, deObra ? obrasDaPessoa() : null, estado.drive.estoque) });
     }
+    else if (area && area.id === 'rh') {
+      // RH: indicadores do agente + efetivo de hoje lido sozinho dos grupos das obras
+      out = T.telaArea(area, '', { depoisIndicadores: efetivoTela.cartoes(CFG, estado.efetivo, deObra ? obrasDaPessoa() : null) });
+    }
     else if (area && area.id === 'planejamento') {
       // Planejamento: Resumo · Programação semanal · Produtividade · Diário de obra
       const visiveis = deObra ? obrasDaPessoa() : null;
@@ -618,7 +623,8 @@ async function atualizar() {
   // marcações de tarefas de todos (pontuação do Perfil); quem está logado manda o que só tinha neste navegador
   const atual = logado() ? { pessoa: idPessoa(), nome: sessao().nome, funcao: funcaoAtual().id, teste: simulando(), obras: obrasDaPessoa() } : null;
   if (nuvem.NA_NUVEM && logado()) { try { aplicarAbas(await nuvem.carregarAbas()); } catch { /* sem a tabela: fica o padrão de cada função */ } }
-  const [painelR, baseR, prodR, driveR, , , , , ferrR, terR] = await Promise.allSettled([carregarPainel(), carregarDados(), carregarProdutividade(), carregarDrive(), sincronizarTarefas(atual), perfil.carregarFotos(), feed.carregar(), evidencias.carregar(), carregarFerramentasChk(), carregarTerceirizados(), atas.carregar()]);
+  const [painelR, baseR, prodR, driveR, , , , , ferrR, terR, , efR] = await Promise.allSettled([carregarPainel(), carregarDados(), carregarProdutividade(), carregarDrive(), sincronizarTarefas(atual), perfil.carregarFotos(), feed.carregar(), evidencias.carregar(), carregarFerramentasChk(), carregarTerceirizados(), atas.carregar(), carregarEfetivo()]);
+  if (efR.status === 'fulfilled') estado.efetivo = efR.value;
   if (terR.status === 'fulfilled') estado.terceiros = terR.value;
   if (ferrR.status === 'fulfilled') estado.ferrChk = ferrR.value;
   if (prodR.status === 'fulfilled') estado.whats = prodR.value;

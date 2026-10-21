@@ -26,6 +26,15 @@ export async function carregarFerramentasChk() {
   } catch { return { registros: [] }; }
 }
 
+// Efetivo do dia de cada obra, lido dos grupos de WhatsApp pelo leitor automático (RH).
+export async function carregarEfetivo() {
+  try {
+    if (NA_NUVEM) return (await baixar('efetivo')) || { dias: {} };
+    const r = await fetch(`${PASTA}efetivo.json`, { cache: 'no-store' });
+    return r.ok ? await r.json() : { dias: {} };
+  } catch { return { dias: {} }; }
+}
+
 // Empresas terceirizadas nas obras e a conferência de contratos no Mais Controle (agente de Operação, só leitura).
 export async function carregarTerceirizados() {
   try {

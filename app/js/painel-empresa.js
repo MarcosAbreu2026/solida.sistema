@@ -137,6 +137,7 @@ ${pg.dias && pg.dias.length ? `<div class="dias">${pg.dias.map((d) => `<div><b>$
     const rh = a.id === 'rh' ?`<a class="acesso" href="#/funcionarios"><div><h3>Funcionários por obra</h3><div class="pequeno" style="margin-top:6px">${F.length ? `${F.length} pessoas, ${F.filter((p) => p.situacao === 'presente').length} em obra no último registro` : 'A lista aparece depois da primeira leitura do RH.'}</div></div><span class="btn-ir">Abrir lista${CHEV}</span></a>` : '';
     // data da última leitura da fonte principal da área (no RH: o efetivo do WhatsApp). Se não for de hoje, avisa em vermelho.
     const leitura = (() => {
+      if (a.id === 'rh') return '';   // o RH tem a própria faixa, do efetivo lido automaticamente dos grupos
       const fs = (a.fontes || []).filter((f) => a.id !== 'rh' || /whatsapp/i.test(f.nome));
       const datas = fs.map((f) => String(f.ultima || '').match(/(\d{2})\/(\d{2})(?:[,\s]+(\d{2}:\d{2}))?/)).filter(Boolean)
         .map((m) => ({ txt: m[0], dia: Number(m[1]), mes: Number(m[2]) }));
