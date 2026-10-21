@@ -69,10 +69,10 @@ export function cartoes(CFG, dados, visiveis = null, estoque = null) {
   const card = (local) => {
     const regs = regsTodos.filter((r) => chave(r.local) === chave(local));
     const hist = semanas.map((s) => ({ s, ...estadoDaSemana(regs, s) }));
-    const atual = estado(regs, ini);
+    const atual = hist[hist.length - 1];
     const ultimo = [...regs].sort((a, b) => b.enviadoEm.localeCompare(a.enviadoEm))[0];
     const sub = atual.reg ? `${atual.reg.por ? `${atual.reg.por}, ` : ''}${diaCurto(atual.reg.enviadoEm)}${atual.reg.hora ? `, ${atual.reg.hora}` : ''}`
-      : atual.cod === 'espera' ? `prazo: ${diaCurto(somarDias(ini, 2))}`
+      : atual.cod === 'espera' ? `prazo: ${diaCurto(somarDias(semanaAtual, 2))}`
         : ultimo ? `última enviada: ${diaCurto(ultimo.enviadoEm)}` : 'nenhuma enviada até agora';
     return html`<div class="ob-card fc-card fc-${atual.cod}">
       <span class="ob-topo"><b class="ob-cod">${local}</b></span>
@@ -81,11 +81,11 @@ export function cartoes(CFG, dados, visiveis = null, estoque = null) {
       <span class="fc-hist" title="Últimas 4 semanas, da mais antiga para esta">${hist.map((h) => html`<i class="fc-b fc-${h.cod}" title="Semana de ${fmtData(h.s).slice(0, 5)} a ${fmtData(somarDias(h.s, 6)).slice(0, 5)}: ${ROTULO[h.cod]}"></i>`)}</span>
     </div>`;
   };
-  const nOk = locais.filter((l) => ['ok', 'atraso'].includes(estado(regsTodos.filter((x) => chave(x.local) === chave(l)), ini).cod)).length;
+  const nOk = locais.filter((l) => ['ok', 'atraso'].includes(estadoDaSemana(regsTodos.filter((x) => chave(x.local) === chave(l)), semanaAtual).cod)).length;
   const lido = verificadoEm ? `Grupos lidos em ${fmtData(String(verificadoEm).slice(0, 10))}${String(verificadoEm).length > 10 ? `, ${String(verificadoEm).slice(11, 16)}` : ''}` : 'Os grupos ainda não foram lidos para este controle';
-  const proximo = somarDias(ini, CICLO_DIAS + 2);
+  const proximo = somarDias(semanaAtual, 9);
   return html`<section class="ob-sec">
-    <div class="painel-h"><h2>Planilha de ferramentas obrigatórias</h2><p>De 15 em 15 dias, enviada pelo Anderson no grupo do WhatsApp · ciclo de ${fmtData(ini).slice(0, 5)} a ${fmtData(somarDias(ini, CICLO_DIAS - 1)).slice(0, 5)} (próxima: ${diaCurto(proximo)}) · ${nOk} de ${locais.length} neste ciclo · ${lido}</p></div>
+    <div class="painel-h"><h2>Planilha de ferramentas obrigatórias</h2><p>Enviada pelo Anderson no grupo do WhatsApp até quarta-feira · semana de ${fmtData(semanaAtual).slice(0, 5)} a ${fmtData(somarDias(semanaAtual, 6)).slice(0, 5)} (próxima: ${diaCurto(proximo)}) · ${nOk} de ${locais.length} nesta semana · ${lido}</p></div>
     <div class="ob-cards">${locais.map(card)}</div>
     <p class="legenda-semana"><span class="fc-b fc-ok"></span> no prazo <span class="fc-b fc-atraso"></span> com atraso <span class="fc-b fc-nao"></span> não enviada <span class="fc-b fc-nv"></span> não verificado <span class="fc-b fc-espera"></span> ainda no prazo · bolinhas: últimas 4 semanas, da mais antiga para esta</p>
   </section>`;
