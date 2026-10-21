@@ -71,8 +71,8 @@ export function nomePadrao({ obra, setor, data, tipo, revisao }) {
 }
 // atualiza o nome mostrado no formulário (e a revisão, se a pessoa não mexeu nela)
 export function atualizarNomeDoForm(form) {
-  const obra = form.obra.value; const setor = form.setor.value; const data = form.data.value; const tipo = form.tipo_reuniao.value;
-  if (!form.revisao.dataset.manual) form.revisao.value = proximaRevisao({ obra, setor, data, tipo });
+  const obra = form.obra.value === '-' ? '' : form.obra.value; const setor = form.setor.value; const data = form.data.value; const tipo = form.tipo_reuniao.value;
+  form.revisao.value = 0; // por enquanto toda ata nova é R00 (a revisão vai valer na edição da ata)
   const nome = nomePadrao({ obra, setor, data, tipo, revisao: form.revisao.value });
   const el = document.getElementById('ata-nome'); if (el) el.textContent = nome ? `${nome}.pdf` : 'escolha a data';
   const dest = document.getElementById('ata-destino');
@@ -281,14 +281,14 @@ function formNova(obras) {
     <div class="at-form-grade">
       <label>Data<input type="date" name="data" value="${r ? r.data : hoje}" required></label>
       <label>Tipo da reunião<select name="tipo_reuniao">${TIPOS_REUNIAO.map((x) => html`<option ${(r && r.tipoReuniao ? r.tipoReuniao : 'REUNIÃO') === x ? html.seguro('selected') : ''}>${x}</option>`)}</select></label>
-      <label>Revisão<input name="revisao" type="number" min="0" max="99" value="0" title="R00 é a primeira; se refizer a mesma ata, sobe sozinho"></label>
-      <label>Obra<select name="obra"><option value="">— nenhuma (reunião do escritório) —</option>${(r && r.obra && !obras.includes(r.obra) ? [...obras, r.obra] : obras).map((o) => html`<option value="${o}" ${r && r.obra === o ? html.seguro('selected') : ''}>${o}</option>`)}</select></label>
-      <label>Departamento<select name="setor"><option value="">— nenhum —</option>${SETORES_ATA.map((s) => html`<option value="${s}" ${r && r.setor === s ? html.seguro('selected') : ''}>${s}</option>`)}</select></label>
+      <label>Revisão<input name="revisao" type="number" value="0" readonly title="Ata nova é sempre R00; a revisão só muda quando a ata for editada"></label>
+      <label>Obra<select name="obra" required><option value="">— escolher —</option><option value="-">Escritório (sem obra)</option>${(r && r.obra && !obras.includes(r.obra) ? [...obras, r.obra] : obras).map((o) => html`<option value="${o}" ${r && r.obra === o ? html.seguro('selected') : ''}>${o}</option>`)}</select></label>
+      <label>Departamento<select name="setor" required><option value="">— escolher —</option>${SETORES_ATA.map((s) => html`<option value="${s}" ${r && r.setor === s ? html.seguro('selected') : ''}>${s}</option>`)}</select></label>
     </div>
     <p class="at-nome-linha">Nome da ata: <b id="ata-nome">escolha a data</b> <span class="pequeno" id="ata-destino"></span></p>
-    <div class="at-form-grade2"><label>Local<input name="local" autocomplete="off" placeholder="ex.: online, ou o endereço" value="${r && r.local ? r.local : ''}"></label></div>
-    <label>Participantes <span class="pequeno">escreva os nomes separados por vírgula; pode pôr a empresa entre parênteses</span><input name="participantes" autocomplete="off" placeholder="ex.: Marcos (Sólida), Fernanda (Arquitetura), Julio (Cliente)" value="${r ? r.participantes.join(', ') : ''}"></label>
-    <label>O que foi tratado (pauta e decisões)<textarea name="resumo" rows="${r ? 12 : 7}" placeholder="Escreva ou cole o texto da ata…">${r ? r.resumo : ''}</textarea></label>
+    <div class="at-form-grade2"><label>Local<input name="local" required autocomplete="off" placeholder="ex.: online, ou o endereço" value="${r && r.local ? r.local : ''}"></label></div>
+    <label>Participantes <span class="pequeno">escreva os nomes separados por vírgula; pode pôr a empresa entre parênteses</span><input name="participantes" required autocomplete="off" placeholder="ex.: Marcos (Sólida), Fernanda (Arquitetura), Julio (Cliente)" value="${r ? r.participantes.join(', ') : ''}"></label>
+    <textarea name="resumo" hidden>${r ? r.resumo : ''}</textarea>
     <h3>Pendências <span class="pequeno">o que precisa de ação: quem faz e até quando</span></h3>
     <div id="pend-linhas">${html.seguro(linhasIniciais)}</div>
     <p><button type="button" class="ac-mini" data-pf-add>+ outra pendência</button></p>

@@ -1074,7 +1074,7 @@ document.addEventListener('submit', async (e) => {
   try {
     if (f) {
       const fd = new FormData(f);
-      const obraA = String(fd.get('obra') || ''); const setorA = String(fd.get('setor') || '');
+      const obraA = String(fd.get('obra') || '') === '-' ? '' : String(fd.get('obra') || ''); const setorA = String(fd.get('setor') || '');
       const pendencias = [...f.querySelectorAll('.pf-linha')].map((l) => lerLinhaPendencia(l)).filter((p) => p.descricao);
       if (pendencias.some((p) => !p.prazo)) {
         const l = [...f.querySelectorAll('.pf-linha')].find((x) => lerLinhaPendencia(x).descricao && !lerLinhaPendencia(x).prazo);
