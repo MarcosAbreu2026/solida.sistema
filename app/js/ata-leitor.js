@@ -225,7 +225,10 @@ export function analisarAta(texto, { pessoas = [], obras = [], setores = [], hoj
       if (r.extras.length) descricao += ` (também: ${r.extras.map(capitalizar).join(', ')})`;
       return { descricao, responsavel: r.responsavel, responsavelAmbiguo: r.ambiguo, externoNome: r.externoNome, externoTipo: r.externoTipo, externoCategoria: r.externoCategoria, prazo: x.prazo ? acharPrazo(x.prazo, hoje, data) : '', item: x.n };
     });
-    const informativosLista = infos.filter((x) => x.descricao).map((x) => ({ kind: 'informativo', descricao: x.descricao.charAt(0).toUpperCase() + x.descricao.slice(1), item: x.n }));
+    const informativosLista = infos.filter((x) => x.descricao).map((x) => {
+      const r = x.responsavel ? resolverResponsavel(x.responsavel, parts, pessoas) : null;
+      return { kind: 'informativo', descricao: x.descricao.charAt(0).toUpperCase() + x.descricao.slice(1), item: x.n, ...(r ? { responsavel: r.responsavel, responsavelAmbiguo: r.ambiguo, externoNome: r.externoNome, externoTipo: r.externoTipo, externoCategoria: r.externoCategoria } : {}) };
+    });
     pendencias.forEach((p) => { p.kind = 'pendencia'; });
     return { titulo, data, obra, obraForaDaLista: !!obra && !obras.some((o) => o.toLowerCase() === obra.toLowerCase()), setor, participantes, resumo: '', pendencias, informativosLista, lidoDaTabela: true, informativos: infos.length, local, horario, tipoReuniao };
   }

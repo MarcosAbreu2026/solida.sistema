@@ -71,7 +71,7 @@ const ROT = { terceirizado: 'Terceirizado', cliente: 'Cliente', arquitetura: 'Ar
 function htmlDaAta(a, pends) {
   const logo = existsSync(join(raiz, 'app', 'img', 'logo.png')) ? `data:image/png;base64,${readFileSync(join(raiz, 'app', 'img', 'logo.png')).toString('base64')}` : '';
   const quem = (p) => `${esc(p.responsavel_nome || '—')}${p.responsavel_tipo && p.responsavel_tipo !== 'solida' ? ` <small>(${esc(ROT[p.responsavel_tipo] || 'Externo')}${p.responsavel_categoria ? ` · ${esc(p.responsavel_categoria)}` : ''})</small>` : ' <small>(Sólida)</small>'}`;
-  const infos = (a.informativos || []).map((t, i) => `<tr><td class="c">${pends.length + i + 1}</td><td class="c info">INFORMATIVO</td><td>${esc(t)}</td><td class="c">—</td><td class="c">—</td></tr>`).join('');
+  const infos = (a.informativos || []).map((t, i) => `<tr><td class="c">${pends.length + i + 1}</td><td class="c info">INFORMATIVO</td><td>${esc(typeof t === 'string' ? t : t.texto)}</td><td>${typeof t === 'string' || !t.quem ? '—' : quem({ responsavel_nome: t.quem, responsavel_tipo: t.tipo, responsavel_categoria: t.categoria })}</td><td class="c">—</td></tr>`).join('');
   const linhas = pends.map((p, i) => `<tr><td class="c">${i + 1}</td><td class="c pend">PENDÊNCIA</td><td>${esc(p.descricao)}</td><td>${quem(p)}</td><td class="c">${p.prazo ? dbr(p.prazo).slice(0, 5) + (p.prazo.slice(0, 4) !== a.data.slice(0, 4) ? `/${p.prazo.slice(0, 4)}` : '') : ''}</td></tr>`).join('');
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${esc(a.titulo)}</title><style>
 @page { size: A4; margin: 14mm 14mm 16mm; }

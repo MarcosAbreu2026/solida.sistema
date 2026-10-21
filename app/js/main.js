@@ -1077,7 +1077,8 @@ document.addEventListener('submit', async (e) => {
       const obraA = String(fd.get('obra') || '') === '-' ? '' : String(fd.get('obra') || ''); const setorA = String(fd.get('setor') || '');
       if (!setorA) { alert('Escolha o departamento da ata.'); f.setor.focus(); return; }
       const itens = [...f.querySelectorAll('.pf-linha')].map((l) => lerLinhaPendencia(l)).filter((p) => p.descricao);
-      const informativos = itens.filter((p) => p.kind === 'informativo').map((p) => p.descricao);
+      const informativos = itens.filter((p) => p.kind === 'informativo');
+      if (informativos.some((p) => (p.externoTipo === '' && !p.responsavel) || (p.externoTipo === 'terceirizado' && !p.externoCategoria && !p.externoNome))) { alert('Todo informativo precisa de quem informou: escolha a pessoa da Sólida, o terceirizado ou o cliente.'); return; }
       const pendencias = itens.filter((p) => p.kind !== 'informativo');
       if (pendencias.some((p) => !p.prazo)) {
         const l = [...f.querySelectorAll('.pf-linha')].find((x) => { const q = lerLinhaPendencia(x); return q.kind !== 'informativo' && q.descricao && !q.prazo; });

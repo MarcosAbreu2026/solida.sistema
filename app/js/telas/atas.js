@@ -81,6 +81,8 @@ export function atualizarNomeDoForm(form) {
 }
 
 export async function criarAta({ titulo, data, tipo, obra, setor, participantes, resumo, pendencias, informativos = [], tipoReuniao, revisao, local, horario }) {
+  // informativo = texto + quem informou (Sólida, terceirizado ou cliente)
+  informativos = informativos.map((p) => ({ texto: p.descricao, quem: p.responsavel ? nomeDe(p.responsavel) : (p.externoNome || p.externoCategoria || (p.externoTipo === 'cliente' ? 'Cliente' : '')), tipo: p.responsavel ? 'solida' : (p.externoTipo || 'terceirizado'), categoria: p.responsavel ? null : (p.externoCategoria || null) }));
   const ata = { informativos, titulo, data, tipo, obra: obra || null, setor: setor || null, participantes, resumo, tipo_reuniao: tipoReuniao || 'REUNIÃO', revisao: Number(revisao) || 0, local: local || null, horario: horario || null };
   const pends = pendencias.map((p) => ({ descricao: p.descricao, responsavel: p.responsavel || null, responsavel_nome: p.responsavel ? nomeDe(p.responsavel) : (p.externoNome || p.externoCategoria || (p.externoTipo === 'cliente' ? 'Cliente' : null)), responsavel_tipo: p.responsavel ? 'solida' : (p.externoTipo || 'terceirizado'), responsavel_categoria: p.responsavel ? null : (p.externoCategoria || null), prazo: p.prazo || null, status: 'aberta' }));
   let nova;
@@ -259,7 +261,7 @@ function detalheAta(id, hoje, obras) {
       <p class="pequeno">${dm(a.data)} · ${a.tipo === 'obra' ? 'Obra' : 'Departamento'}: <b>${onde(a) || '—'}</b>${a.criado_por_nome ? ` · registrada por ${a.criado_por_nome}` : ''}</p>
       ${a.participantes && a.participantes.length ? html`<p class="pequeno">Participantes: ${a.participantes.join(', ')}</p>` : ''}
       ${a.resumo ? html`<div class="at-resumo">${textoRico(a.resumo)}</div>` : ''}
-      ${a.informativos && a.informativos.length ? html`<h3>Informativos <span class="pequeno">${a.informativos.length}</span></h3><ol class="at-infos">${a.informativos.map((x) => html`<li>${x}</li>`)}</ol>` : ''}
+      ${a.informativos && a.informativos.length ? html`<h3>Informativos <span class="pequeno">${a.informativos.length}</span></h3><ol class="at-infos">${a.informativos.map((x) => typeof x === 'string' ? html`<li>${x}</li>` : html`<li>${x.texto}${x.quem ? html` <span class="at-info-quem">— informado por <b>${x.quem}</b>${x.tipo && x.tipo !== 'solida' ? ` (${ROTULO_TIPO[x.tipo] || 'Externo'}${x.categoria ? ` · ${x.categoria}` : ''})` : ''}</span>` : ''}</li>`)}</ol>` : ''}
       <h3>Pendências desta ata <span class="pequeno">${ps.length}</span></h3>
       <div class="at-quadro-ata">${ps.length ? ps.map((p) => cartao(p, hoje)) : html`<p class="pequeno">Nenhuma pendência saiu desta ata.</p>`}</div>
       <form class="at-nova-pend" id="pend-form" data-ata="${a.id}" data-obra="${a.obra || ''}" data-setor="${a.setor || ''}">${html.seguro(linhaForm({ semKind: true }))}<button type="submit" class="botao">Acrescentar pendência</button></form>
