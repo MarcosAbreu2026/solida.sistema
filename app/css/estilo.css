@@ -1876,3 +1876,12 @@ button.at-prazo:hover { filter: brightness(.96); box-shadow: 0 0 0 2px rgba(45, 
 .tn-subs { margin-top: 10px; } .tn-sub { padding: 7px 10px; } .tn-sub-play { width: 22px; height: 22px; font-size: 10px; }
 .tn-embreve { margin: 14px 0 0; }
 .tv-so-texto { max-height: 70vh; padding-top: 22px; } .tv-so-texto h3 { font-size: 15px; color: var(--muted); font-weight: 600; } .tv-so-texto p { font-size: 20px; line-height: 1.5; }
+
+/* Treinamentos: lista no mesmo padrão da lista do Pós-obra */
+.tr-tab { min-width: 0; }
+.tr-tab col.tr-c-tit { width: auto; } .tr-tab col.tr-c-min { width: 110px; } .tr-tab col.tr-c-pas { width: 110px; } .tr-tab col.tr-c-sit { width: 130px; } .tr-tab col.tr-c-acao { width: 120px; }
+.tr-tab td, .tr-tab th { height: 44px; } .tr-tab th { height: auto; }
+.tr-tit { font-weight: 600; } .tr-abrir { background: none; border: 0; padding: 0; font: inherit; font-weight: 600; color: #14283C; cursor: pointer; text-align: left; } .tr-abrir:hover { text-decoration: underline; }
+.tr-visto { color: #1E4D2B; font-weight: 700; }
+.tr-ico { margin-right: 8px; } .tr-topico > summary .pl-tit { font-size: 15px; font-weight: 700; color: #14283C; }
+.tr-ideias { margin-top: 18px; } .tr-ideias summary { cursor: pointer; color: var(--muted); font-size: 13px; }

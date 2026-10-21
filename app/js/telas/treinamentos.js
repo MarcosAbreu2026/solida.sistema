@@ -100,7 +100,7 @@ export function alternarFeito(id) {
   } catch { /* sem armazenamento: não guarda */ }
 }
 
-const seApplica = (t, funcaoId) => t.funcoes === 'todos' || t.funcoes.includes(funcaoId);
+const seApplica = (t, funcaoId) => funcaoId === 'socio' || t.funcoes === 'todos' || t.funcoes.includes(funcaoId);   // a diretoria vê todos (tem todos os menus)
 
 // os guias de texto abrem na mesma apresentação dos treinamentos com slides (um passo por tela, sem imagem)
 registrar(TREINAMENTOS.map((t) => ({ id: t.id, topico: t.topico, funcoes: t.funcoes, titulo: t.titulo, min: t.min, para: t.para === 'todos' ? 'Todos' : t.para, resumo: t.resumo,
@@ -109,23 +109,25 @@ registrar(TREINAMENTOS.map((t) => ({ id: t.id, topico: t.topico, funcoes: t.func
 // o tópico aparece para quem tem aquele menu: setor nas áreas da função; página geral se a função vê a página
 const topicoVisivel = (t, f) => (t.tipo === 'setor' ? !f.areas || f.areas.includes(t.id) : paginaVisivel(f, t.pagina));
 
-export function render({ todos = false } = {}) {
+export function render() {
   const f = funcaoAtual();
   const vistosSet = slidesVistos();
   const todasSub = [...SUBTOPICOS, ...TREINAMENTOS.map((t) => ({ ...t, para: t.para === 'todos' ? 'Todos' : t.para, slides: t.passos }))];
-  const doTopico = (t) => todasSub.filter((s) => s.topico === t.id && (todos || seApplica(s, f.id)));
-  const topicos = TOPICOS.filter((t) => todos || topicoVisivel(t, f));
-  const comTrein = topicos.filter((t) => doTopico(t).length); const semTrein = topicos.filter((t) => !doTopico(t).length);
-  const total = todasSub.filter((s) => todos || seApplica(s, f.id)).length; const lidos = todasSub.filter((s) => (todos || seApplica(s, f.id)) && vistosSet.has(s.id)).length;
-  const cartao = (t) => html`<article class="tn-topico"><div class="tn-topico-cab"><span class="tn-ico">${t.icone}</span><h3>${t.nome}</h3></div>
-    <ul class="tn-subs">${doTopico(t).map((s) => html`<li><button type="button" class="tn-sub" data-trein-slides="${s.id}"><span class="tn-sub-play">▶</span><span class="tn-sub-tit">${s.titulo}<small>${s.min} min · ${s.slides.length} ${s.slides.length === 1 ? 'passo' : 'passos'}</small></span>${vistosSet.has(s.id) ? html`<span class="tn-ok">✓ visto</span>` : ''}</button></li>`)}</ul></article>`;
-  return html`<div class="pagina treinamentos">
-    <p class="pequeno">Cada cartão é um menu do sistema; dentro dele ficam os treinamentos daquela parte. Clique num treinamento para abrir o passo a passo. ${total ? `Você já viu ${lidos} de ${total}.` : ''}</p>
-    <div class="subnav" role="tablist"><a role="tab" class="${todos ? '' : 'on'}" href="#/treinamentos">Para a minha função</a><a role="tab" class="${todos ? 'on' : ''}" href="#/treinamentos?todos=1">Todos os menus</a></div>
-    <div class="tn-topicos-grade">${comTrein.length ? comTrein.map(cartao) : html`<p class="vazio">Ainda não há treinamento para os menus da sua função.</p>`}</div>
-    ${semTrein.length ? html`<p class="pequeno tn-embreve"><b>Ainda sem treinamento:</b> ${semTrein.map((t) => t.nome).join(' · ')}.</p>` : ''}
-    <section class="secao"><h2>Ideias para os próximos treinamentos</h2>
-      <ul class="tn-ideias">${SUGESTOES.map((s) => html`<li>${s}</li>`)}</ul>
-      <p class="pequeno">Quer um deles, ou outro tema? Use o botão "Pedir alteração".</p></section>
+  // só os menus da função de quem está vendo, e só os treinamentos que valem para ela
+  const doTopico = (t) => todasSub.filter((s) => s.topico === t.id && seApplica(s, f.id));
+  const topicos = TOPICOS.filter((t) => topicoVisivel(t, f) && doTopico(t).length);
+  const total = topicos.reduce((n, t) => n + doTopico(t).length, 0); const lidos = topicos.reduce((n, t) => n + doTopico(t).filter((s) => vistosSet.has(s.id)).length, 0);
+  const linha = (s) => html`<tr><td class="tr-tit"><button type="button" class="tr-abrir" data-trein-slides="${s.id}">${s.titulo}</button></td>
+    <td>${s.min} min</td><td>${s.slides.length} ${s.slides.length === 1 ? 'passo' : 'passos'}</td>
+    <td>${vistosSet.has(s.id) ? html`<span class="tr-visto">✓ visto</span>` : html`<span class="muted">não visto</span>`}</td>
+    <td class="n"><button type="button" class="ac-mini" data-trein-slides="${s.id}">${vistosSet.has(s.id) ? 'rever' : 'abrir'} ▶</button></td></tr>`;
+  const bloco = (t) => html`<details class="pl-obra tr-topico" open>
+    <summary><span class="pl-tit"><span class="tr-ico">${t.icone}</span>${t.nome}</span><span class="pl-cont">${doTopico(t).length} ${doTopico(t).length === 1 ? 'treinamento' : 'treinamentos'}</span></summary>
+    <table class="pl-os tr-tab"><colgroup><col class="tr-c-tit"><col class="tr-c-min"><col class="tr-c-pas"><col class="tr-c-sit"><col class="tr-c-acao"></colgroup>
+      <thead><tr><th>Treinamento</th><th>Duração</th><th>Passos</th><th>Situação</th><th></th></tr></thead><tbody>${doTopico(t).map(linha)}</tbody></table></details>`;
+  return html`<div class="pagina treinamentos pl">
+    <div class="pg-faixa"><div><b>${total}</b><span>${total === 1 ? 'treinamento para a sua função' : 'treinamentos para a sua função'}</span></div><div><b>${lidos}</b><span>já vistos</span></div></div>
+    ${topicos.length ? html`<div class="pl-lista">${topicos.map(bloco)}</div>` : html`<p class="vazio">Ainda não há treinamento para a sua função.</p>`}
+    ${f.id === 'socio' ? html`<details class="tr-ideias"><summary>Ideias para os próximos treinamentos (só a diretoria vê)</summary><ul class="tn-ideias">${SUGESTOES.map((s) => html`<li>${s}</li>`)}</ul></details>` : ''}
   </div>`;
 }
