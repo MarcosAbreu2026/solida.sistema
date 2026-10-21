@@ -1524,3 +1524,20 @@ table.ordenavel th.ord-desc::after { content: ' ▼'; font-size: 9px; }
   #pend-form .pf-linha { grid-template-columns: 170px 1fr 1fr 130px 22px; }
   #pend-form .pf-linha > [name="p_desc"] { grid-column: 2 / 5 !important; }
 }
+
+/* formulário estreito: linha 1 = tipo, assunto e descritivo; linha 2 = quem, prazo e o X (sem sobrepor) */
+@container (max-width: 1000px) {
+  .pf-linha { grid-template-columns: 92px 170px 140px 1fr 28px; }
+  .pf-linha > [name="p_desc"], .pf-linha[data-kind="informativo"] > [name="p_desc"] { grid-column: 3 / -1 !important; }
+  .pf-linha .pf-sol { grid-column: auto; }
+  .pf-linha[data-tipo="cliente"] .pf-ext { grid-column: span 2; }
+  .pf-linha .pf-x { justify-self: start; }
+  #pend-form .pf-linha { grid-template-columns: 170px 140px 1fr 28px; }
+  #pend-form .pf-linha > [name="p_desc"] { grid-column: 2 / -1 !important; }
+}
+
+@container (max-width: 1000px) {
+  .pf-linha { grid-template-columns: 92px 170px 124px minmax(0, 1fr) 24px; }
+  #pend-form .pf-linha { grid-template-columns: 170px 124px minmax(0, 1fr) 24px; }
+  .pf-linha input[type="date"] { min-width: 0; width: 100%; }
+}
