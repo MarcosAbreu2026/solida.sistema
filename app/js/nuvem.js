@@ -123,6 +123,25 @@ export async function criarPendenciaNuvem(p) {
   const { error } = await sb.from('pendencias').insert({ ...p, criado_por: perfil.id });
   if (error) throw new Error(error.message);
 }
+// agenda semanal do pós-obra (quem vai para qual obra em qual dia)
+export async function listarAgendaPos(de, ate) {
+  const { data, error } = await sb.from('agenda_pos').select('*').gte('data', de).lte('data', ate).order('id');
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+export async function criarAgendaPos(linha) {
+  const { data, error } = await sb.from('agenda_pos').insert({ ...linha, criado_por: perfil.id }).select().single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+export async function atualizarAgendaPos(id, mudancas) {
+  const { error } = await sb.from('agenda_pos').update(mudancas).eq('id', id);
+  if (error) throw new Error(error.message);
+}
+export async function apagarAgendaPos(id) {
+  const { error } = await sb.from('agenda_pos').delete().eq('id', id);
+  if (error) throw new Error(error.message);
+}
 export async function atualizarAtaNuvem(id, mudancas) {
   const { error } = await sb.from('atas').update(mudancas).eq('id', id);
   if (error) throw new Error(error.message);

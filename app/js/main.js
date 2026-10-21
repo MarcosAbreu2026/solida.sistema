@@ -9,7 +9,7 @@ import * as reposicao from './telas/reposicao.js';
 import * as ordenar from './ordenar.js';
 import * as atas from './telas/atas.js';
 import { montarBase } from './regras.js';
-import { periodo, hojeISO, ehData } from './datas.js';
+import { periodo, hojeISO, ehData, somarDias, inicioDaSemana } from './datas.js';
 import { html, esc, descreverPeriodo } from './formato.js';
 import { definirPerfil } from './componentes.js';
 import { normalizar, criarTelas, pt } from './painel-empresa.js';
@@ -32,6 +32,8 @@ import * as obras from './telas/obras.js';
 import * as servicos from './telas/servicos.js';
 import * as agenda from './telas/agenda.js';
 import * as equipe from './telas/equipe.js';
+import * as posGeral from './telas/posobra-geral.js';
+import * as agendaPos from './agenda-pos.js';
 import * as financeiro from './telas/financeiro.js';
 import * as meudia from './telas/meudia.js';
 import { abrirCalendario } from './calendario.js';
@@ -48,14 +50,17 @@ import * as escritorio from './telas/escritorio.js';
 const ATUALIZAR_A_CADA_MS = 5 * 60 * 1000;
 
 // Abas do pós-obra: o resumo dos agentes (como no painel) + as abas da planilha integrada
+// abas do Pós-obra (21/10): Pós-obras (cartões) · Pendências (as mesmas de Atas e pendências) · Agenda (cartões de funcionários) · Equipe e PJ · Financeiro.
+// Painel, Obras e Serviços (planilha) continuam existindo, mas escondidos (links no rodapé de Pós-obras).
 const SUB = [
-  { id: '', nome: 'Resumo' },
-  { id: 'painel', nome: 'Painel da planilha', mod: painel },
-  { id: 'obras', nome: 'Obras', mod: obras },
-  { id: 'servicos', nome: 'Serviços', mod: servicos },
-  { id: 'agenda', nome: 'Agenda', mod: agenda },
+  { id: '', nome: 'Pós-obras' },
+  { id: 'pendencias', nome: 'Pendências', nova: true },
+  { id: 'agenda', nome: 'Agenda', nova: true },
   { id: 'equipe', nome: 'Equipe e PJ', mod: equipe },
   { id: 'financeiro', nome: 'Financeiro', mod: financeiro, restrita: true },
+  { id: 'painel', nome: 'Painel da planilha', mod: painel, escondida: true },
+  { id: 'obras', nome: 'Obras', mod: obras, escondida: true },
+  { id: 'servicos', nome: 'Serviços (planilha)', mod: servicos, escondida: true },
 ];
 
 const estado = {
@@ -70,6 +75,7 @@ const estado = {
   semanaRef: null,                                 // Meu dia › Programação da semana (null = semana do dia)
   quadro: { funcao: null, ref: hojeISO() },        // Quadro de funções
   pessoas: { filtro: 'todos', busca: '', obra: 'todas' },
+  posAgenda: { semana: inicioDaSemana(hojeISO()), sel: '', chave: '' },   // Pós-obra › Agenda
   drive: { orcamentos: null, projetos: null },    // orçamentos e projetos lidos no Drive (exportar-drive.ps1)
   pedido: { aberto: false, lista: [], msg: '' },
   loginNuvem: { modo: 'entrar' },                 // tela de entrada na nuvem  // "Pedir alteração" (dados/pedidos.json no servidor)
@@ -130,16 +136,34 @@ const subnav = (itens, ativa) => String(html`<div class="subnav" role="tablist">
 // ---------------------------------------------------------------- pós-obra
 
 function telaPosObraPlanilha(rota) {
-  const subs = SUB.filter((s) => veValores() || !s.restrita);
+  const subs = SUB.filter((s) => (veValores() || !s.restrita) && !s.escondida);
+  const todas = SUB.filter((s) => veValores() || !s.restrita);
   const ehObra = rota.sub === 'obra';
-  const sub = subs.find((s) => s.id === rota.sub) || subs[1];
-  const ativa = ehObra ? 'obras' : sub.id;
-  const abas = subnav(subs.map((s) => ({ ...s, href: `#/posobra${s.id ? `/${s.id}` : ''}` })), rota.sub ? ativa : '');
-  if (!rota.sub) return { abas, conteudo: '' };
+  const sub = todas.find((s) => s.id === rota.sub) || subs[0];
+  const ativa = ehObra ? '' : sub.id;
+  const abas = subnav(subs.map((s) => ({ ...s, href: `#/posobra${s.id ? `/${s.id}` : ''}` })), ehObra ? '' : (rota.sub ? ativa : ''));
+  const semBase = () => ({ abas, conteudo: `<div class="erro" style="margin-top:26px">${esc(estado.erroBase || 'Carregando a planilha do pós-obra…')}</div>` });
 
-  if (!estado.base) {
-    return { abas, conteudo: `<div class="erro" style="margin-top:26px">${esc(estado.erroBase || 'Carregando a planilha do pós-obra…')}</div>` };
+  // Pós-obras (cartões das obras em andamento)
+  if (!rota.sub) {
+    if (!estado.base) return { abas, conteudo: '', resumo: semBase().conteudo };
+    carregarAgendaSemana();
+    return { abas, conteudo: '', resumo: String(posGeral.renderResumo(estado.base, inicioDaSemana(hojeISO()), agendaPos.linhas)) };
   }
+  // Pendências: a mesma lista de Atas e pendências, só do setor Pós-obra
+  if (rota.sub === 'pendencias') {
+    garantirAtasCarregadas();
+    return { abas, conteudo: `<div class="pagina" style="margin-top:26px">${String(atas.renderPendencias({ params: rota.params, obras: obrasDeAtas(), setorFixo: 'Pós-obra', base: '#/posobra/pendencias' }))}</div>` };
+  }
+  // Agenda da semana: cartões de funcionários arrastados para a obra e o dia
+  if (rota.sub === 'agenda') {
+    if (!estado.base) return semBase();
+    carregarAgendaSemana();
+    const podeEditar = ['socio', 'posobra', 'coord_operacoes'].includes(funcaoAtual().id);
+    return { abas, conteudo: `<div class="pagina" style="margin-top:26px">${String(posGeral.renderAgenda({ base: estado.base, semanaIni: estado.posAgenda.semana, linhasAgenda: agendaPos.linhas, podeEditar, selecionado: estado.posAgenda.sel, erro: agendaPos.erro }))}</div>` };
+  }
+
+  if (!estado.base) return semBase();
   const p = periodo(estado.verPor, estado.ref);
   const ctx = { base: estado.base, p, params: rota.params };
   const corpo = ehObra ? obras.renderDetalhe({ ...ctx, nome: rota.arg }) : sub.mod.render(ctx);
@@ -157,6 +181,18 @@ function telaPosObraPlanilha(rota) {
   };
 }
 
+// carrega a agenda da semana escolhida (uma vez por semana) e redesenha
+function carregarAgendaSemana() {
+  const de = estado.posAgenda.semana; const chave = `${de}`;
+  if (estado.posAgenda.chave === chave) return;
+  estado.posAgenda.chave = chave;
+  agendaPos.carregar(de, somarDias(de, 6)).then(() => { const r = rotaAtual(); if (r.tela === 'posobra' && (!r.sub || r.sub === 'agenda')) desenhar(); });
+}
+function garantirAtasCarregadas() {
+  if (estado.atasVisitada === '#posobra') return;
+  estado.atasVisitada = '#posobra';
+  atas.carregar().then(() => { const r = rotaAtual(); const a = document.activeElement; if (r.tela === 'posobra' && r.sub === 'pendencias' && !(a && a.closest && a.closest('#pend-form'))) desenhar(); });
+}
 // ---------------------------------------------------------------- desenho
 
 // de onde vêm os dados do pós-obra: os arquivos mais novos da pasta PÓS OBRA do Drive
@@ -494,8 +530,8 @@ function desenhar() {
     else if (tela === 'funcionarios') out = T.telaPessoas(estado.pessoas);
     else if (tela === 'agentes') out = T.telaAgentes();
     else if (area && area.id === 'posobra') {
-      const { abas, conteudo } = telaPosObraPlanilha(rota);
-      out = rota.sub ? `<div>${abas}${conteudo}</div>` : T.telaArea(area, `<div style="margin-bottom:34px">${abas}</div>`);
+      const { abas, conteudo, resumo } = telaPosObraPlanilha(rota);
+      out = rota.sub ? `<div>${abas}${conteudo}</div>` : T.telaArea(area, `<div style="margin-bottom:34px">${abas}${resumo || ''}</div>`);
     } else if (area) out = T.telaArea(area);
     else out = T.telaGeral();
   } catch (e) {
@@ -1042,6 +1078,35 @@ atualizar();
 setInterval(atualizar, ATUALIZAR_A_CADA_MS);
 
 // Quadro da semana › Funções: arrastar, redimensionar e abrir os cartões
+// Pós-obra › Agenda: cartões de funcionários arrastados para a obra e o dia (ou toque no nome e depois no quadrado)
+const apFaixa = () => [estado.posAgenda.semana, somarDias(estado.posAgenda.semana, 6)];
+async function apFazer(fn) { try { await fn(...apFaixa()); desenhar(); } catch (err) { alert(`Não foi possível mexer na agenda (${err.message || err}).`); } }
+document.addEventListener('click', (e) => {
+  const sem = e.target.closest && e.target.closest('[data-ap-sem]');
+  if (sem) { const v = sem.dataset.apSem; estado.posAgenda.semana = inicioDaSemana(v === 'hoje' ? hojeISO() : v); estado.posAgenda.chave = ''; desenhar(); return; }
+  const del = e.target.closest && e.target.closest('[data-ap-del]');
+  if (del) { apFazer((de, ate) => agendaPos.remover(del.dataset.apDel, de, ate)); return; }
+  const card = e.target.closest && e.target.closest('[data-ap-pessoa]');
+  if (card) { estado.posAgenda.sel = estado.posAgenda.sel === card.dataset.apPessoa ? '' : card.dataset.apPessoa; desenhar(); return; }
+  const cel = e.target.closest && e.target.closest('.ap-cel');
+  if (cel && estado.posAgenda.sel && !e.target.closest('[data-ap-chip]')) apFazer((de, ate) => agendaPos.atribuir({ data: cel.dataset.apData, obra: cel.dataset.apObra, pessoa: estado.posAgenda.sel }, de, ate));
+});
+document.addEventListener('dragstart', (e) => {
+  const c = e.target.closest && e.target.closest('[data-ap-pessoa]'); const ch = e.target.closest && e.target.closest('[data-ap-chip]');
+  if (!c && !ch) return;
+  e.dataTransfer.setData('text/plain', c ? `p:${c.dataset.apPessoa}` : `m:${ch.dataset.apChip}`); e.dataTransfer.effectAllowed = 'copyMove';
+});
+document.addEventListener('dragover', (e) => { const cel = e.target.closest && e.target.closest('.ap-cel'); if (cel) { e.preventDefault(); cel.classList.add('ap-sobre'); } });
+document.addEventListener('dragleave', (e) => { const cel = e.target.closest && e.target.closest('.ap-cel'); if (cel) cel.classList.remove('ap-sobre'); });
+document.addEventListener('drop', (e) => {
+  const cel = e.target.closest && e.target.closest('.ap-cel'); if (!cel) return;
+  e.preventDefault(); cel.classList.remove('ap-sobre');
+  const [tipo, ...resto] = String(e.dataTransfer.getData('text/plain') || '').split(':'); const valor = resto.join(':'); if (!valor) return;
+  const alvo = { data: cel.dataset.apData, obra: cel.dataset.apObra };
+  if (tipo === 'p') apFazer((de, ate) => agendaPos.atribuir({ ...alvo, pessoa: valor }, de, ate));
+  else if (tipo === 'm') apFazer((de, ate) => agendaPos.mover(valor, alvo, de, ate));
+});
+
 meudia.instalarQuadro(() => desenhar());
 ordenar.instalar();
 
@@ -1075,7 +1140,7 @@ document.addEventListener('click', (e) => {
   if (nova) {
     const antigo = document.getElementById('at-modal'); if (antigo) antigo.remove();
     const m = document.createElement('div'); m.id = 'at-modal'; m.className = 'at-modal';
-    m.innerHTML = `<div class="at-modal-caixa">${String(atas.formAvulsa(obrasDeAtas(), nova.dataset.avNova))}</div>`;
+    m.innerHTML = `<div class="at-modal-caixa">${String(atas.formAvulsa(obrasDeAtas(), nova.dataset.avNova, nova.dataset.avSetor || ''))}</div>`;
     document.body.appendChild(m); const campo = m.querySelector('[name="p_assunto"]'); if (campo) campo.focus();
     return;
   }

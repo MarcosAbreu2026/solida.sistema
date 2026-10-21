@@ -284,12 +284,13 @@ export function linhaForm(v = {}) {
     <input type="date" name="p_prazo" title="Prazo" value="${v.prazo || ''}"><button type="button" class="pf-x" data-pf-del title="Tirar esta linha">×</button></div>`);
 }
 export const datalistTerceiros = () => html`<datalist id="dl-terceiros">${nomesConhecidos().map((n) => html`<option value="${n}">`)}</datalist>`;
-function filtrar(params) {
+const doEscopo = (p, setorFixo) => !setorFixo || p.setor === setorFixo || /^po/i.test(p.obra || '');   // escopo fixo (ex.: tela do Pós-obra): o setor, ou obras Po…
+function filtrar(params, setorFixo = '') {
   const q = (params.get('q') || '').trim().toLocaleLowerCase('pt-BR');
   const pessoa = params.get('pessoa') || ''; const setor = params.get('setor') || ''; const obra = params.get('obra') || '';
   const eu = souEu();
   return dados.pendencias.filter((p) => {
-    if (p.status === 'cancelada' || !naLista(p)) return false;
+    if (p.status === 'cancelada' || !naLista(p) || !doEscopo(p, setorFixo)) return false;
     if (pessoa.startsWith('cat:')) { if (p.responsavel_categoria !== pessoa.slice(4)) return false; }
     else if (pessoa.startsWith('tipo:')) { if ((p.responsavel_tipo || 'solida') !== pessoa.slice(5)) return false; }
     else if (pessoa === 'eu' ? p.responsavel !== eu : pessoa && p.responsavel !== pessoa) return false;
@@ -313,14 +314,15 @@ function seletorTerceirizado(atual) {
     ${nomes.map((n) => html`<option value="nome:${n}" ${atual === `nome:${n}` ? html.seguro('selected') : ''}>${n}</option>`)}</select></label>`;
 }
 // ---------------------------------------------------------------- telas
-function barraFiltros(params, obras, aba) {
+function barraFiltros(params, obras, aba, ctx = {}) {
+  const base = ctx.base || '#/atas';
   const sel = (nome, rotulo, opcoes, atual) => html`<label>${rotulo}<select data-atas-filtro="${nome}"><option value="">Todos</option>${opcoes.map(([v, t]) => html`<option value="${v}" ${atual === v ? html.seguro('selected') : ''}>${t}</option>`)}</select></label>`;
   const vista = params.get('vista') === 'lista' ? 'lista' : 'prazo';
   return html`<div class="at-filtros">
-    ${aba === 'atas' ? '' : html`<div class="subnav" role="tablist"><a role="tab" class="${vista === 'prazo' ? 'on' : ''}" href="#/atas?vista=prazo">Prazo</a><a role="tab" class="${vista === 'lista' ? 'on' : ''}" href="#/atas?vista=lista">Lista</a></div>`}
+    ${aba === 'atas' ? '' : html`<div class="subnav" role="tablist"><a role="tab" class="${vista === 'prazo' ? 'on' : ''}" href="${base}?vista=prazo">Prazo</a><a role="tab" class="${vista === 'lista' ? 'on' : ''}" href="${base}?vista=lista">Lista</a></div>`}
     ${aba === 'atas' ? '' : sel('pessoa', 'Responsável', [['eu', 'Só as minhas'], ['tipo:solida', 'Equipe da Sólida'], ['tipo:terceirizado', 'Terceirizados (todos)'], ['tipo:cliente', 'Clientes'], ['tipo:arquitetura', 'Arquitetura'], ...pessoasComPendencia().map((p) => [p.id, p.nome])], params.get('pessoa') || '')}
     ${aba !== 'atas' && params.get('pessoa') === 'tipo:terceirizado' ? seletorTerceirizado(params.get('terc') || '') : ''}
-    ${sel('setor', 'Setor', SETORES_ATA.map((s) => [s, s]), params.get('setor') || '')}
+    ${ctx.setorFixo ? '' : sel('setor', 'Setor', SETORES_ATA.map((s) => [s, s]), params.get('setor') || '')}
     ${sel('obra', 'Obra', obras.map((o) => [o, o]), params.get('obra') || '')}
     <label>Procurar<input type="search" data-atas-filtro="q" value="${params.get('q') || ''}" placeholder="texto…"></label>
   </div>`;
@@ -366,13 +368,13 @@ function prazoDaColuna(id, hoje) {
   return '';
 }
 // formulário de pendência avulsa (sem ata): janela com rótulos e grade organizada
-export function formAvulsa(obras, prazo) {
+export function formAvulsa(obras, prazo, setorPadrao = '') {
   return html`<form class="at-nova-pend at-avulsa" id="pend-form" data-avulsa="1">
     <h3>Nova pendência</h3>
     <p class="pequeno at-av-sub">Para o que não veio de uma ata. Tudo marcado em vermelho precisa ser preenchido.</p>
     <div class="at-av-grade">
       <label class="av-m">Obra<select name="av_obra"><option value="">Nenhuma</option>${obras.map((o) => html`<option value="${o}">${o}</option>`)}</select></label>
-      <label class="av-m">Departamento<select name="av_setor" required><option value="">— escolher —</option>${SETORES_ATA.map((s) => html`<option value="${s}">${s}</option>`)}</select></label>
+      <label class="av-m">Departamento<select name="av_setor" required><option value="">— escolher —</option>${SETORES_ATA.map((s) => html`<option value="${s}" ${s === setorPadrao ? html.seguro('selected') : ''}>${s}</option>`)}</select></label>
       <div class="pf-linha av-linha" data-tipo="solida" data-kind="pendencia">
         <label class="av-ass">Assunto<input name="p_assunto" class="pf-assunto" placeholder="ex.: ACM" autocomplete="off"></label>
         <label class="av-desc">O que fazer<input name="p_desc" placeholder="ex.: Retirar da área gourmet" autocomplete="off"></label>
@@ -385,12 +387,12 @@ export function formAvulsa(obras, prazo) {
     </div>
     <div class="at-av-botoes"><button type="button" class="botao" data-av-fechar>Cancelar</button><button type="submit" class="botao on">Criar pendência</button></div></form>`;
 }
-function vistaPrazo(lista, hoje) {
+function vistaPrazo(lista, hoje, setorPadrao = '') {
   return html`<div class="at-quadro">${COLUNAS.map(([id, nome]) => {
     let itens = lista.filter((p) => coluna(p, hoje) === id);
     if (id === 'concluido') itens = itens.sort((a, b) => String(b.concluida_em).localeCompare(String(a.concluida_em))).slice(0, 30);
     const pz = prazoDaColuna(id, hoje);
-    return html`<section class="at-col at-c-${id}"><header><b>${nome}</b><span>${lista.filter((p) => coluna(p, hoje) === id).length}</span>${pz ? html`<button type="button" class="at-col-mais" data-av-nova="${pz}" title="Nova pendência com prazo ${dm(pz)}">+</button>` : ''}</header>
+    return html`<section class="at-col at-c-${id}"><header><b>${nome}</b><span>${lista.filter((p) => coluna(p, hoje) === id).length}</span>${pz ? html`<button type="button" class="at-col-mais" data-av-nova="${pz}" data-av-setor="${setorPadrao}" title="Nova pendência com prazo ${dm(pz)}">+</button>` : ''}</header>
       <div class="at-itens">${itens.map((p) => cartao(p, hoje))}</div></section>`;
   })}</div>`;
 }
@@ -500,25 +502,32 @@ function formNova(obras, revisarId = '') {
     <p style="margin-top:14px"><button type="submit" class="botao on">${ataRev ? `Salvar revisão ${rev2(proxRev)}` : 'Salvar ata'}</button> <span class="pequeno at-msg"></span></p>
   </form>`;
 }
+// quadro de pendências (cartões + filtros + quadro por prazo ou lista); a tela do Pós-obra usa o mesmo, só com o setor dela
+export function renderPendencias({ params, obras = [], setorFixo = '', base = '#/atas', sugestoes = [] }) {
+  definirSugestoes(sugestoes);
+  const hoje = hojeISO();
+  const doSetor = dados.pendencias.filter((p) => naLista(p) && doEscopo(p, setorFixo));
+  const abertas = doSetor.filter((p) => p.status === 'aberta');
+  const atrasadas = abertas.filter((p) => p.prazo && p.prazo < hoje).length;
+  const eu = souEu(); const minhas = abertas.filter((p) => p.responsavel && p.responsavel === eu).length;
+  const lista = filtrar(params, setorFixo);
+  return html`${datalistTerceiros()}${dados.erro ? html`<p class="erro">Não consegui carregar: ${dados.erro}</p>` : ''}
+    <div class="cards at-cards"><div class="card"><div class="card-valor">${abertas.length}</div><div class="card-rotulo">Pendências abertas</div></div>
+      <div class="card"><div class="card-valor ${atrasadas ? 'tom-ruim' : ''}">${atrasadas}</div><div class="card-rotulo">Atrasadas</div></div>
+      <div class="card"><div class="card-valor">${minhas}</div><div class="card-rotulo">Abertas comigo</div></div></div>
+    ${barraFiltros(params, obras, 'pendencias', { base, setorFixo })}
+    ${params.get('vista') === 'lista' ? vistaLista(lista, hoje, params) : vistaPrazo(lista, hoje, setorFixo)}`;
+}
 export function render({ params, obras = [], msg = '', sugestoes = [] }) {
   definirSugestoes(sugestoes);
   const hoje = hojeISO();
   const aba = ABAS.some(([id]) => id === params.get('aba')) ? params.get('aba') : 'pendencias';
   const abertas = dados.pendencias.filter((p) => naLista(p) && p.status === 'aberta');
-  const atrasadas = abertas.filter((p) => p.prazo && p.prazo < hoje).length;
-  const minhas = minhasAbertas();
   const topo = html`<div class="subnav at-abas" role="tablist">${ABAS.map(([id, nome]) => html`<a role="tab" class="${id === aba ? 'on' : ''}" href="#/atas${id === 'pendencias' ? '' : `?aba=${id}`}">${nome}${id === 'pendencias' ? html` <span class="est-n">${abertas.length}</span>` : id === 'atas' ? html` <span class="est-n">${dados.atas.length}</span>` : ''}</a>`)}</div>`;
   let corpo;
   if (aba === 'nova') corpo = formNova(obras, params.get('revisar') || '');
   else if (aba === 'atas') corpo = params.get('ata') ? detalheAta(params.get('ata'), hoje, obras) : html`${barraFiltros(params, obras, 'atas')}${listaAtas(params, obras)}`;
-  else {
-    const lista = filtrar(params);
-    corpo = html`<div class="cards at-cards"><div class="card"><div class="card-valor">${abertas.length}</div><div class="card-rotulo">Pendências abertas</div></div>
-      <div class="card"><div class="card-valor ${atrasadas ? 'tom-ruim' : ''}">${atrasadas}</div><div class="card-rotulo">Atrasadas</div></div>
-      <div class="card"><div class="card-valor">${minhas}</div><div class="card-rotulo">Abertas comigo</div></div></div>
-      ${barraFiltros(params, obras, 'pendencias')}
-      ${params.get('vista') === 'lista' ? vistaLista(lista, hoje, params) : vistaPrazo(lista, hoje)}`;
-  }
+  else corpo = renderPendencias({ params, obras });
   return html`<div class="pagina atas">
     ${datalistTerceiros()}
     ${dados.erro ? html`<p class="erro">Não consegui carregar: ${dados.erro}</p>` : ''}
