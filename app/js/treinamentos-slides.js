@@ -1,0 +1,90 @@
+﻿// Treinamentos com slides (21/10): cards de tópicos, cada um com subtópicos; clicar num subtópico abre uma apresentação
+// com prints reais do sistema, caixas e setas vermelhas e a legenda de cada número. Os prints ficam em img/treinamentos/
+// e são gerados por scripts/gerar-prints-treinamento.mjs (refazer sempre que a tela mudar). Para criar outro treinamento:
+// acrescente um subtópico em TOPICOS, com os slides (imagem, título, texto, legenda dos números) e rode o gerador.
+import { idPessoa } from './sessao.js';
+
+const img = (n) => `img/treinamentos/${n}.jpg`;
+
+export const TOPICOS = [
+  {
+    id: 'atas', titulo: 'Atas e pendências', icone: '📝', para: 'Todos',
+    resumo: 'Registrar o que foi decidido nas reuniões e acompanhar o que cada um precisa fazer.',
+    subtopicos: [
+      {
+        id: 'ata-criar', titulo: 'Como criar uma ata no sistema', min: 6, para: 'Todos',
+        resumo: 'Do menu até a ata pronta: dados, itens, gravação do áudio, PDF e pauta da próxima reunião.',
+        slides: [
+          { imagem: img('ata-01-menu'), titulo: 'Onde ficam as atas', texto: 'Toda reunião vira uma ata no sistema, e quem faz a ata é qualquer pessoa da equipe. No menu da esquerda, clique em Atas e pendências.',
+            legenda: ['Atas e pendências: todo mundo vê este menu. O número vermelho ao lado mostra quantas pendências abertas são suas.'] },
+          { imagem: img('ata-02-nova-ata'), titulo: 'Comece pela aba "Nova ata"', texto: 'No alto da tela há três abas. Para criar uma ata, clique em Nova ata.',
+            legenda: ['Nova ata: aqui você cria a ata.', 'Pendências: aqui ficam as pendências de todo mundo, em um quadro por prazo (vencido, hoje, esta semana…).'] },
+          { imagem: img('ata-03-dados'), titulo: 'Preencha os dados da reunião', texto: 'Estes campos são obrigatórios: sem eles a ata não salva.',
+            legenda: ['Data da reunião.', 'Obra da reunião. Se não for de uma obra, escolha "Nenhuma".', 'Departamento: escolha sempre um.', 'Nome da ata: sai sozinho no padrão da Sólida (obra, data, tipo e revisão) e é o nome do PDF que vai para o Drive.', 'Local: online, no escritório, na obra…', 'Participantes: escreva Nome (empresa), separados por vírgula. Exemplo: Maria (Sólida), João (Cliente), Ana (Arquitetura).'],
+            dica: 'O tipo da reunião (reunião, arquitetura, cliente…) fica ao lado da data e entra no nome da ata.' },
+          { imagem: img('ata-04-itens'), titulo: 'Cada linha é uma pendência ou um informativo', texto: 'Abaixo dos dados ficam as linhas da ata. Escolha o tipo de cada uma e preencha: assunto e descritivo são sempre duas caixinhas.',
+            legenda: ['Tipo da linha: Pendência (vermelho) quando alguém precisa fazer algo.', 'Assunto: uma ou duas palavras, sempre em caixa alta (MARCENARIA).', 'O que fazer (ou o que foi dito).', 'Quem é o responsável: Sólida (escolha a pessoa), Terceirizado (nome da empresa ou pessoa), Cliente ou Arquitetura.', 'Prazo: obrigatório em toda pendência. Clique no campo para escolher a data.', 'Informativo (verde): só registra o que foi dito ou decidido. Tem quem informou, mas não tem prazo.'],
+            dica: 'Precisa de mais linhas? Use "+ outro item". O × tira a linha. Pendência vai para a lista de pendências das pessoas; informativo só fica na ata.' },
+          { imagem: img('ata-05-faltando'), titulo: 'Círculo vermelho = ainda falta preencher', texto: 'O sistema mostra, com um círculo vermelho, tudo que precisa ser preenchido para a ata poder ser salva. Quando você completa, o círculo some.',
+            legenda: ['Obra.', 'Departamento.', 'Local.', 'O que fazer: em toda linha que você começou, preencha assunto, descritivo, responsável e prazo (nas pendências).'],
+            dica: 'Linha em branco é ignorada. Só as linhas que você começou a preencher precisam estar completas.' },
+          { imagem: img('ata-06-salvar'), titulo: 'A ata sai no padrão da Sólida', texto: 'Ao clicar em Salvar ata, ela aparece como a ata da Sólida: cabeçalho com logo, tabela com item, tipo, responsável e data limite.',
+            legenda: ['Nome da ata, no padrão: obra, data, tipo e revisão.', 'A tabela da ata: pendência em vermelho, informativo em verde. O PDF vai sozinho para a pasta da obra no Drive (Gerenciamento › ATA), em até 10 minutos. Ata sem obra fica só no sistema.', 'Criar revisão: abre a ata para você mexer em qualquer coisa (dados, itens, participantes). A ata ganha R01, R02… e o PDF novo vai para o Drive; o antigo continua lá.', 'Pauta da próxima reunião: monta o que ficou aberto desta ata, pronto para copiar.'] },
+          { imagem: img('ata-07-gravar'), titulo: 'Opção 1: gravar a reunião em áudio', texto: 'Em vez de digitar, grave a reunião: o sistema transcreve e separa o que é pendência do que é informativo. Use o Chrome ou o Edge e libere o microfone quando o navegador pedir.',
+            legenda: ['Gravar a reunião: aperte e deixe o microfone aberto durante a conversa. Para terminar, aperte de novo.', 'Transcrição: o texto aparece aqui, ao vivo. Na versão da internet, o áudio também vai para o computador do escritório, que transcreve com mais qualidade (leva uns minutos) e devolve o texto na lista Gravações, com o botão "Usar esta transcrição".', 'Montar a ata: o sistema separa pendências e informativos e preenche as linhas para você.'],
+            dica: 'Sempre confira o resultado: nomes, assuntos, responsáveis e prazos podem precisar de ajuste. Tire o que não serve.' },
+          { imagem: img('ata-08-importar'), titulo: 'Opção 2: importar um PDF ou colar o texto', texto: 'Já tem a ata pronta em PDF, ou o texto num e-mail ou aplicativo? Não precisa digitar de novo.',
+            legenda: ['Escolher arquivo: envie o PDF (ou arquivo de texto) da ata. Atas no padrão da Sólida são lidas por inteiro, linha a linha.', 'Ou cole o texto da ata aqui.', 'Ler o texto colado: o sistema monta as linhas da ata, com responsável e prazo quando conseguir achar.'],
+            dica: 'PDF que é foto ou digitalização não tem texto para ler: nesse caso cole o texto. Depois de importar, confira e complete o que faltar.' },
+          { imagem: img('ata-09-depois'), titulo: 'Depois da ata: reprogramar uma data', texto: 'Na ata salva, clique na data de uma pendência para escolher outro dia. A data antiga fica guardada e a pendência aparece como "reprogramada".',
+            legenda: ['Clique na data da pendência.', 'O calendário mostra os feriados em vermelho. Escolha o novo dia.'],
+            dica: 'Para dar a pendência como feita, clique no ✓ ao lado da data.' },
+          { imagem: img('ata-10-pendencias'), titulo: 'Acompanhe tudo na aba Pendências', texto: 'A aba Pendências reúne as pendências de todas as atas. Você filtra por pessoa, setor ou obra e vê o que está vencido, o que vence hoje e o que vem pela frente.',
+            legenda: ['O + de cada coluna cria uma pendência que não veio de uma ata (já vem com o prazo da coluna).', 'Concluir: dá a pendência como feita.', 'Clique na data para reprogramar.'],
+            dica: 'Excluir uma pendência da lista não apaga o item da ata: a ata só muda por uma revisão.' },
+        ],
+      },
+    ],
+  },
+];
+
+// ---------------------------------------------------------------- visto
+const CHAVE = 'solida.treinamentos';
+export function vistos() { try { return new Set((JSON.parse(localStorage.getItem(CHAVE)) || {})[idPessoa()] || []); } catch { return new Set(); } }
+function marcarVisto(id) { try { const t = JSON.parse(localStorage.getItem(CHAVE)) || {}; const e = new Set(t[idPessoa()] || []); e.add(id); t[idPessoa()] = [...e]; localStorage.setItem(CHAVE, JSON.stringify(t)); } catch { /* sem armazenamento */ } }
+export const acharSub = (id) => { for (const t of TOPICOS) { const s = t.subtopicos.find((x) => x.id === id); if (s) return { topico: t, sub: s }; } return null; };
+
+// ---------------------------------------------------------------- apresentação (slides)
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+let aberto = null;
+export function fechar() { if (aberto) { aberto.caixa.remove(); document.removeEventListener('keydown', aberto.tecla); document.body.style.overflow = ''; aberto = null; } }
+export function abrir(subId, inicio = 0, aoFechar = () => {}) {
+  const achado = acharSub(subId); if (!achado) return;
+  fechar();
+  const { sub } = achado; let i = Math.max(0, Math.min(inicio, sub.slides.length - 1));
+  const caixa = document.createElement('div'); caixa.className = 'tv'; caixa.setAttribute('role', 'dialog'); caixa.setAttribute('aria-label', sub.titulo);
+  const desenhar = () => {
+    const s = sub.slides[i]; const ultimo = i === sub.slides.length - 1;
+    caixa.innerHTML = `<div class="tv-corpo">
+      <header class="tv-topo"><div><b>${esc(sub.titulo)}</b><span>Passo ${i + 1} de ${sub.slides.length}</span></div><button type="button" class="tv-fechar" data-tv="fechar" aria-label="Fechar">×</button></header>
+      <div class="tv-palco"><a href="${esc(s.imagem)}" target="_blank" rel="noopener" title="Clique para ver a imagem em tamanho grande"><img src="${esc(s.imagem)}" alt="${esc(s.titulo)}"></a></div>
+      <section class="tv-texto"><h3>${esc(s.titulo)}</h3><p>${esc(s.texto)}</p>
+        ${s.legenda && s.legenda.length ? `<ol class="tv-legenda">${s.legenda.map((l, k) => `<li><span>${k + 1}</span>${esc(l)}</li>`).join('')}</ol>` : ''}
+        ${s.dica ? `<p class="tv-dica"><b>Dica:</b> ${esc(s.dica)}</p>` : ''}</section>
+      <footer class="tv-rodape"><button type="button" class="botao" data-tv="ant" ${i === 0 ? 'disabled' : ''}>← Anterior</button>
+        <div class="tv-bolas">${sub.slides.map((_, k) => `<button type="button" class="${k === i ? 'on' : ''}" data-tv-ir="${k}" aria-label="Passo ${k + 1}"></button>`).join('')}</div>
+        <button type="button" class="botao on" data-tv="${ultimo ? 'fim' : 'prox'}">${ultimo ? '✓ Concluir treinamento' : 'Próximo →'}</button></footer></div>`;
+    const corpo = caixa.querySelector('.tv-texto'); if (corpo) corpo.scrollTop = 0;
+  };
+  const ir = (n) => { i = Math.max(0, Math.min(n, sub.slides.length - 1)); desenhar(); };
+  caixa.addEventListener('click', (e) => {
+    if (e.target === caixa) { fechar(); aoFechar(); return; }
+    const b = e.target.closest('[data-tv],[data-tv-ir]'); if (!b) return;
+    if (b.dataset.tvIr !== undefined) { ir(Number(b.dataset.tvIr)); return; }
+    if (b.dataset.tv === 'fechar') { fechar(); aoFechar(); } else if (b.dataset.tv === 'ant') ir(i - 1); else if (b.dataset.tv === 'prox') ir(i + 1);
+    else if (b.dataset.tv === 'fim') { marcarVisto(sub.id); fechar(); aoFechar(); }
+  });
+  const tecla = (e) => { if (e.key === 'Escape') { fechar(); aoFechar(); } else if (e.key === 'ArrowRight') ir(i + 1); else if (e.key === 'ArrowLeft') ir(i - 1); };
+  document.addEventListener('keydown', tecla); document.body.style.overflow = 'hidden';
+  aberto = { caixa, tecla }; desenhar(); document.body.appendChild(caixa);
+}

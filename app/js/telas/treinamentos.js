@@ -5,6 +5,7 @@
 
 import { html } from '../formato.js';
 import { funcaoAtual, idPessoa } from '../sessao.js';
+import { TOPICOS, vistos as slidesVistos } from '../treinamentos-slides.js';
 
 const OBRA = ['gestor_obra', 'estagiario', 'encarregado'];
 const FERRAMENTAS = ['ferramentas', 'executor_ferramentas', 'estagiario_compras', 'posobra'];
@@ -111,7 +112,13 @@ export function render({ todos = false, aberto = null } = {}) {
       <ol class="tn-passos">${t.passos.map((p) => html`<li>${p}</li>`)}</ol>
       <button type="button" class="botao ${feitos.has(t.id) ? 'on' : ''}" data-trein="${t.id}">${feitos.has(t.id) ? '✓ Marcado como lido (clique para desmarcar)' : 'Marcar como lido'}</button>
     </div></details>`;
+  const vistosSl = slidesVistos();
+  const topicos = html`<section class="tn-topicos"><h2>Treinamentos passo a passo, com imagens</h2>
+    <div class="tn-topicos-grade">${TOPICOS.map((t) => html`<article class="tn-topico"><div class="tn-topico-cab"><span class="tn-ico">${t.icone}</span><div><h3>${t.titulo}</h3><p class="pequeno">${t.resumo}</p></div></div>
+      <ul class="tn-subs">${t.subtopicos.map((s) => html`<li><button type="button" class="tn-sub" data-trein-slides="${s.id}"><span class="tn-sub-play">▶</span><span class="tn-sub-tit">${s.titulo}<small>${s.min} min · ${s.slides.length} passos · ${s.para === 'Todos' ? 'para todos' : s.para}</small></span>${vistosSl.has(s.id) ? html`<span class="tn-ok">✓ visto</span>` : ''}</button></li>`)}</ul></article>`)}</div></section>`;
   return html`<div class="pagina treinamentos">
+    ${topicos}
+    <h2 class="tn-guias-tit">Guias rápidos por função</h2>
     <p class="pequeno">Primeira versão, para a diretoria revisar. Guias curtos do que a equipe faz todo dia. ${feitos.size ? `Você já leu ${[...feitos].filter((id) => TREINAMENTOS.some((t) => t.id === id)).length} de ${TREINAMENTOS.length}.` : ''}</p>
     <div class="subnav" role="tablist"><a role="tab" class="${todos ? '' : 'on'}" href="#/treinamentos">Para a minha função <span class="est-n">${meus.length}</span></a><a role="tab" class="${todos ? 'on' : ''}" href="#/treinamentos?todos=1">Todos <span class="est-n">${TREINAMENTOS.length}</span></a></div>
     <div style="margin-top:14px">${lista.length ? lista.map(cartao) : html`<p class="vazio">Ainda não há treinamento específico para a sua função.</p>`}</div>

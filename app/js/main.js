@@ -35,6 +35,7 @@ import * as equipe from './telas/equipe.js';
 import * as posGeral from './telas/posobra-geral.js';
 import * as agendaPos from './agenda-pos.js';
 import * as svPos from './servicos-pos.js';
+import * as tvSlides from './treinamentos-slides.js';
 import * as obrasPos from './obras-pos.js';
 import * as financeiro from './telas/financeiro.js';
 import * as meudia from './telas/meudia.js';
@@ -1213,6 +1214,9 @@ document.addEventListener('submit', (e) => {
   e.preventDefault(); const texto = String(new FormData(f).get('texto') || '').trim(); if (!texto) return;
   svFazer(() => svPos.nota(f.dataset.os, texto));
 });
+// Treinamentos com slides: abrir a apresentação do subtópico
+document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-trein-slides]'); if (b) tvSlides.abrir(b.dataset.treinSlides, 0, () => desenhar()); });
+
 // Pós-obra › Agenda: cartões de funcionários arrastados para a obra e o dia (ou toque no nome e depois no quadrado)
 const apFaixa = () => [estado.posAgenda.semana, somarDias(estado.posAgenda.semana, 6)];
 async function apFazer(fn) { try { await fn(...apFaixa()); desenhar(); } catch (err) { alert(`Não foi possível mexer na agenda (${err.message || err}).`); } }
