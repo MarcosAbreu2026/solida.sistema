@@ -1447,3 +1447,13 @@ table.ordenavel th.ord-desc::after { content: ' ▼'; font-size: 9px; }
 .pf-linha { display: grid; grid-template-columns: 3fr 1.6fr 1fr auto; gap: 8px; margin-bottom: 8px; align-items: center; }
 .pf-x { font-size: 20px; line-height: 1; color: var(--muted); border: 0; background: none; cursor: pointer; }
 @media (max-width: 700px) { .at-form-grade, .pf-linha { grid-template-columns: 1fr; } }
+.at-importar { margin-bottom: 14px; max-width: 880px; }
+.at-importar textarea { width: 100%; font: inherit; padding: 8px; border: 1px solid var(--linha); border-radius: 7px; margin-top: 4px; }
+.at-imp-linha { display: flex; gap: 12px; align-items: center; margin: 8px 0; }
+.at-aviso-imp { max-width: 880px; }
+.pf-falta { border-color: #D9534F !important; background: #FFF3F2; }
+
+.pf-ext { grid-column: 1 / -1; display: grid; grid-template-columns: 3fr 1.6fr; gap: 8px; }
+.pf-ext[hidden] { display: none; }
+.at-tipo { font-size: 10.5px; font-weight: 700; padding: 0 7px; border-radius: 999px; background: #EEE; color: #555; }
+.at-t-cliente { background: #FFF1D6; color: #7A5A1E; } .at-t-arquitetura { background: #E8E1F7; color: #5B3F99; } .at-t-terceirizado { background: #E0F1F4; color: #1F6B7A; }

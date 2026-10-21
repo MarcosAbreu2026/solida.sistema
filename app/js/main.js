@@ -1075,17 +1075,47 @@ document.addEventListener('submit', async (e) => {
       const fd = new FormData(f);
       const [tipoV, ...resto] = String(fd.get('vinculo') || '').split(':'); const valor = resto.join(':');
       if (!valor) { alert('Escolha a obra ou o departamento da ata.'); return; }
-      const pendencias = [...f.querySelectorAll('.pf-linha')].map((l) => ({ descricao: l.querySelector('[name="p_desc"]').value.trim(), responsavel: l.querySelector('[name="p_resp"]').value, prazo: l.querySelector('[name="p_prazo"]').value }))
-        .filter((p) => p.descricao);
-      if (pendencias.some((p) => !p.responsavel)) { alert('Toda pendência precisa de um responsável.'); return; }
+      const pendencias = [...f.querySelectorAll('.pf-linha')].map((l) => lerLinhaPendencia(l)).filter((p) => p.descricao);
+      if (pendencias.some((p) => !p.responsavel && !p.externoNome)) { alert('Toda pendência precisa de um responsável (da Sólida ou, em "Outro", o nome de quem é de fora).'); return; }
       const nova = await atas.criarAta({ titulo: String(fd.get('titulo')).trim(), data: fd.get('data'), tipo: tipoV === 'obra' ? 'obra' : 'departamento', obra: valor, setor: valor, participantes: fd.getAll('participantes'), resumo: String(fd.get('resumo') || ''), pendencias });
       estado.atasMsg = `Ata salva${pendencias.length ? ` com ${pendencias.length} ${pendencias.length === 1 ? 'pendência' : 'pendências'}` : ''}.`;
       estado.atasMsgHash = `#/atas?aba=atas&ata=${nova.id}`; location.hash = estado.atasMsgHash;
     } else {
-      const l = g.querySelector('.pf-linha'); const descricao = l.querySelector('[name="p_desc"]').value.trim(); const responsavel = l.querySelector('[name="p_resp"]').value;
-      if (!descricao || !responsavel) { alert('Escreva a pendência e escolha o responsável.'); return; }
-      await atas.criarPendencia({ ata_id: Number(g.dataset.ata), descricao, responsavel, prazo: l.querySelector('[name="p_prazo"]').value, obra: g.dataset.obra, setor: g.dataset.setor });
+      const p = lerLinhaPendencia(g.querySelector('.pf-linha'));
+      if (!p.descricao || (!p.responsavel && !p.externoNome)) { alert('Escreva a pendência e escolha o responsável.'); return; }
+      await atas.criarPendencia({ ata_id: Number(g.dataset.ata), ...p, obra: g.dataset.obra, setor: g.dataset.setor });
     }
     desenhar();
   } catch (err) { alert(`Não foi possível salvar (${err.message || err}).`); }
+});
+
+// Atas: importar um PDF ou texto e montar o rascunho com as pendências
+async function importarAta(dados) {
+  const msg = document.querySelector('.at-imp-msg'); if (msg) msg.textContent = 'Lendo a ata…';
+  try { await atas.importar(dados, obrasDeAtas()); desenhar(); }
+  catch (err) { if (msg) msg.textContent = ''; alert(err.message || String(err)); }
+}
+document.addEventListener('change', (e) => {
+  if (e.target && e.target.id === 'ata-arquivo' && e.target.files && e.target.files[0]) importarAta({ arquivo: e.target.files[0] });
+});
+document.addEventListener('click', (e) => {
+  if (e.target.closest && e.target.closest('[data-ata-ler]')) { importarAta({ texto: (document.getElementById('ata-colada') || {}).value || '' }); return; }
+  if (e.target.closest && e.target.closest('[data-ata-descartar]')) { if (confirm('Descartar a ata lida e começar do zero?')) { atas.descartarRascunho(); desenhar(); } }
+});
+
+// uma linha de pendência do formulário (responsável da Sólida ou "Outro": cliente, arquitetura, terceirizado…)
+function lerLinhaPendencia(l) {
+  const r = l.querySelector('[name="p_resp"]').value; const ext = r === '__outro';
+  return {
+    descricao: l.querySelector('[name="p_desc"]').value.trim(), responsavel: ext ? '' : r,
+    externoNome: ext ? l.querySelector('[name="p_ext_nome"]').value.trim() : '', externoTipo: ext ? l.querySelector('[name="p_ext_tipo"]').value : '',
+    prazo: l.querySelector('[name="p_prazo"]').value,
+  };
+}
+document.addEventListener('change', (e) => {
+  const sel = e.target.closest && e.target.closest('[data-pf-resp]');
+  if (!sel) return;
+  const ext = sel.closest('.pf-linha').querySelector('.pf-ext');
+  if (ext) { ext.hidden = sel.value !== '__outro'; if (!ext.hidden) ext.querySelector('input').focus(); }
+  sel.classList.remove('pf-falta');
 });
