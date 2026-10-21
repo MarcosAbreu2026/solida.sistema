@@ -35,6 +35,7 @@ import * as equipe from './telas/equipe.js';
 import * as posGeral from './telas/posobra-geral.js';
 import * as agendaPos from './agenda-pos.js';
 import * as svPos from './servicos-pos.js';
+import * as obrasPos from './obras-pos.js';
 import * as financeiro from './telas/financeiro.js';
 import * as meudia from './telas/meudia.js';
 import { abrirCalendario } from './calendario.js';
@@ -149,7 +150,7 @@ function telaPosObraPlanilha(rota) {
   if (!rota.sub) {
     if (!estado.base) return { abas, conteudo: '', resumo: semBase().conteudo };
     carregarAgendaSemana();
-    return { abas, conteudo: '', resumo: String(posGeral.renderResumo(estado.base, inicioDaSemana(hojeISO()), agendaPos.linhas)) };
+    return { abas, conteudo: '', resumo: String(posGeral.renderResumo(estado.base, inicioDaSemana(hojeISO()), agendaPos.linhas, { podeEditar: podeEditarPos(), veValores: veValores() })) };
   }
   // Serviços: quadro por fase (análise, orçamento, execução, concluído…), arrastando os cartões
   if (rota.sub === 'servicos') {
@@ -162,14 +163,14 @@ function telaPosObraPlanilha(rota) {
     if (!estado.base) return semBase();
     carregarAgendaSemana();
     const podeEditar = ['socio', 'posobra', 'coord_operacoes'].includes(funcaoAtual().id);
-    return { abas, conteudo: `<div class="pagina" style="margin-top:26px">${String(posGeral.renderAgenda({ base: estado.base, semanaIni: estado.posAgenda.semana, linhasAgenda: agendaPos.linhas, podeEditar, selecionado: estado.posAgenda.sel, erro: agendaPos.erro }))}</div>` };
+    return { abas, conteudo: `<div class="pagina" style="margin-top:26px">${String(posGeral.renderAgenda({ base: estado.base, semanaIni: estado.posAgenda.semana, linhasAgenda: agendaPos.linhas, podeEditar, selecionado: estado.posAgenda.sel, erro: agendaPos.erro, extras: apExtras() }))}</div>` };
   }
 
   // página de uma obra: simples e didática (a completa fica em ?completo=1)
   if (ehObra && !rota.params.get('completo')) {
     if (!estado.base) return semBase();
     carregarAgendaSemana(); garantirAtasCarregadas();
-    return { abas, conteudo: `<div class="pagina" style="margin-top:26px">${String(posGeral.renderObra({ base: estado.base, nome: rota.arg, semanaIni: estado.posAgenda.semana, linhasAgenda: agendaPos.linhas, pendencias: atas.todasPendencias(), linkCompleto: `#/posobra/obra/${encodeURIComponent(rota.arg)}?completo=1` }))}</div>` };
+    return { abas, conteudo: `<div class="pagina" style="margin-top:26px">${String(posGeral.renderObra({ base: estado.base, nome: rota.arg, semanaIni: estado.posAgenda.semana, linhasAgenda: agendaPos.linhas, pendencias: atas.todasPendencias(), podeEditar: podeEditarPos(), linkCompleto: `#/posobra/obra/${encodeURIComponent(rota.arg)}?completo=1` }))}</div>` };
   }
   if (!estado.base) return semBase();
   const p = periodo(estado.verPor, estado.ref);
@@ -211,7 +212,7 @@ async function sincronizarServicosPos() {
 // a base do pós-obra = planilha + o que o sistema mudou nos serviços (fases) e os serviços novos
 function reconstruirBase() {
   if (!estado.dadosBase) return;
-  estado.base = montarBase({ ...estado.dadosBase, servicos: svPos.mesclar(estado.dadosBase.servicos || []) }, hojeISO());
+  estado.base = montarBase({ ...estado.dadosBase, servicos: svPos.mesclar(estado.dadosBase.servicos || []), obras: obrasPos.mesclar(estado.dadosBase.obras || []) }, hojeISO());
 }
 
 // carrega a agenda da semana escolhida (uma vez por semana) e redesenha
@@ -649,7 +650,7 @@ async function atualizar() {
   if (stProj && ORDEM_ST.indexOf(stProj) > ORDEM_ST.indexOf(areaProj.status)) areaProj.status = stProj;
   if (baseR.status === 'fulfilled') {
     estado.dadosBase = baseR.value;
-    await svPos.carregar();
+    await Promise.all([svPos.carregar(), obrasPos.carregar()]);
     reconstruirBase();
     sincronizarServicosPos();
     estado.erroBase = null;
@@ -1140,6 +1141,32 @@ document.addEventListener('click', async (e) => {
   if (us) { const g = gravs.find((x) => String(x.id) === us.dataset.gravUsar); const c = document.getElementById('ata-fala'); if (g && c) { c.value = g.texto || ''; gravador.definirTexto(g.texto || ''); const m = document.querySelector('.at-grav-msg'); if (m) m.textContent = 'Transcrição do Whisper colocada na caixa: confira e aperte "Montar a ata com a transcrição".'; c.scrollIntoView({ block: 'center' }); } return; }
   const ap = e.target.closest && e.target.closest('[data-grav-apagar]');
   if (ap) { const g = gravs.find((x) => String(x.id) === ap.dataset.gravApagar); if (g && confirm('Apagar esta gravação (áudio e transcrição)?')) { try { await nuvem.apagarGravacao(g); await gravAtualizar(); } catch (err) { alert(`Não foi possível apagar (${err.message || err}).`); } } }
+});
+// Pós-obra: completar os dados de uma obra, abrir/recolher a lista, e escolher quais obras aparecem na agenda da semana
+const apExtrasTodos = () => { try { return JSON.parse(localStorage.getItem('solida.apExtras')) || {}; } catch { return {}; } };
+const apExtras = () => apExtrasTodos()[estado.posAgenda.semana] || [];
+const apExtrasGravar = (lista) => { const t = apExtrasTodos(); t[estado.posAgenda.semana] = lista; try { localStorage.setItem('solida.apExtras', JSON.stringify(t)); } catch { /* sem armazenamento */ } };
+document.addEventListener('change', (e) => {
+  const s = e.target.closest && e.target.closest('[data-ap-mais]'); if (!s || !s.value) return;
+  apExtrasGravar([...new Set([...apExtras(), s.value])]); desenhar();
+});
+document.addEventListener('click', (e) => {
+  const tirar = e.target.closest && e.target.closest('[data-ap-tirar-obra]'); if (tirar) { apExtrasGravar(apExtras().filter((o) => o !== tirar.dataset.apTirarObra)); desenhar(); return; }
+  const todos = e.target.closest && e.target.closest('[data-po-todos]'); if (todos) { document.querySelectorAll('.pl-obra').forEach((d) => { d.open = todos.dataset.poTodos === 'abrir'; }); return; }
+  const ed = e.target.closest && e.target.closest('[data-po-editar]');
+  if (ed) {
+    e.preventDefault(); const o = estado.base && estado.base.obraPorNome.get(ed.dataset.poEditar); if (!o) return;
+    const antigo = document.getElementById('at-modal'); if (antigo) antigo.remove();
+    const m = document.createElement('div'); m.id = 'at-modal'; m.className = 'at-modal'; m.innerHTML = `<div class="at-modal-caixa">${String(posGeral.formObra(o))}</div>`; document.body.appendChild(m);
+  }
+});
+document.addEventListener('submit', async (e) => {
+  const f = e.target.closest && e.target.closest('#ob-form'); if (!f) return;
+  e.preventDefault(); const fd = new FormData(f);
+  try {
+    await obrasPos.salvar({ obra: f.dataset.obra, apelido: String(fd.get('apelido') || '').trim() || null, cliente: String(fd.get('cliente') || '').trim() || null, endereco: String(fd.get('endereco') || '').trim() || null, responsavel: String(fd.get('responsavel') || '').trim() || null });
+    reconstruirBase(); const m = document.getElementById('at-modal'); if (m) m.remove(); desenhar();
+  } catch (err) { alert(`Não foi possível salvar (${err.message || err}).`); }
 });
 // Pós-obra › Serviços em quadro por fase: arrastar o cartão para a coluna (ou "Mover para…"), "+" para criar, "apagar" nos criados aqui
 async function svFazer(fn) { try { await fn(); reconstruirBase(); await sincronizarServicosPos(); desenhar(); } catch (err) { alert(`Não foi possível mexer no serviço (${err.message || err}).`); } }

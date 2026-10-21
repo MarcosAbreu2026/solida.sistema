@@ -10,6 +10,7 @@ import { hojeISO, somarDias, inicioDaSemana, diasEntre, ehData } from '../datas.
 import { NA_NUVEM, perfilAtual, listarAtasPendencias, criarAtaNuvem, criarPendenciaNuvem, criarPendenciasNuvemLote, atualizarPendenciaNuvem, atualizarAtaNuvem, apagarPendenciaNuvem, apagarAtaNuvem } from '../nuvem.js';
 import { SETORES } from '../funcoes.js';
 import { sessao, idPessoa, funcaoReal, funcaoAtual } from '../sessao.js';
+import { partesObra } from '../obras-pos.js';
 import { lerPessoasTarefas } from '../armazenamento.js';
 import { analisarAta, lerArquivoAta, acharResponsavel } from '../ata-leitor.js';
 import { analisarReuniao, analisarFala, pareceResumoEmTopicos } from '../fala-leitor.js';
@@ -148,7 +149,7 @@ export function pautaTexto(a) {
 // ---------------------------------------------------------------- serviços do pós-obra → pendências (lista original)
 // Cada serviço aberto do pós-obra aparece também em Atas e pendências (setor Pós-obra), sem duplicar (origem "os:OS-001").
 // O serviço manda na fase: serviço concluído = pendência feita; pendência concluída ou reaberta aqui muda o serviço (feito em main.js).
-const ASSUNTO_OBRA = (nome) => String(nome || '').replace(/^\s*(?:PO|MO)\d*\s*[-–]\s*/i, '').replace(/,/g, ' ').trim().toLocaleUpperCase('pt-BR').slice(0, 40) || 'PÓS-OBRA';
+const ASSUNTO_OBRA = (nome) => partesObra({ obra: nome }).curto.replace(/,/g, ' ').trim().toLocaleUpperCase('pt-BR').slice(0, 40) || 'PÓS-OBRA';
 const cap1 = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 const ehOs = (p) => !!p && String(p.origem || '').startsWith('os:');
 export const pendenciaDeServico = ehOs;
@@ -166,6 +167,9 @@ export async function sincronizarServicos(servicos) {
   for (const s of servicos || []) {
     if (!s.os) continue; const p = porOrigem.get(`os:${s.os}`);
     if (!p) { if (s.aberta) criar.push(pendenciaDoServico(s)); continue; }
+    // nome padrão: pendências criadas antes do padrão (só o nome da obra, ex. AUMENTO DE CARGA) ganham o assunto novo (CÓDIGO NOME)
+    const nova = pendenciaDoServico(s).descricao; const antiga = `, ${nova.slice(nova.indexOf(',') + 2)}`;
+    if (p.descricao !== nova && p.descricao === antiga) mudar.push([p.id, { descricao: nova }]);
     if (!s.aberta && p.status === 'aberta') mudar.push([p.id, { status: 'feita', concluida_em: new Date().toISOString() }]);
     else if (s.aberta && p.status === 'feita') mudar.push([p.id, { status: 'aberta', concluida_em: null }]);
   }

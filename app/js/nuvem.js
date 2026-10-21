@@ -153,7 +153,17 @@ export async function apagarGravacao(g) {
   await sb.storage.from('audios').remove([g.audio]).catch(() => {});
   const { error } = await sb.from('gravacoes').delete().eq('id', g.id);
   if (error) throw new Error(error.message);
-}// serviços do pós-obra em quadro por fase
+}// dados cadastrais das obras do pós-obra completados no sistema
+export async function listarObrasPos() {
+  const { data, error } = await sb.from('obras_pos').select('*');
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+export async function gravarObraPos(linha) {
+  const { error } = await sb.from('obras_pos').upsert({ ...linha, atualizado_em: new Date().toISOString(), atualizado_por: perfil.id });
+  if (error) throw new Error(error.message);
+}
+// serviços do pós-obra em quadro por fase
 export async function listarServicosPos() {
   const { data, error } = await sb.from('servicos_pos').select('*');
   if (error) throw new Error(error.message);

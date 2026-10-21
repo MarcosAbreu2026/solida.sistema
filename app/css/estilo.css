@@ -1778,3 +1778,23 @@ button.at-prazo:hover { filter: brightness(.96); box-shadow: 0 0 0 2px rgba(45, 
 
 .at-grav-lista h4 { margin: 10px 0 4px; font-size: 14px; color: #14283C; }
 .at-gravs { list-style: none; margin: 0 0 8px; padding: 0; font-size: 13px; } .at-gravs li { padding: 5px 0; border-top: 1px solid var(--linha2); }
+
+/* Pós-obra: lista de obras com os serviços (OS) embaixo */
+.pl-lista { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+.pl-obra { background: #fff; border: 1px solid var(--linha2); border-left: 4px solid #8C98A6; border-radius: 4px; }
+.pl-obra.pl-execucao { border-left-color: #2F5F86; } .pl-obra.pl-atrasado { border-left-color: #9B3A33; } .pl-obra.pl-planejamento, .pl-obra.pl-agendamento { border-left-color: #5B7A2E; } .pl-obra.pl-orcamento, .pl-obra.pl-analise { border-left-color: #B58A1B; }
+.pl-obra > summary { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; padding: 9px 12px; cursor: pointer; list-style: none; }
+.pl-obra > summary::-webkit-details-marker { display: none; }
+.pl-obra > summary::before { content: '▸'; color: var(--muted); font-size: 12px; } .pl-obra[open] > summary::before { content: '▾'; }
+.pl-tit a { font-size: 15px; font-weight: 700; color: #14283C; text-decoration: none; } .pl-tit a:hover { text-decoration: underline; }
+.pl-sub { font-size: 12.5px; color: var(--muted); } .pl-sub.pl-falta { color: #9B6A00; font-style: italic; }
+.pl-cont { font-size: 12.5px; color: #25405C; margin-left: auto; }
+.pl-os { width: 100%; border-collapse: collapse; font-size: 13px; }
+.pl-os th { text-align: left; background: #F3F5F7; color: #14283C; font-size: 12px; padding: 5px 10px; border-top: 1px solid var(--linha2); }
+.pl-os td { padding: 6px 10px; border-top: 1px solid var(--linha2); vertical-align: top; }
+.pl-os .n { text-align: right; white-space: nowrap; }
+.pl-os-cod { font-weight: 700; white-space: nowrap; color: #14283C; } .pl-os-resumo { overflow-wrap: anywhere; min-width: 240px; }
+.pl-fase { color: #fff; font-size: 11.5px; font-weight: 600; padding: 1px 8px; border-radius: 3px; white-space: nowrap; }
+.pl-vazio { padding: 4px 12px 10px; margin: 0; } .pl-feitos { padding: 0 0 6px; } .pl-feitos summary { padding: 6px 12px; cursor: pointer; font-size: 12.5px; color: var(--muted); }
+.pl-aviso { margin: 0 0 12px; } .pl-tudo { margin-left: 14px; font-weight: 400; }
+.ap-mais { margin: 12px 0 0; } .ap-mais select { margin-left: 6px; }

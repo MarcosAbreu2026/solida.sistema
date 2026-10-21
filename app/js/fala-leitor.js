@@ -117,32 +117,47 @@ export function analisarResumo(texto, { pessoas = [], obras = [], hoje } = {}) {
 }
 
 // ---------------------------------------------------------------- fala corrida (transcrição)
-const RE_ACAO = new RegExp(`\\b(?:vou|vamos|tem que|temos que|precisa|precisamos|preciso|deve|devemos|a gente (?:vai|precisa|tem|deve)|vai precisar|importante)\\b[^.?!]{0,40}?\\b(?:${VERBOS_INF})\\b`, 'iu');
-const RE_PASSADO = /\b(?:j[áa] (?:foi|fiz|fez|mandei|enviei|falei|conclu[íi]|entreg|comprad|instalad)|eu fiz|n[ãa]o foi|foi feito)\b/iu;
-const RE_FATO = /\b(?:aprovad|aprovou|comprad|contratad|finaliz|entreg|instalad|execut|atras|previs|prazo|data|decidiram|resolvid|medi[çc]|desist|n[ãa]o vai (?:ser|ter)|chegou|chegando|pendente|falta|faltam|pronto|conclu[íi]d)\w*/iu;
-const FILLER = /^(?:e |ent[ãa]o |a[ií] |tá |ta |n[ée] |mas |sim |n[ãa]o |ah |ó |olha |tipo |assim |bom |ok |okay |certo )+/iu;
+// Numa reunião, toda frase com conteúdo é uma de duas coisas: PENDÊNCIA (alguém vai fazer algo: verbo de ação no futuro/necessidade,
+// pedido, combinado, prazo) ou INFORMATIVO (o que foi dito, decidido ou constatado). O que for conversa solta (teste de som,
+// cumprimento, pergunta) fica de fora. O assunto vem da palavra-chave de obra/serviço ou, se não houver, da palavra principal da frase.
+const RE_ACAO = new RegExp(`(?:\\b(?:vou|vamos|tenho que|tem que|temos que|têm que|preciso|precisamos|precisa|precisam|deve|devemos|devem|ficou de|fica de|fico de|ficamos de|combinamos de|combinado de|a gente (?:vai|precisa|tem que|deve)|vai precisar|vão precisar|importante|não esquecer de|lembrar de|é preciso|é necess[áa]rio|falta|faltam)\\b[^.?!]{0,60}?\\b(?:${VERBOS_INF}|[\\p{L}]{3,}(?:ar|er|ir))\\b|\\b(?:eu|a gente|nós|ele|ela|você|voc[êe]s)\\s+vai(?:mos)?\\s+(?:${VERBOS_INF})\\b|(?:^|[.;]\\s*)(?:${VERBOS_INF})\\b[^.?!]{3,}|\\b[\\p{Lu}][\\p{L}]+\\s+(?:vai|vão|fica|ficou|deve|precisa)\\s+(?:[\\p{L}]+r\\b))`, 'iu');
+const RE_PASSADO = /\b(?:j[áa] (?:foi|fiz|fez|mandei|enviei|falei|conclu[íi]|entreg|comprad|instalad|resolvi)|eu fiz|n[ãa]o foi|foi feito|mandou|enviou|fez|fizemos)\b/iu;
+const RE_LIXO = /\b(?:teste|testando|gravação|gravando|microfone|reconhecid|alô|bom dia|boa tarde|boa noite|obrigad[oa]|pode falar|vai falando)\b/iu;
+const FILLER = /^(?:e |ent[ãa]o |a[ií] |tá |ta |n[ée] |mas |sim |n[ãa]o |ah |ó |olha |tipo |assim |bom |ok |okay |certo |bem |então, )+/iu;
+const PARADAS = new Set(['varias', 'vários', 'varios', 'algumas', 'alguns', 'algumas', 'outros', 'outras', 'essas', 'esses', 'aquela', 'aquele', 'sobre', 'quando', 'depois', 'antes', 'ainda', 'também', 'tambem', 'porque', 'então', 'entao', 'assim', 'muito', 'muita', 'pouco', 'coisa', 'coisas', 'assunto', 'através', 'atraves', 'precisa', 'precisam', 'temos', 'estamos', 'estou', 'aqui', 'agora', 'hoje', 'ontem', 'amanhã', 'semana', 'tenho', 'fazer', 'proposta', 'cliente', 'segunda', 'terça', 'quarta', 'quinta', 'sexta'].map((w) => norm(w)));
+const NOMES = new Set([...EQUIPE, ...CLIENTES, ...ARQUITETURA].map(norm));
+// palavra principal da frase quando não há palavra-chave de obra/serviço (ignora verbos e palavras de ligação)
+function palavraPrincipal(f) {
+  for (const w of f.replace(/[.,;:!?()"]/g, ' ').split(/\s+/)) {
+    const n = norm(w); if (n.length < 5 || PARADAS.has(n) || NOMES.has(n) || /(ando|endo|indo|ar|er|ir|ou|ei|am|em|ado|ido|mos|ava|ia)$/.test(n) || /^\d/.test(n)) continue;
+    return w.toLocaleUpperCase('pt-BR');
+  }
+  return '';
+}
 
 export function analisarFala(texto, { pessoas = [], obras = [], hoje } = {}) {
-  const frases = String(texto || '').replace(/\s+/g, ' ').split(/(?<=[.?!])\s+/).map((s) => s.trim()).filter((s) => s.split(' ').length >= 6);
+  const frases = String(texto || '').replace(/\s+/g, ' ').split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter((s) => s.split(' ').length >= 4);
   const pends = []; const infos = []; const vistos = new Set(); let ctx = ''; let n = 0;
   const obrasNums = obras.map((o) => o.replace(/\D/g, '')).filter(Boolean);
   for (const f0 of frases) {
     const nums = [...new Set((f0.match(/\b\d{3}\b/g) || []).filter((d) => obrasNums.includes(d)))];
     if (nums.length === 1) ctx = codigoObra(nums[0], obras);          // frase de uma obra só: passa a ser o contexto
     else if (nums.length === 2 && f0.split(' ').length < 14) ctx = codigoObra(nums[0], obras);
-    const f = f0.replace(FILLER, '').replace(FILLER, '');
+    const f = f0.replace(FILLER, '').replace(FILLER, '').trim(); if (f.split(' ').length < 4) continue;
     const chave = norm(f).slice(0, 48); if (vistos.has(chave)) continue;
-    const t = topico(f); const acao = RE_ACAO.test(f) && !RE_PASSADO.test(f); const fato = RE_FATO.test(f) && (t || ctx);
-    if (!acao && !fato) continue;
-    if (!t && !nums.length && !acao) continue;
+    if (RE_LIXO.test(f)) continue;
+    const pergunta = /\?$/.test(f) && !/\b(?:precisa|preciso|tem que|temos que)\b/i.test(f);
+    if (pergunta) continue;
     vistos.add(chave);
+    const acao = RE_ACAO.test(f) && !RE_PASSADO.test(f);
+    const prazo = prazoDe(f, hoje);
+    const t = topico(f) || palavraPrincipal(f);
     const assunto = [ctx ? ctx.toUpperCase() : '', t].filter(Boolean).join(' ') || 'GERAL';
     const texto2 = f.length > 230 ? `${f.slice(0, 230).replace(/\s+\S*$/, '')}…` : f;
-    if (acao) pends.push(montaItem({ kind: 'pendencia', assunto, texto: texto2, item: ++n, quem: quemFaz(f, pessoas), prazo: prazoDe(f, hoje) }));
+    if (acao) pends.push(montaItem({ kind: 'pendencia', assunto, texto: texto2, item: ++n, quem: quemFaz(f, pessoas), prazo }));
     else infos.push(montaItem({ kind: 'informativo', assunto, texto: texto2, item: ++n }));
-    if (n >= 90) break;
+    if (n >= 120) break;
   }
   return envelope(pends, infos, obras, hoje);
 }
-
 export function analisarReuniao(texto, opc) { return pareceResumoEmTopicos(texto) ? analisarResumo(texto, opc) : analisarFala(texto, opc); }
