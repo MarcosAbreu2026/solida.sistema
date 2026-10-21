@@ -145,6 +145,43 @@ export function pautaTexto(a) {
   out.push('Assuntos novos:', '- ');
   return out.join('\n');
 }
+// ---------------------------------------------------------------- serviços do pós-obra → pendências (lista original)
+// Cada serviço aberto do pós-obra aparece também em Atas e pendências (setor Pós-obra), sem duplicar (origem "os:OS-001").
+// O serviço manda na fase: serviço concluído = pendência feita; pendência concluída ou reaberta aqui muda o serviço (feito em main.js).
+const ASSUNTO_OBRA = (nome) => String(nome || '').replace(/^\s*(?:PO|MO)\d*\s*[-–]\s*/i, '').replace(/,/g, ' ').trim().toLocaleUpperCase('pt-BR').slice(0, 40) || 'PÓS-OBRA';
+const cap1 = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+const ehOs = (p) => !!p && String(p.origem || '').startsWith('os:');
+export const pendenciaDeServico = ehOs;
+function pendenciaDoServico(s) {
+  const quem = acharResponsavel(String(s.profissionais || ''), dados.pessoas);
+  const nome = String(s.profissionais || '').split(/[,;/]|\se\s/)[0].trim();
+  const relato = String(s.relato || '').trim() || `Serviço ${s.os} (${s.situacao || 'sem situação'})`;
+  return { origem: `os:${s.os}`, ata_id: null, descricao: `${ASSUNTO_OBRA(s.obra)}, ${cap1(relato.length > 220 ? `${relato.slice(0, 220).replace(/\s+\S*$/, '')}…` : relato)}`,
+    responsavel: quem && quem.id ? quem.id : null, responsavel_nome: quem && quem.id ? quem.nome : (nome || null), responsavel_tipo: 'solida', responsavel_categoria: null,
+    prazo: ehData(s.prazo) ? s.prazo : null, status: 'aberta', obra: s.obra, setor: 'Pós-obra' };
+}
+export async function sincronizarServicos(servicos) {
+  const porOrigem = new Map(dados.pendencias.filter(ehOs).map((p) => [p.origem, p]));
+  const criar = []; const mudar = [];
+  for (const s of servicos || []) {
+    if (!s.os) continue; const p = porOrigem.get(`os:${s.os}`);
+    if (!p) { if (s.aberta) criar.push(pendenciaDoServico(s)); continue; }
+    if (!s.aberta && p.status === 'aberta') mudar.push([p.id, { status: 'feita', concluida_em: new Date().toISOString() }]);
+    else if (s.aberta && p.status === 'feita') mudar.push([p.id, { status: 'aberta', concluida_em: null }]);
+  }
+  if (!criar.length && !mudar.length) return 0;
+  if (NA_NUVEM) {
+    try { await criarPendenciasNuvemLote(criar); } catch (e) { if (!/duplicate|23505|unique/i.test(String(e.message))) throw e; }
+    for (const [id, m] of mudar) await atualizarPendenciaNuvem(id, m);
+  } else {
+    const l = lerLocal();
+    for (const p of criar) l.pendencias.push({ id: l.seq++, ...p, criado_por: idPessoa(), criado_em: new Date().toISOString(), concluida_em: null });
+    for (const [id, m] of mudar) { const q = l.pendencias.find((x) => String(x.id) === String(id)); if (q) Object.assign(q, m); }
+    gravarLocal(l);
+  }
+  await carregar();
+  return criar.length + mudar.length;
+}
 // ---------------------------------------------------------------- nome padrão da ata
 // Obra (ou pós-obra) _ aaaa.mm.dd _ ATA _ tipo _ Rnn   ex.: Mo344_2026.07.10_ATA_ARQUITETURA-CLIENTE_R00
 // Salva no Drive, na pasta da obra: GERENCIAMENTO\ATA (obra) ou PÓS OBRA\PO_OBRAS\<ano>\Po_NNN\GERENCIAMENTO\ATA (pós-obra).
@@ -209,7 +246,7 @@ export async function mudarStatus(id, status) {
 // só a pendência avulsa (sem ata) é apagada de verdade. Para tirar um item da ata, é pela revisão da ata.
 export async function apagarPendencia(id) {
   const p = pendenciaPorId(id);
-  if (p && p.ata_id) await mudarNaLista(id, false);
+  if (p && (p.ata_id || ehOs(p))) await mudarNaLista(id, false);   // da ata ou de um serviço: só sai da lista (senão voltaria na próxima sincronização)
   else {
     if (NA_NUVEM) await apagarPendenciaNuvem(id);
     else { const l = lerLocal(); l.pendencias = l.pendencias.filter((x) => String(x.id) !== String(id)); gravarLocal(l); }

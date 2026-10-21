@@ -39,7 +39,7 @@ export function renderResumo(base, semanaIni, linhasAgenda) {
     <h2 class="pg-tit">Em andamento <span class="pequeno">clique num pós-obra para ver o andamento dele</span></h2>
     ${em.length ? html`<div class="pg-grade">${em.map(cartao)}</div>` : html`<p class="vazio">Nenhum pós-obra em andamento.</p>`}
     ${encerradas.length ? html`<details class="pg-enc"><summary>Concluídos, cancelados e sem serviço aberto (${encerradas.length})</summary><div class="pg-grade">${encerradas.map(cartao)}</div></details>` : ''}
-    <p class="pequeno pg-rodape">Tabelas da planilha: <a class="link" href="#/posobra/painel">painel</a> · <a class="link" href="#/posobra/obras">obras</a> · <a class="link" href="#/posobra/servicos-tabela">serviços (tabela da planilha)</a>. As pendências novas ficam na aba <a class="link" href="#/posobra/pendencias">Pendências</a>, a mesma lista de Atas e pendências.</p>
+    <p class="pequeno pg-rodape">Tabelas da planilha: <a class="link" href="#/posobra/painel">painel</a> · <a class="link" href="#/posobra/obras">obras</a> · <a class="link" href="#/posobra/servicos-tabela">serviços (tabela da planilha)</a>. Os serviços abertos também aparecem como pendências em <a class="link" href="#/atas">Atas e pendências</a> (setor Pós-obra).</p>
   </section>`;
 }
 
@@ -123,7 +123,7 @@ export function renderObra({ base, nome, semanaIni, linhasAgenda, pendencias = [
     <p class="pequeno">Para escalar alguém, use a aba <a class="link" href="#/posobra/agenda">Agenda</a>.</p>
 
     <h3>Pendências desta obra <span class="pequeno">${pend.length} ${pend.length === 1 ? 'aberta' : 'abertas'}</span></h3>
-    <p><a class="botao" href="#/posobra/pendencias?obra=${encodeURIComponent(nome)}">Ver no quadro de pendências</a></p>
+    <p><a class="botao" href="#/atas?obra=${encodeURIComponent(nome)}">Ver em Atas e pendências</a></p>
 
     ${feitas.length ? html`<details class="po-feitas"><summary>Já concluídos (${feitas.length} mais recentes)</summary>${feitas.map((s) => html`<div class="po-item po-feito"><b>${s.os}</b> <span class="pequeno">${s.concluido_em ? `concluído em ${fmt.data(s.concluido_em)}` : s.situacao}</span><div class="po-relato">${s.relato || ''}</div></div>`)}</details>` : ''}
     <p class="pequeno po-completo"><a class="link" href="${linkCompleto}">Ver os detalhes completos desta obra (agenda da planilha, custos e financeiro)</a></p>

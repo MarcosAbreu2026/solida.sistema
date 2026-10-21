@@ -1,4 +1,4 @@
-// Serviços do pós-obra em quadro por fase (pedido de 21/10): os serviços da planilha (OS) aparecem em colunas
+﻿// Serviços do pós-obra em quadro por fase (pedido de 21/10): os serviços da planilha (OS) aparecem em colunas
 // (Análise · Orçamento · Agendamento · Planejamento · Execução · Concluído…) e mudam de fase arrastando o cartão.
 // A planilha continua sendo a origem dos serviços já existentes; o que o sistema muda (a fase) fica aqui e vale por cima dela,
 // e serviços novos criados no sistema também ficam aqui. Na nuvem: tabela servicos_pos; no computador do escritório: só neste navegador (teste).
@@ -21,7 +21,7 @@ export async function carregar() {
 // serviços da planilha + o que o sistema mudou + os serviços novos
 export function mesclar(planilha) {
   const por = new Map(linhas.map((l) => [l.os, l]));
-  const vindos = (planilha || []).map((s) => { const l = por.get(s.os); return l && l.origem === 'planilha' ? { ...s, situacao: l.situacao, concluido_em: l.concluido_em || (l.situacao === 'Concluído' ? s.concluido_em : null) } : s; });
+  const vindos = (planilha || []).map((s) => { const l = por.get(s.os); return l && l.origem === 'planilha' ? { ...s, situacao: l.situacao, concluido_em: l.concluido_em || (l.situacao === 'Concluído' ? s.concluido_em : null), prazo: l.prazo || s.prazo } : s; });
   const novos = linhas.filter((l) => l.origem === 'sistema').map((l) => ({ os: l.os, obra: l.obra, relato: l.relato, prazo: l.prazo || null, profissionais: l.profissionais || null, situacao: l.situacao, concluido_em: l.concluido_em || null, data_inicio: null, noSistema: true }));
   return [...vindos, ...novos];
 }
@@ -46,4 +46,11 @@ export async function criar({ obra, relato, prazo, profissionais, situacao }) {
 export async function apagar(os) {
   if (NA_NUVEM) await apagarServicoPos(os); else gravarLocal(lerLocal().filter((x) => x.os !== os));
   await carregar();
+}
+
+// muda o prazo de um serviço (a pendência reprogramada em Atas e pendências)
+export async function definirPrazo(servico, prazo) {
+  const existente = linhas.find((l) => l.os === servico.os);
+  const base = existente || { os: servico.os, origem: servico.noSistema ? 'sistema' : 'planilha', situacao: servico.situacao, concluido_em: servico.concluido_em || null, obra: servico.noSistema ? servico.obra : null, relato: servico.noSistema ? servico.relato : null, profissionais: servico.noSistema ? servico.profissionais : null };
+  await salvar({ ...base, prazo });
 }
