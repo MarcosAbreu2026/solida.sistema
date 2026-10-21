@@ -5,6 +5,8 @@ title Sistema Solida - deixe esta janela aberta
 cd /d "%~dp0"
 rem coletor: le o Drive e manda para a nuvem (Supabase) a cada 10 minutos, numa janela minimizada
 start "Sistema Solida - coletor" /min powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\coletor.ps1"
+rem leitor do WhatsApp: de ~15 em 15 minutos (seg a sex, 7h as 18h) le as conversas configuradas, numa janela minimizada
+start "Sistema Solida - leitor WhatsApp" /min powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\leitor-whatsapp.ps1"
 set ABRIR=-AbrirNavegador
 :inicio
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0servidor.ps1" %ABRIR%
