@@ -116,25 +116,25 @@ async function recarregar() { await avaliar(`['solida.funcoesVista', 'solida.che
 // `etiquetar` marca os cartões do dia escolhido (hoje, ou o último dia com tarefa) com data-tr=0,1,2… para o script apontar para eles.
 async function etiquetar() {
   return avaliar(`(() => { const hoje = ${JSON.stringify(hoje)}; const [a, m, d] = hoje.split('-'); const rot = d + '/' + m;
-    const cols = [...document.querySelectorAll('.fl-col')]; const comTarefa = (c) => c.querySelectorAll('.fn-caixa').length > 0 && !/previstas/.test(c.querySelector('.fq-cab small').innerText);
-    let col = cols.find((c) => c.querySelector('.fq-cab b').innerText.includes(rot) && comTarefa(c)); if (!col) col = [...cols].reverse().find(comTarefa); if (!col) return false;
-    col.querySelectorAll('.fn-caixa').forEach((c, i) => { c.dataset.tr = i; }); col.dataset.tr = 'col'; return true; })()`);
-}
-const SLIDES = [
+    const dias = [...document.querySelectorAll('.fh-dia')]; const comTarefa = (h) => !/previstas|sem tarefas|feriado/.test(h.querySelector('small').innerText);
+    let i = dias.findIndex((h) => h.querySelector('b').innerText.includes(rot) && comTarefa(h)); if (i < 0) { for (let k = dias.length - 1; k >= 0; k--) if (comTarefa(dias[k])) { i = k; break; } } if (i < 0) return false;
+    dias[i].dataset.tr = 'col'; const celulas = [...document.querySelectorAll('.fh-cel')].filter((_, k) => k % 6 === i); let n = 0;
+    celulas.forEach((c) => c.querySelectorAll('.fn-caixa').forEach((x) => { x.dataset.tr = n++; })); return n > 0; })()`);
+}const SLIDES = [
   { nome: 'func-01-menu', async montar() {
-    await ir('#/funcoes'); await esperar('.fl-lista');
+    await ir('#/funcoes'); await esperar('.fh-grade');
     await marcar([{ sel: '#nav a[href="#/funcoes"]', rotulo: 'Aqui você faz o seu dia a dia', lado: 'direita', dist: 90, larg: 240 }, { sel: '#nav a[href="#/treinamentos"]' }]);
   } },
   { nome: 'func-02-quadro', async montar() {
-    await ir('#/funcoes'); await esperar('.fl-lista'); await etiquetar(); await espera(300);
-    await marcar([{ sel: '.fn-cab h3', rotulo: 'Suas tarefas da semana', lado: 'direita', dist: 70, larg: 230 }, { sel: '.fn-painel .pct' }, { sel: '[data-tr="col"] .fq-cab' }, { sel: '[data-tr="0"]' }]);
+    await ir('#/funcoes'); await esperar('.fh-grade'); await etiquetar(); await espera(300);
+    await marcar([{ sel: '.fn-cab h3', rotulo: 'Suas tarefas da semana', lado: 'direita', dist: 70, larg: 230 }, { sel: '.fn-painel .pct' }, { sel: '[data-tr="col"]' }, { sel: '[data-tr="0"]' }]);
   } },
   { nome: 'func-03-marcar', async montar() {
-    await ir('#/funcoes'); await esperar('.fl-lista'); if (!(await etiquetar())) throw new Error('sem tarefa até hoje'); await espera(300);
+    await ir('#/funcoes'); await esperar('.fh-grade'); if (!(await etiquetar())) throw new Error('sem tarefa até hoje'); await espera(300);
     await marcar([{ sel: '[data-tr="0"] .fn-nome' }, { sel: '[data-tr="0"] .fn-b.fn-feito', }, { sel: '[data-tr="0"] .fn-b.fn-nao' }]);
   } },
   { nome: 'func-04-cores', async montar() {
-    await ir('#/funcoes'); await esperar('.fl-lista'); if (!(await etiquetar())) throw new Error('sem tarefa até hoje');
+    await ir('#/funcoes'); await esperar('.fh-grade'); if (!(await etiquetar())) throw new Error('sem tarefa até hoje');
     await clicar('[data-tr="0"] .fn-b.fn-feito'); await espera(500); await etiquetar(); await clicar('[data-tr="1"] .fn-b.fn-nao'); await espera(500); await etiquetar(); await espera(200);
     await marcar([{ sel: '[data-tr="0"]' }, { sel: '[data-tr="1"]' }, { sel: '[data-tr="2"]' }]);
   } },
@@ -143,11 +143,15 @@ const SLIDES = [
     await marcar([{ texto: 'Semana anterior', em: '.periodo button', rotulo: 'Veja ou marque semanas passadas', lado: 'baixo', dist: 60, larg: 240 }, { sel: '.periodo .atual' }, { texto: 'Próxima semana', em: '.periodo button' }]);
   } },
   { nome: 'func-08-fora', async montar() {
-    await ir('#/funcoes'); await esperar('.fl-lista'); await rolar('.fora-quadro', 'center'); await espera(300);
+    await ir('#/funcoes'); await esperar('.fh-grade'); await rolar('.fora-quadro', 'center'); await espera(300);
     await marcar([{ sel: '.fora-quadro', rotulo: 'Tarefas mensais e ocasionais ficam fora do quadro', lado: 'cima', dist: 60, larg: 300 }]);
   } },
+  { nome: 'func-10-menu', async montar() {
+    await ir('#/funcoes'); await esperar('.fh-grade'); await clicar('#nav a[href="#/funcoes"]'); await espera(900);
+    await marcar([{ sel: '#navToggle', rotulo: 'Clique na setinha para abrir o menu de novo', lado: 'direita', dist: 70, larg: 250 }]);
+  } },
   { nome: 'func-09-treinamento', async montar() {
-    await ir('#/funcoes'); await esperar('.fl-lista'); await rolar('[data-trein-slides="funcoes-usar"]', 'center'); await espera(300);
+    await ir('#/funcoes'); await esperar('.fh-grade'); await rolar('[data-trein-slides="funcoes-usar"]', 'center'); await espera(300);
     await marcar([{ sel: '[data-trein-slides="funcoes-usar"]', rotulo: 'Para rever este passo a passo, clique aqui', lado: 'esquerda', dist: 70, larg: 260 }]);
   } },
 ];

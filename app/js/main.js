@@ -237,6 +237,17 @@ function obrasDeAcesso() {
   return obrasDisponiveis().filter((o) => /^Mo\d/i.test(o) && !enc.has(o));
 }
 
+// Menu lateral recolhível (21/10): ao abrir uma aba o menu recolhe e fica só uma tirinha com a setinha, para dar mais espaço à página.
+// Clicar na setinha abre de novo. Só em tela larga (no celular o menu já é uma faixa no alto).
+const recolhido = () => document.body.classList.contains('nav-recolhido');
+const botaoRecolher = () => `<button type="button" class="nav-toggle" id="navToggle" title="${recolhido() ? 'Abrir o menu' : 'Recolher o menu'}" aria-label="${recolhido() ? 'Abrir o menu' : 'Recolher o menu'}">${recolhido() ? '›' : '‹'}</button>`;
+function ajustarMenuRecolhivel() {
+  $('#nav').addEventListener('click', (e) => {
+    if (e.target.closest('#navToggle')) { document.body.classList.toggle('nav-recolhido'); const b = $('#navToggle'); if (b) { b.textContent = recolhido() ? '›' : '‹'; b.title = recolhido() ? 'Abrir o menu' : 'Recolher o menu'; } return; }
+    if (e.target.closest('a.nav-item, a.nav-perfil')) { document.body.classList.add('nav-recolhido'); const b = $('#navToggle'); if (b) { b.textContent = '›'; b.title = 'Abrir o menu'; } }
+  });
+}
+
 function desenharNav(sel) {
   const CFG = estado.cfg;
   const f = funcaoAtual();
@@ -247,7 +258,7 @@ function desenharNav(sel) {
   const s = sessao();
   // acesso restrito (por enquanto, quase todo mundo): só Minhas funções e Treinamentos
   if (soMinhasFuncoes(f)) {
-    $('#nav').innerHTML = `<div class="marca"><img src="img/logo.png" alt="Sólida"><span>Painel da empresa</span></div>`
+    $('#nav').innerHTML = botaoRecolher() + `<div class="marca"><img src="img/logo.png" alt="Sólida"><span>Painel da empresa</span></div>`
       + `<div class="nav-perfil">${perfil.avatar(s.nome, 38)}<span><b>${esc(s.nome)}</b><small>${esc(f.nome)}</small></span></div>`
       + item('funcoes', 'Minhas funções') + item('treinamentos', 'Treinamentos')
       + `<div class="navfoot">${estado.sync.origem === 'link' ? 'Atualiza sozinho a cada 5 minutos.' : 'Mostrando os últimos dados baixados.'}</div>`;
@@ -255,7 +266,7 @@ function desenharNav(sel) {
     return;
   }
   // perfil (primeira coisa do menu): bonequinho + nome; clicando abre a pontuação e as sugestões
-  $('#nav').innerHTML = `<div class="marca"><img src="img/logo.png" alt="Sólida"><span>Painel da empresa</span></div>`
+  $('#nav').innerHTML = botaoRecolher() + `<div class="marca"><img src="img/logo.png" alt="Sólida"><span>Painel da empresa</span></div>`
     + `<a class="nav-perfil${sel === 'perfil' ? ' sel' : ''}" href="#/perfil" title="Meu perfil">${perfil.avatar(s.nome, 38)}<span><b>${esc(s.nome)}</b><small>${esc(f.nome)}</small></span></a>`
     + item('geral', 'Visão geral') + (paginaVisivel(f, 'feed') ? itemFeed() : '') + (paginaVisivel(f, 'atas') ? itemAtas() : '') + (!f.semMinhaSemana && paginaVisivel(f, 'meudia') && f.editaProdutividade ? item('meudia', 'Minha semana') : '') + (!f.semMinhaSemana && paginaVisivel(f, 'meudia') ? item('funcoes', 'Minhas funções') : '') + (f.veQuadro ? item('quadro', 'Quadro de funções') : '')
     + '<div class="nav-sep"></div>'
@@ -727,6 +738,7 @@ function configurar() {
     if (m) { if (m.dataset.loginModo === 'sair') { await nuvem.sair(); } estado.loginNuvem = { modo: m.dataset.loginModo === 'sair' ? 'entrar' : m.dataset.loginModo }; mostrarLogin(); return; }
     if (e.target.closest('[data-login-recarregar]')) { await nuvem.carregarPerfil(); desenhar(); atualizar(); }
   });
+  ajustarMenuRecolhivel();
   $('#bSair').addEventListener('click', async () => {
     if (nuvem.NA_NUVEM) await nuvem.sair();
     sair();

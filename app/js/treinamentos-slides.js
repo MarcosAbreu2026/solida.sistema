@@ -32,9 +32,11 @@ export const SUBTOPICOS = [
         slides: [
           { imagem: img('func-01-menu'), titulo: 'Onde fica', texto: 'Minhas funções é a página onde você controla o seu trabalho do dia a dia. No menu da esquerda, clique em Minhas funções.',
             legenda: ['Minhas funções: as tarefas da sua função, de segunda a sábado.', 'Treinamentos: aqui você revê este passo a passo quando quiser.'] },
-          { imagem: img('func-02-quadro'), titulo: 'A sua semana', texto: 'Cada coluna é um dia e cada cartão é uma tarefa da sua função. A barra mostra quantas você já marcou como feitas na semana.',
-            legenda: ['O seu nome e a sua função.', 'Barra de progresso: tarefas feitas até hoje.', 'Cada coluna é um dia. A de hoje fica destacada em amarelo e mostra quantas você já fez.', 'Um cartão = uma tarefa, com o horário previsto.'],
+          { imagem: img('func-02-quadro'), titulo: 'A sua semana', texto: 'Cada coluna é um dia (de segunda a sábado), as horas ficam na lateral e cada cartão é uma tarefa da sua função. A barra mostra quantas você já marcou como feitas na semana.',
+            legenda: ['O seu nome e a sua função.', 'Barra de progresso: tarefas feitas até hoje.', 'O dia: o de hoje fica destacado em amarelo e mostra quantas tarefas você já fez.', 'Um cartão = uma tarefa. Tarefas do mesmo horário ficam uma embaixo da outra, com o texto inteiro.'],
             dica: 'Tarefas de dias que ainda não chegaram aparecem em cinza: só dá para marcar de hoje para trás.' },
+          { imagem: img('func-10-menu'), titulo: 'O menu recolhe para dar espaço', texto: 'Quando você abre uma página, o menu da esquerda recolhe e sobra só uma tirinha com uma setinha. Assim os 6 dias da semana cabem na tela, com as horas na lateral.',
+            legenda: ['Clique na setinha para abrir o menu de novo.'] },
           { imagem: img('func-03-marcar'), titulo: 'Marque cada tarefa: feito ou não feito', texto: 'Em cada cartão há dois botões. O sistema não marca nada por você: só vale o que você marcar.',
             legenda: ['O nome completo da tarefa.', 'Fez a tarefa? Clique em ✓ Feito.', 'Não deu para fazer? Clique em ✕ Não.'],
             dica: 'Errou? Clique de novo no botão já marcado para desfazer.' },

@@ -184,6 +184,14 @@ function funcoesSemana(ref, CFG) {
       <div class="fq-cab ${c === hoje ? 'hoje' : ''}"><b>${DIA_CURTO[i]} ${c.slice(8, 10)}/${c.slice(5, 7)}</b><small>${feriado(c) ? 'feriado' : l.length ? (c > hoje ? `${l.length} previstas` : `${fe} de ${l.length} feitas`) : 'sem tarefas'}</small></div>
       ${[...l].sort((a, b) => a.ini - b.ini).map((e) => caixaTarefa(e.t, e.d, estadoDe(e.t, e.d), hoje, null, dispo(e)))}
     </div>`)}</div>`;
+  // Grade por hora (padrão em tela larga): horas na lateral, um dia por coluna. Tarefas do mesmo horário ficam empilhadas na célula
+  // (cada uma com o texto inteiro), então nada fica espremido nem cortado e os 6 dias cabem na tela sem rolar para o lado.
+  const horasComTarefa = [...new Set(colunas.flatMap(({ l }) => l.map((e) => Math.floor(e.ini / 60))))].sort((a, b) => a - b);
+  const vistaHoras = html`<div class="fh-grade">
+    <div class="fh-canto"></div>
+    ${colunas.map(({ c, l, fe }, i) => html`<div class="fq-cab fh-dia ${c === hoje ? 'hoje' : ''}"><b>${DIA_CURTO[i]} ${c.slice(8, 10)}/${c.slice(5, 7)}</b><small>${feriado(c) ? 'feriado' : l.length ? (c > hoje ? `${l.length} previstas` : `${fe} de ${l.length}`) : 'sem tarefas'}</small></div>`)}
+    ${horasComTarefa.map((h) => html`<div class="fh-hora"><b>${h}h</b></div>${colunas.map(({ c, l }) => html`<div class="fh-cel ${c === hoje ? 'hoje' : ''}">${l.filter((e) => Math.floor(e.ini / 60) === h).sort((a, b) => a.ini - b.ini).map((e) => caixaTarefa(e.t, e.d, estadoDe(e.t, e.d), hoje, null, dispo(e)))}</div>`)}`)}
+  </div>`;
   const botoesVista = html`<div class="fl-vista" role="group" aria-label="Como ver as tarefas"><span class="pequeno">Ver:</span>
     <button type="button" class="botao ${vista === 'lista' ? 'on' : ''}" data-vista-fn="lista">Lista por dia</button>
     <button type="button" class="botao ${vista === 'quadro' ? 'on' : ''}" data-vista-fn="quadro">Por horário</button></div>`;
@@ -208,7 +216,7 @@ function funcoesSemana(ref, CFG) {
       <header class="fn-cab"><h3>${f.nome}</h3>
         <span class="pequeno">${previstas ? `${feitas} de ${previstas} feitas até hoje` : 'nenhuma tarefa até hoje'}</span></header>
       ${previstas ? html`<div class="pct" style="margin:6px 0 12px"><i style="width:${Math.round((feitas / previstas) * 100)}%"></i></div>` : ''}
-      ${vista === 'lista' ? vistaLista : html`<div class="fq-quadro"><div class="fq-canto"></div>${cabecas}<div class="fq-horas" style="height:${altTotal}px">${horas}</div>${trilhos}</div>
+      ${vista === 'lista' ? html`<div class="fh-larga">${vistaHoras}</div><div class="fh-estreita">${vistaLista}</div>` : html`<div class="fq-quadro"><div class="fq-canto"></div>${cabecas}<div class="fq-horas" style="height:${altTotal}px">${horas}</div>${trilhos}</div>
       <p class="legenda-semana">Arraste um cartão para outro dia ou horário; puxe a borda de baixo para mudar a duração; clique para ver os detalhes. Cartões no mesmo horário ficam lado a lado. O ajuste fica guardado neste navegador.</p>`}
       <p class="legenda-semana"><span class="lg lg-ok"></span> feito <span class="lg lg-abaixo"></span> não feito <span class="lg lg-sem"></span> falta marcar · você mesmo marca cada tarefa: ✓ Feito ou ✕ Não feito · clique numa marcação para desfazer</p>
       ${atrasadas.length ? html`<h4 class="fn-sub">⚠ Ficaram sem marcar em semanas anteriores <span class="pequeno">${atrasadas.length} ${atrasadas.length > 1 ? 'tarefas' : 'tarefa'} — marque aqui ou em "Semana anterior"</span></h4>

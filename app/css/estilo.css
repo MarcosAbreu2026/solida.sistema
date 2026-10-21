@@ -1,4 +1,4 @@
-﻿/* Sistema Sólida — mesmo visual do Painel da Empresa (Solida.exe):
+/* Sistema Sólida — mesmo visual do Painel da Empresa (Solida.exe):
    barra lateral azul-marinho, fundo calcário, Manrope, detalhes em bronze, clicáveis em azul. */
 
 :root {
@@ -1903,13 +1903,65 @@ button.at-prazo:hover { filter: brightness(.96); box-shadow: 0 0 0 2px rgba(45, 
 .leitura-ok { background: rgba(78,138,98,.10); border-color: #4E8A62; }
 .leitura-velha { background: rgba(217,83,79,.10); border-color: #D9534F; color: #A02E2A; }
 
-/* ---- Minhas funções: vista em lista por dia (texto inteiro, botões em cada tarefa) ---- */
-.fl-vista { display: flex; align-items: center; gap: 8px; margin: 4px 0 12px; flex-wrap: wrap; }
-.fl-lista { display: grid; grid-template-columns: repeat(6, minmax(230px, 1fr)); gap: 12px; overflow-x: auto; padding-bottom: 8px; align-items: start; }
-.fl-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-.fl-col .fq-cab { position: sticky; top: 0; z-index: 2; }
-.fl-col .fn-caixa { padding: 10px 11px; gap: 8px; }
-.fl-col .fn-nome { font-size: 14.5px; line-height: 1.4; }
-.fl-col .fn-meta { font-size: 12.5px; }
-.fl-col .fn-b { font-size: 13.5px; padding: 5px 12px; }
-.fl-col .fn-auto { font-size: 13px; }
+/* ---- Minhas funções: vista em lista por dia (texto inteiro; os 6 dias sempre cabem na tela, sem rolar para o lado) ---- */
+.fl-lista { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; align-items: start; }
+.fl-col { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.fl-col .fq-cab { padding: 6px 8px; }
+.fl-col .fq-cab b { font-size: 13px; }
+.fl-col .fq-cab small { font-size: 11.5px; }
+.fl-col .fn-caixa { padding: 7px 8px; gap: 6px; }
+.fl-col .fn-nome { font-size: 12.5px; line-height: 1.32; overflow-wrap: anywhere; }
+.fl-col .fn-nome .selo-pop { font-size: 9.5px; }
+.fl-col .fn-meta { font-size: 11px; line-height: 1.25; }
+.fl-col .fn-acoes { gap: 4px; }
+.fl-col .fn-b { font-size: 12px; padding: 3px 8px; }
+.fl-col .fn-auto { font-size: 12px; }
+@media (max-width: 900px) { .fl-lista { grid-template-columns: repeat(2, minmax(0, 1fr)); } .fl-col .fn-nome { font-size: 13.5px; } }
+@media (max-width: 560px) { .fl-lista { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---- Minhas funções: grade por hora (horas na lateral; tarefas do mesmo horário empilhadas, texto inteiro) ---- */
+.fh-grade { display: grid; grid-template-columns: 44px repeat(6, minmax(0, 1fr)); gap: 6px; align-items: stretch; }
+.fh-canto { }
+.fh-dia { padding: 6px 8px; }
+.fh-dia b { font-size: 13px; }
+.fh-dia small { font-size: 11.5px; }
+.fh-hora { display: flex; align-items: flex-start; justify-content: center; padding-top: 8px; font-size: 13px; color: var(--muted); border-top: 1px solid var(--linha2); }
+.fh-hora b { font-weight: 700; }
+.fh-cel { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding-top: 6px; border-top: 1px solid var(--linha2); }
+.fh-cel.hoje { background: rgba(255, 246, 227, .55); border-radius: 0 0 8px 8px; }
+.fh-cel .fn-caixa { padding: 7px 8px; gap: 6px; }
+.fh-cel .fn-nome { font-size: 12.5px; line-height: 1.32; overflow-wrap: anywhere; }
+.fh-cel .fn-nome .selo-pop { font-size: 9.5px; }
+.fh-cel .fn-meta { font-size: 11px; line-height: 1.25; }
+.fh-cel .fn-acoes { gap: 4px; }
+.fh-cel .fn-b { font-size: 12px; padding: 3px 8px; }
+.fh-cel .fn-auto { font-size: 12px; }
+.fh-estreita { display: none; }
+@media (max-width: 900px) { .fh-larga { display: none; } .fh-estreita { display: block; } }
+
+/* ---- menu lateral recolhível: ao abrir uma aba, fica só uma tirinha com a setinha (só em tela larga) ---- */
+nav { position: relative; transition: width .18s ease; }
+.nav-toggle { position: absolute; top: 10px; right: 10px; z-index: 5; width: 28px; height: 28px; border: 0; border-radius: 8px; cursor: pointer; background: rgba(255, 255, 255, .10); color: #fff; font-size: 18px; line-height: 1; display: flex; align-items: center; justify-content: center; }
+.nav-toggle:hover { background: rgba(255, 255, 255, .22); }
+@media (min-width: 761px) {
+  body.nav-recolhido nav { width: 40px; padding: 10px 0; overflow: hidden; }
+  body.nav-recolhido nav > :not(.nav-toggle) { display: none; }
+  body.nav-recolhido .nav-toggle { right: auto; left: 6px; top: 10px; }
+}
+@media (max-width: 760px) { .nav-toggle { display: none; } }
+
+/* ---- menu recolhido: a página de Minhas funções cresce para aproveitar o espaço ---- */
+@media (min-width: 761px) {
+  body.nav-recolhido .conteudo { padding-left: 32px; padding-right: 32px; }
+  body.nav-recolhido header.topo { padding-left: 32px; padding-right: 32px; }
+  body.nav-recolhido .fh-grade { grid-template-columns: 52px repeat(6, minmax(0, 1fr)); gap: 9px; }
+  body.nav-recolhido .fh-dia b { font-size: 15px; }
+  body.nav-recolhido .fh-dia small { font-size: 12.5px; }
+  body.nav-recolhido .fh-hora { font-size: 15px; }
+  body.nav-recolhido .fh-cel { gap: 8px; }
+  body.nav-recolhido .fh-cel .fn-caixa { padding: 10px 11px; gap: 8px; }
+  body.nav-recolhido .fh-cel .fn-nome { font-size: 14.5px; line-height: 1.38; }
+  body.nav-recolhido .fh-cel .fn-nome .selo-pop { font-size: 10.5px; }
+  body.nav-recolhido .fh-cel .fn-meta { font-size: 12.5px; }
+  body.nav-recolhido .fh-cel .fn-b { font-size: 14px; padding: 5px 12px; }
+}
