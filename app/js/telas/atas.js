@@ -76,7 +76,7 @@ export function atualizarNomeDoForm(form) {
   const nome = nomePadrao({ obra, setor, data, tipo, revisao: form.revisao.value });
   const el = document.getElementById('ata-nome'); if (el) el.textContent = nome ? `${nome}.pdf` : 'escolha a data';
   const dest = document.getElementById('ata-destino');
-  if (dest) dest.textContent = obra ? (/^Po/i.test(obra) ? 'Vai para a pasta do pós-obra: PÓS OBRA › PO_OBRAS › ano › obra › GERENCIAMENTO › ATA.' : 'Vai para a pasta da obra: OPERACOES › OBRAS › obra › GERENCIAMENTO › ATA.') : 'Sem obra: fica só no sistema (reunião do escritório ou de departamento).';
+  if (dest) dest.textContent = obra ? (/^Po/i.test(obra) ? 'Vai para a pasta do pós-obra: PÓS OBRA › PO_OBRAS › ano › obra › GERENCIAMENTO › ATA.' : 'Vai para a pasta da obra: OPERACOES › OBRAS › obra › GERENCIAMENTO › ATA.') : 'Sem obra: a ata fica só no sistema.';
   return nome;
 }
 
@@ -284,7 +284,7 @@ function formNova(obras) {
       <label>Data<input type="date" name="data" value="${r ? r.data : hoje}" required></label>
       <label>Tipo da reunião<select name="tipo_reuniao">${TIPOS_REUNIAO.map((x) => html`<option ${(r && r.tipoReuniao ? r.tipoReuniao : 'REUNIÃO') === x ? html.seguro('selected') : ''}>${x}</option>`)}</select></label>
       <label>Revisão<input name="revisao" type="number" value="0" readonly title="Ata nova é sempre R00; a revisão só muda quando a ata for editada"></label>
-      <label>Obra<select name="obra" required><option value="">— escolher —</option><option value="-">Escritório (sem obra)</option>${(r && r.obra && !obras.includes(r.obra) ? [...obras, r.obra] : obras).map((o) => html`<option value="${o}" ${r && r.obra === o ? html.seguro('selected') : ''}>${o}</option>`)}</select></label>
+      <label>Obra<select name="obra" required><option value="">— escolher —</option><option value="-">Nenhuma</option>${(r && r.obra && !obras.includes(r.obra) ? [...obras, r.obra] : obras).map((o) => html`<option value="${o}" ${r && r.obra === o ? html.seguro('selected') : ''}>${o}</option>`)}</select></label>
       <label>Departamento<select name="setor" required><option value="">— escolher —</option>${SETORES_ATA.map((s) => html`<option value="${s}" ${r && r.setor === s ? html.seguro('selected') : ''}>${s}</option>`)}</select></label>
     </div>
     <p class="at-nome-linha">Nome da ata: <b id="ata-nome">escolha a data</b> <span class="pequeno" id="ata-destino"></span></p>
