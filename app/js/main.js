@@ -1122,7 +1122,7 @@ function lerLinhaPendencia(l) {
   const tipo = l.querySelector('[name="p_tipo"]').value;
   return {
     kind: (l.querySelector('[name="p_kind"]') || {}).value || 'pendencia',
-    descricao: [l.querySelector('[name="p_assunto"]').value.trim().replace(/,/g, ' /'), l.querySelector('[name="p_desc"]').value.trim()].filter(Boolean).join(', '),
+    descricao: [l.querySelector('[name="p_assunto"]').value.trim().replace(/,/g, ' /').toLocaleUpperCase('pt-BR'), l.querySelector('[name="p_desc"]').value.trim()].filter(Boolean).join(', '),
     semAssunto: !!l.querySelector('[name="p_desc"]').value.trim() && !l.querySelector('[name="p_assunto"]').value.trim(),
     semDescritivo: !!l.querySelector('[name="p_assunto"]').value.trim() && !l.querySelector('[name="p_desc"]').value.trim(),
     responsavel: tipo === 'solida' ? l.querySelector('[name="p_resp"]').value : '',
@@ -1144,6 +1144,30 @@ document.addEventListener('change', (e) => {
   const nome = l.querySelector('.pf-ext'); nome.hidden = tipo === 'solida';
   nome.placeholder = tipo === 'cliente' ? 'Nome do cliente' : 'Nome ou empresa';
 });
+
+// círculo vermelho em tudo que ainda falta para conseguir salvar (formulário da ata e "acrescentar pendência")
+function marcarFaltas(f) {
+  if (!f) return;
+  const marca = (el, falta) => { if (el) el.classList.toggle('falta', !!falta); };
+  const vazio = (el) => !el || !String(el.value || '').trim();
+  if (f.id === 'ata-form') for (const n of ['data', 'obra', 'setor', 'local', 'participantes']) marca(f.elements[n], vazio(f.elements[n]));
+  const unica = f.id === 'pend-form';
+  for (const l of f.querySelectorAll('.pf-linha')) {
+    const q = (s) => l.querySelector(s); const v = (s) => (q(s) ? String(q(s).value || '').trim() : '');
+    const tipo = v('[name="p_tipo"]'); const info = v('[name="p_kind"]') === 'informativo';
+    const ativa = unica || ['[name="p_assunto"]', '[name="p_desc"]', '[name="p_prazo"]', '[name="p_resp"]', '[name="p_cat"]', '[name="p_nome"]'].some((s) => v(s));
+    marca(q('[name="p_assunto"]'), ativa && !v('[name="p_assunto"]'));
+    marca(q('[name="p_desc"]'), ativa && !v('[name="p_desc"]'));
+    marca(q('[name="p_prazo"]'), ativa && !info && !v('[name="p_prazo"]'));
+    marca(q('[name="p_resp"]'), ativa && tipo === 'solida' && !v('[name="p_resp"]'));
+    const semTerc = ativa && tipo === 'terceirizado' && !v('[name="p_cat"]') && !v('[name="p_nome"]');
+    marca(q('[name="p_cat"]'), semTerc); marca(q('[name="p_nome"]'), semTerc);
+    if (tipo !== 'terceirizado') marca(q('[name="p_nome"]'), false);
+  }
+}
+const marcarTudo = () => { marcarFaltas(document.getElementById('ata-form')); marcarFaltas(document.getElementById('pend-form')); };
+['input', 'change', 'click'].forEach((ev) => document.addEventListener(ev, (e) => { if (e.target.closest && e.target.closest('#ata-form, #pend-form')) setTimeout(marcarTudo, 0); }));
+new MutationObserver(() => marcarTudo()).observe(document.body, { childList: true, subtree: true });
 
 // nome padrão da ata: atualiza ao mexer na obra/departamento, data, tipo ou revisão
 document.addEventListener('change', (e) => {

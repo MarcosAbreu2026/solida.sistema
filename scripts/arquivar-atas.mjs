@@ -66,7 +66,7 @@ function pastaDaAta(drive, obra) {
 
 // ---------------------------------------------------------------- PDF
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const neg = (t) => { const s = String(t ?? ''); const i = s.indexOf(','); return i > 0 && i < 60 ? `<b>${esc(s.slice(0, i))}</b>${esc(s.slice(i))}` : esc(s); };
+const neg = (t) => { const s = String(t ?? ''); const i = s.indexOf(','); return i > 0 && i < 60 ? `<b>${esc(s.slice(0, i).toLocaleUpperCase('pt-BR'))}</b>${esc(s.slice(i))}` : esc(s); };
 const dbr = (iso) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : '');
 const ROT = { terceirizado: 'Terceirizado', cliente: 'Cliente', arquitetura: 'Arquitetura', outro: 'Externo' };
 function htmlDaAta(a, pends) {

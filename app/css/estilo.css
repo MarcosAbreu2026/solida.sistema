@@ -1553,3 +1553,9 @@ table.ordenavel th.ord-desc::after { content: ' ▼'; font-size: 9px; }
   .pf-linha { grid-template-columns: 92px 170px minmax(150px, 1fr) 98px 124px 124px 128px 22px; }
   #pend-form .pf-linha { grid-template-columns: 170px minmax(150px, 1fr) 98px 124px 124px 128px 22px; }
 }
+
+/* o que ainda precisa ser preenchido para salvar a ata fica com o círculo vermelho */
+.falta { border-color: #D9534F !important; box-shadow: 0 0 0 2px rgba(217, 83, 79, .45) !important; border-radius: 10px; }
+
+.pf-linha .pf-assunto { text-transform: uppercase; }
+.pf-linha .pf-assunto::placeholder { text-transform: none; }
