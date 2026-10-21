@@ -14,6 +14,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 
+// sem internet (ou nuvem fora do ar) não é erro do sistema: avisa curto no registro e tenta de novo no próximo ciclo
+process.on('uncaughtException', (e) => { console.log(`Atas: não consegui falar com a nuvem agora (${(e.cause && e.cause.code) || e.message}). Tento de novo no próximo ciclo.`); process.exit(1); });
 const raiz = join(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
 const opc = (n) => { const i = args.indexOf(n); return i >= 0 ? (args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : true) : null; };
