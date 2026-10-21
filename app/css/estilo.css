@@ -1514,3 +1514,13 @@ table.ordenavel th.ord-desc::after { content: ' ▼'; font-size: 9px; }
   #pend-form .pf-linha > [name="p_desc"] { grid-column: 2 / -1 !important; }
   .pf-linha { padding-bottom: 8px; border-bottom: 1px dashed var(--linha2); }
 }
+
+/* caixinha do assunto maior (mostra o exemplo inteiro), descritivo um pouco menor */
+.pf-linha { grid-template-columns: 92px 170px minmax(150px, 1fr) 98px 124px 124px 118px 20px; }
+#pend-form .pf-linha { grid-template-columns: 170px minmax(150px, 1fr) 98px 124px 124px 118px 20px; }
+@container (max-width: 1000px) {
+  .pf-linha { grid-template-columns: 92px 170px 1fr 1fr 130px 22px; }
+  .pf-linha > [name="p_desc"], .pf-linha[data-kind="informativo"] > [name="p_desc"] { grid-column: 3 / 6 !important; }
+  #pend-form .pf-linha { grid-template-columns: 170px 1fr 1fr 130px 22px; }
+  #pend-form .pf-linha > [name="p_desc"] { grid-column: 2 / 5 !important; }
+}
