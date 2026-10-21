@@ -1487,3 +1487,10 @@ table.ordenavel th.ord-desc::after { content: ' ▼'; font-size: 9px; }
 .at-infos li::marker { color: #1F6B3A; font-weight: 700; }
 
 .at-info-quem { color: var(--muted); }
+
+/* assunto e descritivo em duas caixinhas */
+.pf-linha { grid-template-columns: 112px 150px minmax(200px, 1fr) 116px 170px 170px 140px 24px; }
+#pend-form .pf-linha { grid-template-columns: 150px minmax(200px, 1fr) 116px 170px 170px 140px 24px; }
+.pf-linha .pf-assunto { font-weight: 700; }
+.pf-linha[data-kind="informativo"] > [name="p_desc"] { grid-column: auto; }
+@media (max-width: 900px) { .pf-linha, #pend-form .pf-linha { grid-template-columns: 1fr 1fr; } .pf-linha > :first-child { grid-column: auto; } .pf-linha .pf-assunto, .pf-linha [name="p_desc"] { grid-column: 1 / -1 !important; } }

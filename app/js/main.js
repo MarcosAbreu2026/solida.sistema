@@ -1077,6 +1077,7 @@ document.addEventListener('submit', async (e) => {
       const obraA = String(fd.get('obra') || '') === '-' ? '' : String(fd.get('obra') || ''); const setorA = String(fd.get('setor') || '');
       if (!setorA) { alert('Escolha o departamento da ata.'); f.setor.focus(); return; }
       const itens = [...f.querySelectorAll('.pf-linha')].map((l) => lerLinhaPendencia(l)).filter((p) => p.descricao);
+      if (itens.some((p) => p.semAssunto || p.semDescritivo)) { alert('Cada item precisa do assunto e do descritivo (as duas caixinhas).'); return; }
       const informativos = itens.filter((p) => p.kind === 'informativo');
       if (informativos.some((p) => (p.externoTipo === '' && !p.responsavel) || (p.externoTipo === 'terceirizado' && !p.externoCategoria && !p.externoNome))) { alert('Todo informativo precisa de quem informou: escolha a pessoa da Sólida, o terceirizado ou o cliente.'); return; }
       const pendencias = itens.filter((p) => p.kind !== 'informativo');
@@ -1093,6 +1094,7 @@ document.addEventListener('submit', async (e) => {
       estado.atasMsgHash = `#/atas?aba=atas&ata=${nova.id}`; location.hash = estado.atasMsgHash;
     } else {
       const p = lerLinhaPendencia(g.querySelector('.pf-linha'));
+      if (p.semAssunto || p.semDescritivo) { alert('A pendência precisa do assunto e do descritivo (as duas caixinhas).'); return; }
       if (p.descricao && !p.prazo) { alert('Toda pendência precisa de uma data limite.'); return; }
       if (!p.descricao || (p.externoTipo === '' && !p.responsavel) || (p.externoTipo === 'terceirizado' && !p.externoCategoria && !p.externoNome)) { alert('Escreva a pendência e escolha o responsável.'); return; }
       await atas.criarPendencia({ ata_id: Number(g.dataset.ata), ...p, obra: g.dataset.obra, setor: g.dataset.setor });
@@ -1120,7 +1122,9 @@ function lerLinhaPendencia(l) {
   const tipo = l.querySelector('[name="p_tipo"]').value;
   return {
     kind: (l.querySelector('[name="p_kind"]') || {}).value || 'pendencia',
-    descricao: l.querySelector('[name="p_desc"]').value.trim(),
+    descricao: [l.querySelector('[name="p_assunto"]').value.trim().replace(/,/g, ' /'), l.querySelector('[name="p_desc"]').value.trim()].filter(Boolean).join(', '),
+    semAssunto: !!l.querySelector('[name="p_desc"]').value.trim() && !l.querySelector('[name="p_assunto"]').value.trim(),
+    semDescritivo: !!l.querySelector('[name="p_assunto"]').value.trim() && !l.querySelector('[name="p_desc"]').value.trim(),
     responsavel: tipo === 'solida' ? l.querySelector('[name="p_resp"]').value : '',
     externoTipo: tipo === 'solida' ? '' : tipo,
     externoCategoria: tipo === 'terceirizado' ? l.querySelector('[name="p_cat"]').value : '',
@@ -1131,7 +1135,7 @@ function lerLinhaPendencia(l) {
 // trocar Sólida / Terceirizado / Cliente mostra os campos certos da mesma linha
 document.addEventListener('change', (e) => {
   const kind = e.target.closest && e.target.closest('[data-pf-kind]');
-  if (kind) { const l = kind.closest('.pf-linha'); l.dataset.kind = kind.value; l.querySelector('[name="p_desc"]').placeholder = kind.value === 'informativo' ? 'Assunto, informação (ex.: ACM, Fachada liberada)' : 'Assunto, o que fazer (ex.: ACM, Retirar da área gourmet)'; return; }
+  if (kind) { const l = kind.closest('.pf-linha'); l.dataset.kind = kind.value; l.querySelector('[name="p_desc"]').placeholder = kind.value === 'informativo' ? 'Informação (ex.: Fachada liberada)' : 'O que fazer (ex.: Retirar da área gourmet)'; return; }
   const sel = e.target.closest && e.target.closest('[data-pf-tipo]');
   if (!sel) return;
   const l = sel.closest('.pf-linha'); const tipo = sel.value; l.dataset.tipo = tipo;

@@ -150,6 +150,8 @@ const COLUNAS = [
 ];
 
 // padrão da Sólida: o assunto vem primeiro, em negrito, e depois da vírgula o que é ("ACM, Retirar da área gourmet")
+// a descrição é guardada como Assunto, o que fazer; no formulário são duas caixinhas
+export const dividirDescricao = (t) => { const s = String(t || ''); const i = s.indexOf(','); return i > 0 && i < 60 ? [s.slice(0, i).trim(), s.slice(i + 1).trim()] : ['', s]; };
 const descRica = (t) => { const s = String(t || ''); const i = s.indexOf(','); return i > 0 && i < 60 ? html`<b>${s.slice(0, i)}</b>${s.slice(i)}` : s; };
 const opcoesPessoas = (sel = '') => dados.pessoas.map((p) => html`<option value="${p.id}" ${p.id === sel ? html.seguro('selected') : ''}>${p.nome}</option>`);
 
@@ -169,7 +171,8 @@ export function linhaForm(v = {}) {
   const falta = !!v.descricao && tipo === 'solida' && !v.responsavel;
   const dica = v.responsavelAmbiguo ? `Há mais de um ${v.responsavelAmbiguo}: escolha quem` : v.externoNome && v.externoTipo === 'solida' ? `${v.externoNome} não tem login no sistema: escolha outra pessoa` : 'Escolha o responsável';
   const info = v.kind === 'informativo';
-  return String(html`<div class="pf-linha" data-tipo="${tipo}" data-kind="${info ? 'informativo' : 'pendencia'}"><select name="p_kind" data-pf-kind ${v.semKind ? html.seguro('hidden') : ''} title="Pendência vai para as pendências das pessoas; informativo só fica registrado na ata"><option value="pendencia" ${info ? '' : html.seguro('selected')}>Pendência</option><option value="informativo" ${info ? html.seguro('selected') : ''}>Informativo</option></select><input name="p_desc" placeholder="${info ? 'Assunto, informação (ex.: ACM, Fachada liberada)' : 'Assunto, o que fazer (ex.: ACM, Retirar da área gourmet)'}" autocomplete="off" value="${v.descricao || ''}" title="${v.descricao || ''}">
+  const [ass, resto] = dividirDescricao(v.descricao);
+  return String(html`<div class="pf-linha" data-tipo="${tipo}" data-kind="${info ? 'informativo' : 'pendencia'}"><select name="p_kind" data-pf-kind ${v.semKind ? html.seguro('hidden') : ''} title="Pendência vai para as pendências das pessoas; informativo só fica registrado na ata"><option value="pendencia" ${info ? '' : html.seguro('selected')}>Pendência</option><option value="informativo" ${info ? html.seguro('selected') : ''}>Informativo</option></select><input name="p_assunto" class="pf-assunto" placeholder="Assunto (ex.: ACM)" autocomplete="off" value="${ass}" title="Assunto: aparece em negrito"><input name="p_desc" placeholder="${info ? 'Informação (ex.: Fachada liberada)' : 'O que fazer (ex.: Retirar da área gourmet)'}" autocomplete="off" value="${resto}" title="${resto}">
     <select name="p_tipo" data-pf-tipo title="Quem é o responsável"><option value="solida" ${tipo === 'solida' ? html.seguro('selected') : ''}>Sólida</option><option value="terceirizado" ${tipo === 'terceirizado' ? html.seguro('selected') : ''}>Terceirizado</option><option value="cliente" ${tipo === 'cliente' ? html.seguro('selected') : ''}>Cliente</option></select>
     <select name="p_resp" class="pf-sol ${falta ? 'pf-falta' : ''}" title="${falta ? dica : ''}" ${tipo === 'solida' ? '' : html.seguro('hidden')}><option value="">Pessoa da Sólida…</option>${opcoesPessoas(v.responsavel || '')}</select>
     <select name="p_cat" class="pf-ter" ${tipo === 'terceirizado' ? '' : html.seguro('hidden')}><option value="">Tipo de serviço…</option>${CATEGORIAS_TERC.map((c) => html`<option ${categoria === c ? html.seguro('selected') : ''}>${c}</option>`)}</select>
