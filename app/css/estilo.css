@@ -1541,3 +1541,8 @@ table.ordenavel th.ord-desc::after { content: ' ▼'; font-size: 9px; }
   #pend-form .pf-linha { grid-template-columns: 170px 124px minmax(0, 1fr) 24px; }
   .pf-linha input[type="date"] { min-width: 0; width: 100%; }
 }
+
+/* Data / Tipo / Obra / Departamento: quebram em duas linhas quando falta espaço, sem sair do quadro */
+.at-form-grade { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.at-form-grade > * { min-width: 0; }
+.at-form-grade select, .at-form-grade input { width: 100%; min-width: 0; }
