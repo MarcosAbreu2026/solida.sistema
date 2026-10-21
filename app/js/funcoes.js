@@ -76,11 +76,13 @@ export const funcaoPorId = (id) => FUNCOES.find((f) => f.id === (ANTIGAS[id] || 
 // escolher outras na tela Acessos (guardado no banco, tabela funcao_abas) e isso passa a valer no lugar do padrão.
 export const SETORES = [['operacao', 'Operação'], ['posobra', 'Pós-obra'], ['transporte', 'Transporte e logística'], ['suprimentos', 'Suprimentos e compras'],
   ['planejamento', 'Planejamento'], ['projetos', 'Projetos'], ['comercial', 'Comercial e orçamentos'], ['financeiro', 'Financeiro'], ['rh', 'RH']];
-export const PAGINAS = [['meudia', 'Minha semana'], ['feed', 'Feed'], ['estoque', 'Estoque'], ['escritorio', 'Escritório virtual'], ['treinamentos', 'Treinamentos'], ['atas', 'Atas e pendências']];
+export const PAGINAS = [['meudia', 'Minha semana'], ['feed', 'Feed'], ['estoque', 'Estoque'], ['escritorio', 'Escritório virtual'], ['treinamentos', 'Treinamentos'], ['atas', 'Atas e pendências'], ['marketing', 'Marketing']];
+// páginas que, por padrão, só algumas funções veem (a diretoria pode mudar em Acessos): Marketing é de quem cuida da marca e da verba
+const PAGINAS_RESTRITAS = { marketing: ['socio', 'administrativo', 'financeiro'] };
 const IDS_SETORES = SETORES.map((s) => s[0]);
 for (const f of FUNCOES) f.areasPadrao = f.areas;   // para poder voltar ao padrão
 export function abasPadrao(f) {
-  return [...(f.areasPadrao || IDS_SETORES), ...PAGINAS.map((p) => p[0]).filter((id) => !(id === 'meudia' && f.semMinhaSemana))];
+  return [...(f.areasPadrao || IDS_SETORES), ...PAGINAS.map((p) => p[0]).filter((id) => !(id === 'meudia' && f.semMinhaSemana) && (!PAGINAS_RESTRITAS[id] || PAGINAS_RESTRITAS[id].includes(f.id)))];
 }
 export const abasDa = (f) => f.abas || abasPadrao(f);
 export const paginaVisivel = (f, id) => abasDa(f).includes(id);

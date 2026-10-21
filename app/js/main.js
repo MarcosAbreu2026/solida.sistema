@@ -15,7 +15,8 @@ import { definirPerfil } from './componentes.js';
 import { normalizar, criarTelas, pt } from './painel-empresa.js';
 import { sessao, funcaoAtual, veValores, entrar, sair, logado, idPessoa, podeVerArea, obrasDaPessoa,
   podeVerComo, simulando, verComo, funcaoReal } from './sessao.js';
-import { FUNCOES, funcaoPorId, veBlocoGeral, INDICADORES_SO_GESTAO, paginaVisivel, aplicarAbas, SETORES, PAGINAS } from './funcoes.js';
+import { FUNCOES, funcaoPorId, veBlocoGeral, INDICADORES_SO_GESTAO, paginaVisivel, aplicarAbas, abasPadrao } from './funcoes.js';
+import * as marketing from './telas/marketing.js';
 import * as login from './telas/login.js';
 import { marcarCheck, gravarLancamento, apagarLancamento, gravarManual, vincularDia, sincronizarTarefas, lerPessoasTarefas } from './armazenamento.js';
 import * as perfil from './telas/perfil.js';
@@ -188,6 +189,7 @@ function desenharNav(sel) {
     + '<div class="nav-sep"></div>'
     + (CFG ? CFG.areas.filter(podeVerArea).map((a) => item(a.id, a.nome, a.status)).join('') : '')
     + (paginaVisivel(f, 'estoque') ? item('estoque', 'Estoque') : '')
+    + (paginaVisivel(f, 'marketing') ? item('marketing', 'Marketing') : '')
     + '<div class="nav-sep"></div>'   // equipe: escritório virtual, treinamentos (e o que vier depois)
     + (paginaVisivel(f, 'escritorio') ? item('escritorio', 'Escritório virtual') : '')
     + (paginaVisivel(f, 'treinamentos') ? item('treinamentos', 'Treinamentos') : '')
@@ -341,12 +343,12 @@ function desenhar() {
   if (tela === 'agentes' && !f.veAgentes) tela = 'geral';
   if (tela === 'quadro' && !f.veQuadro) tela = 'meudia';
   if (tela === 'meudia' && f.semMinhaSemana) tela = 'geral';
-  if (['meudia', 'feed', 'estoque', 'escritorio', 'treinamentos', 'atas'].includes(tela) && !paginaVisivel(f, tela)) tela = 'geral';   // aba que a diretoria tirou desta função
+  if (['meudia', 'feed', 'estoque', 'escritorio', 'treinamentos', 'atas', 'marketing'].includes(tela) && !paginaVisivel(f, tela)) tela = 'geral';   // aba que a diretoria tirou desta função
 
   let area = CFG && CFG.areas.find((a) => a.id === tela);
   if (area && !podeVerArea(area)) { area = null; tela = 'geral'; }   // setor fora do perfil: nem existe
   const ehObraPlan = tela === 'planejamento' && rota.sub === 'obra';
-  const fixas = ['agentes', 'meudia', 'quadro', 'estoque', 'escritorio', 'perfil', 'feed', 'treinamentos', 'acessos', 'atas'];
+  const fixas = ['agentes', 'meudia', 'quadro', 'estoque', 'escritorio', 'perfil', 'feed', 'treinamentos', 'acessos', 'atas', 'marketing'];
   const sel = tela === 'funcionarios' ? 'rh' : (area || fixas.includes(tela)) ? tela : 'geral';
   desenharNav(sel);
   desenharPerfil();
@@ -357,7 +359,7 @@ function desenhar() {
   $('#data').textContent = d.charAt(0).toUpperCase() + d.slice(1);
   const titulo = ehObraPlan ? rota.arg
     : area ? area.nome
-    : ({ agentes: 'Agentes', funcionarios: 'Funcionários por obra', meudia: 'Minha semana', quadro: 'Quadro de funções', estoque: 'Estoque', escritorio: 'Escritório virtual', perfil: 'Perfil', feed: 'Feed', treinamentos: 'Treinamentos', acessos: 'Acessos', atas: 'Atas e pendências' }[tela] || 'Visão geral');
+    : ({ agentes: 'Agentes', funcionarios: 'Funcionários por obra', meudia: 'Minha semana', quadro: 'Quadro de funções', estoque: 'Estoque', escritorio: 'Escritório virtual', perfil: 'Perfil', feed: 'Feed', treinamentos: 'Treinamentos', acessos: 'Acessos', atas: 'Atas e pendências', marketing: 'Marketing' }[tela] || 'Visão geral');
   $('#titulo').textContent = titulo;
   document.title = `${titulo} · Sólida`;
 
@@ -388,6 +390,7 @@ function desenhar() {
     }
     return;
   }
+  if (tela === 'marketing') { $('#conteudo').innerHTML = `<div>${marketing.render()}</div>`; return; }
   if (tela === 'treinamentos') { $('#conteudo').innerHTML = `<div>${treinamentos.render({ todos: rota.params.get('todos') === '1', aberto: estado.treinAberto })}</div>`; return; }
   if (tela === 'perfil') {
     const eu = { chave: idPessoa(), nome: sessao().nome, funcao: funcaoAtual().id, obras: obrasDaPessoa() };
@@ -935,7 +938,7 @@ function configurar() {
     const gravar = {}; const apagar = [];
     for (const fn of FUNCOES.filter((x) => x.id !== 'socio')) {
       const marcadas = [...f.querySelectorAll(`input[name="aba:${fn.id}"]:checked`)].map((c) => c.value);
-      const padrao = [...(fn.areasPadrao || SETORES.map((s) => s[0])), ...PAGINAS.map((p) => p[0]).filter((id) => !(id === 'meudia' && fn.semMinhaSemana))];
+      const padrao = abasPadrao(fn);
       const igual = marcadas.length === padrao.length && marcadas.every((a) => padrao.includes(a));
       if (igual) apagar.push(fn.id); else gravar[fn.id] = marcadas;
     }
