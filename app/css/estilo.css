@@ -1897,3 +1897,8 @@ button.at-prazo:hover { filter: brightness(.96); box-shadow: 0 0 0 2px rgba(45, 
 .fs-tab .fs-sem { white-space: nowrap; font-weight: 600; }
 .fs-tab .fs-nota { color: var(--texto2, #5b6470); max-width: 520px; }
 .fs-tab .fc-b { display: inline-block; vertical-align: -1px; margin-right: 4px; }
+
+/* ---- data da última leitura da área (RH: efetivo) ---- */
+.leitura { margin: 0 0 14px; padding: 8px 12px; border-radius: 8px; font-size: 13px; border: 1px solid var(--linha2); }
+.leitura-ok { background: rgba(78,138,98,.10); border-color: #4E8A62; }
+.leitura-velha { background: rgba(217,83,79,.10); border-color: #D9534F; color: #A02E2A; }

@@ -135,7 +135,21 @@ ${pg.dias && pg.dias.length ? `<div class="dias">${pg.dias.map((d) => `<div><b>$
     const F = CFG.funcionarios || [];
     // Felipe: todas as funções veem onde está cada funcionário (no Solida.exe era só sócio)
     const rh = a.id === 'rh' ?`<a class="acesso" href="#/funcionarios"><div><h3>Funcionários por obra</h3><div class="pequeno" style="margin-top:6px">${F.length ? `${F.length} pessoas, ${F.filter((p) => p.situacao === 'presente').length} em obra no último registro` : 'A lista aparece depois da primeira leitura do RH.'}</div></div><span class="btn-ir">Abrir lista${CHEV}</span></a>` : '';
+    // data da última leitura da fonte principal da área (no RH: o efetivo do WhatsApp). Se não for de hoje, avisa em vermelho.
+    const leitura = (() => {
+      const fs = (a.fontes || []).filter((f) => a.id !== 'rh' || /whatsapp/i.test(f.nome));
+      const datas = fs.map((f) => String(f.ultima || '').match(/(\d{2})\/(\d{2})(?:[,\s]+(\d{2}:\d{2}))?/)).filter(Boolean)
+        .map((m) => ({ txt: m[0], dia: Number(m[1]), mes: Number(m[2]) }));
+      if (!datas.length) return '';
+      const mais = datas.sort((x, y) => (y.mes * 100 + y.dia) - (x.mes * 100 + x.dia))[0];
+      const hj = new Date();
+      const hoje = mais.dia === hj.getDate() && mais.mes === hj.getMonth() + 1;
+      const dias = Math.round((new Date(hj.getFullYear(), hj.getMonth(), hj.getDate()) - new Date(hj.getFullYear(), mais.mes - 1, mais.dia)) / 86400000);
+      const rotulo = a.id === 'rh' ? 'Última leitura do efetivo' : 'Última leitura dos dados';
+      return `<p class="leitura ${hoje ? 'leitura-ok' : 'leitura-velha'}"><b>${rotulo}:</b> ${esc(mais.txt)}${hoje ? ' (de hoje)' : ` · ${dias} ${dias === 1 ? 'dia' : 'dias'} atrás: os números abaixo NÃO são de hoje`}</p>`;
+    })();
     return `<div>${extraTopo}
+${leitura}
 ${o.semEstado ? '' : `<div class="estado">${pt(a.status)}<span>${LBL[a.status] || ''}</span></div><p class="resumo">${esc(a.resumo)}</p>`}
 ${rh ? `<div class="secao" style="margin-top:34px">${rh}</div>` : ''}
 <section class="secao"><h2>Indicadores</h2><div class="kgrid">${ks.map(met).join('')}</div>${oc ? `<p class="pequeno" style="margin-top:12px">${oc} ${oc > 1 ? 'indicadores visíveis' : 'indicador visível'} só para sócios.</p>` : ''}</section>
