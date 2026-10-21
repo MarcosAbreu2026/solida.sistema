@@ -447,7 +447,7 @@ function desenhar() {
         const depois = `${produtividade.alertasMetas(CFG, visiveis)}${terceiros.render(CFG, estado.terceiros, visiveis)}${tabela}<div style="margin-top:34px">${ob.cards}</div>`;
         // obra aberta: só ela (com o link para voltar)
         if (ob.aberta) out = `<div>${ob.painel}</div>`;
-        else out = deObra ? `<div>${depois}</div>` : T.telaArea(area, '', { semEstado: true, semAlertas: true, depoisIndicadores: depois });
+        else out = `<div class="atalho-metas"><a class="botao on" href="#/operacao/metas">Análise das metas da semana</a> <span class="pequeno">o que está dentro da meta, o que não está e o que fazer, obra por obra</span></div>${deObra ? `<div>${depois}</div>` : T.telaArea(area, '', { semEstado: true, semAlertas: true, depoisIndicadores: depois })}`;
       }
     }
     else if (area && area.id === 'transporte') {

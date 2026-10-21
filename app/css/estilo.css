@@ -1692,3 +1692,5 @@ button.at-prazo:hover { filter: brightness(.96); box-shadow: 0 0 0 2px rgba(45, 
 .at-avulsa .av-quem { grid-column: span 1; }
 
 .pf-linha[data-tipo="arquitetura"] .pf-ext { grid-column: span 2; }
+
+.atalho-metas { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0 0 16px; }
