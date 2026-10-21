@@ -240,12 +240,18 @@ function obrasDeAcesso() {
 // Menu lateral recolhível (21/10): ao abrir uma aba o menu recolhe e fica só uma tirinha com a setinha, para dar mais espaço à página.
 // Clicar na setinha abre de novo. Só em tela larga (no celular o menu já é uma faixa no alto).
 const recolhido = () => document.body.classList.contains('nav-recolhido');
-const botaoRecolher = () => `<button type="button" class="nav-toggle" id="navToggle" title="${recolhido() ? 'Abrir o menu' : 'Recolher o menu'}" aria-label="${recolhido() ? 'Abrir o menu' : 'Recolher o menu'}">${recolhido() ? '›' : '‹'}</button>`;
+const botaoRecolher = () => '';   // a setinha é um botão grande fixo no meio da lateral (criado em ajustarMenuRecolhivel)
 function ajustarMenuRecolhivel() {
-  $('#nav').addEventListener('click', (e) => {
-    if (e.target.closest('#navToggle')) { document.body.classList.toggle('nav-recolhido'); const b = $('#navToggle'); if (b) { b.textContent = recolhido() ? '›' : '‹'; b.title = recolhido() ? 'Abrir o menu' : 'Recolher o menu'; } return; }
-    if (e.target.closest('a.nav-item, a.nav-perfil')) { document.body.classList.add('nav-recolhido'); const b = $('#navToggle'); if (b) { b.textContent = '›'; b.title = 'Abrir o menu'; } }
-  });
+  const b = document.createElement('button'); b.type = 'button'; b.id = 'navToggle'; b.className = 'nav-handle';
+  document.body.appendChild(b);
+  const pintar = () => {
+    const r = recolhido();
+    b.dataset.estado = r ? 'fechado' : 'aberto'; b.title = r ? 'Abrir o menu' : 'Recolher o menu'; b.setAttribute('aria-label', b.title);
+    b.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  };
+  b.addEventListener('click', () => { document.body.classList.toggle('nav-recolhido'); pintar(); });
+  $('#nav').addEventListener('click', (e) => { if (e.target.closest('a.nav-item, a.nav-perfil')) { document.body.classList.add('nav-recolhido'); pintar(); } });
+  pintar();
 }
 
 function desenharNav(sel) {

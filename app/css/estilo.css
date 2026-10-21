@@ -1965,3 +1965,21 @@ nav { position: relative; transition: width .18s ease; }
   body.nav-recolhido .fh-cel .fn-meta { font-size: 12.5px; }
   body.nav-recolhido .fh-cel .fn-b { font-size: 14px; padding: 5px 12px; }
 }
+
+/* ---- setinha grande do menu lateral (no meio da borda, sempre visível) ---- */
+.nav-toggle { display: none !important; }
+.nav-handle {
+  position: fixed; top: 50%; left: 262px; transform: translateY(-50%); z-index: 60;
+  width: 30px; height: 84px; padding: 0; border: 2px solid var(--bronze, #A07D4F); border-radius: 16px;
+  background: linear-gradient(180deg, #24374D, var(--verde, #1B2B3C)); color: #E8D2AE; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .28), inset 0 1px 0 rgba(255, 255, 255, .12);
+  transition: left .18s ease, width .15s ease, background .15s ease, color .15s ease;
+}
+.nav-handle:hover { width: 36px; color: #fff; background: linear-gradient(180deg, #2E4562, #22344A); }
+.nav-handle:focus-visible { outline: 3px solid rgba(160, 125, 79, .55); outline-offset: 2px; }
+.nav-handle svg { transition: transform .18s ease; }
+.nav-handle[data-estado="fechado"] svg { transform: rotate(180deg); }
+body.nav-recolhido .nav-handle { left: 26px; }
+body.sem-login .nav-handle { display: none; }
+@media (max-width: 760px) { .nav-handle { display: none; } }
