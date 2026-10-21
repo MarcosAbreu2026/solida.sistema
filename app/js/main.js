@@ -1075,17 +1075,20 @@ document.addEventListener('submit', async (e) => {
     if (f) {
       const fd = new FormData(f);
       const obraA = String(fd.get('obra') || '') === '-' ? '' : String(fd.get('obra') || ''); const setorA = String(fd.get('setor') || '');
-      const pendencias = [...f.querySelectorAll('.pf-linha')].map((l) => lerLinhaPendencia(l)).filter((p) => p.descricao);
+      if (!setorA) { alert('Escolha o departamento da ata.'); f.setor.focus(); return; }
+      const itens = [...f.querySelectorAll('.pf-linha')].map((l) => lerLinhaPendencia(l)).filter((p) => p.descricao);
+      const informativos = itens.filter((p) => p.kind === 'informativo').map((p) => p.descricao);
+      const pendencias = itens.filter((p) => p.kind !== 'informativo');
       if (pendencias.some((p) => !p.prazo)) {
-        const l = [...f.querySelectorAll('.pf-linha')].find((x) => lerLinhaPendencia(x).descricao && !lerLinhaPendencia(x).prazo);
+        const l = [...f.querySelectorAll('.pf-linha')].find((x) => { const q = lerLinhaPendencia(x); return q.kind !== 'informativo' && q.descricao && !q.prazo; });
         const campo = l && l.querySelector('[name="p_prazo"]'); if (campo) { campo.focus(); campo.style.outline = '2px solid #c0392b'; }
         alert('Toda pendência precisa de uma data limite. Preencha o prazo das linhas marcadas para salvar a ata.'); return;
       }
       if (pendencias.some((p) => p.externoTipo === '' && !p.responsavel)) { alert('Toda pendência precisa de um responsável: escolha a pessoa da Sólida.'); return; }
       if (pendencias.some((p) => p.externoTipo === 'terceirizado' && !p.externoCategoria && !p.externoNome)) { alert('Pendência de terceirizado: escolha o tipo de serviço ou escreva o nome da empresa.'); return; }
       const nome = atas.atualizarNomeDoForm(f); if (!nome) { alert('Escolha a data: o nome da ata sai dela.'); return; }
-      const nova = await atas.criarAta({ titulo: nome, tipoReuniao: fd.get('tipo_reuniao'), revisao: fd.get('revisao'), local: String(fd.get('local') || '').trim(), data: fd.get('data'), tipo: obraA ? 'obra' : 'departamento', obra: obraA, setor: setorA, participantes: String(fd.get('participantes') || '').split(/[,;]/).map((x) => x.trim()).filter(Boolean), resumo: String(fd.get('resumo') || ''), pendencias });
-      estado.atasMsg = `Ata salva${pendencias.length ? ` com ${pendencias.length} ${pendencias.length === 1 ? 'pendência' : 'pendências'}` : ''}.`;
+      const nova = await atas.criarAta({ titulo: nome, tipoReuniao: fd.get('tipo_reuniao'), revisao: fd.get('revisao'), local: String(fd.get('local') || '').trim(), data: fd.get('data'), tipo: obraA ? 'obra' : 'departamento', obra: obraA, setor: setorA, participantes: String(fd.get('participantes') || '').split(/[,;]/).map((x) => x.trim()).filter(Boolean), resumo: String(fd.get('resumo') || ''), pendencias, informativos });
+      estado.atasMsg = `Ata salva${pendencias.length ? ` com ${pendencias.length} ${pendencias.length === 1 ? 'pendência' : 'pendências'}` : ''}${informativos.length ? `${pendencias.length ? ' e' : ' com'} ${informativos.length} ${informativos.length === 1 ? 'informativo' : 'informativos'}` : ''}.`;
       estado.atasMsgHash = `#/atas?aba=atas&ata=${nova.id}`; location.hash = estado.atasMsgHash;
     } else {
       const p = lerLinhaPendencia(g.querySelector('.pf-linha'));
@@ -1115,6 +1118,7 @@ document.addEventListener('click', (e) => {
 function lerLinhaPendencia(l) {
   const tipo = l.querySelector('[name="p_tipo"]').value;
   return {
+    kind: (l.querySelector('[name="p_kind"]') || {}).value || 'pendencia',
     descricao: l.querySelector('[name="p_desc"]').value.trim(),
     responsavel: tipo === 'solida' ? l.querySelector('[name="p_resp"]').value : '',
     externoTipo: tipo === 'solida' ? '' : tipo,
@@ -1125,6 +1129,8 @@ function lerLinhaPendencia(l) {
 }
 // trocar Sólida / Terceirizado / Cliente mostra os campos certos da mesma linha
 document.addEventListener('change', (e) => {
+  const kind = e.target.closest && e.target.closest('[data-pf-kind]');
+  if (kind) { const l = kind.closest('.pf-linha'); l.dataset.kind = kind.value; l.querySelector('[name="p_desc"]').placeholder = kind.value === 'informativo' ? 'Informação a registrar' : 'O que precisa ser feito'; return; }
   const sel = e.target.closest && e.target.closest('[data-pf-tipo]');
   if (!sel) return;
   const l = sel.closest('.pf-linha'); const tipo = sel.value; l.dataset.tipo = tipo;

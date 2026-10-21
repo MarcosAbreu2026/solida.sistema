@@ -1471,3 +1471,12 @@ table.ordenavel th.ord-desc::after { content: ' ▼'; font-size: 9px; }
 .at-nome-linha { margin: 0; font-size: 13px; } .at-nome-linha b { font-family: ui-monospace, Consolas, monospace; font-size: 13px; background: var(--calcario); padding: 2px 8px; border-radius: 6px; }
 .at-drive.ok { color: #2F6B43; } .at-drive.erro { color: #9B3A33; }
 .at-form-grade { grid-template-columns: 1fr 1.4fr .6fr 2fr; }
+
+/* ata: cada linha pode ser Pendência ou Informativo (como na ata da Sólida) */
+.pf-linha { grid-template-columns: 112px minmax(240px, 1fr) 116px 170px 170px 140px 24px; }
+#pend-form .pf-linha { grid-template-columns: minmax(240px, 1fr) 116px 170px 170px 140px 24px; }
+.pf-linha[data-kind="informativo"] > :is([name="p_tipo"], .pf-sol, .pf-ter, .pf-ext, [name="p_prazo"]) { display: none !important; }
+.pf-linha[data-kind="informativo"] > [name="p_desc"] { grid-column: 2 / 7; }
+.pf-linha[data-kind="informativo"] > [name="p_kind"] { background: #EEF3F8; }
+.at-infos { margin: 4px 0 14px; padding-left: 22px; } .at-infos li { margin: 3px 0; }
+@media (max-width: 900px) { .pf-linha[data-kind="informativo"] > [name="p_desc"] { grid-column: 1 / -1; } }

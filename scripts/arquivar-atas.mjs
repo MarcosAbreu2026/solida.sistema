@@ -71,6 +71,7 @@ const ROT = { terceirizado: 'Terceirizado', cliente: 'Cliente', arquitetura: 'Ar
 function htmlDaAta(a, pends) {
   const logo = existsSync(join(raiz, 'app', 'img', 'logo.png')) ? `data:image/png;base64,${readFileSync(join(raiz, 'app', 'img', 'logo.png')).toString('base64')}` : '';
   const quem = (p) => `${esc(p.responsavel_nome || '—')}${p.responsavel_tipo && p.responsavel_tipo !== 'solida' ? ` <small>(${esc(ROT[p.responsavel_tipo] || 'Externo')}${p.responsavel_categoria ? ` · ${esc(p.responsavel_categoria)}` : ''})</small>` : ' <small>(Sólida)</small>'}`;
+  const infos = (a.informativos || []).map((t, i) => `<tr><td class="c">${pends.length + i + 1}</td><td class="c">INFORMATIVO</td><td>${esc(t)}</td><td class="c">—</td><td class="c">—</td></tr>`).join('');
   const linhas = pends.map((p, i) => `<tr><td class="c">${i + 1}</td><td class="c">PENDÊNCIA</td><td>${esc(p.descricao)}</td><td>${quem(p)}</td><td class="c">${p.prazo ? dbr(p.prazo).slice(0, 5) + (p.prazo.slice(0, 4) !== a.data.slice(0, 4) ? `/${p.prazo.slice(0, 4)}` : '') : ''}</td></tr>`).join('');
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${esc(a.titulo)}</title><style>
 @page { size: A4; margin: 14mm 14mm 16mm; }
@@ -93,7 +94,7 @@ small { color: #555; } tr { break-inside: avoid; }
 <div class="meta">${a.local || a.horario ? `<p><b>LOCAL:</b> ${esc([a.local, a.horario].filter(Boolean).join(' - '))}</p>` : ''}
 ${a.participantes && a.participantes.length ? `<p><b>PARTICIPANTES:</b> ${esc(a.participantes.join(', '))}</p>` : ''}</div>
 ${a.resumo ? `<h2>Resumo e informativos</h2><div class="texto">${esc(a.resumo)}</div>` : ''}
-${pends.length ? `<h2>Pendências</h2><table><thead><tr><th>ITEM</th><th>TIPO</th><th>DESCRIÇÃO</th><th>RESPONSÁVEL</th><th>DATA LIMITE</th></tr></thead><tbody>${linhas}</tbody></table>` : ''}
+${pends.length || infos ? `<h2>Itens da ata</h2><table><thead><tr><th>ITEM</th><th>TIPO</th><th>DESCRIÇÃO</th><th>RESPONSÁVEL</th><th>DATA LIMITE</th></tr></thead><tbody>${linhas}${infos}</tbody></table>` : ''}
 <p class="rodape">Ata registrada no Sistema Sólida${a.criado_por_nome ? ` por ${esc(a.criado_por_nome)}` : ''} em ${dbr(String(a.criado_em || '').slice(0, 10))}.</p>
 </body></html>`;
 }

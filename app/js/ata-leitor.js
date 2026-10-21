@@ -225,9 +225,9 @@ export function analisarAta(texto, { pessoas = [], obras = [], setores = [], hoj
       if (r.extras.length) descricao += ` (também: ${r.extras.map(capitalizar).join(', ')})`;
       return { descricao, responsavel: r.responsavel, responsavelAmbiguo: r.ambiguo, externoNome: r.externoNome, externoTipo: r.externoTipo, externoCategoria: r.externoCategoria, prazo: x.prazo ? acharPrazo(x.prazo, hoje, data) : '', item: x.n };
     });
-    const resumo = [local, participantes.length ? `Participantes: ${participantes.join(', ')}` : '', infos.length ? `\nInformativos:\n${infos.map((x) => `${x.n}. ${x.descricao}${x.responsavel ? ` (${capitalizar(x.responsavel)})` : ''}`).join('\n')}` : '',
-      `\nPendências:\n${pend.map((x) => `${x.n}. ${x.descricao}${x.responsavel ? ` — ${capitalizar(x.responsavel)}` : ''}${x.prazo ? ` — até ${x.prazo}` : ''}`).join('\n')}`].filter(Boolean).join('\n');
-    return { titulo, data, obra, obraForaDaLista: !!obra && !obras.some((o) => o.toLowerCase() === obra.toLowerCase()), setor, participantes, resumo, pendencias, lidoDaTabela: true, informativos: infos.length, local, horario, tipoReuniao };
+    const informativosLista = infos.filter((x) => x.descricao).map((x) => ({ kind: 'informativo', descricao: x.descricao.charAt(0).toUpperCase() + x.descricao.slice(1), item: x.n }));
+    pendencias.forEach((p) => { p.kind = 'pendencia'; });
+    return { titulo, data, obra, obraForaDaLista: !!obra && !obras.some((o) => o.toLowerCase() === obra.toLowerCase()), setor, participantes, resumo: '', pendencias, informativosLista, lidoDaTabela: true, informativos: infos.length, local, horario, tipoReuniao };
   }
 
   // 2) texto corrido: acha as linhas que parecem ação
