@@ -6,12 +6,12 @@
 // com as regras de quem vê no próprio banco); no computador do escritório ficam só neste navegador (teste).
 
 import { html, data as fmtData } from '../formato.js';
-import { hojeISO, somarDias, inicioDaSemana, diasEntre } from '../datas.js';
-import { NA_NUVEM, perfilAtual, listarAtasPendencias, criarAtaNuvem, criarPendenciaNuvem, atualizarPendenciaNuvem, atualizarAtaNuvem, apagarPendenciaNuvem, apagarAtaNuvem } from '../nuvem.js';
+import { hojeISO, somarDias, inicioDaSemana, diasEntre, ehData } from '../datas.js';
+import { NA_NUVEM, perfilAtual, listarAtasPendencias, criarAtaNuvem, criarPendenciaNuvem, criarPendenciasNuvemLote, atualizarPendenciaNuvem, atualizarAtaNuvem, apagarPendenciaNuvem, apagarAtaNuvem } from '../nuvem.js';
 import { SETORES } from '../funcoes.js';
 import { sessao, idPessoa, funcaoReal, funcaoAtual } from '../sessao.js';
 import { lerPessoasTarefas } from '../armazenamento.js';
-import { analisarAta, lerArquivoAta } from '../ata-leitor.js';
+import { analisarAta, lerArquivoAta, acharResponsavel } from '../ata-leitor.js';
 import { analisarReuniao, analisarFala, pareceResumoEmTopicos } from '../fala-leitor.js';
 import { suportado as gravadorSuportado, textoAtual as transcricaoAtual } from '../gravador.js';
 
@@ -81,6 +81,7 @@ const nomeDe = (id, reserva) => ((dados.pessoas.find((p) => p.id === id) || {}).
 // O nome ganha o próximo Rnn e o PDF novo vai para o Drive (o PDF da revisão anterior continua lá).
 const mapaInfo = (p) => ({ n: p.item || null, texto: p.descricao, quem: p.responsavel ? nomeDe(p.responsavel) : (p.externoNome || p.externoCategoria || (p.externoTipo === 'cliente' ? 'Cliente' : p.externoTipo === 'arquitetura' ? 'Arquitetura' : '')), tipo: p.responsavel ? 'solida' : (p.externoTipo || 'terceirizado'), categoria: p.responsavel ? null : (p.externoCategoria || null) });
 const camposPend = (p) => ({ item: p.item || null, descricao: p.descricao, responsavel: p.responsavel || null, responsavel_nome: p.responsavel ? nomeDe(p.responsavel) : (p.externoNome || p.externoCategoria || (p.externoTipo === 'cliente' ? 'Cliente' : p.externoTipo === 'arquitetura' ? 'Arquitetura' : null)), responsavel_tipo: p.responsavel ? 'solida' : (p.externoTipo || 'terceirizado'), responsavel_categoria: p.responsavel ? null : (p.externoCategoria || null), prazo: p.prazo || null });
+export const todasPendencias = () => dados.pendencias;
 export const ataPorId = (id) => dados.atas.find((x) => String(x.id) === String(id));
 // a ata salva, na forma que o formulário entende (para editar)
 export function ataComoRascunho(a) {
@@ -144,6 +145,30 @@ export function pautaTexto(a) {
   out.push('Assuntos novos:', '- ');
   return out.join('\n');
 }
+// ---------------------------------------------------------------- serviços da planilha do pós-obra → pendências
+// Uma lista só: os serviços (OS) abertos da planilha viram pendências do setor Pós-obra (uma vez; depois a pendência é do sistema).
+// A origem ("os:OS-001") impede trazer o mesmo serviço duas vezes.
+const ASSUNTO_OBRA = (nome) => String(nome || '').replace(/^\s*(?:PO|MO)\d*\s*[-–]\s*/i, '').replace(/,/g, ' ').trim().toLocaleUpperCase('pt-BR').slice(0, 40) || 'PÓS-OBRA';
+export function servicosParaTrazer(servicos) {
+  const ja = new Set(dados.pendencias.map((p) => p.origem).filter(Boolean));
+  return (servicos || []).filter((s) => s.aberta && s.os && !ja.has(`os:${s.os}`));
+}
+export async function trazerServicos(servicos) {
+  const lista = servicosParaTrazer(servicos).map((s) => {
+    const quem = acharResponsavel(String(s.profissionais || ''), dados.pessoas);
+    const nome = String(s.profissionais || '').split(/[,;/]|\se\s/)[0].trim();
+    const relato = String(s.relato || '').trim() || `Serviço ${s.os} (${s.situacao || 'sem situação'})`;
+    return { origem: `os:${s.os}`, ata_id: null, descricao: `${ASSUNTO_OBRA(s.obra)}, ${cap1(relato.length > 220 ? `${relato.slice(0, 220).replace(/\s+\S*$/, '')}…` : relato)}`,
+      responsavel: quem && quem.id ? quem.id : null, responsavel_nome: quem && quem.id ? quem.nome : (nome || null), responsavel_tipo: 'solida', responsavel_categoria: null,
+      prazo: ehData(s.prazo) ? s.prazo : null, status: 'aberta', obra: s.obra, setor: 'Pós-obra' };
+  });
+  if (!lista.length) return 0;
+  if (NA_NUVEM) await criarPendenciasNuvemLote(lista);
+  else { const l = lerLocal(); for (const p of lista) l.pendencias.push({ id: l.seq++, ...p, criado_por: idPessoa(), criado_em: new Date().toISOString(), concluida_em: null }); gravarLocal(l); }
+  await carregar();
+  return lista.length;
+}
+const cap1 = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 // ---------------------------------------------------------------- nome padrão da ata
 // Obra (ou pós-obra) _ aaaa.mm.dd _ ATA _ tipo _ Rnn   ex.: Mo344_2026.07.10_ATA_ARQUITETURA-CLIENTE_R00
 // Salva no Drive, na pasta da obra: GERENCIAMENTO\ATA (obra) ou PÓS OBRA\PO_OBRAS\<ano>\Po_NNN\GERENCIAMENTO\ATA (pós-obra).

@@ -1739,3 +1739,23 @@ button.at-prazo:hover { filter: brightness(.96); box-shadow: 0 0 0 2px rgba(45, 
 .ap-chip button { border: 0; background: none; cursor: pointer; color: #6B7580; font-size: 14px; line-height: 1; padding: 0; }
 .ap-plan { font-size: 11px; color: #8A939D; line-height: 1.25; overflow-wrap: anywhere; }
 @media (max-width: 900px) { .ap-corpo { flex-direction: column; } .ap-func { position: static; flex: none; width: 100%; max-height: none; flex-direction: row; flex-wrap: wrap; } }
+
+/* Pós-obra: página de uma obra, simples */
+.po-nome { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 4px 0 2px; color: #14283C; }
+.po-meta { margin: 0 0 12px; }
+.po-obra h3 { margin: 22px 0 8px; font-size: 16px; color: #14283C; } .po-obra h3 .pequeno { font-weight: 400; margin-left: 8px; }
+.po-etapas { list-style: none; display: flex; gap: 0; margin: 0; padding: 0; flex-wrap: wrap; }
+.po-etapas li { display: flex; align-items: center; gap: 6px; padding: 8px 14px 8px 10px; background: #F3F5F7; border: 1px solid #C9D0D8; margin-right: -1px; font-size: 13px; color: #6B7580; }
+.po-etapas li span { width: 20px; height: 20px; border-radius: 50%; background: #C9D0D8; color: #fff; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+.po-etapas li.feita { background: #E3ECE5; color: #1E4D2B; } .po-etapas li.feita span { background: #4F7D5C; }
+.po-etapas li.atual { background: #1F3A56; color: #fff; font-weight: 700; } .po-etapas li.atual span { background: #fff; color: #1F3A56; }
+.po-etapas li.atrasada { background: #9B3A33; } .po-etapas li small { font-weight: 400; opacity: .9; }
+.po-lista { display: flex; flex-direction: column; gap: 8px; }
+.po-item { background: #fff; border: 1px solid var(--linha2); border-left: 4px solid #8C98A6; border-radius: 4px; padding: 9px 12px; }
+.po-relato { margin: 3px 0 5px; overflow-wrap: anywhere; } .po-linha-peq { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); align-items: center; }
+.po-feito { opacity: .8; border-left-color: #4F7D5C; } .po-feitas summary { cursor: pointer; font-weight: 700; margin: 14px 0 8px; }
+.po-semana { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+.po-dia { background: #fff; border: 1px solid var(--linha2); border-radius: 4px; padding: 6px 8px; min-height: 64px; display: flex; flex-direction: column; gap: 3px; }
+.po-dia b { font-size: 12.5px; } .po-dia small { font-weight: 400; color: var(--muted); }
+.po-completo { margin-top: 22px; }
+@media (max-width: 900px) { .po-semana { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

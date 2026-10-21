@@ -1,6 +1,6 @@
-// Agenda semanal do pós-obra feita no sistema: quem vai para qual obra em qual dia (cartões de funcionários arrastados para a semana).
+﻿// Agenda semanal do pós-obra feita no sistema: quem vai para qual obra em qual dia (cartões de funcionários arrastados para a semana).
 // Na nuvem fica na tabela agenda_pos (quem edita: sócio, gestor do pós-obra e coordenação); no computador do escritório, só neste navegador (teste).
-import { NA_NUVEM, listarAgendaPos, criarAgendaPos, atualizarAgendaPos, apagarAgendaPos } from './nuvem.js';
+import { NA_NUVEM, listarAgendaPos, criarAgendaPos, criarAgendaPosLote, atualizarAgendaPos, apagarAgendaPos } from './nuvem.js';
 
 const CHAVE = 'solida.agendaPos';
 const lerLocal = () => { try { return JSON.parse(localStorage.getItem(CHAVE)) || { linhas: [], seq: 1 }; } catch { return { linhas: [], seq: 1 }; } };
@@ -34,4 +34,14 @@ export async function remover(id, de, ate) {
   if (NA_NUVEM) await apagarAgendaPos(id);
   else { const l = lerLocal(); l.linhas = l.linhas.filter((q) => String(q.id) !== String(id)); gravarLocal(l); }
   await carregar(de, ate);
+}
+
+// traz para o sistema o que a planilha do pós-obra já diz (só quem foi reconhecido e ainda não está na agenda)
+export async function importar(lista, de, ate) {
+  const novas = lista.filter((n) => !linhas.some((x) => x.data === n.data && x.obra === n.obra && x.pessoa === n.pessoa));
+  if (!novas.length) return 0;
+  if (NA_NUVEM) await criarAgendaPosLote(novas);
+  else { const l = lerLocal(); for (const n of novas) l.linhas.push({ id: l.seq++, ...n }); gravarLocal(l); }
+  await carregar(de, ate);
+  return novas.length;
 }

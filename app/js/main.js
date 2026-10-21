@@ -153,7 +153,9 @@ function telaPosObraPlanilha(rota) {
   // Pendências: a mesma lista de Atas e pendências, só do setor Pós-obra
   if (rota.sub === 'pendencias') {
     garantirAtasCarregadas();
-    return { abas, conteudo: `<div class="pagina" style="margin-top:26px">${String(atas.renderPendencias({ params: rota.params, obras: obrasDeAtas(), setorFixo: 'Pós-obra', base: '#/posobra/pendencias' }))}</div>` };
+    const faltam = estado.base && ['socio', 'posobra', 'coord_operacoes'].includes(funcaoAtual().id) ? atas.servicosParaTrazer(estado.base.servicos).length : 0;
+    const banner = faltam ? `<div class="aviso pg-trazer"><b>${faltam} ${faltam === 1 ? 'serviço aberto' : 'serviços abertos'} da planilha do pós-obra ainda ${faltam === 1 ? 'não está' : 'não estão'} nesta lista.</b> Uma lista só: eles viram pendências do Pós-obra (com obra, responsável e prazo), e daí em diante são mexidos aqui. <button type="button" class="botao on" data-pos-trazer>Trazer para a lista</button></div>` : '';
+    return { abas, conteudo: `<div class="pagina" style="margin-top:26px">${banner}${String(atas.renderPendencias({ params: rota.params, obras: obrasDeAtas(), setorFixo: 'Pós-obra', base: '#/posobra/pendencias' }))}</div>` };
   }
   // Agenda da semana: cartões de funcionários arrastados para a obra e o dia
   if (rota.sub === 'agenda') {
@@ -163,6 +165,12 @@ function telaPosObraPlanilha(rota) {
     return { abas, conteudo: `<div class="pagina" style="margin-top:26px">${String(posGeral.renderAgenda({ base: estado.base, semanaIni: estado.posAgenda.semana, linhasAgenda: agendaPos.linhas, podeEditar, selecionado: estado.posAgenda.sel, erro: agendaPos.erro }))}</div>` };
   }
 
+  // página de uma obra: simples e didática (a completa fica em ?completo=1)
+  if (ehObra && !rota.params.get('completo')) {
+    if (!estado.base) return semBase();
+    carregarAgendaSemana(); garantirAtasCarregadas();
+    return { abas, conteudo: `<div class="pagina" style="margin-top:26px">${String(posGeral.renderObra({ base: estado.base, nome: rota.arg, semanaIni: estado.posAgenda.semana, linhasAgenda: agendaPos.linhas, pendencias: atas.todasPendencias(), linkCompleto: `#/posobra/obra/${encodeURIComponent(rota.arg)}?completo=1` }))}</div>` };
+  }
   if (!estado.base) return semBase();
   const p = periodo(estado.verPor, estado.ref);
   const ctx = { base: estado.base, p, params: rota.params };
@@ -1084,6 +1092,12 @@ async function apFazer(fn) { try { await fn(...apFaixa()); desenhar(); } catch (
 document.addEventListener('click', (e) => {
   const sem = e.target.closest && e.target.closest('[data-ap-sem]');
   if (sem) { const v = sem.dataset.apSem; estado.posAgenda.semana = inicioDaSemana(v === 'hoje' ? hojeISO() : v); estado.posAgenda.chave = ''; desenhar(); return; }
+  if (e.target.closest && e.target.closest('[data-pos-trazer]')) {
+    if (!confirm('Trazer os serviços abertos da planilha para a lista de pendências do Pós-obra? Cada serviço vira uma pendência (uma vez só); depois ela é mexida aqui.')) return;
+    atas.trazerServicos(estado.base.servicos).then((n) => { estado.atasMsg = `${n} pendências trazidas da planilha.`; desenhar(); }).catch((err) => alert(`Não foi possível trazer (${err.message || err}).`));
+    return;
+  }
+  if (e.target.closest && e.target.closest('[data-ap-importar]')) { apFazer((de, ate) => agendaPos.importar(posGeral.daPlanilha(estado.base, estado.posAgenda.semana), de, ate)); return; }
   const del = e.target.closest && e.target.closest('[data-ap-del]');
   if (del) { apFazer((de, ate) => agendaPos.remover(del.dataset.apDel, de, ate)); return; }
   const card = e.target.closest && e.target.closest('[data-ap-pessoa]');

@@ -4,7 +4,7 @@
 import { html } from '../formato.js';
 import { somarDias, inicioDaSemana } from '../datas.js';
 import { PRIORIDADE_SITUACAO, SITUACOES_ABERTAS } from '../regras.js';
-import { chipSituacao, rotaObra, fmt } from '../componentes.js';
+import { chipSituacao, chipPrazo, rotaObra, fmt } from '../componentes.js';
 
 const DIAS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const dm = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
@@ -43,6 +43,16 @@ export function renderResumo(base, semanaIni, linhasAgenda) {
   </section>`;
 }
 
+// o que a planilha do pós-obra já diz para a semana: quem (reconhecido na equipe, sem os genéricos) vai para qual obra em qual dia
+export function daPlanilha(base, semanaIni) {
+  const dias = new Set(DIAS.map((_, i) => somarDias(semanaIni, i))); const obras = new Set(obrasEmAndamento(base).map((o) => o.obra)); const vistos = new Set(); const out = [];
+  for (const e of base.agenda) {
+    if (!dias.has(e.data) || !obras.has(e.obra)) continue;
+    for (const { pessoa } of e.pessoas || []) { if (pessoa.generico) continue; const k = `${e.data}|${e.obra}|${pessoa.nome}`; if (vistos.has(k)) continue; vistos.add(k); out.push({ data: e.data, obra: e.obra, pessoa: pessoa.nome }); }
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------- Agenda da semana (cartões de funcionários)
 export function renderAgenda({ base, semanaIni, linhasAgenda, podeEditar, selecionado, erro }) {
   const obras = obrasEmAndamento(base);
@@ -64,8 +74,10 @@ export function renderAgenda({ base, semanaIni, linhasAgenda, podeEditar, seleci
     <button type="button" class="botao" data-ap-sem="hoje">Esta semana</button>
     <button type="button" class="botao" data-ap-sem="${somarDias(semanaIni, 7)}">Próxima semana →</button>
   </div>`;
+  const faltam = podeEditar ? daPlanilha(base, semanaIni).filter((n) => !linhasAgenda.some((x) => x.data === n.data && x.obra === n.obra && x.pessoa === n.pessoa)).length : 0;
   return html`<section class="ap">
     ${nav}
+    ${faltam ? html`<p class="ap-importar"><button type="button" class="botao" data-ap-importar>Trazer da planilha: preencher a semana com os ${faltam} nomes que já estão lá</button> <span class="pequeno">cria os cartões na agenda; depois você move e tira como quiser</span></p>` : ''}
     ${erro ? html`<p class="erro">${erro}</p>` : ''}
     <p class="pequeno">${podeEditar ? 'Arraste o cartão de um funcionário (à esquerda) para a obra e o dia, ou toque no nome e depois no quadrado. Dá para arrastar o nome de um dia para outro e tirar no ×.' : 'Só o gestor do pós-obra, a coordenação e a diretoria mexem na agenda; você vê quem vai para onde.'} Em cinza, o que está escrito na planilha do pós-obra.</p>
     <div class="ap-corpo">
@@ -80,3 +92,40 @@ export function renderAgenda({ base, semanaIni, linhasAgenda, podeEditar, seleci
 }
 
 export const segundaDa = (iso) => inicioDaSemana(iso);
+
+// ---------------------------------------------------------------- página de uma obra (simples e didática)
+const ETAPAS = ['Análise', 'Orçamento', 'Agendamento', 'Planejamento', 'Execução', 'Concluído'];
+export function renderObra({ base, nome, semanaIni, linhasAgenda, pendencias = [], linkCompleto }) {
+  const o = base.obraPorNome.get(nome);
+  if (!o) return html`<p class="vazio">Obra "${nome}" não encontrada. <a class="link" href="#/posobra">Voltar aos pós-obras</a></p>`;
+  const abertas = (o.servicos || []).filter((s) => s.aberta).sort((a, b) => String(a.prazo || '9').localeCompare(String(b.prazo || '9')));
+  const feitas = (o.servicos || []).filter((s) => !s.aberta).sort((a, b) => String(b.concluido_em || '').localeCompare(String(a.concluido_em || ''))).slice(0, 8);
+  const sit = o.situacao === 'Atrasado' ? 'Execução' : o.situacao; const atual = ETAPAS.indexOf(sit);
+  const dias = DIAS.map((_, i) => somarDias(semanaIni, i));
+  const dodia = (d) => ({ sis: linhasAgenda.filter((l) => l.obra === nome && l.data === d), plan: base.agenda.filter((a) => a.obra === nome && a.data === d).map((a) => a.texto).filter(Boolean) });
+  const pend = pendencias.filter((p) => p.obra === nome && p.status === 'aberta' && p.na_lista !== false);
+  return html`<div class="po-obra">
+    <p><a class="link" href="#/posobra">← Pós-obras</a></p>
+    <h2 class="po-nome">${o.obra} ${chipSituacao(o.situacao)}</h2>
+    <p class="pequeno po-meta">${[o.cliente, o.tipo, o.responsavel ? `responsável: ${o.responsavel}` : '', o.endereco].filter(Boolean).join(' · ') || 'Sem mais dados cadastrados'}</p>
+
+    <h3>Em que pé está</h3>
+    <ol class="po-etapas">${ETAPAS.map((e, i) => html`<li class="${atual < 0 ? '' : i < atual ? 'feita' : i === atual ? 'atual' : ''} ${e === 'Execução' && o.situacao === 'Atrasado' ? 'atrasada' : ''}"><span>${i + 1}</span>${e}${e === 'Execução' && o.situacao === 'Atrasado' ? html`<small>atrasado</small>` : ''}</li>`)}</ol>
+    ${atual < 0 ? html`<p class="pequeno">Situação "${o.situacao}": ${o.situacao === 'Sem OS' ? 'ainda não há nenhum serviço cadastrado para esta obra.' : o.situacao === 'Pausado' ? 'obra pausada.' : o.situacao === 'Fixo' ? 'manutenção fixa (sem fim previsto).' : 'sem etapa definida.'}</p>` : ''}
+
+    <h3>O que falta fazer <span class="pequeno">${abertas.length} ${abertas.length === 1 ? 'serviço aberto' : 'serviços abertos'}</span></h3>
+    ${abertas.length ? html`<div class="po-lista">${abertas.map((s) => html`<div class="po-item"><div><b>${s.os}</b> <span class="pequeno">${s.situacao || ''}</span></div>
+      <div class="po-relato">${s.relato || html`<span class="muted">sem descrição</span>`}</div>
+      <div class="po-linha-peq"><span>${s.profissionais ? `com ${s.profissionais}` : 'sem responsável'}</span><span>${s.prazo ? (/^\d{4}/.test(s.prazo) ? `prazo ${fmt.data(s.prazo)}` : `prazo: ${s.prazo}`) : 'sem prazo'}</span>${chipPrazo(s.statusPrazo)}</div></div>`)}</div>` : html`<p class="vazio">Nada em aberto nesta obra.</p>`}
+
+    <h3>Quem vai esta semana <span class="pequeno">${dm(dias[0])} a ${dm(dias[5])}</span></h3>
+    <div class="po-semana">${dias.map((d, i) => { const x = dodia(d); return html`<div class="po-dia"><b>${DIAS[i]} <small>${dm(d)}</small></b>${x.sis.map((l) => html`<span class="ap-chip">${l.pessoa}</span>`)}${x.plan.map((t) => html`<div class="ap-plan">${t}</div>`)}${!x.sis.length && !x.plan.length ? html`<span class="muted">—</span>` : ''}</div>`; })}</div>
+    <p class="pequeno">Para escalar alguém, use a aba <a class="link" href="#/posobra/agenda">Agenda</a>.</p>
+
+    <h3>Pendências desta obra <span class="pequeno">${pend.length} ${pend.length === 1 ? 'aberta' : 'abertas'}</span></h3>
+    <p><a class="botao" href="#/posobra/pendencias?obra=${encodeURIComponent(nome)}">Ver no quadro de pendências</a></p>
+
+    ${feitas.length ? html`<details class="po-feitas"><summary>Já concluídos (${feitas.length} mais recentes)</summary>${feitas.map((s) => html`<div class="po-item po-feito"><b>${s.os}</b> <span class="pequeno">${s.concluido_em ? `concluído em ${fmt.data(s.concluido_em)}` : s.situacao}</span><div class="po-relato">${s.relato || ''}</div></div>`)}</details>` : ''}
+    <p class="pequeno po-completo"><a class="link" href="${linkCompleto}">Ver os detalhes completos desta obra (agenda da planilha, custos e financeiro)</a></p>
+  </div>`;
+}

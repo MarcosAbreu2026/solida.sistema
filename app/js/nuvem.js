@@ -1,4 +1,4 @@
-// Sistema na nuvem (Vercel + Supabase). Quando o endereço não é o do computador do escritório
+﻿// Sistema na nuvem (Vercel + Supabase). Quando o endereço não é o do computador do escritório
 // (localhost), tudo passa por aqui: login, dados lidos do Drive (o computador do escritório manda a cada
 // 10 min para o Supabase), marcações das tarefas, Feed, pedidos de alteração, fotos e presença no escritório.
 // As regras de quem vê o quê ficam no próprio banco (supabase/schema.sql): esta parte só pede os dados.
@@ -134,6 +134,11 @@ export async function criarAgendaPos(linha) {
   if (error) throw new Error(error.message);
   return data;
 }
+export async function criarAgendaPosLote(linhas) {
+  if (!linhas.length) return;
+  const { error } = await sb.from('agenda_pos').insert(linhas.map((l) => ({ ...l, criado_por: perfil.id })));
+  if (error) throw new Error(error.message);
+}
 export async function atualizarAgendaPos(id, mudancas) {
   const { error } = await sb.from('agenda_pos').update(mudancas).eq('id', id);
   if (error) throw new Error(error.message);
@@ -144,6 +149,11 @@ export async function apagarAgendaPos(id) {
 }
 export async function atualizarAtaNuvem(id, mudancas) {
   const { error } = await sb.from('atas').update(mudancas).eq('id', id);
+  if (error) throw new Error(error.message);
+}
+export async function criarPendenciasNuvemLote(lista) {
+  if (!lista.length) return;
+  const { error } = await sb.from('pendencias').insert(lista.map((p) => ({ ...p, criado_por: perfil.id })));
   if (error) throw new Error(error.message);
 }
 export async function atualizarPendenciaNuvem(id, mudancas) {
