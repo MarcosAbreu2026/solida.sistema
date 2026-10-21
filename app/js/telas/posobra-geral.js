@@ -27,10 +27,10 @@ export const FASES_FILTRO = ['Análise', 'Orçamento', 'Agendamento', 'Planejame
 const PRAZOS_FILTRO = ['Vencido', 'Vence em 7 dias', 'No prazo', 'Sem prazo'];
 
 // prazo clicável (abre o mini calendário com feriados) + marca de reprogramado; só nos serviços em aberto e para quem edita
-export function celulaPrazo(s, podeEditar) {
+export function celulaPrazo(s, podeEditar, comStatus = true) {
   const txt = dBR(s.prazo) || (s.prazo ? s.prazo : 'sem prazo');
   const bt = podeEditar && s.aberta ? html`<button type="button" class="at-data-btn pl-prazo-bt" data-os-prazo="${s.os}" title="Clique para reprogramar (escolher outra data)">${txt}</button>` : html`<span class="${dBR(s.prazo) ? '' : 'muted'}">${txt}</span>`;
-  return html`<span class="pl-prazo">${bt}${s.aberta && s.statusPrazo && s.statusPrazo !== 'Sem prazo' ? chipPrazo(s.statusPrazo) : ''}${reprogramado(s) ? html`<span class="at-repro-tag" title="${tituloReprogramacao(s)}">↻ era ${dBR(s.prazo_original).slice(0, 5)}</span>` : ''}</span>`;
+  return html`<span class="pl-prazo">${bt}${comStatus && s.aberta && s.statusPrazo && s.statusPrazo !== 'Sem prazo' ? chipPrazo(s.statusPrazo) : ''}${reprogramado(s) ? html`<span class="at-repro-tag" title="${tituloReprogramacao(s)}">↻ era ${dBR(s.prazo_original).slice(0, 5)}</span>` : ''}</span>`;
 }
 export function celulaFase(s, podeEditar) {
   return podeEditar ? html`<select class="pl-fase-sel" data-os-fase="${s.os}" style="background:${FASE_COR_L[s.situacao] || '#8A939D'}" title="Mudar a fase">${FASES_FILTRO.map((f) => html`<option ${f === s.situacao ? html.seguro('selected') : ''}>${f}</option>`)}${s.situacao && !FASES_FILTRO.includes(s.situacao) ? html`<option selected>${s.situacao}</option>` : ''}${!s.situacao ? html`<option selected value="">sem fase</option>` : ''}</select>`
@@ -47,16 +47,15 @@ export function renderResumo(base, params, { podeEditar = false, veValores = fal
   const atrasadas = em.filter((o) => o.situacao === 'Atrasado').length;
   const abertas = em.reduce((t, o) => t + (o.abertas || 0), 0);
   const incompletas = em.filter((o) => partesObra(o).incompleta);
-  const colunas = html`<colgroup><col class="c-os"><col class="c-serv"><col class="c-fase"><col class="c-ini"><col class="c-prazo"><col class="c-quem">${veValores ? html`<col class="c-custo">` : ''}</colgroup>`;
+  const colunas = html`<colgroup><col class="c-os"><col class="c-serv"><col class="c-fase"><col class="c-ini"><col class="c-prazo">${veValores ? html`<col class="c-custo">` : ''}</colgroup>`;
   const linhaOs = (s) => html`<tr>
     <td class="pl-os-cod"><a href="${rotaOs(s.os)}" title="Abrir a OS">${s.os}</a></td>
     <td class="pl-os-resumo"><a href="${rotaOs(s.os)}" title="Abrir a OS">${resumoServico(s.relato) || html`<span class="muted">sem descrição</span>`}</a></td>
     <td>${celulaFase(s, podeEditar)}</td>
     <td>${dBR(s.data_inicio) || html`<span class="muted">—</span>`}</td>
-    <td>${celulaPrazo(s, podeEditar)}</td>
-    <td class="pl-quem">${s.profissionais || html`<span class="muted">—</span>`}</td>
+    <td>${celulaPrazo(s, podeEditar, false)}</td>
     ${veValores ? html`<td class="n">${custoDe(s) ? fmt.reais(custoDe(s)) : html`<span class="muted">—</span>`}</td>` : ''}</tr>`;
-  const tabela = (lista) => html`<table class="pl-os">${colunas}<thead><tr><th>OS</th><th>Serviço</th><th>Fase</th><th>Início</th><th>Prazo</th><th>Quem</th>${veValores ? html`<th class="n">Custo</th>` : ''}</tr></thead><tbody>${lista.map(linhaOs)}</tbody></table>`;
+  const tabela = (lista) => html`<table class="pl-os">${colunas}<thead><tr><th>OS</th><th>Serviço</th><th>Fase</th><th>Início</th><th>Prazo</th>${veValores ? html`<th class="n">Custo</th>` : ''}</tr></thead><tbody>${lista.map(linhaOs)}</tbody></table>`;
   const bloco = (o, aberto = true) => {
     const pt = partesObra(o); const todos = (o.servicos || []).filter(passa);
     const abertasO = todos.filter((s) => s.aberta); const feitas = todos.filter((s) => !s.aberta);

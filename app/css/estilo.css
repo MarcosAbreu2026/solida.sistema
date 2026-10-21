@@ -1830,3 +1830,14 @@ button.at-prazo:hover { filter: brightness(.96); box-shadow: 0 0 0 2px rgba(45, 
 
 .pl-obra { overflow-x: auto; }
 .pl-os { min-width: 900px; }
+
+/* lista de OS: sem a coluna Quem; fase e início cada um na sua caixa, sem um comer o outro */
+.pl-os col.c-os { width: 88px; } .pl-os col.c-fase { width: 140px; } .pl-os col.c-ini { width: 110px; } .pl-os col.c-prazo { width: 180px; } .pl-os col.c-custo { width: 110px; }
+.pl-os { min-width: 760px; }
+.pl-os td { overflow: hidden; }
+.pl-fase-sel { width: 100%; max-width: 124px; box-sizing: border-box; }
+.pl-os td:nth-child(3) { padding-right: 14px; }
+
+.pl-fase-sel { width: 100%; max-width: none; }
+
+.pl-os .pl-fase-sel { min-width: 0; width: 100%; }
