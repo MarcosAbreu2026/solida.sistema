@@ -246,16 +246,27 @@ function prazoDaColuna(id, hoje) {
   if (id === 'duas') return somarDias(seg, 18);
   return '';
 }
-// formulário de pendência avulsa (sem ata): obra, departamento e a linha da pendência
+// formulário de pendência avulsa (sem ata): janela com rótulos e grade organizada
 export function formAvulsa(obras, prazo) {
   return html`<form class="at-nova-pend at-avulsa" id="pend-form" data-avulsa="1">
     <h3>Nova pendência</h3>
-    <div class="at-av-linha"><label>Obra<select name="av_obra"><option value="">Nenhuma</option>${obras.map((o) => html`<option value="${o}">${o}</option>`)}</select></label>
-      <label>Departamento<select name="av_setor" required><option value="">— escolher —</option>${SETORES_ATA.map((s) => html`<option value="${s}">${s}</option>`)}</select></label></div>
-    ${html.seguro(linhaForm({ semKind: true, prazo }))}
-    <p><button type="submit" class="botao on">Criar pendência</button> <button type="button" class="botao" data-av-fechar>Cancelar</button></p></form>`;
+    <p class="pequeno at-av-sub">Para o que não veio de uma ata. Tudo marcado em vermelho precisa ser preenchido.</p>
+    <div class="at-av-grade">
+      <label class="av-m">Obra<select name="av_obra"><option value="">Nenhuma</option>${obras.map((o) => html`<option value="${o}">${o}</option>`)}</select></label>
+      <label class="av-m">Departamento<select name="av_setor" required><option value="">— escolher —</option>${SETORES_ATA.map((s) => html`<option value="${s}">${s}</option>`)}</select></label>
+      <div class="pf-linha av-linha" data-tipo="solida" data-kind="pendencia">
+        <label class="av-ass">Assunto<input name="p_assunto" class="pf-assunto" placeholder="ex.: ACM" autocomplete="off"></label>
+        <label class="av-desc">O que fazer<input name="p_desc" placeholder="ex.: Retirar da área gourmet" autocomplete="off"></label>
+        <label>Responsável<select name="p_tipo" data-pf-tipo><option value="solida">Sólida</option><option value="terceirizado">Terceirizado</option><option value="cliente">Cliente</option></select></label>
+        <label class="av-quem">Pessoa ou serviço
+          <select name="p_resp" class="pf-sol"><option value="">Pessoa da Sólida…</option>${opcoesPessoas('')}</select>
+          <select name="p_cat" class="pf-ter" hidden><option value="">Tipo de serviço…</option>${CATEGORIAS_TERC.map((c) => html`<option>${c}</option>`)}</select>
+          <input name="p_nome" class="pf-ext" list="dl-terceiros" placeholder="Nome ou empresa" autocomplete="off" hidden></label>
+        <label>Prazo<input type="date" name="p_prazo" value="${prazo || ''}"></label>
+      </div>
+    </div>
+    <div class="at-av-botoes"><button type="button" class="botao" data-av-fechar>Cancelar</button><button type="submit" class="botao on">Criar pendência</button></div></form>`;
 }
-
 function vistaPrazo(lista, hoje) {
   return html`<div class="at-quadro">${COLUNAS.map(([id, nome]) => {
     let itens = lista.filter((p) => coluna(p, hoje) === id);
