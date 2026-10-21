@@ -1076,6 +1076,11 @@ document.addEventListener('submit', async (e) => {
       const fd = new FormData(f);
       const obraA = String(fd.get('obra') || ''); const setorA = String(fd.get('setor') || '');
       const pendencias = [...f.querySelectorAll('.pf-linha')].map((l) => lerLinhaPendencia(l)).filter((p) => p.descricao);
+      if (pendencias.some((p) => !p.prazo)) {
+        const l = [...f.querySelectorAll('.pf-linha')].find((x) => lerLinhaPendencia(x).descricao && !lerLinhaPendencia(x).prazo);
+        const campo = l && l.querySelector('[name="p_prazo"]'); if (campo) { campo.focus(); campo.style.outline = '2px solid #c0392b'; }
+        alert('Toda pendência precisa de uma data limite. Preencha o prazo das linhas marcadas para salvar a ata.'); return;
+      }
       if (pendencias.some((p) => p.externoTipo === '' && !p.responsavel)) { alert('Toda pendência precisa de um responsável: escolha a pessoa da Sólida.'); return; }
       if (pendencias.some((p) => p.externoTipo === 'terceirizado' && !p.externoCategoria && !p.externoNome)) { alert('Pendência de terceirizado: escolha o tipo de serviço ou escreva o nome da empresa.'); return; }
       const nome = atas.atualizarNomeDoForm(f); if (!nome) { alert('Escolha a data: o nome da ata sai dela.'); return; }
@@ -1084,6 +1089,7 @@ document.addEventListener('submit', async (e) => {
       estado.atasMsgHash = `#/atas?aba=atas&ata=${nova.id}`; location.hash = estado.atasMsgHash;
     } else {
       const p = lerLinhaPendencia(g.querySelector('.pf-linha'));
+      if (p.descricao && !p.prazo) { alert('Toda pendência precisa de uma data limite.'); return; }
       if (!p.descricao || (p.externoTipo === '' && !p.responsavel) || (p.externoTipo === 'terceirizado' && !p.externoCategoria && !p.externoNome)) { alert('Escreva a pendência e escolha o responsável.'); return; }
       await atas.criarPendencia({ ata_id: Number(g.dataset.ata), ...p, obra: g.dataset.obra, setor: g.dataset.setor });
     }
