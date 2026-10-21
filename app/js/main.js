@@ -1080,6 +1080,23 @@ document.addEventListener('click', (e) => {
   if ((e.target.closest && e.target.closest('[data-av-fechar]')) || (e.target.id === 'at-modal')) { const m = document.getElementById('at-modal'); if (m) m.remove(); }
 });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { const m = document.getElementById('at-modal'); if (m) m.remove(); } });
+// pauta da próxima reunião: o que ficou aberto da ata (e das anteriores do mesmo lugar), pronto para copiar
+document.addEventListener('click', async (e) => {
+  const pb = e.target.closest && e.target.closest('[data-pauta]');
+  if (pb) {
+    const a = atas.ataPorId(pb.dataset.pauta); if (!a) return;
+    const texto = atas.pautaTexto(a);
+    const antigo = document.getElementById('at-modal'); if (antigo) antigo.remove();
+    const m = document.createElement('div'); m.id = 'at-modal'; m.className = 'at-modal';
+    m.innerHTML = `<div class="at-modal-caixa"><h3 style="margin:0 0 4px">Pauta da próxima reunião</h3><p class="pequeno" style="margin:0 0 10px">Montada com as pendências que ainda estão abertas. Copie e cole onde for usar.</p><pre class="at-pauta" id="at-pauta-texto"></pre><div class="at-av-botoes"><button type="button" class="botao" data-av-fechar>Fechar</button><button type="button" class="botao on" data-pauta-copiar>Copiar a pauta</button></div></div>`;
+    document.body.appendChild(m); m.querySelector('#at-pauta-texto').textContent = texto;
+    return;
+  }
+  if (e.target.closest && e.target.closest('[data-pauta-copiar]')) {
+    const t = (document.getElementById('at-pauta-texto') || {}).textContent || '';
+    try { await navigator.clipboard.writeText(t); e.target.textContent = 'Copiada ✓'; } catch { const r = document.createRange(); r.selectNodeContents(document.getElementById('at-pauta-texto')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); e.target.textContent = 'Selecionada: Ctrl+C'; }
+  }
+});
 document.addEventListener('click', async (e) => {
   const add = e.target.closest('[data-pf-add]');
   if (add) { document.getElementById('pend-linhas').insertAdjacentHTML('beforeend', atas.linhaForm()); return; }

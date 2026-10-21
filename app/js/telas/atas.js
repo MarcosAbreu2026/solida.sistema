@@ -116,6 +116,28 @@ export async function revisar(id, { data, tipoReuniao, obra, setor, local, parti
   await carregar();
   return id;
 }
+// ---------------------------------------------------------------- acompanhamento da ata e pauta da próxima reunião
+// As pendências ficam ligadas à ata (mesmo se saírem da lista de pendências). Daqui sai o acompanhamento ("x de y concluídas")
+// e a pauta da próxima reunião: o que ficou aberto da ata e das atas anteriores da mesma obra/departamento.
+const pendDaAta = (a) => dados.pendencias.filter((p) => String(p.ata_id) === String(a.id) && p.status !== 'cancelada');
+export function acompanhamento(a) {
+  const ps = pendDaAta(a); const hoje = hojeISO();
+  return { total: ps.length, feitas: ps.filter((p) => p.status === 'feita').length, abertas: ps.filter((p) => p.status === 'aberta').length, atrasadas: ps.filter((p) => p.status === 'aberta' && p.prazo && p.prazo < hoje).length, reprogramadas: ps.filter(reprogramada).length };
+}
+export function pautaTexto(a) {
+  const hoje = hojeISO(); const mesmoLugar = (x) => (a.obra ? x.obra === a.obra : x.setor === a.setor);
+  const linha = (p) => { const [ass, resto] = dividirDescricao(p.descricao); const quem = String(nomeDe(p.responsavel, p.responsavel_nome)).toLocaleUpperCase('pt-BR'); const atras = p.prazo && p.prazo < hoje ? ' [ATRASADA]' : ''; const rep = reprogramada(p) ? ` [reprogramada, era ${dm(p.prazo_original).slice(0, 5)}]` : '';
+    return `- ${ass ? `${ass}, ${resto}` : p.descricao} — ${quem}${p.prazo ? ` — prazo ${dm(p.prazo).slice(0, 5)}` : ''}${atras}${rep}`; };
+  const daAta = pendDaAta(a); const abertasAta = daAta.filter((p) => p.status === 'aberta').sort((x, y) => String(x.prazo || '9').localeCompare(String(y.prazo || '9')));
+  const feitas = daAta.filter((p) => p.status === 'feita');
+  const outras = dados.pendencias.filter((p) => String(p.ata_id) !== String(a.id) && p.status === 'aberta' && p.ata_id && mesmoLugar(p)).sort((x, y) => String(x.prazo || '9').localeCompare(String(y.prazo || '9')));
+  const out = [`PAUTA DA PRÓXIMA REUNIÃO — ${a.obra || a.setor || 'Escritório'}`, `Base: ${a.titulo}`, ''];
+  out.push(`1. Pendências abertas da reunião de ${dm(a.data)} (${abertasAta.length})`, ...(abertasAta.length ? abertasAta.map(linha) : ['- nenhuma pendência aberta']), '');
+  if (feitas.length) out.push(`2. Concluídas desde a reunião (${feitas.length})`, ...feitas.map((p) => linha(p).replace(/ \[.*$/, '')), '');
+  if (outras.length) out.push(`${feitas.length ? 3 : 2}. Outras pendências abertas ${a.obra ? 'desta obra' : 'deste departamento'}, de atas anteriores (${outras.length})`, ...outras.map(linha), '');
+  out.push('Assuntos novos:', '- ');
+  return out.join('\n');
+}
 // ---------------------------------------------------------------- nome padrão da ata
 // Obra (ou pós-obra) _ aaaa.mm.dd _ ATA _ tipo _ Rnn   ex.: Mo344_2026.07.10_ATA_ARQUITETURA-CLIENTE_R00
 // Salva no Drive, na pasta da obra: GERENCIAMENTO\ATA (obra) ou PÓS OBRA\PO_OBRAS\<ano>\Po_NNN\GERENCIAMENTO\ATA (pós-obra).
@@ -407,6 +429,7 @@ function detalheAta(id, hoje, obras) {
     <article class="at-ata-det">
       <h2>${a.titulo}</h2>
       <p class="pequeno at-drive ${a.arquivada_em ? 'ok' : a.arquivo_erro ? 'erro' : ''}">${a.arquivada_em ? html`✓ Salva no Drive (${new Date(a.arquivada_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}): ${a.arquivo || a.titulo + '.pdf'}` : a.arquivo_erro ? html`Não consegui salvar no Drive: ${a.arquivo_erro}. Vou tentar de novo no próximo ciclo.` : a.obra ? 'Aguardando ser salva no Drive (o computador do escritório salva a cada 10 minutos).' : 'Ata sem obra: fica só no sistema.'}${a.criado_por_nome ? ` Registrada por ${a.criado_por_nome}.` : ''}</p>
+      ${(() => { const ac = acompanhamento(a); return ac.total ? html`<p class="at-acomp"><b>Acompanhamento:</b> ${ac.feitas} de ${ac.total} pendências concluídas${ac.atrasadas ? html` · <span class="pendente">${ac.atrasadas} ${ac.atrasadas === 1 ? 'atrasada' : 'atrasadas'}</span>` : ''}${ac.reprogramadas ? ` · ${ac.reprogramadas} ${ac.reprogramadas === 1 ? 'reprogramada' : 'reprogramadas'}` : ''}</p>` : ''; })()}
       ${a.resumo ? html`<div class="at-resumo">${textoRico(a.resumo)}</div>` : ''}
       <div class="sd-folha">
         <div class="sd-cab">
@@ -422,7 +445,7 @@ function detalheAta(id, hoje, obras) {
               <td class="sd-sem-pdf at-acoes">${r.p.status === 'feita' ? html`<button type="button" class="ac-mini" data-pend="${r.p.id}|aberta">↺</button>` : html`<button type="button" class="ac-mini at-ok" data-pend="${r.p.id}|feita" title="Concluir">✓</button>`}${naLista(r.p) ? '' : html`<button type="button" class="ac-mini" data-pend-lista="${r.p.id}" title="Voltar esta pendência para a lista de pendências">+ lista</button>`}</td></tr>`)}
         </tbody></table></div>
       </div>
-      ${podeApagar ? html`<p style="margin-top:18px"><a class="botao on" href="#/atas?aba=nova&revisar=${a.id}">Criar revisão ${rev2((Number(a.revisao) || 0) + 1)}</a> <button type="button" class="botao at-excluir" data-ata-del="${a.id}">Excluir esta ata e as pendências dela</button></p>` : ''}
+      ${podeApagar ? html`<p style="margin-top:18px"><a class="botao on" href="#/atas?aba=nova&revisar=${a.id}">Criar revisão ${rev2((Number(a.revisao) || 0) + 1)}</a> <button type="button" class="botao" data-pauta="${a.id}">Pauta da próxima reunião</button> <button type="button" class="botao at-excluir" data-ata-del="${a.id}">Excluir esta ata e as pendências dela</button></p>` : ''}
     </article>`;
 }
 
