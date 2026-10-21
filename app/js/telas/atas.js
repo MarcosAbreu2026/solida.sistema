@@ -12,6 +12,8 @@ import { SETORES } from '../funcoes.js';
 import { sessao, idPessoa, funcaoReal, funcaoAtual } from '../sessao.js';
 import { lerPessoasTarefas } from '../armazenamento.js';
 import { analisarAta, lerArquivoAta } from '../ata-leitor.js';
+import { analisarReuniao, analisarFala, pareceResumoEmTopicos } from '../fala-leitor.js';
+import { suportado as gravadorSuportado, textoAtual as transcricaoAtual } from '../gravador.js';
 
 export const ABAS = [['pendencias', 'Pendências'], ['atas', 'Atas'], ['nova', 'Nova ata']];
 export const SETORES_ATA = [...SETORES.map(([, nome]) => nome), 'Diretoria / geral'];
@@ -22,12 +24,16 @@ let rascunho = null;   // ata lida de um arquivo/texto, esperando conferência
 export const temRascunho = () => !!rascunho;
 export function descartarRascunho() { rascunho = null; }
 // lê um arquivo (PDF ou texto) ou texto colado e monta o rascunho da ata
-export async function importar({ arquivo = null, texto = '' }, obras) {
+export async function importar({ arquivo = null, texto = '', fala = false }, obras) {
   if (!dados.pessoas.length) await carregar();
   let t = texto; let nome = ''; let paginas = null;
   if (arquivo) { const r = await lerArquivoAta(arquivo); t = r.texto; paginas = r.paginas; nome = String(arquivo.name || '').replace(/\.[^.]+$/, ''); }
   if (!String(t).trim()) throw new Error('Não há texto para ler.');
-  rascunho = analisarAta(t, { pessoas: dados.pessoas, obras, setores: SETORES_ATA, hoje: hojeISO(), nomeArquivo: nome, paginas });
+  const opc = { pessoas: dados.pessoas, obras, hoje: hojeISO() };
+  // transcrição de reunião (gravada) ou resumo em tópicos: leitor de reunião; ata pronta (PDF, texto): leitor de ata
+  if (fala) rascunho = analisarFala(t, opc);
+  else if (!arquivo && pareceResumoEmTopicos(t)) rascunho = analisarReuniao(t, opc);
+  else rascunho = analisarAta(t, { ...opc, setores: SETORES_ATA, nomeArquivo: nome, paginas });
   return rascunho;
 }
 
@@ -456,15 +462,26 @@ function formNova(obras, revisarId = '') {
   const r = ataRev ? ataComoRascunho(ataRev) : rascunho;
   const proxRev = ataRev ? (Number(ataRev.revisao) || 0) + 1 : 0;
   const linhasIniciais = r && (r.pendencias.length || (r.informativosLista || []).length) ? [...r.pendencias, ...(r.informativosLista || [])].sort((x, y) => (Number(x.item) || 0) - (Number(y.item) || 0)).map((p) => linhaForm(p)).join('') : linhaForm();
-  const importador = html`<details class="caixa at-importar" ${r ? '' : html.seguro('open')}><summary><span class="caixa-tit">Importar uma ata pronta</span><span class="pequeno">PDF ou texto: eu leio e já separo as pendências</span></summary>
+  const importador = html`<details class="caixa at-importar" ${r ? '' : html.seguro('open')}><summary><span class="caixa-tit">Gravar a reunião ou importar uma ata pronta</span><span class="pequeno">grave a conversa, ou envie PDF/texto: eu leio e separo informativos e pendências</span></summary>
     <div class="caixa-corpo">
+      <div class="at-gravar">
+        <h4>Gravar a reunião</h4>
+        ${gravadorSuportado ? html`<p class="pequeno">Aperte gravar e deixe o microfone aberto durante a reunião: a transcrição aparece abaixo, ao vivo (reconhecimento de voz do navegador). Ao terminar, aperte "Montar a ata": o sistema separa o que é pendência (ação, responsável e prazo) do que é informativo. É uma leitura automática: depois você confere e corrige cada linha.</p>
+        <p><button type="button" class="botao on" data-gravar>● Gravar a reunião</button> <span class="pequeno at-grav-msg"></span></p>
+        <label>Transcrição <span class="pequeno">(pode corrigir ou colar aqui a transcrição de outro lugar)</span><textarea id="ata-fala" rows="6" placeholder="A fala da reunião aparece aqui…">${transcricaoAtual()}</textarea></label>
+        <p><button type="button" class="botao" data-ata-ler-fala>Montar a ata com a transcrição</button></p>` : html`<p class="pequeno">Este navegador não grava e transcreve a voz. Abra o sistema no Chrome ou no Edge para gravar. Dá para colar abaixo a transcrição de outro lugar.</p>
+        <label>Transcrição colada<textarea id="ata-fala" rows="6" placeholder="Cole aqui a transcrição da reunião"></textarea></label>
+        <p><button type="button" class="botao" data-ata-ler-fala>Montar a ata com a transcrição</button></p>`}
+      </div>
+      <h4>Importar uma ata pronta</h4>
       <p class="pequeno">Envie o PDF (ou um arquivo de texto) da ata, ou cole o texto abaixo. O sistema acha o título, a data, a obra, os participantes e as linhas que são ação (verbo no infinitivo, "responsável:", "prazo:", itens sob "Ações" ou "Pendências"), com responsável pelo primeiro nome e prazo. Depois você confere tudo e salva. PDF de foto ou digitalização não tem texto para ler: cole o texto.</p>
       <div class="at-imp-linha"><label class="botao">Escolher arquivo<input type="file" id="ata-arquivo" accept=".pdf,.txt,.md,.text,.csv,application/pdf,text/*" hidden></label><span class="pequeno at-imp-msg"></span></div>
       <label>…ou cole o texto da ata<textarea id="ata-colada" rows="5" placeholder="Cole aqui o texto da ata"></textarea></label>
       <p><button type="button" class="botao" data-ata-ler>Ler o texto colado</button></p>
     </div></details>`;
   return html`${ataRev ? html`<p><a class="link" href="#/atas?aba=atas&ata=${ataRev.id}">← Voltar à ata sem mudar nada</a></p><div class="aviso at-aviso-imp"><b>Criando a revisão ${rev2(proxRev)}</b> da ata ${ataRev.titulo}. Mexa no que precisar: dados da reunião, participantes, e acrescente, tire ou edite pendências e informativos. As pendências que você mantiver continuam as mesmas (com o andamento e as reprogramações); as que você tirar saem da lista de pendências. O PDF novo vai para o Drive com o nome ${rev2(proxRev)}; o anterior continua lá.</div>` : importador}
-  ${r && !ataRev ? html`<p class="aviso at-aviso-imp">Ata lida${r.lidoDaTabela ? ' (padrão de ata da Sólida)' : ''}: encontrei <b>${r.pendencias.length}</b> ${r.pendencias.length === 1 ? 'pendência' : 'pendências'}${r.informativos ? `, mais ${r.informativos} informativo${r.informativos === 1 ? '' : 's'} que entraram como informativo (não viram pendência de ninguém)` : ''}${r.pendencias.some((p) => !p.responsavel && !p.externoNome) ? ', algumas sem responsável (em destaque)' : ''}. Confira, corrija o que precisar e salve. <button type="button" class="ac-mini" data-ata-descartar>descartar e começar do zero</button></p>` : ''}
+  ${r && !ataRev && r.deFala ? html`<p class="aviso at-aviso-imp">Reunião lida: encontrei <b>${r.pendencias.length}</b> ${r.pendencias.length === 1 ? 'pendência' : 'pendências'} e <b>${(r.informativosLista || []).length}</b> ${(r.informativosLista || []).length === 1 ? 'informativo' : 'informativos'}. É uma leitura automática: confira o tipo (pendência ou informativo), o assunto, o responsável e o prazo de cada linha, tire o que não serve e preencha obra, departamento, local e participantes. <button type="button" class="ac-mini" data-ata-descartar>descartar e começar do zero</button></p>` : ''}
+  ${r && !ataRev && !r.deFala ? html`<p class="aviso at-aviso-imp">Ata lida${r.lidoDaTabela ? ' (padrão de ata da Sólida)' : ''}: encontrei <b>${r.pendencias.length}</b> ${r.pendencias.length === 1 ? 'pendência' : 'pendências'}${r.informativos ? `, mais ${r.informativos} informativo${r.informativos === 1 ? '' : 's'} que entraram como informativo (não viram pendência de ninguém)` : ''}${r.pendencias.some((p) => !p.responsavel && !p.externoNome) ? ', algumas sem responsável (em destaque)' : ''}. Confira, corrija o que precisar e salve. <button type="button" class="ac-mini" data-ata-descartar>descartar e começar do zero</button></p>` : ''}
   <form class="at-form" id="ata-form" ${ataRev ? html.seguro(`data-revisar="${ataRev.id}" data-revisao="${proxRev}"`) : ''}>
     <div class="at-form-grade">
       <label>Data<input type="date" name="data" value="${r ? r.data : hoje}" required></label>

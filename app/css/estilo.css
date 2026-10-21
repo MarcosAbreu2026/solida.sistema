@@ -1699,3 +1699,7 @@ button.at-prazo:hover { filter: brightness(.96); box-shadow: 0 0 0 2px rgba(45, 
 
 .at-pauta { white-space: pre-wrap; font: 13px/1.5 Calibri, 'Segoe UI', Arial, sans-serif; background: #F3F5F7; border: 1px solid #C9D0D8; border-radius: 4px; padding: 12px 14px; max-height: 55vh; overflow: auto; margin: 0; }
 .at-acomp { margin: 6px 0 10px; font-size: 13.5px; }
+
+.at-gravar { margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--linha2); }
+.at-gravar h4, .at-importar h4 { margin: 4px 0 6px; font-size: 14px; color: #14283C; }
+.at-gravar textarea { width: 100%; }

@@ -35,6 +35,7 @@ import * as equipe from './telas/equipe.js';
 import * as financeiro from './telas/financeiro.js';
 import * as meudia from './telas/meudia.js';
 import { abrirCalendario } from './calendario.js';
+import * as gravador from './gravador.js';
 import * as quadro from './telas/quadro.js';
 import * as produtividade from './telas/produtividade.js';
 import * as operacao from './telas/operacao.js';
@@ -385,6 +386,7 @@ function desenhar() {
     return;
   }
   if (tela === 'atas') {
+    if (gravador.gravando() && document.getElementById('ata-fala') && rota.params.get('aba') === 'nova') return;   // gravando a reunião: não redesenha, senão perde a tela
     $('#conteudo').innerHTML = `<div>${atas.render({ params: rota.params, obras: obrasDeAtas(), sugestoes: ((estado.terceiros && estado.terceiros.empresas) || []).map((e) => e.empresa), msg: estado.atasMsgHash === location.hash ? (estado.atasMsg || '') : '' })}</div>`;
     ordenar.aplicar();
     { const fm = document.getElementById('ata-form'); if (fm) atas.atualizarNomeDoForm(fm); }
@@ -1176,6 +1178,23 @@ document.addEventListener('change', (e) => {
 });
 document.addEventListener('click', (e) => {
   if (e.target.closest && e.target.closest('[data-ata-ler]')) { importarAta({ texto: (document.getElementById('ata-colada') || {}).value || '' }); return; }
+  // gravar a reunião: transcreve ao vivo para a caixa "Transcrição"; "Montar a ata" separa informativos e pendências
+  const gb = e.target.closest && e.target.closest('[data-gravar]');
+  if (gb) {
+    const msg = document.querySelector('.at-grav-msg'); const caixa = document.getElementById('ata-fala');
+    if (gravador.gravando()) { gravador.parar(); gb.textContent = '● Gravar a reunião'; gb.classList.add('on'); if (msg) msg.textContent = 'Gravação parada.'; return; }
+    if (caixa && caixa.value.trim()) gravador.definirTexto(caixa.value);   // continua do que já está escrito
+    const estados = { gravando: '● Gravando… fale normalmente', negado: 'O navegador não deixou usar o microfone: libere o microfone no cadeado da barra de endereço e tente de novo.', parado: 'Gravação parada.' };
+    try {
+      gravador.iniciar({
+        aoTexto: (t) => { const c = document.getElementById('ata-fala'); if (c) { c.value = t; c.scrollTop = c.scrollHeight; } },
+        aoEstado: (s) => { const mm = document.querySelector('.at-grav-msg'); const b = document.querySelector('[data-gravar]'); if (mm) mm.textContent = estados[s] || (s.startsWith('erro') ? `Problema no reconhecimento de voz (${s.slice(5)}).` : s); if (b) { const g = s === 'gravando' || s === 'religando'; b.textContent = g ? '■ Parar a gravação' : '● Gravar a reunião'; b.classList.toggle('on', !g); } },
+      });
+      gb.textContent = '■ Parar a gravação'; gb.classList.remove('on');
+    } catch (err) { if (msg) msg.textContent = err.message || String(err); }
+    return;
+  }
+  if (e.target.closest && e.target.closest('[data-ata-ler-fala]')) { if (gravador.gravando()) gravador.parar(); importarAta({ texto: (document.getElementById('ata-fala') || {}).value || '', fala: true }); return; }
   if (e.target.closest && e.target.closest('[data-ata-descartar]')) { if (confirm('Descartar a ata lida e começar do zero?')) { atas.descartarRascunho(); desenhar(); } }
 });
 
