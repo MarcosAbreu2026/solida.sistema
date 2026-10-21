@@ -123,6 +123,10 @@ export async function criarPendenciaNuvem(p) {
   const { error } = await sb.from('pendencias').insert({ ...p, criado_por: perfil.id });
   if (error) throw new Error(error.message);
 }
+export async function atualizarAtaNuvem(id, mudancas) {
+  const { error } = await sb.from('atas').update(mudancas).eq('id', id);
+  if (error) throw new Error(error.message);
+}
 export async function atualizarPendenciaNuvem(id, mudancas) {
   const { error } = await sb.from('pendencias').update(mudancas).eq('id', id);
   if (error) throw new Error(error.message);

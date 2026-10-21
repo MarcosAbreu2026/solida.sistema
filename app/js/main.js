@@ -1114,6 +1114,13 @@ document.addEventListener('submit', async (e) => {
       if (pendencias.some((p) => p.externoTipo === '' && !p.responsavel)) { alert('Toda pendência precisa de um responsável: escolha a pessoa da Sólida.'); return; }
       if (pendencias.some((p) => p.externoTipo === 'terceirizado' && !p.externoCategoria && !p.externoNome)) { alert('Pendência de terceirizado: escolha o tipo de serviço ou escreva o nome da empresa.'); return; }
       const nome = atas.atualizarNomeDoForm(f); if (!nome) { alert('Escolha a data: o nome da ata sai dela.'); return; }
+      if (f.dataset.revisar) {
+        const idRev = f.dataset.revisar;
+        await atas.revisar(idRev, { data: fd.get('data'), tipoReuniao: fd.get('tipo_reuniao'), obra: obraA, setor: setorA, local: String(fd.get('local') || '').trim(), participantes: String(fd.get('participantes') || '').split(/[,;]/).map((x) => x.trim()).filter(Boolean), resumo: String(fd.get('resumo') || ''), pendencias, informativos });
+        estado.atasMsg = `Revisão salva: ${nome}. O PDF novo vai para o Drive em instantes.`;
+        estado.atasMsgHash = `#/atas?aba=atas&ata=${idRev}`; location.hash = estado.atasMsgHash; desenhar();
+        return;
+      }
       const nova = await atas.criarAta({ titulo: nome, tipoReuniao: fd.get('tipo_reuniao'), revisao: fd.get('revisao'), local: String(fd.get('local') || '').trim(), data: fd.get('data'), tipo: obraA ? 'obra' : 'departamento', obra: obraA, setor: setorA, participantes: String(fd.get('participantes') || '').split(/[,;]/).map((x) => x.trim()).filter(Boolean), resumo: String(fd.get('resumo') || ''), pendencias, informativos });
       estado.atasMsg = `Ata salva${pendencias.length ? ` com ${pendencias.length} ${pendencias.length === 1 ? 'pendência' : 'pendências'}` : ''}${informativos.length ? `${pendencias.length ? ' e' : ' com'} ${informativos.length} ${informativos.length === 1 ? 'informativo' : 'informativos'}` : ''}.`;
       estado.atasMsgHash = `#/atas?aba=atas&ata=${nova.id}`; location.hash = estado.atasMsgHash;
@@ -1151,6 +1158,7 @@ function lerLinhaPendencia(l) {
   const tipo = l.querySelector('[name="p_tipo"]').value;
   return {
     kind: (l.querySelector('[name="p_kind"]') || {}).value || 'pendencia',
+    pid: l.dataset.pid || '',
     descricao: [l.querySelector('[name="p_assunto"]').value.trim().replace(/,/g, ' /').toLocaleUpperCase('pt-BR'), l.querySelector('[name="p_desc"]').value.trim()].filter(Boolean).join(', '),
     semAssunto: !!l.querySelector('[name="p_desc"]').value.trim() && !l.querySelector('[name="p_assunto"]').value.trim(),
     semDescritivo: !!l.querySelector('[name="p_assunto"]').value.trim() && !l.querySelector('[name="p_desc"]').value.trim(),

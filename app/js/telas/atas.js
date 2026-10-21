@@ -7,7 +7,7 @@
 
 import { html, data as fmtData } from '../formato.js';
 import { hojeISO, somarDias, inicioDaSemana, diasEntre } from '../datas.js';
-import { NA_NUVEM, perfilAtual, listarAtasPendencias, criarAtaNuvem, criarPendenciaNuvem, atualizarPendenciaNuvem, apagarPendenciaNuvem, apagarAtaNuvem } from '../nuvem.js';
+import { NA_NUVEM, perfilAtual, listarAtasPendencias, criarAtaNuvem, criarPendenciaNuvem, atualizarPendenciaNuvem, atualizarAtaNuvem, apagarPendenciaNuvem, apagarAtaNuvem } from '../nuvem.js';
 import { SETORES } from '../funcoes.js';
 import { sessao, idPessoa, funcaoReal } from '../sessao.js';
 import { lerPessoasTarefas } from '../armazenamento.js';
@@ -51,6 +51,53 @@ export async function carregar() {
 }
 const nomeDe = (id, reserva) => ((dados.pessoas.find((p) => p.id === id) || {}).nome) || reserva || '—';
 
+// ---------------------------------------------------------------- revisão da ata (R01, R02…)
+// Criar revisão = abrir a ata no formulário, mexer em qualquer coisa (dados, pendências, informativos) e salvar.
+// Os itens mantidos continuam sendo as mesmas pendências (status e reprogramações preservados); os tirados somem; os novos entram.
+// O nome ganha o próximo Rnn e o PDF novo vai para o Drive (o PDF da revisão anterior continua lá).
+const mapaInfo = (p) => ({ n: p.item || null, texto: p.descricao, quem: p.responsavel ? nomeDe(p.responsavel) : (p.externoNome || p.externoCategoria || (p.externoTipo === 'cliente' ? 'Cliente' : '')), tipo: p.responsavel ? 'solida' : (p.externoTipo || 'terceirizado'), categoria: p.responsavel ? null : (p.externoCategoria || null) });
+const camposPend = (p) => ({ item: p.item || null, descricao: p.descricao, responsavel: p.responsavel || null, responsavel_nome: p.responsavel ? nomeDe(p.responsavel) : (p.externoNome || p.externoCategoria || (p.externoTipo === 'cliente' ? 'Cliente' : null)), responsavel_tipo: p.responsavel ? 'solida' : (p.externoTipo || 'terceirizado'), responsavel_categoria: p.responsavel ? null : (p.externoCategoria || null), prazo: p.prazo || null });
+export const ataPorId = (id) => dados.atas.find((x) => String(x.id) === String(id));
+// a ata salva, na forma que o formulário entende (para editar)
+export function ataComoRascunho(a) {
+  const semA = (s) => semAcento(String(s || '')).toLowerCase().trim();
+  const pend = dados.pendencias.filter((p) => String(p.ata_id) === String(a.id) && p.status !== 'cancelada').map((p) => ({ kind: 'pendencia', pid: p.id, item: p.item, descricao: p.descricao, responsavel: p.responsavel || '', externoTipo: p.responsavel ? '' : (p.responsavel_tipo || 'terceirizado'), externoCategoria: p.responsavel_categoria || '', externoNome: p.responsavel ? '' : (p.responsavel_nome || ''), prazo: p.prazo || '' }));
+  const infos = (a.informativos || []).map((x, i) => {
+    const t = typeof x === 'string' ? { texto: x } : x; const pessoa = t.quem ? dados.pessoas.find((q) => semA(q.nome) === semA(t.quem)) : null;
+    return { kind: 'informativo', item: t.n || (1000 + i), descricao: t.texto, responsavel: pessoa ? pessoa.id : '', externoTipo: pessoa ? '' : (t.tipo || 'solida'), externoCategoria: t.categoria || '', externoNome: pessoa ? '' : (t.quem || '') };
+  });
+  return { data: a.data, obra: a.obra || '', setor: a.setor || '', local: a.local || '', participantes: a.participantes || [], tipoReuniao: a.tipo_reuniao || 'REUNIÃO', resumo: a.resumo || '', pendencias: pend, informativosLista: infos, revisando: a };
+}
+export async function revisar(id, { data, tipoReuniao, obra, setor, local, participantes, resumo, pendencias, informativos }) {
+  const a = ataPorId(id); if (!a) throw new Error('ata não encontrada');
+  const revisao = (Number(a.revisao) || 0) + 1;
+  const titulo = nomePadrao({ obra, setor, data, tipo: tipoReuniao, revisao });
+  const mudAta = { titulo, data, tipo: obra ? 'obra' : 'departamento', obra: obra || null, setor: setor || null, participantes, resumo, tipo_reuniao: tipoReuniao || 'REUNIÃO', revisao, local: local || null, informativos: informativos.map(mapaInfo), arquivo: null, arquivada_em: null, arquivo_erro: null };
+  const existentes = dados.pendencias.filter((p) => String(p.ata_id) === String(id) && p.status !== 'cancelada');
+  const manter = new Set(pendencias.filter((p) => p.pid).map((p) => String(p.pid)));
+  const remover = existentes.filter((e) => !manter.has(String(e.id)));
+  const agora = new Date().toISOString(); const quem = sessao().nome || '';
+  const mudancasDe = (p) => {
+    const e = existentes.find((x) => String(x.id) === String(p.pid)); const m = { ...camposPend(p), obra: obra || null, setor: setor || null };
+    if (e && e.prazo && m.prazo && m.prazo !== e.prazo) { m.prazo_original = e.prazo_original || e.prazo; m.reprogramacoes = [...(e.reprogramacoes || []), { de: e.prazo, para: m.prazo, em: agora, por: quem }]; }
+    return m;
+  };
+  if (NA_NUVEM) {
+    await atualizarAtaNuvem(id, mudAta);
+    for (const p of pendencias) { if (p.pid) await atualizarPendenciaNuvem(p.pid, mudancasDe(p)); else await criarPendenciaNuvem({ ...camposPend(p), ata_id: id, status: 'aberta', obra: obra || null, setor: setor || null }); }
+    for (const e of remover) await apagarPendenciaNuvem(e.id);
+  } else {
+    const l = lerLocal(); Object.assign(l.atas.find((x) => String(x.id) === String(id)), mudAta);
+    for (const p of pendencias) {
+      if (p.pid) { const q = l.pendencias.find((x) => String(x.id) === String(p.pid)); if (q) Object.assign(q, mudancasDe(p)); }
+      else l.pendencias.push({ id: l.seq++, ata_id: id, ...camposPend(p), status: 'aberta', obra: obra || null, setor: setor || null, criado_por: idPessoa(), criado_em: agora, concluida_em: null });
+    }
+    l.pendencias = l.pendencias.filter((x) => !remover.some((e) => String(e.id) === String(x.id)));
+    gravarLocal(l);
+  }
+  await carregar();
+  return id;
+}
 // ---------------------------------------------------------------- nome padrão da ata
 // Obra (ou pós-obra) _ aaaa.mm.dd _ ATA _ tipo _ Rnn   ex.: Mo344_2026.07.10_ATA_ARQUITETURA-CLIENTE_R00
 // Salva no Drive, na pasta da obra: GERENCIAMENTO\ATA (obra) ou PÓS OBRA\PO_OBRAS\<ano>\Po_NNN\GERENCIAMENTO\ATA (pós-obra).
@@ -72,7 +119,7 @@ export function nomePadrao({ obra, setor, data, tipo, revisao }) {
 // atualiza o nome mostrado no formulário (e a revisão, se a pessoa não mexeu nela)
 export function atualizarNomeDoForm(form) {
   const obra = form.obra.value === '-' ? '' : form.obra.value; const setor = form.setor.value; const data = form.data.value; const tipo = form.tipo_reuniao.value;
-  form.revisao.value = 0; // por enquanto toda ata nova é R00 (a revisão vai valer na edição da ata)
+  form.revisao.value = form.dataset.revisar ? form.dataset.revisao : 0;   // ata nova é R00; revisão é a próxima da ata editada
   const nome = nomePadrao({ obra, setor, data, tipo, revisao: form.revisao.value });
   const el = document.getElementById('ata-nome'); if (el) el.textContent = nome ? `${nome}.pdf` : 'escolha a data';
   const dest = document.getElementById('ata-destino');
@@ -173,7 +220,7 @@ export function linhaForm(v = {}) {
   const dica = v.responsavelAmbiguo ? `Há mais de um ${v.responsavelAmbiguo}: escolha quem` : v.externoNome && v.externoTipo === 'solida' ? `${v.externoNome} não tem login no sistema: escolha outra pessoa` : 'Escolha o responsável';
   const info = v.kind === 'informativo';
   const [ass, resto] = dividirDescricao(v.descricao);
-  return String(html`<div class="pf-linha" data-tipo="${tipo}" data-kind="${info ? 'informativo' : 'pendencia'}"><select name="p_kind" data-pf-kind ${v.semKind ? html.seguro('hidden') : ''} title="Pendência vai para as pendências das pessoas; informativo só fica registrado na ata"><option value="pendencia" ${info ? '' : html.seguro('selected')}>Pendência</option><option value="informativo" ${info ? html.seguro('selected') : ''}>Informativo</option></select><input name="p_assunto" class="pf-assunto" placeholder="Assunto (ex.: ACM)" autocomplete="off" value="${ass}" title="Assunto: aparece em negrito"><input name="p_desc" placeholder="${info ? 'Informação (ex.: Fachada liberada)' : 'O que fazer (ex.: Retirar da área gourmet)'}" autocomplete="off" value="${resto}" title="${resto}">
+  return String(html`<div class="pf-linha" data-tipo="${tipo}" data-kind="${info ? 'informativo' : 'pendencia'}" data-pid="${v.pid || ''}"><select name="p_kind" data-pf-kind ${v.semKind ? html.seguro('hidden') : ''} title="Pendência vai para as pendências das pessoas; informativo só fica registrado na ata"><option value="pendencia" ${info ? '' : html.seguro('selected')}>Pendência</option><option value="informativo" ${info ? html.seguro('selected') : ''}>Informativo</option></select><input name="p_assunto" class="pf-assunto" placeholder="Assunto (ex.: ACM)" autocomplete="off" value="${ass}" title="Assunto: aparece em negrito"><input name="p_desc" placeholder="${info ? 'Informação (ex.: Fachada liberada)' : 'O que fazer (ex.: Retirar da área gourmet)'}" autocomplete="off" value="${resto}" title="${resto}">
     <select name="p_tipo" data-pf-tipo title="Quem é o responsável"><option value="solida" ${tipo === 'solida' ? html.seguro('selected') : ''}>Sólida</option><option value="terceirizado" ${tipo === 'terceirizado' ? html.seguro('selected') : ''}>Terceirizado</option><option value="cliente" ${tipo === 'cliente' ? html.seguro('selected') : ''}>Cliente</option></select>
     <select name="p_resp" class="pf-sol ${falta ? 'pf-falta' : ''}" title="${falta ? dica : ''}" ${tipo === 'solida' ? '' : html.seguro('hidden')}><option value="">Pessoa da Sólida…</option>${opcoesPessoas(v.responsavel || '')}</select>
     <select name="p_cat" class="pf-ter" ${tipo === 'terceirizado' ? '' : html.seguro('hidden')}><option value="">Tipo de serviço…</option>${CATEGORIAS_TERC.map((c) => html`<option ${categoria === c ? html.seguro('selected') : ''}>${c}</option>`)}</select>
@@ -335,12 +382,16 @@ function detalheAta(id, hoje, obras) {
         </tbody></table></div>
       </div>
       <h3>Acrescentar pendência</h3>      <form class="at-nova-pend" id="pend-form" data-ata="${a.id}" data-obra="${a.obra || ''}" data-setor="${a.setor || ''}">${html.seguro(linhaForm({ semKind: true }))}<button type="submit" class="botao">Acrescentar pendência</button></form>
-      ${podeApagar ? html`<p style="margin-top:18px"><button type="button" class="botao at-excluir" data-ata-del="${a.id}">Excluir esta ata e as pendências dela</button></p>` : ''}
+      ${podeApagar ? html`<p style="margin-top:18px"><a class="botao on" href="#/atas?aba=nova&revisar=${a.id}">Criar revisão ${rev2((Number(a.revisao) || 0) + 1)}</a> <button type="button" class="botao at-excluir" data-ata-del="${a.id}">Excluir esta ata e as pendências dela</button></p>` : ''}
     </article>`;
 }
 
-function formNova(obras) {
-  const hoje = hojeISO(); const r = rascunho;
+function formNova(obras, revisarId = '') {
+  const hoje = hojeISO();
+  const ataRev = revisarId ? ataPorId(revisarId) : null;
+  if (revisarId && !ataRev) return html`<p class="vazio">Ata não encontrada. <a class="link" href="#/atas?aba=atas">Voltar às atas</a></p>`;
+  const r = ataRev ? ataComoRascunho(ataRev) : rascunho;
+  const proxRev = ataRev ? (Number(ataRev.revisao) || 0) + 1 : 0;
   const linhasIniciais = r && (r.pendencias.length || (r.informativosLista || []).length) ? [...r.pendencias, ...(r.informativosLista || [])].sort((x, y) => (Number(x.item) || 0) - (Number(y.item) || 0)).map((p) => linhaForm(p)).join('') : linhaForm();
   const importador = html`<details class="caixa at-importar" ${r ? '' : html.seguro('open')}><summary><span class="caixa-tit">Importar uma ata pronta</span><span class="pequeno">PDF ou texto: eu leio e já separo as pendências</span></summary>
     <div class="caixa-corpo">
@@ -349,14 +400,14 @@ function formNova(obras) {
       <label>…ou cole o texto da ata<textarea id="ata-colada" rows="5" placeholder="Cole aqui o texto da ata"></textarea></label>
       <p><button type="button" class="botao" data-ata-ler>Ler o texto colado</button></p>
     </div></details>`;
-  return html`${importador}
-  ${r ? html`<p class="aviso at-aviso-imp">Ata lida${r.lidoDaTabela ? ' (padrão de ata da Sólida)' : ''}: encontrei <b>${r.pendencias.length}</b> ${r.pendencias.length === 1 ? 'pendência' : 'pendências'}${r.informativos ? `, mais ${r.informativos} informativo${r.informativos === 1 ? '' : 's'} que entraram como informativo (não viram pendência de ninguém)` : ''}${r.pendencias.some((p) => !p.responsavel && !p.externoNome) ? ', algumas sem responsável (em destaque)' : ''}. Confira, corrija o que precisar e salve. <button type="button" class="ac-mini" data-ata-descartar>descartar e começar do zero</button></p>` : ''}
-  <form class="at-form" id="ata-form">
+  return html`${ataRev ? html`<p><a class="link" href="#/atas?aba=atas&ata=${ataRev.id}">← Voltar à ata sem mudar nada</a></p><div class="aviso at-aviso-imp"><b>Criando a revisão ${rev2(proxRev)}</b> da ata ${ataRev.titulo}. Mexa no que precisar: dados da reunião, participantes, e acrescente, tire ou edite pendências e informativos. As pendências que você mantiver continuam as mesmas (com o andamento e as reprogramações); as que você tirar saem da lista de pendências. O PDF novo vai para o Drive com o nome ${rev2(proxRev)}; o anterior continua lá.</div>` : importador}
+  ${r && !ataRev ? html`<p class="aviso at-aviso-imp">Ata lida${r.lidoDaTabela ? ' (padrão de ata da Sólida)' : ''}: encontrei <b>${r.pendencias.length}</b> ${r.pendencias.length === 1 ? 'pendência' : 'pendências'}${r.informativos ? `, mais ${r.informativos} informativo${r.informativos === 1 ? '' : 's'} que entraram como informativo (não viram pendência de ninguém)` : ''}${r.pendencias.some((p) => !p.responsavel && !p.externoNome) ? ', algumas sem responsável (em destaque)' : ''}. Confira, corrija o que precisar e salve. <button type="button" class="ac-mini" data-ata-descartar>descartar e começar do zero</button></p>` : ''}
+  <form class="at-form" id="ata-form" ${ataRev ? html.seguro(`data-revisar="${ataRev.id}" data-revisao="${proxRev}"`) : ''}>
     <div class="at-form-grade">
       <label>Data<input type="date" name="data" value="${r ? r.data : hoje}" required></label>
       <label>Tipo da reunião<select name="tipo_reuniao">${TIPOS_REUNIAO.map((x) => html`<option ${(r && r.tipoReuniao ? r.tipoReuniao : 'REUNIÃO') === x ? html.seguro('selected') : ''}>${x}</option>`)}</select></label>
-      <input name="revisao" type="hidden" value="0">
-      <label>Obra<select name="obra" required><option value="">— escolher —</option><option value="-">Nenhuma</option>${(r && r.obra && !obras.includes(r.obra) ? [...obras, r.obra] : obras).map((o) => html`<option value="${o}" ${r && r.obra === o ? html.seguro('selected') : ''}>${o}</option>`)}</select></label>
+      <input name="revisao" type="hidden" value="${proxRev}">
+      <label>Obra<select name="obra" required><option value="">— escolher —</option><option value="-" ${ataRev && !ataRev.obra ? html.seguro('selected') : ''}>Nenhuma</option>${(r && r.obra && !obras.includes(r.obra) ? [...obras, r.obra] : obras).map((o) => html`<option value="${o}" ${r && r.obra === o ? html.seguro('selected') : ''}>${o}</option>`)}</select></label>
       <label>Departamento<select name="setor" required><option value="">— escolher —</option>${SETORES_ATA.map((s) => html`<option value="${s}" ${r && r.setor === s ? html.seguro('selected') : ''}>${s}</option>`)}</select></label>
     </div>
     <p class="at-nome-linha">Nome da ata: <b id="ata-nome">escolha a data</b> <span class="pequeno" id="ata-destino"></span></p>
@@ -365,8 +416,8 @@ function formNova(obras) {
     <textarea name="resumo" hidden>${r ? r.resumo : ''}</textarea>
     <h3>Pendências <span class="pequeno">o que precisa de ação: quem faz e até quando</span></h3>
     <div id="pend-linhas">${html.seguro(linhasIniciais)}</div>
-    <p><button type="button" class="ac-mini" data-pf-add>+ outra pendência</button></p>
-    <p style="margin-top:14px"><button type="submit" class="botao on">Salvar ata</button> <span class="pequeno at-msg"></span></p>
+    <p><button type="button" class="ac-mini" data-pf-add>+ outro item</button></p>
+    <p style="margin-top:14px"><button type="submit" class="botao on">${ataRev ? `Salvar revisão ${rev2(proxRev)}` : 'Salvar ata'}</button> <span class="pequeno at-msg"></span></p>
   </form>`;
 }
 export function render({ params, obras = [], msg = '', sugestoes = [] }) {
@@ -378,7 +429,7 @@ export function render({ params, obras = [], msg = '', sugestoes = [] }) {
   const minhas = minhasAbertas();
   const topo = html`<div class="subnav at-abas" role="tablist">${ABAS.map(([id, nome]) => html`<a role="tab" class="${id === aba ? 'on' : ''}" href="#/atas${id === 'pendencias' ? '' : `?aba=${id}`}">${nome}${id === 'pendencias' ? html` <span class="est-n">${abertas.length}</span>` : id === 'atas' ? html` <span class="est-n">${dados.atas.length}</span>` : ''}</a>`)}</div>`;
   let corpo;
-  if (aba === 'nova') corpo = formNova(obras);
+  if (aba === 'nova') corpo = formNova(obras, params.get('revisar') || '');
   else if (aba === 'atas') corpo = params.get('ata') ? detalheAta(params.get('ata'), hoje, obras) : html`${barraFiltros(params, obras, 'atas')}${listaAtas(params, obras)}`;
   else {
     const lista = filtrar(params);
