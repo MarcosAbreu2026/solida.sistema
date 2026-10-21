@@ -290,7 +290,7 @@ function formNova(obras) {
     <div class="at-form-grade">
       <label>Data<input type="date" name="data" value="${r ? r.data : hoje}" required></label>
       <label>Tipo da reunião<select name="tipo_reuniao">${TIPOS_REUNIAO.map((x) => html`<option ${(r && r.tipoReuniao ? r.tipoReuniao : 'REUNIÃO') === x ? html.seguro('selected') : ''}>${x}</option>`)}</select></label>
-      <label>Revisão<input name="revisao" type="number" value="0" readonly title="Ata nova é sempre R00; a revisão só muda quando a ata for editada"></label>
+      <input name="revisao" type="hidden" value="0">
       <label>Obra<select name="obra" required><option value="">— escolher —</option><option value="-">Nenhuma</option>${(r && r.obra && !obras.includes(r.obra) ? [...obras, r.obra] : obras).map((o) => html`<option value="${o}" ${r && r.obra === o ? html.seguro('selected') : ''}>${o}</option>`)}</select></label>
       <label>Departamento<select name="setor" required><option value="">— escolher —</option>${SETORES_ATA.map((s) => html`<option value="${s}" ${r && r.setor === s ? html.seguro('selected') : ''}>${s}</option>`)}</select></label>
     </div>
