@@ -109,7 +109,7 @@ td.repro { background: #F4EBD0; } small { display: block; color: #6B7580; font-s
 <div class="folha">
 <div class="cab">
 <div class="logo"></div><div class="tit">ATA DE REUNIÃO ${esc(dbr(a.data).replace(/\//g, '.'))}</div><div class="cod">${esc(a.obra || a.setor || '')}</div><div class="cod">${rev}</div>
-<div class="linha"><b>LOCAL:</b> ${esc(a.local || '—')}${a.setor ? ` · <b>DEPARTAMENTO:</b> ${esc(a.setor)}` : ''}</div>
+<div class="linha"><b>LOCAL:</b> ${esc(String(a.local || '').replace(/^\s*local\s*:\s*/i, '') || '—')}${a.setor ? ` · <b>DEPARTAMENTO:</b> ${esc(a.setor)}` : ''}</div>
 <div class="linha"><b>PARTICIPANTES:</b> ${partes || '—'}</div>
 </div>
 <table><thead><tr><th>ITEM</th><th>TIPO</th><th></th><th>RESPONSÁVEL</th><th>DATA LIMITE</th></tr></thead><tbody>${linhas}</tbody></table>
@@ -147,7 +147,7 @@ for (const a of atas) {
     else { const f = pastaDaAta(drive, a.obra); if (!f) throw new Error(`não achei a pasta da obra ${a.obra} no Drive`); pasta = f.pasta; if (simular) { console.log(`Atas: ${nome} iria para ${pasta}${f.existe ? '' : ' (a pasta ATA seria criada)'}`); continue; } }
     mkdirSync(pasta, { recursive: true });
     const destino = join(pasta, nome);
-    if (!existsSync(destino)) gerarPdf(htmlDaAta(a, pends.filter((p) => p.ata_id === a.id)), destino);
+    gerarPdf(htmlDaAta(a, pends.filter((p) => p.ata_id === a.id)), destino);
     if (!saidaTeste) await rest(`atas?id=eq.${a.id}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ arquivo: nome, arquivada_em: new Date().toISOString(), arquivo_erro: null }) });
     ok++; console.log(`Atas: ${nome} salva em ${pasta}`);
   } catch (e) {

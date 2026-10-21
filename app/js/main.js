@@ -1113,7 +1113,7 @@ document.addEventListener('submit', async (e) => {
         alert('Toda pendência precisa de uma data limite. Preencha o prazo das linhas marcadas para salvar a ata.'); return;
       }
       if (pendencias.some((p) => p.externoTipo === '' && !p.responsavel)) { alert('Toda pendência precisa de um responsável: escolha a pessoa da Sólida.'); return; }
-      if (pendencias.some((p) => p.externoTipo === 'terceirizado' && !p.externoCategoria && !p.externoNome)) { alert('Pendência de terceirizado: escolha o tipo de serviço ou escreva o nome da empresa.'); return; }
+      if (pendencias.some((p) => p.externoTipo === 'terceirizado' && !p.externoCategoria && !p.externoNome)) { alert('Pendência de terceirizado: escreva o nome da empresa ou pessoa.'); return; }
       const nome = atas.atualizarNomeDoForm(f); if (!nome) { alert('Escolha a data: o nome da ata sai dela.'); return; }
       if (f.dataset.revisar) {
         const idRev = f.dataset.revisar;
@@ -1165,7 +1165,7 @@ function lerLinhaPendencia(l) {
     semDescritivo: !!l.querySelector('[name="p_assunto"]').value.trim() && !l.querySelector('[name="p_desc"]').value.trim(),
     responsavel: tipo === 'solida' ? l.querySelector('[name="p_resp"]').value : '',
     externoTipo: tipo === 'solida' ? '' : tipo,
-    externoCategoria: tipo === 'terceirizado' ? l.querySelector('[name="p_cat"]').value : '',
+    externoCategoria: '',
     externoNome: tipo === 'solida' ? '' : l.querySelector('[name="p_nome"]').value.trim(),
     prazo: l.querySelector('[name="p_prazo"]').value,
   };
@@ -1178,9 +1178,8 @@ document.addEventListener('change', (e) => {
   if (!sel) return;
   const l = sel.closest('.pf-linha'); const tipo = sel.value; l.dataset.tipo = tipo;
   l.querySelector('.pf-sol').hidden = tipo !== 'solida';
-  l.querySelector('.pf-ter').hidden = tipo !== 'terceirizado';
   const nome = l.querySelector('.pf-ext'); nome.hidden = tipo === 'solida';
-  nome.placeholder = tipo === 'cliente' ? 'Nome do cliente' : 'Nome ou empresa';
+  nome.placeholder = tipo === 'cliente' ? 'Nome do cliente' : 'Nome da empresa ou pessoa';
 });
 
 // círculo vermelho em tudo que ainda falta para conseguir salvar (formulário da ata e "acrescentar pendência")
@@ -1194,13 +1193,13 @@ function marcarFaltas(f) {
   for (const l of f.querySelectorAll('.pf-linha')) {
     const q = (s) => l.querySelector(s); const v = (s) => (q(s) ? String(q(s).value || '').trim() : '');
     const tipo = v('[name="p_tipo"]'); const info = v('[name="p_kind"]') === 'informativo';
-    const ativa = unica || ['[name="p_assunto"]', '[name="p_desc"]', '[name="p_prazo"]', '[name="p_resp"]', '[name="p_cat"]', '[name="p_nome"]'].some((s) => v(s));
+    const ativa = unica || ['[name="p_assunto"]', '[name="p_desc"]', '[name="p_prazo"]', '[name="p_resp"]', '[name="p_nome"]'].some((s) => v(s));
     marca(q('[name="p_assunto"]'), ativa && !v('[name="p_assunto"]'));
     marca(q('[name="p_desc"]'), ativa && !v('[name="p_desc"]'));
     marca(q('[name="p_prazo"]'), ativa && !info && !v('[name="p_prazo"]'));
     marca(q('[name="p_resp"]'), ativa && tipo === 'solida' && !v('[name="p_resp"]'));
-    const semTerc = ativa && tipo === 'terceirizado' && !v('[name="p_cat"]') && !v('[name="p_nome"]');
-    marca(q('[name="p_cat"]'), semTerc); marca(q('[name="p_nome"]'), semTerc);
+    const semTerc = ativa && tipo === 'terceirizado' && !v('[name="p_nome"]');
+    marca(q('[name="p_nome"]'), semTerc);
     if (tipo !== 'terceirizado') marca(q('[name="p_nome"]'), false);
   }
 }

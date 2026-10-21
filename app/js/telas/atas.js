@@ -228,12 +228,12 @@ export const definirSugestoes = (lista) => { sugestoesNomes = lista; };
 const nomesConhecidos = () => [...new Set([...sugestoesNomes, ...dados.pendencias.filter((p) => p.responsavel_tipo && p.responsavel_tipo !== 'solida' && p.responsavel_nome).map((p) => p.responsavel_nome)])].sort((x, y) => x.localeCompare(y, 'pt-BR'));
 
 // Uma linha de pendência, tudo em uma linha: pendência · quem (Sólida, Terceirizado ou Cliente) · detalhe · prazo
-// Sólida → escolhe a pessoa. Terceirizado → escolhe o tipo de serviço (arquitetura, elétrica, ACM…) e, se quiser, o nome/empresa.
+// Sólida → escolhe a pessoa. Terceirizado → nome da empresa ou pessoa.
 // Cliente → nome (opcional).
 export function linhaForm(v = {}) {
   const tipo = v.responsavel ? 'solida' : (v.externoTipo === 'cliente' ? 'cliente' : (v.externoTipo === 'terceirizado' || v.externoTipo === 'arquitetura' || v.externoTipo === 'outro') ? 'terceirizado' : 'solida');
   const categoria = v.externoCategoria || (v.externoTipo === 'arquitetura' ? 'Arquitetura' : '');
-  const nome = tipo === 'solida' ? '' : (v.externoNome || '');
+  const nome = tipo === 'solida' ? '' : (v.externoNome || categoria || '');
   const falta = !!v.descricao && tipo === 'solida' && !v.responsavel;
   const dica = v.responsavelAmbiguo ? `Há mais de um ${v.responsavelAmbiguo}: escolha quem` : v.externoNome && v.externoTipo === 'solida' ? `${v.externoNome} não tem login no sistema: escolha outra pessoa` : 'Escolha o responsável';
   const info = v.kind === 'informativo';
@@ -241,8 +241,7 @@ export function linhaForm(v = {}) {
   return String(html`<div class="pf-linha" data-tipo="${tipo}" data-kind="${info ? 'informativo' : 'pendencia'}" data-pid="${v.pid || ''}"><select name="p_kind" data-pf-kind ${v.semKind ? html.seguro('hidden') : ''} title="Pendência vai para as pendências das pessoas; informativo só fica registrado na ata"><option value="pendencia" ${info ? '' : html.seguro('selected')}>Pendência</option><option value="informativo" ${info ? html.seguro('selected') : ''}>Informativo</option></select><input name="p_assunto" class="pf-assunto" placeholder="Assunto (ex.: ACM)" autocomplete="off" value="${ass}" title="Assunto: aparece em negrito"><input name="p_desc" placeholder="${info ? 'Informação (ex.: Fachada liberada)' : 'O que fazer (ex.: Retirar da área gourmet)'}" autocomplete="off" value="${resto}" title="${resto}">
     <select name="p_tipo" data-pf-tipo title="Quem é o responsável"><option value="solida" ${tipo === 'solida' ? html.seguro('selected') : ''}>Sólida</option><option value="terceirizado" ${tipo === 'terceirizado' ? html.seguro('selected') : ''}>Terceirizado</option><option value="cliente" ${tipo === 'cliente' ? html.seguro('selected') : ''}>Cliente</option></select>
     <select name="p_resp" class="pf-sol ${falta ? 'pf-falta' : ''}" title="${falta ? dica : ''}" ${tipo === 'solida' ? '' : html.seguro('hidden')}><option value="">Pessoa da Sólida…</option>${opcoesPessoas(v.responsavel || '')}</select>
-    <select name="p_cat" class="pf-ter" ${tipo === 'terceirizado' ? '' : html.seguro('hidden')}><option value="">Tipo de serviço…</option>${CATEGORIAS_TERC.map((c) => html`<option ${categoria === c ? html.seguro('selected') : ''}>${c}</option>`)}</select>
-    <input name="p_nome" class="pf-ext" list="dl-terceiros" placeholder="${tipo === 'cliente' ? 'Nome do cliente' : 'Nome ou empresa'}" autocomplete="off" value="${nome}" ${tipo === 'solida' ? html.seguro('hidden') : ''}>
+    <input name="p_nome" class="pf-ext" list="dl-terceiros" placeholder="${tipo === 'cliente' ? 'Nome do cliente' : 'Nome da empresa ou pessoa'}" autocomplete="off" value="${nome}" ${tipo === 'solida' ? html.seguro('hidden') : ''}>
     <input type="date" name="p_prazo" title="Prazo" value="${v.prazo || ''}"><button type="button" class="pf-x" data-pf-del title="Tirar esta linha">×</button></div>`);
 }
 export const datalistTerceiros = () => html`<datalist id="dl-terceiros">${nomesConhecidos().map((n) => html`<option value="${n}">`)}</datalist>`;
@@ -338,10 +337,9 @@ export function formAvulsa(obras, prazo) {
         <label class="av-ass">Assunto<input name="p_assunto" class="pf-assunto" placeholder="ex.: ACM" autocomplete="off"></label>
         <label class="av-desc">O que fazer<input name="p_desc" placeholder="ex.: Retirar da área gourmet" autocomplete="off"></label>
         <label>Responsável<select name="p_tipo" data-pf-tipo><option value="solida">Sólida</option><option value="terceirizado">Terceirizado</option><option value="cliente">Cliente</option></select></label>
-        <label class="av-quem">Pessoa ou serviço
+        <label class="av-quem">Nome da empresa ou pessoa
           <select name="p_resp" class="pf-sol"><option value="">Pessoa da Sólida…</option>${opcoesPessoas('')}</select>
-          <select name="p_cat" class="pf-ter" hidden><option value="">Tipo de serviço…</option>${CATEGORIAS_TERC.map((c) => html`<option>${c}</option>`)}</select>
-          <input name="p_nome" class="pf-ext" list="dl-terceiros" placeholder="Nome ou empresa" autocomplete="off" hidden></label>
+          <input name="p_nome" class="pf-ext" list="dl-terceiros" placeholder="Nome da empresa ou pessoa" autocomplete="off" hidden></label>
         <label>Prazo<input type="date" name="p_prazo" value="${prazo || ''}"></label>
       </div>
     </div>
