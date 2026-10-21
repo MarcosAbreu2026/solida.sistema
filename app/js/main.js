@@ -1179,7 +1179,7 @@ document.addEventListener('change', (e) => {
   const l = sel.closest('.pf-linha'); const tipo = sel.value; l.dataset.tipo = tipo;
   l.querySelector('.pf-sol').hidden = tipo !== 'solida';
   const nome = l.querySelector('.pf-ext'); nome.hidden = tipo === 'solida';
-  nome.placeholder = tipo === 'cliente' ? 'Nome do cliente' : 'Nome da empresa ou pessoa';
+  nome.placeholder = tipo === 'cliente' ? 'Nome do cliente' : tipo === 'arquitetura' ? 'Nome da arquitetura ou arquiteto' : 'Nome da empresa ou pessoa';
 });
 
 // círculo vermelho em tudo que ainda falta para conseguir salvar (formulário da ata e "acrescentar pendência")
