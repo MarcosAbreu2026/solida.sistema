@@ -34,6 +34,7 @@ import * as agenda from './telas/agenda.js';
 import * as equipe from './telas/equipe.js';
 import * as financeiro from './telas/financeiro.js';
 import * as meudia from './telas/meudia.js';
+import { abrirCalendario } from './calendario.js';
 import * as quadro from './telas/quadro.js';
 import * as produtividade from './telas/produtividade.js';
 import * as operacao from './telas/operacao.js';
@@ -1057,10 +1058,13 @@ document.addEventListener('change', (e) => {
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && e.target.matches && e.target.matches('input[data-atas-filtro]')) { e.preventDefault(); trocarQuery({ [e.target.dataset.atasFiltro]: e.target.value || null }); }
 });
-// reprogramar o prazo de uma pendência (guarda o prazo original; vira "reprogramada")
-document.addEventListener('change', async (e) => {
-  const d = e.target.closest && e.target.closest('[data-pend-prazo]'); if (!d || !d.value) return;
-  try { await atas.reprogramar(d.dataset.pendPrazo, d.value); desenhar(); } catch (err) { alert(`Não foi possível mudar o prazo (${err.message || err}).`); }
+// reprogramar o prazo de uma pendência: clicar na data abre o mini calendário com feriados (guarda o prazo original; vira "reprogramada")
+document.addEventListener('click', (e) => {
+  const b = e.target.closest && e.target.closest('[data-cal-prazo]'); if (!b) return;
+  const id = b.dataset.calPrazo; const p = atas.pendenciaPorId(id);
+  abrirCalendario({ ancora: b, valor: p ? p.prazo : '', aoEscolher: async (novo) => {
+    try { await atas.reprogramar(id, novo); desenhar(); } catch (err) { alert(`Não foi possível mudar o prazo (${err.message || err}).`); }
+  } });
 });
 // nova pendência avulsa (sem ata), aberta pelo + de cada caixinha do quadro por prazo
 document.addEventListener('click', (e) => {

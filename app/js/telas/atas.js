@@ -213,7 +213,9 @@ function barraFiltros(params, obras, aba) {
 // reprogramar: o prazo pode mudar, mas fica guardado o prazo original e cada troca (a pendência vira "reprogramada")
 const reprogramada = (p) => !!p.prazo_original && p.prazo_original !== p.prazo;
 const tituloRepro = (p) => `Prazo original ${dm(p.prazo_original)}${(p.reprogramacoes || []).length ? ` · ${(p.reprogramacoes || []).length} ${(p.reprogramacoes || []).length === 1 ? 'reprogramação' : 'reprogramações'}: ${(p.reprogramacoes || []).map((r) => `${dm(r.de)} → ${dm(r.para)}${r.por ? ` (${r.por})` : ''}`).join('; ')}` : ''}`;
-const seletorPrazo = (p) => html`<label class="ac-mini at-repro" title="Reprogramar o prazo (fica registrado como data alterada)">↻ <input type="date" data-pend-prazo="${p.id}" value="${p.prazo || ''}"></label>`;
+// clicar na data abre o mini calendário (com feriados) para reprogramar; só nas pendências abertas
+const prazoBtn = (p, conteudo, cls = '') => (p.status === 'feita' ? html`<span class="${cls}">${conteudo}</span>` : html`<button type="button" class="at-data-btn ${cls}" data-cal-prazo="${p.id}" title="Clique para reprogramar (escolher outra data)">${conteudo}</button>`);
+export const pendenciaPorId = (id) => dados.pendencias.find((x) => String(x.id) === String(id));
 export async function reprogramar(id, novo) {
   const p = dados.pendencias.find((x) => String(x.id) === String(id)); if (!p || !novo || novo === p.prazo) return;
   const mud = { prazo: novo, prazo_original: p.prazo_original || p.prazo || null, reprogramacoes: [...(p.reprogramacoes || []), { de: p.prazo || null, para: novo, em: new Date().toISOString(), por: sessao().nome || '' }] };
@@ -229,10 +231,10 @@ function cartao(p, hoje) {
   const rotuloPrazo = !p.prazo ? 'Sem prazo' : col === 'vencido' ? `${dm(p.prazo)} · ${Math.abs(dias)} ${Math.abs(dias) === 1 ? 'dia' : 'dias'} de atraso` : col === 'hoje' ? 'Hoje' : dm(p.prazo);
   return html`<article class="at-card at-${col}">
     <div class="at-tit">${descRica(p.descricao)}</div>
-    <div class="at-meta"><span class="at-prazo at-p-${col}">${rotuloPrazo}</span>${reprogramada(p) ? html`<span class="at-repro-tag" title="${tituloRepro(p)}">↻ Reprogramada (era ${dm(p.prazo_original).slice(0, 5)})</span>` : ''}${onde(p) ? html`<span class="at-chip">${onde(p)}</span>` : ''}</div>
+    <div class="at-meta">${prazoBtn(p, rotuloPrazo, `at-prazo at-p-${col}`)}${reprogramada(p) ? html`<span class="at-repro-tag" title="${tituloRepro(p)}">↻ Reprogramada (era ${dm(p.prazo_original).slice(0, 5)})</span>` : ''}${onde(p) ? html`<span class="at-chip">${onde(p)}</span>` : ''}</div>
     <div class="at-quem"><span class="at-pessoa">${nomeDe(p.responsavel, p.responsavel_nome)}</span>${p.responsavel_tipo && p.responsavel_tipo !== 'solida' ? html`<span class="at-tipo at-t-${p.responsavel_tipo}">${ROTULO_TIPO[p.responsavel_tipo] || 'Externo'}${p.responsavel_categoria ? ` · ${p.responsavel_categoria}` : ''}</span>` : ''}${a ? html`<a class="at-ata" href="#/atas?aba=atas&ata=${a.id}" title="Ata de origem">ata ${dm(a.data).slice(0, 5)}</a>` : ''}</div>
     <div class="at-acoes">
-      ${p.status === 'feita' ? html`<button type="button" class="ac-mini" data-pend="${p.id}|aberta">↺ reabrir</button>` : html`<button type="button" class="ac-mini at-ok" data-pend="${p.id}|feita">✓ concluir</button>${seletorPrazo(p)}`}
+      ${p.status === 'feita' ? html`<button type="button" class="ac-mini" data-pend="${p.id}|aberta">↺ reabrir</button>` : html`<button type="button" class="ac-mini at-ok" data-pend="${p.id}|feita">✓ concluir</button>`}
       <button type="button" class="ac-mini" data-pend-del="${p.id}" title="Excluir esta pendência">excluir</button>
     </div></article>`;
 }
@@ -283,10 +285,10 @@ function vistaLista(lista, hoje, params) {
   return html`<div class="at-lista-topo"><label>Mostrar<select data-atas-filtro="status"><option value="abertas" ${st === 'abertas' ? html.seguro('selected') : ''}>Abertas</option><option value="feitas" ${st === 'feitas' ? html.seguro('selected') : ''}>Concluídas</option><option value="todas" ${st === 'todas' ? html.seguro('selected') : ''}>Todas</option></select></label></div>
     <div class="tabela-rolagem"><table class="tab ordenavel at-tab"><thead><tr><th>Pendência</th><th>Responsável</th><th>Prazo</th><th>Obra / setor</th><th>Ata</th><th>Situação</th><th></th></tr></thead><tbody>
       ${itens.map((p) => { const col = coluna(p, hoje); const a = ataDe(p); return html`<tr><td>${descRica(p.descricao)}</td><td>${nomeDe(p.responsavel, p.responsavel_nome)}</td>
-        <td class="${col === 'vencido' ? 'pendente' : ''}">${p.prazo ? dm(p.prazo) : html`<span class="muted">—</span>`}${reprogramada(p) ? html` <span class="at-repro-tag" title="${tituloRepro(p)}">↻ era ${dm(p.prazo_original).slice(0, 5)}</span>` : ''}</td><td>${onde(p)}</td>
+        <td class="${col === 'vencido' ? 'pendente' : ''}">${prazoBtn(p, p.prazo ? dm(p.prazo) : html`<span class="muted">sem prazo</span>`)}${reprogramada(p) ? html` <span class="at-repro-tag" title="${tituloRepro(p)}">↻ era ${dm(p.prazo_original).slice(0, 5)}</span>` : ''}</td><td>${onde(p)}</td>
         <td>${a ? html`<a class="link" href="#/atas?aba=atas&ata=${a.id}">${dm(a.data).slice(0, 5)}</a>` : ''}</td>
         <td>${p.status === 'feita' ? 'Concluída' : col === 'vencido' ? 'Atrasada' : 'Aberta'}</td>
-        <td class="at-acoes">${p.status === 'feita' ? html`<button type="button" class="ac-mini" data-pend="${p.id}|aberta">↺</button>` : html`<button type="button" class="ac-mini at-ok" data-pend="${p.id}|feita">✓ concluir</button> ${seletorPrazo(p)}`} <button type="button" class="ac-mini" data-pend-del="${p.id}">excluir</button></td></tr>`; })}
+        <td class="at-acoes">${p.status === 'feita' ? html`<button type="button" class="ac-mini" data-pend="${p.id}|aberta">↺</button>` : html`<button type="button" class="ac-mini at-ok" data-pend="${p.id}|feita">✓ concluir</button>`} <button type="button" class="ac-mini" data-pend-del="${p.id}">excluir</button></td></tr>`; })}
     </tbody></table></div>${itens.length ? '' : html`<p class="vazio">Nenhuma pendência com esses filtros.</p>`}`;
 }
 
@@ -328,8 +330,8 @@ function detalheAta(id, hoje, obras) {
         <div class="tabela-rolagem"><table class="sd-tab"><thead><tr><th>ITEM</th><th>TIPO</th><th></th><th>RESPONSÁVEL</th><th>DATA LIMITE</th><th class="sd-sem-pdf"></th></tr></thead><tbody>
           ${linhasDaAta(a, ps).map((r, k) => r.kind === 'info' ? html`<tr><td class="c">${k + 1}</td><td class="c sd-t-info">INFORMATIVO</td><td>${descRica(typeof r.x === 'string' ? r.x : r.x.texto)}</td><td class="c">${typeof r.x === 'string' || !r.x.quem ? '—' : html`${String(r.x.quem).toLocaleUpperCase('pt-BR')}${r.x.tipo && r.x.tipo !== 'solida' ? html`<small>${ROTULO_TIPO[r.x.tipo] || 'Externo'}${r.x.categoria ? ` · ${r.x.categoria}` : ''}</small>` : ''}`}</td><td class="c"></td><td class="sd-sem-pdf"></td></tr>`
             : html`<tr class="${r.p.status === 'feita' ? 'sd-feita' : ''}"><td class="c">${k + 1}</td><td class="c sd-t-pend">PENDÊNCIA</td><td>${descRica(r.p.descricao)}</td><td class="c">${String(nomeDe(r.p.responsavel, r.p.responsavel_nome)).toLocaleUpperCase('pt-BR')}${r.p.responsavel_tipo && r.p.responsavel_tipo !== 'solida' ? html`<small>${ROTULO_TIPO[r.p.responsavel_tipo] || 'Externo'}${r.p.responsavel_categoria ? ` · ${r.p.responsavel_categoria}` : ''}</small>` : ''}</td>
-              <td class="c ${reprogramada(r.p) ? 'sd-repro' : ''}" ${reprogramada(r.p) ? html.seguro(`title="${tituloRepro(r.p).replace(/"/g, '')}"`) : ''}>${r.p.prazo ? dMes(r.p.prazo) : ''}${reprogramada(r.p) ? html`<small>↻ era ${dMes(r.p.prazo_original)}</small>` : ''}</td>
-              <td class="sd-sem-pdf at-acoes">${r.p.status === 'feita' ? html`<button type="button" class="ac-mini" data-pend="${r.p.id}|aberta">↺</button>` : html`<button type="button" class="ac-mini at-ok" data-pend="${r.p.id}|feita" title="Concluir">✓</button>${seletorPrazo(r.p)}`}<button type="button" class="ac-mini" data-pend-del="${r.p.id}" title="Excluir esta pendência">×</button></td></tr>`)}
+              <td class="c ${reprogramada(r.p) ? 'sd-repro' : ''}" ${reprogramada(r.p) ? html.seguro(`title="${tituloRepro(r.p).replace(/"/g, '')}"`) : ''}>${prazoBtn(r.p, r.p.prazo ? dMes(r.p.prazo) : '—')}${reprogramada(r.p) ? html`<small>↻ era ${dMes(r.p.prazo_original)}</small>` : ''}</td>
+              <td class="sd-sem-pdf at-acoes">${r.p.status === 'feita' ? html`<button type="button" class="ac-mini" data-pend="${r.p.id}|aberta">↺</button>` : html`<button type="button" class="ac-mini at-ok" data-pend="${r.p.id}|feita" title="Concluir">✓</button>`}<button type="button" class="ac-mini" data-pend-del="${r.p.id}" title="Excluir esta pendência">×</button></td></tr>`)}
         </tbody></table></div>
       </div>
       <h3>Acrescentar pendência</h3>      <form class="at-nova-pend" id="pend-form" data-ata="${a.id}" data-obra="${a.obra || ''}" data-setor="${a.setor || ''}">${html.seguro(linhaForm({ semKind: true }))}<button type="submit" class="botao">Acrescentar pendência</button></form>

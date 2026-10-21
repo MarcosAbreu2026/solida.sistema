@@ -1613,3 +1613,28 @@ table.ordenavel th.ord-desc::after { content: ' ▼'; font-size: 9px; }
 .at-avulsa .av-quem [hidden] { display: none !important; }
 .at-av-botoes { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--linha2); }
 @media (max-width: 640px) { .at-av-grade, .at-avulsa .av-linha { grid-template-columns: 1fr; } .at-avulsa .av-ass, .at-avulsa .av-desc { grid-column: 1; } }
+
+/* clicar na data para reprogramar + mini calendário com feriados */
+.at-data-btn { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+.at-data-btn:hover { text-decoration-style: solid; }
+.at-prazo.at-data-btn { border-radius: 999px; padding: 1px 9px; text-decoration: none; }
+.cal-pop { position: absolute; z-index: 1100; background: #fff; border: 1px solid #C9D3DD; border-radius: 14px; box-shadow: 0 14px 40px rgba(0, 0, 0, .25); padding: 12px 12px 8px; font-size: 13px; color: #1c2430; }
+.cal-topo { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.cal-topo b { text-transform: capitalize; font-size: 14.5px; color: #1B4F72; }
+.cal-nav { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--linha2); background: #fff; font-size: 18px; line-height: 1; cursor: pointer; }
+.cal-nav:hover { background: var(--cliquebg); }
+.cal-semana, .cal-grade { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
+.cal-semana span { font-size: 11px; font-weight: 700; color: #8A939D; padding: 2px 0; }
+.cal-dia { height: 34px; border: 0; background: none; border-radius: 9px; cursor: pointer; font: inherit; position: relative; }
+.cal-dia:hover:not(:disabled) { background: #E8F0F8; }
+.cal-dia.fds { color: #8A939D; }
+.cal-dia.hoje { box-shadow: inset 0 0 0 1.5px #1B4F72; font-weight: 700; }
+.cal-dia.atual { background: #1B4F72; color: #fff; font-weight: 700; }
+.cal-dia.feriado { background: #FDE8E7; color: #A12622; font-weight: 700; }
+.cal-dia.feriado.atual { background: #A12622; color: #fff; }
+.cal-dia:disabled { color: #C5CBD2; cursor: not-allowed; background: none; }
+.cal-feriados { list-style: none; margin: 8px 0 2px; padding: 8px 2px 0; border-top: 1px solid #E1E8F0; font-size: 12px; color: #6B7580; }
+.cal-feriados li { margin: 2px 0; } .cal-feriados b { color: #A12622; display: inline-block; min-width: 22px; }
+.cal-sem { margin: 8px 0 2px; font-size: 12px; color: #8A939D; }
+.cal-rodape { display: flex; justify-content: space-between; margin-top: 6px; }
+.cal-link { background: none; border: 0; color: var(--clique); font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; padding: 4px 2px; }
