@@ -1869,3 +1869,10 @@ button.at-prazo:hover { filter: brightness(.96); box-shadow: 0 0 0 2px rgba(45, 
 @media (max-width: 760px) { .tv { padding: 0; } .tv-corpo { border-radius: 0; height: 100%; } .tv-palco img { max-height: 36vh; } .tv-texto { max-height: 40vh; } .tn-topicos-grade { grid-template-columns: 1fr; } }
 
 .tv-palco a { display: block; max-width: 100%; cursor: zoom-in; }
+
+/* treinamentos: cartões compactos, um por menu */
+.tn-topicos-grade { grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; margin-top: 14px; display: grid; align-items: start; }
+.tn-topico { padding: 12px 14px; } .tn-topico-cab { align-items: center; } .tn-topico h3 { margin: 0; font-size: 15px; } .tn-ico { font-size: 22px; }
+.tn-subs { margin-top: 10px; } .tn-sub { padding: 7px 10px; } .tn-sub-play { width: 22px; height: 22px; font-size: 10px; }
+.tn-embreve { margin: 14px 0 0; }
+.tv-so-texto { max-height: 70vh; padding-top: 22px; } .tv-so-texto h3 { font-size: 15px; color: var(--muted); font-weight: 600; } .tv-so-texto p { font-size: 20px; line-height: 1.5; }

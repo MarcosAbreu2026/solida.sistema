@@ -5,7 +5,8 @@
 
 import { html } from '../formato.js';
 import { funcaoAtual, idPessoa } from '../sessao.js';
-import { TOPICOS, vistos as slidesVistos } from '../treinamentos-slides.js';
+import { TOPICOS, SUBTOPICOS, registrar, vistos as slidesVistos } from '../treinamentos-slides.js';
+import { paginaVisivel } from '../funcoes.js';
 
 const OBRA = ['gestor_obra', 'estagiario', 'encarregado'];
 const FERRAMENTAS = ['ferramentas', 'executor_ferramentas', 'estagiario_compras', 'posobra'];
@@ -13,7 +14,7 @@ const GESTAO_OP = ['coord_operacoes', 'tecnico', 'planejamento', 'orc_terceiriza
 
 export const TREINAMENTOS = [
   {
-    id: 'sistema', titulo: 'Como usar o sistema no dia a dia', min: 5, para: 'todos', funcoes: 'todos',
+    id: 'sistema', topico: 'funcoes', titulo: 'Como usar o sistema no dia a dia', min: 5, para: 'todos', funcoes: 'todos',
     resumo: 'Login, Minha semana, marcar tarefas, Feed e Perfil.',
     passos: [
       'Entre com o seu usuário e a senha. No primeiro acesso o sistema pede para você criar a sua senha.',
@@ -26,7 +27,7 @@ export const TREINAMENTOS = [
     ],
   },
   {
-    id: 'relatorio', titulo: 'Relatório diário de produtividade no WhatsApp', min: 5, para: 'Gestor de obra, estagiário, encarregado', funcoes: OBRA,
+    id: 'relatorio', topico: 'operacao', titulo: 'Relatório diário de produtividade no WhatsApp', min: 5, para: 'Gestor de obra, estagiário, encarregado', funcoes: OBRA,
     resumo: 'O que postar no grupo da obra, de manhã e no fim do dia.',
     passos: [
       'De manhã, o gestor posta no grupo da obra a programação do dia: "Atividades do dia", com cada serviço, a quantidade entre parênteses e quem faz.',
@@ -38,7 +39,7 @@ export const TREINAMENTOS = [
     ],
   },
   {
-    id: 'movimentacao', titulo: 'Guia de movimentação de ferramentas', min: 4, para: 'Ferramentas, transporte, gestor, estagiário, encarregado', funcoes: [...FERRAMENTAS, ...OBRA, 'ajudante'],
+    id: 'movimentacao', topico: 'transporte', titulo: 'Guia de movimentação de ferramentas', min: 4, para: 'Ferramentas, transporte, gestor, estagiário, encarregado', funcoes: [...FERRAMENTAS, ...OBRA, 'ajudante'],
     resumo: 'Como preencher a folha toda vez que algo sai ou chega no galpão ou na obra.',
     passos: [
       'Toda movimentação de material ou ferramenta (sair do galpão, chegar no galpão, passar de uma obra para outra) tem que ter registro. Sem registro, o estoque se perde.',
@@ -51,7 +52,7 @@ export const TREINAMENTOS = [
     ],
   },
   {
-    id: 'folha-ferramentas', titulo: 'Folha de ferramentas obrigatórias da obra', min: 6, para: 'Gestor, estagiário, encarregado, ferramentas', funcoes: [...OBRA, ...FERRAMENTAS],
+    id: 'folha-ferramentas', topico: 'transporte', titulo: 'Folha de ferramentas obrigatórias da obra', min: 6, para: 'Gestor, estagiário, encarregado, ferramentas', funcoes: [...OBRA, ...FERRAMENTAS],
     resumo: 'Como contar e preencher o checklist de 15 em 15 dias, sem erro.',
     passos: [
       'De 15 em 15 dias, na quarta-feira, cada obra conta as ferramentas obrigatórias e o Anderson manda a foto da folha no grupo de ferramentas. A compra demora a chegar, por isso não é toda semana.',
@@ -65,7 +66,7 @@ export const TREINAMENTOS = [
     ],
   },
   {
-    id: 'terceirizadas', titulo: 'Terceirizadas: contrato e medição no Mais Controle', min: 5, para: 'Operação, planejamento, gestor de obra', funcoes: [...GESTAO_OP, 'gestor_obra'],
+    id: 'terceirizadas', topico: 'operacao', titulo: 'Terceirizadas: contrato e medição no Mais Controle', min: 5, para: 'Operação, planejamento, gestor de obra', funcoes: [...GESTAO_OP, 'gestor_obra'],
     resumo: 'Toda empresa que trabalha na obra precisa estar lançada.',
     passos: [
       'Toda empresa vinculada a uma obra, cinza ou laranja, precisa ter um contrato vinculado àquela obra no Mais Controle.',
@@ -101,27 +102,28 @@ export function alternarFeito(id) {
 
 const seApplica = (t, funcaoId) => t.funcoes === 'todos' || t.funcoes.includes(funcaoId);
 
-export function render({ todos = false, aberto = null } = {}) {
+// os guias de texto abrem na mesma apresentação dos treinamentos com slides (um passo por tela, sem imagem)
+registrar(TREINAMENTOS.map((t) => ({ id: t.id, topico: t.topico, funcoes: t.funcoes, titulo: t.titulo, min: t.min, para: t.para === 'todos' ? 'Todos' : t.para, resumo: t.resumo,
+  slides: t.passos.map((p, i) => ({ titulo: `Passo ${i + 1} de ${t.passos.length}`, texto: p })) })));
+
+// o tópico aparece para quem tem aquele menu: setor nas áreas da função; página geral se a função vê a página
+const topicoVisivel = (t, f) => (t.tipo === 'setor' ? !f.areas || f.areas.includes(t.id) : paginaVisivel(f, t.pagina));
+
+export function render({ todos = false } = {}) {
   const f = funcaoAtual();
-  const feitos = new Set(lerFeitos());
-  const meus = TREINAMENTOS.filter((t) => seApplica(t, f.id));
-  const lista = todos ? TREINAMENTOS : meus;
-  const cartao = (t) => html`<details class="caixa tn-card ${feitos.has(t.id) ? 'tn-feito' : ''}" ${aberto === t.id ? html.seguro('open') : ''}>
-    <summary><span class="caixa-tit">${t.titulo}</span><span class="pequeno">${t.min} min · ${t.para === 'todos' ? 'para todos' : t.para}</span>${feitos.has(t.id) ? html`<span class="tn-ok">✓ já li</span>` : ''}</summary>
-    <div class="caixa-corpo"><p class="pequeno">${t.resumo}</p>
-      <ol class="tn-passos">${t.passos.map((p) => html`<li>${p}</li>`)}</ol>
-      <button type="button" class="botao ${feitos.has(t.id) ? 'on' : ''}" data-trein="${t.id}">${feitos.has(t.id) ? '✓ Marcado como lido (clique para desmarcar)' : 'Marcar como lido'}</button>
-    </div></details>`;
-  const vistosSl = slidesVistos();
-  const topicos = html`<section class="tn-topicos"><h2>Treinamentos passo a passo, com imagens</h2>
-    <div class="tn-topicos-grade">${TOPICOS.map((t) => html`<article class="tn-topico"><div class="tn-topico-cab"><span class="tn-ico">${t.icone}</span><div><h3>${t.titulo}</h3><p class="pequeno">${t.resumo}</p></div></div>
-      <ul class="tn-subs">${t.subtopicos.map((s) => html`<li><button type="button" class="tn-sub" data-trein-slides="${s.id}"><span class="tn-sub-play">▶</span><span class="tn-sub-tit">${s.titulo}<small>${s.min} min · ${s.slides.length} passos · ${s.para === 'Todos' ? 'para todos' : s.para}</small></span>${vistosSl.has(s.id) ? html`<span class="tn-ok">✓ visto</span>` : ''}</button></li>`)}</ul></article>`)}</div></section>`;
+  const vistosSet = slidesVistos();
+  const todasSub = [...SUBTOPICOS, ...TREINAMENTOS.map((t) => ({ ...t, para: t.para === 'todos' ? 'Todos' : t.para, slides: t.passos }))];
+  const doTopico = (t) => todasSub.filter((s) => s.topico === t.id && (todos || seApplica(s, f.id)));
+  const topicos = TOPICOS.filter((t) => todos || topicoVisivel(t, f));
+  const comTrein = topicos.filter((t) => doTopico(t).length); const semTrein = topicos.filter((t) => !doTopico(t).length);
+  const total = todasSub.filter((s) => todos || seApplica(s, f.id)).length; const lidos = todasSub.filter((s) => (todos || seApplica(s, f.id)) && vistosSet.has(s.id)).length;
+  const cartao = (t) => html`<article class="tn-topico"><div class="tn-topico-cab"><span class="tn-ico">${t.icone}</span><h3>${t.nome}</h3></div>
+    <ul class="tn-subs">${doTopico(t).map((s) => html`<li><button type="button" class="tn-sub" data-trein-slides="${s.id}"><span class="tn-sub-play">▶</span><span class="tn-sub-tit">${s.titulo}<small>${s.min} min · ${s.slides.length} ${s.slides.length === 1 ? 'passo' : 'passos'}</small></span>${vistosSet.has(s.id) ? html`<span class="tn-ok">✓ visto</span>` : ''}</button></li>`)}</ul></article>`;
   return html`<div class="pagina treinamentos">
-    ${topicos}
-    <h2 class="tn-guias-tit">Guias rápidos por função</h2>
-    <p class="pequeno">Primeira versão, para a diretoria revisar. Guias curtos do que a equipe faz todo dia. ${feitos.size ? `Você já leu ${[...feitos].filter((id) => TREINAMENTOS.some((t) => t.id === id)).length} de ${TREINAMENTOS.length}.` : ''}</p>
-    <div class="subnav" role="tablist"><a role="tab" class="${todos ? '' : 'on'}" href="#/treinamentos">Para a minha função <span class="est-n">${meus.length}</span></a><a role="tab" class="${todos ? 'on' : ''}" href="#/treinamentos?todos=1">Todos <span class="est-n">${TREINAMENTOS.length}</span></a></div>
-    <div style="margin-top:14px">${lista.length ? lista.map(cartao) : html`<p class="vazio">Ainda não há treinamento específico para a sua função.</p>`}</div>
+    <p class="pequeno">Cada cartão é um menu do sistema; dentro dele ficam os treinamentos daquela parte. Clique num treinamento para abrir o passo a passo. ${total ? `Você já viu ${lidos} de ${total}.` : ''}</p>
+    <div class="subnav" role="tablist"><a role="tab" class="${todos ? '' : 'on'}" href="#/treinamentos">Para a minha função</a><a role="tab" class="${todos ? 'on' : ''}" href="#/treinamentos?todos=1">Todos os menus</a></div>
+    <div class="tn-topicos-grade">${comTrein.length ? comTrein.map(cartao) : html`<p class="vazio">Ainda não há treinamento para os menus da sua função.</p>`}</div>
+    ${semTrein.length ? html`<p class="pequeno tn-embreve"><b>Ainda sem treinamento:</b> ${semTrein.map((t) => t.nome).join(' · ')}.</p>` : ''}
     <section class="secao"><h2>Ideias para os próximos treinamentos</h2>
       <ul class="tn-ideias">${SUGESTOES.map((s) => html`<li>${s}</li>`)}</ul>
       <p class="pequeno">Quer um deles, ou outro tema? Use o botão "Pedir alteração".</p></section>

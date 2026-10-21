@@ -6,13 +6,28 @@ import { idPessoa } from './sessao.js';
 
 const img = (n) => `img/treinamentos/${n}.jpg`;
 
+// Os tópicos são os nomes do menu da esquerda; os subtópicos são os treinamentos de cada um.
+// tipo 'setor' = área do menu (aparece para quem tem a área); tipo 'pagina' = página geral (aparece para quem vê a página)
 export const TOPICOS = [
-  {
-    id: 'atas', titulo: 'Atas e pendências', icone: '📝', para: 'Todos',
-    resumo: 'Registrar o que foi decidido nas reuniões e acompanhar o que cada um precisa fazer.',
-    subtopicos: [
+  { id: 'atas', nome: 'Atas e pendências', tipo: 'pagina', pagina: 'atas', icone: '📝' },
+  { id: 'funcoes', nome: 'Minhas funções', tipo: 'pagina', pagina: 'meudia', icone: '✅' },
+  { id: 'operacao', nome: 'Operação', tipo: 'setor', icone: '🏗️' },
+  { id: 'posobra', nome: 'Pós-obra', tipo: 'setor', icone: '🛠️' },
+  { id: 'transporte', nome: 'Transporte e logística', tipo: 'setor', icone: '🚚' },
+  { id: 'suprimentos', nome: 'Suprimentos e compras', tipo: 'setor', icone: '📦' },
+  { id: 'planejamento', nome: 'Planejamento', tipo: 'setor', icone: '📅' },
+  { id: 'projetos', nome: 'Projetos', tipo: 'setor', icone: '📐' },
+  { id: 'comercial', nome: 'Comercial e orçamentos', tipo: 'setor', icone: '💼' },
+  { id: 'financeiro', nome: 'Financeiro', tipo: 'setor', icone: '💰' },
+  { id: 'rh', nome: 'RH', tipo: 'setor', icone: '👥' },
+  { id: 'estoque', nome: 'Estoque', tipo: 'pagina', pagina: 'estoque', icone: '🧰' },
+  { id: 'marketing', nome: 'Marketing', tipo: 'pagina', pagina: 'marketing', icone: '📣' },
+];
+
+// treinamentos com slides (imagem + legenda). Os guias de texto de treinamentos.js entram aqui também (registrar) e abrem na mesma apresentação.
+export const SUBTOPICOS = [
       {
-        id: 'ata-criar', titulo: 'Como criar uma ata no sistema', min: 6, para: 'Todos',
+        id: 'ata-criar', topico: 'atas', funcoes: 'todos', titulo: 'Como criar uma ata no sistema', min: 6, para: 'Todos',
         resumo: 'Do menu até a ata pronta: dados, itens, gravação do áudio, PDF e pauta da próxima reunião.',
         slides: [
           { imagem: img('ata-01-menu'), titulo: 'Onde ficam as atas', texto: 'Toda reunião vira uma ata no sistema, e quem faz a ata é qualquer pessoa da equipe. No menu da esquerda, clique em Atas e pendências.',
@@ -44,15 +59,15 @@ export const TOPICOS = [
             dica: 'Excluir uma pendência da lista não apaga o item da ata: a ata só muda por uma revisão.' },
         ],
       },
-    ],
-  },
 ];
-
+const registrados = [];
+export function registrar(lista) { registrados.length = 0; registrados.push(...lista); }
+export const todosSub = () => [...SUBTOPICOS, ...registrados];
 // ---------------------------------------------------------------- visto
 const CHAVE = 'solida.treinamentos';
 export function vistos() { try { return new Set((JSON.parse(localStorage.getItem(CHAVE)) || {})[idPessoa()] || []); } catch { return new Set(); } }
 function marcarVisto(id) { try { const t = JSON.parse(localStorage.getItem(CHAVE)) || {}; const e = new Set(t[idPessoa()] || []); e.add(id); t[idPessoa()] = [...e]; localStorage.setItem(CHAVE, JSON.stringify(t)); } catch { /* sem armazenamento */ } }
-export const acharSub = (id) => { for (const t of TOPICOS) { const s = t.subtopicos.find((x) => x.id === id); if (s) return { topico: t, sub: s }; } return null; };
+export const acharSub = (id) => { const s = todosSub().find((x) => x.id === id); return s ? { sub: s } : null; };
 
 // ---------------------------------------------------------------- apresentação (slides)
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -67,8 +82,8 @@ export function abrir(subId, inicio = 0, aoFechar = () => {}) {
     const s = sub.slides[i]; const ultimo = i === sub.slides.length - 1;
     caixa.innerHTML = `<div class="tv-corpo">
       <header class="tv-topo"><div><b>${esc(sub.titulo)}</b><span>Passo ${i + 1} de ${sub.slides.length}</span></div><button type="button" class="tv-fechar" data-tv="fechar" aria-label="Fechar">×</button></header>
-      <div class="tv-palco"><a href="${esc(s.imagem)}" target="_blank" rel="noopener" title="Clique para ver a imagem em tamanho grande"><img src="${esc(s.imagem)}" alt="${esc(s.titulo)}"></a></div>
-      <section class="tv-texto"><h3>${esc(s.titulo)}</h3><p>${esc(s.texto)}</p>
+      ${s.imagem ? `<div class="tv-palco"><a href="${esc(s.imagem)}" target="_blank" rel="noopener" title="Clique para ver a imagem em tamanho grande"><img src="${esc(s.imagem)}" alt="${esc(s.titulo)}"></a></div>` : ""}
+      <section class="tv-texto ${s.imagem ? "" : "tv-so-texto"}"><h3>${esc(s.titulo)}</h3><p>${esc(s.texto)}</p>
         ${s.legenda && s.legenda.length ? `<ol class="tv-legenda">${s.legenda.map((l, k) => `<li><span>${k + 1}</span>${esc(l)}</li>`).join('')}</ol>` : ''}
         ${s.dica ? `<p class="tv-dica"><b>Dica:</b> ${esc(s.dica)}</p>` : ''}</section>
       <footer class="tv-rodape"><button type="button" class="botao" data-tv="ant" ${i === 0 ? 'disabled' : ''}>← Anterior</button>
