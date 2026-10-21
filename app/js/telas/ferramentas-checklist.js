@@ -39,7 +39,7 @@ function estadoDaSemanaDe(regs, s, hoje, verificadoEm) {
   const quarta = somarDias(s, 2);
   const dela = regs.filter((r) => r.enviadoEm >= s && r.enviadoEm <= somarDias(s, 6)).sort((a, b) => b.enviadoEm.localeCompare(a.enviadoEm))[0];
   if (dela) return { cod: dela.enviadoEm <= quarta ? 'ok' : 'atraso', reg: dela };
-  if (hoje <= quarta) return { cod: 'espera', reg: null };
+  if (hoje < quarta) return { cod: 'espera', reg: null };   // na própria quarta, se o grupo já foi lido hoje e nada chegou, já conta como não enviada
   const fim = somarDias(s, 6);
   return { cod: String(verificadoEm || '').slice(0, 10) >= (fim < hoje ? fim : hoje) ? 'nao' : 'nv', reg: null };
 }
