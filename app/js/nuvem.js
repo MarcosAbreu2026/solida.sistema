@@ -134,6 +134,39 @@ export async function criarAgendaPos(linha) {
   if (error) throw new Error(error.message);
   return data;
 }
+// gravações de reunião: o áudio vai para o armazenamento e o computador do escritório devolve o texto (Whisper)
+export async function enviarGravacao(blob, duracaoS, titulo = '') {
+  const ext = /ogg/.test(blob.type) ? 'ogg' : 'webm';
+  const caminho = `${perfil.id}/${new Date().toISOString().replace(/[:.]/g, '-')}.${ext}`;
+  const { error: e1 } = await sb.storage.from('audios').upload(caminho, blob, { contentType: blob.type || 'audio/webm' });
+  if (e1) throw new Error(e1.message);
+  const { data, error } = await sb.from('gravacoes').insert({ audio: caminho, duracao_s: duracaoS, titulo: titulo || null, criado_por: perfil.id }).select().single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+export async function listarGravacoes() {
+  const { data, error } = await sb.from('gravacoes').select('id,audio,duracao_s,titulo,status,texto,erro,modelo,criado_em,transcrita_em,criado_por').eq('criado_por', perfil.id).order('id', { ascending: false }).limit(10);
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+export async function apagarGravacao(g) {
+  await sb.storage.from('audios').remove([g.audio]).catch(() => {});
+  const { error } = await sb.from('gravacoes').delete().eq('id', g.id);
+  if (error) throw new Error(error.message);
+}// serviços do pós-obra em quadro por fase
+export async function listarServicosPos() {
+  const { data, error } = await sb.from('servicos_pos').select('*');
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+export async function gravarServicoPos(linha) {
+  const { error } = await sb.from('servicos_pos').upsert({ ...linha, atualizado_em: new Date().toISOString(), atualizado_por: perfil.id });
+  if (error) throw new Error(error.message);
+}
+export async function apagarServicoPos(os) {
+  const { error } = await sb.from('servicos_pos').delete().eq('os', os);
+  if (error) throw new Error(error.message);
+}
 export async function criarAgendaPosLote(linhas) {
   if (!linhas.length) return;
   const { error } = await sb.from('agenda_pos').insert(linhas.map((l) => ({ ...l, criado_por: perfil.id })));

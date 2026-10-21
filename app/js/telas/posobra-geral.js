@@ -39,7 +39,7 @@ export function renderResumo(base, semanaIni, linhasAgenda) {
     <h2 class="pg-tit">Em andamento <span class="pequeno">clique num pós-obra para ver o andamento dele</span></h2>
     ${em.length ? html`<div class="pg-grade">${em.map(cartao)}</div>` : html`<p class="vazio">Nenhum pós-obra em andamento.</p>`}
     ${encerradas.length ? html`<details class="pg-enc"><summary>Concluídos, cancelados e sem serviço aberto (${encerradas.length})</summary><div class="pg-grade">${encerradas.map(cartao)}</div></details>` : ''}
-    <p class="pequeno pg-rodape">Tabelas da planilha: <a class="link" href="#/posobra/painel">painel</a> · <a class="link" href="#/posobra/obras">obras</a> · <a class="link" href="#/posobra/servicos">serviços (planilha)</a>. As pendências novas ficam na aba <a class="link" href="#/posobra/pendencias">Pendências</a>, a mesma lista de Atas e pendências.</p>
+    <p class="pequeno pg-rodape">Tabelas da planilha: <a class="link" href="#/posobra/painel">painel</a> · <a class="link" href="#/posobra/obras">obras</a> · <a class="link" href="#/posobra/servicos-tabela">serviços (tabela da planilha)</a>. As pendências novas ficam na aba <a class="link" href="#/posobra/pendencias">Pendências</a>, a mesma lista de Atas e pendências.</p>
   </section>`;
 }
 
@@ -128,4 +128,50 @@ export function renderObra({ base, nome, semanaIni, linhasAgenda, pendencias = [
     ${feitas.length ? html`<details class="po-feitas"><summary>Já concluídos (${feitas.length} mais recentes)</summary>${feitas.map((s) => html`<div class="po-item po-feito"><b>${s.os}</b> <span class="pequeno">${s.concluido_em ? `concluído em ${fmt.data(s.concluido_em)}` : s.situacao}</span><div class="po-relato">${s.relato || ''}</div></div>`)}</details>` : ''}
     <p class="pequeno po-completo"><a class="link" href="${linkCompleto}">Ver os detalhes completos desta obra (agenda da planilha, custos e financeiro)</a></p>
   </div>`;
+}
+// ---------------------------------------------------------------- Serviços em quadro por fase
+const FASES_QUADRO = ['Análise', 'Orçamento', 'Agendamento', 'Planejamento', 'Execução', 'Atrasado', 'Concluído'];
+const OUTRAS_FASES = ['Fixo', 'Pausado', 'Cancelado'];
+const FASE_COR = { 'Análise': '#6E7782', 'Orçamento': '#B58A1B', 'Agendamento': '#3C7480', 'Planejamento': '#5B7A2E', 'Execução': '#2F5F86', 'Atrasado': '#9B3A33', 'Concluído': '#4F7D5C', 'Fixo': '#34507A', 'Pausado': '#6E7782', 'Cancelado': '#8A939D' };
+export const FASES_TODAS = [...FASES_QUADRO, ...OUTRAS_FASES];
+const curtoObra = (n) => String(n || '').replace(/^\s*(?:PO|MO)\d*\s*[-–]\s*/i, '').trim() || String(n || '');
+export function renderServicos({ base, params, podeEditar }) {
+  const obraF = params.get('obra') || ''; const q = (params.get('q') || '').toLocaleLowerCase('pt-BR');
+  const lista = (base.servicos || []).filter((s) => (!obraF || s.obra === obraF) && (!q || `${s.os} ${s.obra} ${s.relato} ${s.profissionais}`.toLocaleLowerCase('pt-BR').includes(q)));
+  const obrasLista = [...new Set((base.servicos || []).map((s) => s.obra).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  const cartao = (s) => html`<article class="sv-card" ${podeEditar ? html.seguro('draggable="true"') : ''} data-sv-os="${s.os}">
+    <div class="sv-topo"><b>${s.os}</b>${s.noSistema ? html`<span class="sv-novo">novo</span>` : ''}<span class="sv-obra" title="${s.obra}">${curtoObra(s.obra)}</span></div>
+    <div class="sv-relato">${s.relato || html`<span class="muted">sem descrição</span>`}</div>
+    <div class="sv-info"><span>${s.profissionais ? `com ${s.profissionais}` : 'sem responsável'}</span>${s.prazo && /^\d{4}/.test(s.prazo) ? html`<span>prazo ${fmt.data(s.prazo)}</span>` : ''}${s.statusPrazo && s.aberta ? chipPrazo(s.statusPrazo) : ''}</div>
+    ${podeEditar ? html`<div class="sv-acoes"><select data-sv-mover="${s.os}" title="Mover para outra fase"><option value="">Mover para…</option>${FASES_TODAS.filter((f) => f !== s.situacao).map((f) => html`<option>${f}</option>`)}</select>${s.noSistema ? html`<button type="button" class="ac-mini" data-sv-apagar="${s.os}" title="Apagar este serviço (só os criados aqui)">apagar</button>` : ''}</div>` : ''}
+  </article>`;
+  const coluna = (fase, estreita = false) => {
+    let itens = lista.filter((s) => s.situacao === fase);
+    if (fase === 'Concluído') itens = itens.sort((a, b) => String(b.concluido_em || '').localeCompare(String(a.concluido_em || '')));
+    const total = itens.length; const mostra = fase === 'Concluído' || fase === 'Cancelado' ? itens.slice(0, 15) : itens;
+    return html`<section class="sv-col ${estreita ? 'sv-estreita' : ''}" data-sv-fase="${fase}"><header style="background:${FASE_COR[fase]}"><b>${fase}</b><span>${total}</span>${podeEditar ? html`<button type="button" class="sv-mais" data-sv-novo="${fase}" title="Novo serviço em ${fase}">+</button>` : ''}</header>
+      <div class="sv-itens">${mostra.map(cartao)}${total > mostra.length ? html`<p class="pequeno">e mais ${total - mostra.length} (mais antigos)</p>` : ''}</div></section>`;
+  };
+  return html`<section class="sv">
+    <div class="at-filtros"><label>Obra<select data-atas-filtro="obra"><option value="">Todas</option>${obrasLista.map((o) => html`<option value="${o}" ${o === obraF ? html.seguro('selected') : ''}>${o}</option>`)}</select></label>
+      <label>Procurar<input type="search" data-atas-filtro="q" value="${params.get('q') || ''}" placeholder="serviço, obra, pessoa…"></label></div>
+    <p class="pequeno">${podeEditar ? 'Arraste o cartão para a fase certa (ou use "Mover para…"). O + cria um serviço novo naquela fase.' : 'Só o gestor do pós-obra, a coordenação e a diretoria mexem nas fases; você acompanha.'} Os serviços vêm da planilha do pós-obra; o que mudar aqui vale por cima dela.</p>
+    <div class="sv-quadro">${FASES_QUADRO.map((f) => coluna(f))}</div>
+    <h4 class="sv-outras-tit">Outros</h4>
+    <div class="sv-quadro sv-outras">${OUTRAS_FASES.map((f) => coluna(f, true))}</div>
+  </section>`;
+}
+
+// janela de novo serviço
+export function formServico(base, fase) {
+  const obras = base.obras.map((o) => o.obra);
+  return html`<form class="at-nova-pend at-avulsa" id="sv-form" data-fase="${fase}">
+    <h3>Novo serviço</h3><p class="pequeno at-av-sub">Entra na fase "${fase}". Pode mudar de fase depois, arrastando o cartão.</p>
+    <div class="at-av-grade">
+      <label class="av-m">Obra<select name="obra" required><option value="">— escolher —</option>${obras.map((o) => html`<option>${o}</option>`)}</select></label>
+      <label class="av-m">Quem faz<input name="profissionais" autocomplete="off" placeholder="ex.: Ênio, Marcos"></label>
+      <label class="av-m" style="grid-column:1/-1">O que é o serviço<input name="relato" required autocomplete="off" placeholder="ex.: Pintar o rodapé e trocar o ralo da varanda"></label>
+      <label class="av-m">Prazo<input type="date" name="prazo"></label>
+    </div>
+    <div class="at-av-botoes"><button type="button" class="botao" data-av-fechar>Cancelar</button><button type="submit" class="botao on">Criar serviço</button></div></form>`;
 }

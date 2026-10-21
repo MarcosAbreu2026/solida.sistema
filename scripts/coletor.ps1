@@ -17,7 +17,9 @@ while ($true) {
     for ($i = 0; $i -lt 120 -and @(Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" | Where-Object { $_.CommandLine -match 'exportar-drive\.ps1' }).Count; $i++) { Start-Sleep -Seconds 5 }
     & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $raiz 'scripts\exportar-drive.ps1') | Out-Null
     if ($node) { $saida = & $node (Join-Path $raiz 'scripts\enviar-nuvem.mjs') 2>&1; Registrar ($saida -join ' ')
-      $saida = & $node (Join-Path $raiz 'scripts\arquivar-atas.mjs') 2>&1; Registrar ($saida -join ' ') }
+      $saida = & $node (Join-Path $raiz 'scripts\arquivar-atas.mjs') 2>&1; Registrar ($saida -join ' ')
+      # transcrição das reuniões gravadas (Whisper local): em segundo plano, porque uma reunião longa demora; o próprio script não roda duas vezes
+      Start-Process -FilePath $node -ArgumentList ('"' + (Join-Path $raiz 'scripts\transcrever-reunioes.mjs') + '"') -WindowStyle Hidden -RedirectStandardOutput (Join-Path $raiz 'dados\transcricao-log.txt') -RedirectStandardError (Join-Path $raiz 'dados\transcricao-erro.txt') }
     else { Registrar 'Node.js não encontrado: nada enviado para a nuvem' }
   } catch { Registrar "Erro: $($_.Exception.Message)" }
   Start-Sleep -Seconds 600

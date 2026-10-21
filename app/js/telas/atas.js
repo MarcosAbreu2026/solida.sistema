@@ -13,7 +13,7 @@ import { sessao, idPessoa, funcaoReal, funcaoAtual } from '../sessao.js';
 import { lerPessoasTarefas } from '../armazenamento.js';
 import { analisarAta, lerArquivoAta, acharResponsavel } from '../ata-leitor.js';
 import { analisarReuniao, analisarFala, pareceResumoEmTopicos } from '../fala-leitor.js';
-import { suportado as gravadorSuportado, textoAtual as transcricaoAtual } from '../gravador.js';
+import { suportado as gravadorSuportado, gravaAudio, textoAtual as transcricaoAtual } from '../gravador.js';
 
 export const ABAS = [['pendencias', 'Pendências'], ['atas', 'Atas'], ['nova', 'Nova ata']];
 export const SETORES_ATA = [...SETORES.map(([, nome]) => nome), 'Diretoria / geral'];
@@ -145,30 +145,6 @@ export function pautaTexto(a) {
   out.push('Assuntos novos:', '- ');
   return out.join('\n');
 }
-// ---------------------------------------------------------------- serviços da planilha do pós-obra → pendências
-// Uma lista só: os serviços (OS) abertos da planilha viram pendências do setor Pós-obra (uma vez; depois a pendência é do sistema).
-// A origem ("os:OS-001") impede trazer o mesmo serviço duas vezes.
-const ASSUNTO_OBRA = (nome) => String(nome || '').replace(/^\s*(?:PO|MO)\d*\s*[-–]\s*/i, '').replace(/,/g, ' ').trim().toLocaleUpperCase('pt-BR').slice(0, 40) || 'PÓS-OBRA';
-export function servicosParaTrazer(servicos) {
-  const ja = new Set(dados.pendencias.map((p) => p.origem).filter(Boolean));
-  return (servicos || []).filter((s) => s.aberta && s.os && !ja.has(`os:${s.os}`));
-}
-export async function trazerServicos(servicos) {
-  const lista = servicosParaTrazer(servicos).map((s) => {
-    const quem = acharResponsavel(String(s.profissionais || ''), dados.pessoas);
-    const nome = String(s.profissionais || '').split(/[,;/]|\se\s/)[0].trim();
-    const relato = String(s.relato || '').trim() || `Serviço ${s.os} (${s.situacao || 'sem situação'})`;
-    return { origem: `os:${s.os}`, ata_id: null, descricao: `${ASSUNTO_OBRA(s.obra)}, ${cap1(relato.length > 220 ? `${relato.slice(0, 220).replace(/\s+\S*$/, '')}…` : relato)}`,
-      responsavel: quem && quem.id ? quem.id : null, responsavel_nome: quem && quem.id ? quem.nome : (nome || null), responsavel_tipo: 'solida', responsavel_categoria: null,
-      prazo: ehData(s.prazo) ? s.prazo : null, status: 'aberta', obra: s.obra, setor: 'Pós-obra' };
-  });
-  if (!lista.length) return 0;
-  if (NA_NUVEM) await criarPendenciasNuvemLote(lista);
-  else { const l = lerLocal(); for (const p of lista) l.pendencias.push({ id: l.seq++, ...p, criado_por: idPessoa(), criado_em: new Date().toISOString(), concluida_em: null }); gravarLocal(l); }
-  await carregar();
-  return lista.length;
-}
-const cap1 = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 // ---------------------------------------------------------------- nome padrão da ata
 // Obra (ou pós-obra) _ aaaa.mm.dd _ ATA _ tipo _ Rnn   ex.: Mo344_2026.07.10_ATA_ARQUITETURA-CLIENTE_R00
 // Salva no Drive, na pasta da obra: GERENCIAMENTO\ATA (obra) ou PÓS OBRA\PO_OBRAS\<ano>\Po_NNN\GERENCIAMENTO\ATA (pós-obra).
@@ -493,10 +469,11 @@ function formNova(obras, revisarId = '') {
     <div class="caixa-corpo">
       <div class="at-gravar">
         <h4>Gravar a reunião</h4>
-        ${gravadorSuportado ? html`<p class="pequeno">Aperte gravar e deixe o microfone aberto durante a reunião: a transcrição aparece abaixo, ao vivo (reconhecimento de voz do navegador). Ao terminar, aperte "Montar a ata": o sistema separa o que é pendência (ação, responsável e prazo) do que é informativo. É uma leitura automática: depois você confere e corrige cada linha.</p>
+        ${gravadorSuportado || gravaAudio ? html`<p class="pequeno">Aperte gravar e deixe o microfone aberto durante a reunião. ${gravadorSuportado ? 'A transcrição aparece abaixo, ao vivo (reconhecimento de voz do navegador, mais simples). ' : ''}${NA_NUVEM ? 'Ao parar, o áudio é enviado para o computador do escritório, que transcreve com o Whisper (bem mais preciso, leva uns minutos) e devolve o texto aqui embaixo, em Gravações.' : ''} Com o texto, aperte "Montar a ata": o sistema separa o que é pendência (ação, responsável e prazo) do que é informativo. É uma leitura automática: depois você confere e corrige cada linha.</p>
         <p><button type="button" class="botao on" data-gravar>● Gravar a reunião</button> <span class="pequeno at-grav-msg"></span></p>
         <label>Transcrição <span class="pequeno">(pode corrigir ou colar aqui a transcrição de outro lugar)</span><textarea id="ata-fala" rows="6" placeholder="A fala da reunião aparece aqui…">${transcricaoAtual()}</textarea></label>
-        <p><button type="button" class="botao" data-ata-ler-fala>Montar a ata com a transcrição</button></p>` : html`<p class="pequeno">Este navegador não grava e transcreve a voz. Abra o sistema no Chrome ou no Edge para gravar. Dá para colar abaixo a transcrição de outro lugar.</p>
+        <p><button type="button" class="botao" data-ata-ler-fala>Montar a ata com a transcrição</button></p>
+        ${NA_NUVEM ? html`<div class="at-grav-lista" id="grav-lista"></div>` : ''}` : html`<p class="pequeno">Este navegador não grava e transcreve a voz. Abra o sistema no Chrome ou no Edge para gravar. Dá para colar abaixo a transcrição de outro lugar.</p>
         <label>Transcrição colada<textarea id="ata-fala" rows="6" placeholder="Cole aqui a transcrição da reunião"></textarea></label>
         <p><button type="button" class="botao" data-ata-ler-fala>Montar a ata com a transcrição</button></p>`}
       </div>

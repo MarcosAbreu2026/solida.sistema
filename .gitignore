@@ -14,3 +14,7 @@ desktop.ini
 
 # link do dados.json no Drive (dá acesso aos dados de todos os setores)
 config.json
+
+# programas baixados no computador do escritorio (whisper, ffmpeg) e arquivos temporarios de audio
+ferramentas/
+dados/audios/

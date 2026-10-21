@@ -34,6 +34,7 @@ import * as agenda from './telas/agenda.js';
 import * as equipe from './telas/equipe.js';
 import * as posGeral from './telas/posobra-geral.js';
 import * as agendaPos from './agenda-pos.js';
+import * as svPos from './servicos-pos.js';
 import * as financeiro from './telas/financeiro.js';
 import * as meudia from './telas/meudia.js';
 import { abrirCalendario } from './calendario.js';
@@ -54,13 +55,14 @@ const ATUALIZAR_A_CADA_MS = 5 * 60 * 1000;
 // Painel, Obras e Serviços (planilha) continuam existindo, mas escondidos (links no rodapé de Pós-obras).
 const SUB = [
   { id: '', nome: 'Pós-obras' },
+  { id: 'servicos', nome: 'Serviços', nova: true },
   { id: 'pendencias', nome: 'Pendências', nova: true },
   { id: 'agenda', nome: 'Agenda', nova: true },
   { id: 'equipe', nome: 'Equipe e PJ', mod: equipe },
   { id: 'financeiro', nome: 'Financeiro', mod: financeiro, restrita: true },
   { id: 'painel', nome: 'Painel da planilha', mod: painel, escondida: true },
   { id: 'obras', nome: 'Obras', mod: obras, escondida: true },
-  { id: 'servicos', nome: 'Serviços (planilha)', mod: servicos, escondida: true },
+  { id: 'servicos-tabela', nome: 'Serviços (tabela da planilha)', mod: servicos, escondida: true },
 ];
 
 const estado = {
@@ -150,12 +152,16 @@ function telaPosObraPlanilha(rota) {
     carregarAgendaSemana();
     return { abas, conteudo: '', resumo: String(posGeral.renderResumo(estado.base, inicioDaSemana(hojeISO()), agendaPos.linhas)) };
   }
+  // Serviços: quadro por fase (análise, orçamento, execução, concluído…), arrastando os cartões
+  if (rota.sub === 'servicos') {
+    if (!estado.base) return semBase();
+    const podeEditar = ['socio', 'posobra', 'coord_operacoes'].includes(funcaoAtual().id);
+    return { abas, conteudo: `<div class="pagina" style="margin-top:26px">${svPos.erro ? `<p class="erro">${esc(svPos.erro)}</p>` : ''}${String(posGeral.renderServicos({ base: estado.base, params: rota.params, podeEditar }))}</div>` };
+  }
   // Pendências: a mesma lista de Atas e pendências, só do setor Pós-obra
   if (rota.sub === 'pendencias') {
     garantirAtasCarregadas();
-    const faltam = estado.base && ['socio', 'posobra', 'coord_operacoes'].includes(funcaoAtual().id) ? atas.servicosParaTrazer(estado.base.servicos).length : 0;
-    const banner = faltam ? `<div class="aviso pg-trazer"><b>${faltam} ${faltam === 1 ? 'serviço aberto' : 'serviços abertos'} da planilha do pós-obra ainda ${faltam === 1 ? 'não está' : 'não estão'} nesta lista.</b> Uma lista só: eles viram pendências do Pós-obra (com obra, responsável e prazo), e daí em diante são mexidos aqui. <button type="button" class="botao on" data-pos-trazer>Trazer para a lista</button></div>` : '';
-    return { abas, conteudo: `<div class="pagina" style="margin-top:26px">${banner}${String(atas.renderPendencias({ params: rota.params, obras: obrasDeAtas(), setorFixo: 'Pós-obra', base: '#/posobra/pendencias' }))}</div>` };
+    return { abas, conteudo: `<div class="pagina" style="margin-top:26px">${String(atas.renderPendencias({ params: rota.params, obras: obrasDeAtas(), setorFixo: 'Pós-obra', base: '#/posobra/pendencias' }))}</div>` };
   }
   // Agenda da semana: cartões de funcionários arrastados para a obra e o dia
   if (rota.sub === 'agenda') {
@@ -187,6 +193,12 @@ function telaPosObraPlanilha(rota) {
       <p class="pequeno" style="margin:0">${fonteDoPosObra()}</p>
       ${barra}${corpo}</div>`),
   };
+}
+
+// a base do pós-obra = planilha + o que o sistema mudou nos serviços (fases) e os serviços novos
+function reconstruirBase() {
+  if (!estado.dadosBase) return;
+  estado.base = montarBase({ ...estado.dadosBase, servicos: svPos.mesclar(estado.dadosBase.servicos || []) }, hojeISO());
 }
 
 // carrega a agenda da semana escolhida (uma vez por semana) e redesenha
@@ -434,6 +446,7 @@ function desenhar() {
     $('#conteudo').innerHTML = `<div>${atas.render({ params: rota.params, obras: obrasDeAtas(), sugestoes: ((estado.terceiros && estado.terceiros.empresas) || []).map((e) => e.empresa), msg: estado.atasMsgHash === location.hash ? (estado.atasMsg || '') : '' })}</div>`;
     ordenar.aplicar();
     { const fm = document.getElementById('ata-form'); if (fm) atas.atualizarNomeDoForm(fm); }
+    gravAtualizar();
     if (estado.atasVisitada !== location.hash) {   // ao entrar na tela (ou mudar de aba), busca os dados mais novos
       estado.atasVisitada = location.hash;
       atas.carregar().then(() => { const a = document.activeElement; if (rotaAtual().tela === 'atas' && !(a && a.closest && a.closest('#ata-form, #pend-form'))) desenhar(); });
@@ -622,7 +635,9 @@ async function atualizar() {
   const ORDEM_ST = ['ok', 'pendente', 'atencao', 'critico'];
   if (stProj && ORDEM_ST.indexOf(stProj) > ORDEM_ST.indexOf(areaProj.status)) areaProj.status = stProj;
   if (baseR.status === 'fulfilled') {
-    estado.base = montarBase(baseR.value, hojeISO());
+    estado.dadosBase = baseR.value;
+    await svPos.carregar();
+    reconstruirBase();
     estado.erroBase = null;
   } else {
     estado.erroBase = `Não foi possível ler a planilha do pós-obra: ${baseR.reason.message}`;
@@ -1086,17 +1101,70 @@ atualizar();
 setInterval(atualizar, ATUALIZAR_A_CADA_MS);
 
 // Quadro da semana › Funções: arrastar, redimensionar e abrir os cartões
+// parar a gravação: o áudio vai para o computador do escritório transcrever (Whisper) e o texto volta em "Gravações"
+function pararEEnviar(botao) {
+  const msg = () => document.querySelector('.at-grav-msg');
+  gravador.parar().then(async (r) => {
+    const b = botao || document.querySelector('[data-gravar]'); if (b) { b.textContent = '● Gravar a reunião'; b.classList.add('on'); }
+    if (r && nuvem.NA_NUVEM) {
+      if (msg()) msg().textContent = 'Enviando o áudio para o computador do escritório…';
+      try { await nuvem.enviarGravacao(r.blob, r.duracaoS); if (msg()) msg().textContent = 'Áudio enviado. O computador do escritório está transcrevendo (leva uns minutos): o texto aparece aqui embaixo, em Gravações.'; await gravAtualizar(); }
+      catch (err) { if (msg()) msg().textContent = `Não consegui enviar o áudio (${err.message || err}). A transcrição ao vivo continua na caixa.`; }
+    } else if (msg()) msg().textContent = 'Gravação parada.';
+  });
+}
+let gravs = [];
+const fmtGrav = (g) => { const dh = new Date(g.criado_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); const min = g.duracao_s ? `${Math.max(1, Math.round(g.duracao_s / 60))} min` : '';
+  const st = g.status === 'pronta' ? `<b>pronta</b> (${String(g.texto || '').split(/\s+/).length} palavras${g.modelo ? `, Whisper ${esc(g.modelo)}` : ''}) <button type="button" class="ac-mini at-ok" data-grav-usar="${g.id}">Usar esta transcrição</button>`
+    : g.status === 'erro' ? `<span class="pendente">erro: ${esc(g.erro || '')}</span>` : g.status === 'transcrevendo' ? 'transcrevendo no computador do escritório…' : 'aguardando o computador do escritório';
+  return `<li>${dh}${min ? ` · ${min}` : ''} — ${st} <button type="button" class="ac-mini" data-grav-apagar="${g.id}">apagar</button></li>`; };
+function desenharGravs() { const el = document.getElementById('grav-lista'); if (el) el.innerHTML = gravs.length ? `<h4>Gravações</h4><ul class="at-gravs">${gravs.map(fmtGrav).join('')}</ul>` : ''; }
+async function gravAtualizar() { if (!nuvem.NA_NUVEM || !document.getElementById('grav-lista')) return; try { gravs = await nuvem.listarGravacoes(); } catch { return; } desenharGravs(); }
+setInterval(() => { if (document.getElementById('grav-lista') && gravs.some((g) => g.status === 'pendente' || g.status === 'transcrevendo')) gravAtualizar(); }, 20000);
+document.addEventListener('click', async (e) => {
+  const us = e.target.closest && e.target.closest('[data-grav-usar]');
+  if (us) { const g = gravs.find((x) => String(x.id) === us.dataset.gravUsar); const c = document.getElementById('ata-fala'); if (g && c) { c.value = g.texto || ''; gravador.definirTexto(g.texto || ''); const m = document.querySelector('.at-grav-msg'); if (m) m.textContent = 'Transcrição do Whisper colocada na caixa: confira e aperte "Montar a ata com a transcrição".'; c.scrollIntoView({ block: 'center' }); } return; }
+  const ap = e.target.closest && e.target.closest('[data-grav-apagar]');
+  if (ap) { const g = gravs.find((x) => String(x.id) === ap.dataset.gravApagar); if (g && confirm('Apagar esta gravação (áudio e transcrição)?')) { try { await nuvem.apagarGravacao(g); await gravAtualizar(); } catch (err) { alert(`Não foi possível apagar (${err.message || err}).`); } } }
+});
+// Pós-obra › Serviços em quadro por fase: arrastar o cartão para a coluna (ou "Mover para…"), "+" para criar, "apagar" nos criados aqui
+async function svFazer(fn) { try { await fn(); reconstruirBase(); desenhar(); } catch (err) { alert(`Não foi possível mexer no serviço (${err.message || err}).`); } }
+const svPorOs = (os) => ((estado.base && estado.base.servicos) || []).find((s) => s.os === os);
+document.addEventListener('dragstart', (e) => { const c = e.target.closest && e.target.closest('[data-sv-os]'); if (c) { e.dataTransfer.setData('text/plain', `sv:${c.dataset.svOs}`); e.dataTransfer.effectAllowed = 'move'; } });
+document.addEventListener('dragover', (e) => { const col = e.target.closest && e.target.closest('[data-sv-fase]'); if (col) { e.preventDefault(); col.classList.add('sv-sobre'); } });
+document.addEventListener('dragleave', (e) => { const col = e.target.closest && e.target.closest('[data-sv-fase]'); if (col) col.classList.remove('sv-sobre'); });
+document.addEventListener('drop', (e) => {
+  const col = e.target.closest && e.target.closest('[data-sv-fase]'); if (!col) return;
+  e.preventDefault(); col.classList.remove('sv-sobre');
+  const v = String(e.dataTransfer.getData('text/plain') || ''); if (!v.startsWith('sv:')) return;
+  const s = svPorOs(v.slice(3)); if (s && s.situacao !== col.dataset.svFase) svFazer(() => svPos.mudarFase(s, col.dataset.svFase));
+});
+document.addEventListener('change', (e) => {
+  const sel = e.target.closest && e.target.closest('[data-sv-mover]'); if (!sel || !sel.value) return;
+  const s = svPorOs(sel.dataset.svMover); if (s) svFazer(() => svPos.mudarFase(s, sel.value));
+});
+document.addEventListener('click', (e) => {
+  const novo = e.target.closest && e.target.closest('[data-sv-novo]');
+  if (novo) {
+    const antigo = document.getElementById('at-modal'); if (antigo) antigo.remove();
+    const m = document.createElement('div'); m.id = 'at-modal'; m.className = 'at-modal';
+    m.innerHTML = `<div class="at-modal-caixa">${String(posGeral.formServico(estado.base, novo.dataset.svNovo))}</div>`; document.body.appendChild(m);
+    return;
+  }
+  const ap = e.target.closest && e.target.closest('[data-sv-apagar]');
+  if (ap) { if (confirm('Apagar este serviço? (só os criados aqui podem ser apagados)')) svFazer(() => svPos.apagar(ap.dataset.svApagar)); }
+});
+document.addEventListener('submit', (e) => {
+  const f = e.target.closest && e.target.closest('#sv-form'); if (!f) return;
+  e.preventDefault(); const fd = new FormData(f);
+  svFazer(async () => { await svPos.criar({ obra: String(fd.get('obra') || ''), relato: String(fd.get('relato') || '').trim(), profissionais: String(fd.get('profissionais') || '').trim(), prazo: String(fd.get('prazo') || ''), situacao: f.dataset.fase }); const m = document.getElementById('at-modal'); if (m) m.remove(); });
+});
 // Pós-obra › Agenda: cartões de funcionários arrastados para a obra e o dia (ou toque no nome e depois no quadrado)
 const apFaixa = () => [estado.posAgenda.semana, somarDias(estado.posAgenda.semana, 6)];
 async function apFazer(fn) { try { await fn(...apFaixa()); desenhar(); } catch (err) { alert(`Não foi possível mexer na agenda (${err.message || err}).`); } }
 document.addEventListener('click', (e) => {
   const sem = e.target.closest && e.target.closest('[data-ap-sem]');
   if (sem) { const v = sem.dataset.apSem; estado.posAgenda.semana = inicioDaSemana(v === 'hoje' ? hojeISO() : v); estado.posAgenda.chave = ''; desenhar(); return; }
-  if (e.target.closest && e.target.closest('[data-pos-trazer]')) {
-    if (!confirm('Trazer os serviços abertos da planilha para a lista de pendências do Pós-obra? Cada serviço vira uma pendência (uma vez só); depois ela é mexida aqui.')) return;
-    atas.trazerServicos(estado.base.servicos).then((n) => { estado.atasMsg = `${n} pendências trazidas da planilha.`; desenhar(); }).catch((err) => alert(`Não foi possível trazer (${err.message || err}).`));
-    return;
-  }
   if (e.target.closest && e.target.closest('[data-ap-importar]')) { apFazer((de, ate) => agendaPos.importar(posGeral.daPlanilha(estado.base, estado.posAgenda.semana), de, ate)); return; }
   const del = e.target.closest && e.target.closest('[data-ap-del]');
   if (del) { apFazer((de, ate) => agendaPos.remover(del.dataset.apDel, de, ate)); return; }
@@ -1261,7 +1329,7 @@ document.addEventListener('click', (e) => {
   const gb = e.target.closest && e.target.closest('[data-gravar]');
   if (gb) {
     const msg = document.querySelector('.at-grav-msg'); const caixa = document.getElementById('ata-fala');
-    if (gravador.gravando()) { gravador.parar(); gb.textContent = '● Gravar a reunião'; gb.classList.add('on'); if (msg) msg.textContent = 'Gravação parada.'; return; }
+    if (gravador.gravando()) { pararEEnviar(gb); return; }
     if (caixa && caixa.value.trim()) gravador.definirTexto(caixa.value);   // continua do que já está escrito
     const estados = { gravando: '● Gravando… fale normalmente', negado: 'O navegador não deixou usar o microfone: libere o microfone no cadeado da barra de endereço e tente de novo.', parado: 'Gravação parada.' };
     try {
@@ -1273,7 +1341,7 @@ document.addEventListener('click', (e) => {
     } catch (err) { if (msg) msg.textContent = err.message || String(err); }
     return;
   }
-  if (e.target.closest && e.target.closest('[data-ata-ler-fala]')) { if (gravador.gravando()) gravador.parar(); importarAta({ texto: (document.getElementById('ata-fala') || {}).value || '', fala: true }); return; }
+  if (e.target.closest && e.target.closest('[data-ata-ler-fala]')) { if (gravador.gravando()) pararEEnviar(null); importarAta({ texto: (document.getElementById('ata-fala') || {}).value || '', fala: true }); return; }
   if (e.target.closest && e.target.closest('[data-ata-descartar]')) { if (confirm('Descartar a ata lida e começar do zero?')) { atas.descartarRascunho(); desenhar(); } }
 });
 
