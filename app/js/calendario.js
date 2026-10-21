@@ -1,4 +1,4 @@
-// Mini calendário para escolher uma data (reprogramar o prazo de uma pendência), com feriados do Brasil e do Rio de Janeiro.
+﻿// Mini calendário para escolher uma data (reprogramar o prazo de uma pendência), com feriados do Brasil e do Rio de Janeiro.
 // abrirCalendario({ ancora, valor, aoEscolher }) abre uma janelinha junto do elemento clicado.
 
 const pad = (n) => String(n).padStart(2, '0');
@@ -34,7 +34,7 @@ export function fecharCalendario() { if (aberto) { aberto.remove(); aberto = nul
 export function abrirCalendario({ ancora, valor, aoEscolher }) {
   fecharCalendario();
   const hoje = new Date(); const hojeISO = iso(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
-  const base = valor && /^\d{4}-\d{2}-\d{2}$/.test(valor) ? valor : hojeISO;
+  const base = valor && /^\d{4}-\d{2}-\d{2}$/.test(valor) && valor >= hojeISO ? valor : hojeISO;   // prazo já vencido: abre no mês de hoje
   let ano = Number(base.slice(0, 4)); let mes = Number(base.slice(5, 7)) - 1;
   const caixa = document.createElement('div'); caixa.className = 'cal-pop'; caixa.setAttribute('role', 'dialog'); caixa.setAttribute('aria-label', 'Escolher a nova data');
 

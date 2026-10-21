@@ -7,10 +7,9 @@
 
 import { html, data as fmtData } from '../formato.js';
 import { hojeISO, somarDias, inicioDaSemana, diasEntre, ehData } from '../datas.js';
-import { NA_NUVEM, perfilAtual, listarAtasPendencias, criarAtaNuvem, criarPendenciaNuvem, criarPendenciasNuvemLote, atualizarPendenciaNuvem, atualizarAtaNuvem, apagarPendenciaNuvem, apagarAtaNuvem } from '../nuvem.js';
+import { NA_NUVEM, perfilAtual, listarAtasPendencias, criarAtaNuvem, criarPendenciaNuvem, atualizarPendenciaNuvem, atualizarAtaNuvem, apagarPendenciaNuvem, apagarAtaNuvem } from '../nuvem.js';
 import { SETORES } from '../funcoes.js';
 import { sessao, idPessoa, funcaoReal, funcaoAtual } from '../sessao.js';
-import { partesObra } from '../obras-pos.js';
 import { lerPessoasTarefas } from '../armazenamento.js';
 import { analisarAta, lerArquivoAta, acharResponsavel } from '../ata-leitor.js';
 import { analisarReuniao, analisarFala, pareceResumoEmTopicos } from '../fala-leitor.js';
@@ -146,46 +145,6 @@ export function pautaTexto(a) {
   out.push('Assuntos novos:', '- ');
   return out.join('\n');
 }
-// ---------------------------------------------------------------- serviços do pós-obra → pendências (lista original)
-// Cada serviço aberto do pós-obra aparece também em Atas e pendências (setor Pós-obra), sem duplicar (origem "os:OS-001").
-// O serviço manda na fase: serviço concluído = pendência feita; pendência concluída ou reaberta aqui muda o serviço (feito em main.js).
-const ASSUNTO_OBRA = (nome) => partesObra({ obra: nome }).curto.replace(/,/g, ' ').trim().toLocaleUpperCase('pt-BR').slice(0, 40) || 'PÓS-OBRA';
-const cap1 = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
-const ehOs = (p) => !!p && String(p.origem || '').startsWith('os:');
-export const pendenciaDeServico = ehOs;
-function pendenciaDoServico(s) {
-  const quem = acharResponsavel(String(s.profissionais || ''), dados.pessoas);
-  const nome = String(s.profissionais || '').split(/[,;/]|\se\s/)[0].trim();
-  const relato = String(s.relato || '').trim() || `Serviço ${s.os} (${s.situacao || 'sem situação'})`;
-  return { origem: `os:${s.os}`, ata_id: null, descricao: `${ASSUNTO_OBRA(s.obra)}, ${cap1(relato.length > 220 ? `${relato.slice(0, 220).replace(/\s+\S*$/, '')}…` : relato)}`,
-    responsavel: quem && quem.id ? quem.id : null, responsavel_nome: quem && quem.id ? quem.nome : (nome || null), responsavel_tipo: 'solida', responsavel_categoria: null,
-    prazo: ehData(s.prazo) ? s.prazo : null, status: 'aberta', obra: s.obra, setor: 'Pós-obra' };
-}
-export async function sincronizarServicos(servicos) {
-  const porOrigem = new Map(dados.pendencias.filter(ehOs).map((p) => [p.origem, p]));
-  const criar = []; const mudar = [];
-  for (const s of servicos || []) {
-    if (!s.os) continue; const p = porOrigem.get(`os:${s.os}`);
-    if (!p) { if (s.aberta) criar.push(pendenciaDoServico(s)); continue; }
-    // nome padrão: pendências criadas antes do padrão (só o nome da obra, ex. AUMENTO DE CARGA) ganham o assunto novo (CÓDIGO NOME)
-    const nova = pendenciaDoServico(s).descricao; const antiga = `, ${nova.slice(nova.indexOf(',') + 2)}`;
-    if (p.descricao !== nova && p.descricao === antiga) mudar.push([p.id, { descricao: nova }]);
-    if (!s.aberta && p.status === 'aberta') mudar.push([p.id, { status: 'feita', concluida_em: new Date().toISOString() }]);
-    else if (s.aberta && p.status === 'feita') mudar.push([p.id, { status: 'aberta', concluida_em: null }]);
-  }
-  if (!criar.length && !mudar.length) return 0;
-  if (NA_NUVEM) {
-    try { await criarPendenciasNuvemLote(criar); } catch (e) { if (!/duplicate|23505|unique/i.test(String(e.message))) throw e; }
-    for (const [id, m] of mudar) await atualizarPendenciaNuvem(id, m);
-  } else {
-    const l = lerLocal();
-    for (const p of criar) l.pendencias.push({ id: l.seq++, ...p, criado_por: idPessoa(), criado_em: new Date().toISOString(), concluida_em: null });
-    for (const [id, m] of mudar) { const q = l.pendencias.find((x) => String(x.id) === String(id)); if (q) Object.assign(q, m); }
-    gravarLocal(l);
-  }
-  await carregar();
-  return criar.length + mudar.length;
-}
 // ---------------------------------------------------------------- nome padrão da ata
 // Obra (ou pós-obra) _ aaaa.mm.dd _ ATA _ tipo _ Rnn   ex.: Mo344_2026.07.10_ATA_ARQUITETURA-CLIENTE_R00
 // Salva no Drive, na pasta da obra: GERENCIAMENTO\ATA (obra) ou PÓS OBRA\PO_OBRAS\<ano>\Po_NNN\GERENCIAMENTO\ATA (pós-obra).
@@ -233,8 +192,8 @@ export async function criarAta({ titulo, data, tipo, obra, setor, participantes,
   await carregar();
   return nova;
 }
-export async function criarPendencia({ ata_id, descricao, responsavel, externoNome, externoTipo, externoCategoria, prazo, obra, setor }) {
-  const p = { ata_id: ata_id || null, descricao, responsavel: responsavel || null, responsavel_nome: responsavel ? nomeDe(responsavel) : (externoNome || externoCategoria || (externoTipo === 'cliente' ? 'Cliente' : externoTipo === 'arquitetura' ? 'Arquitetura' : null)), responsavel_tipo: responsavel ? 'solida' : (externoTipo || 'terceirizado'), responsavel_categoria: responsavel ? null : (externoCategoria || null), prazo: prazo || null, status: 'aberta', obra: obra || null, setor: setor || null };
+export async function criarPendencia({ ata_id, descricao, responsavel, externoNome, externoTipo, externoCategoria, prazo, obra, setor, os }) {
+  const p = { ata_id: ata_id || null, descricao, responsavel: responsavel || null, responsavel_nome: responsavel ? nomeDe(responsavel) : (externoNome || externoCategoria || (externoTipo === 'cliente' ? 'Cliente' : externoTipo === 'arquitetura' ? 'Arquitetura' : null)), responsavel_tipo: responsavel ? 'solida' : (externoTipo || 'terceirizado'), responsavel_categoria: responsavel ? null : (externoCategoria || null), prazo: prazo || null, status: 'aberta', obra: obra || null, setor: setor || null, os: os || null };
   if (ata_id) { const a = dados.atas.find((x) => String(x.id) === String(ata_id)); const ns = [...dados.pendencias.filter((x) => String(x.ata_id) === String(ata_id)).map((x) => Number(x.item) || 0), ...((a && a.informativos) || []).map((x) => (x && x.n) || 0)]; p.item = Math.max(0, ...ns) + 1; }
   if (NA_NUVEM) await criarPendenciaNuvem(p);
   else { const l = lerLocal(); l.pendencias.push({ id: l.seq++, ...p, criado_por: idPessoa(), criado_em: new Date().toISOString(), concluida_em: null }); gravarLocal(l); }
@@ -250,7 +209,7 @@ export async function mudarStatus(id, status) {
 // só a pendência avulsa (sem ata) é apagada de verdade. Para tirar um item da ata, é pela revisão da ata.
 export async function apagarPendencia(id) {
   const p = pendenciaPorId(id);
-  if (p && (p.ata_id || ehOs(p))) await mudarNaLista(id, false);   // da ata ou de um serviço: só sai da lista (senão voltaria na próxima sincronização)
+  if (p && p.ata_id) await mudarNaLista(id, false);
   else {
     if (NA_NUVEM) await apagarPendenciaNuvem(id);
     else { const l = lerLocal(); l.pendencias = l.pendencias.filter((x) => String(x.id) !== String(id)); gravarLocal(l); }
@@ -392,7 +351,7 @@ function cartao(p, hoje) {
   const rotuloPrazo = !p.prazo ? 'Sem prazo' : col === 'vencido' ? `${dm(p.prazo)} · ${Math.abs(dias)} ${Math.abs(dias) === 1 ? 'dia' : 'dias'} de atraso` : col === 'hoje' ? 'Hoje' : dm(p.prazo);
   return html`<article class="at-card at-${col}">
     <div class="at-tit">${descRica(p.descricao)}</div>
-    <div class="at-meta">${prazoBtn(p, rotuloPrazo, `at-prazo at-p-${col}`)}${reprogramada(p) ? html`<span class="at-repro-tag" title="${tituloRepro(p)}">↻ Reprogramada (era ${dm(p.prazo_original).slice(0, 5)})</span>` : ''}${onde(p) ? html`<span class="at-chip">${onde(p)}</span>` : ''}</div>
+    <div class="at-meta">${prazoBtn(p, rotuloPrazo, `at-prazo at-p-${col}`)}${reprogramada(p) ? html`<span class="at-repro-tag" title="${tituloRepro(p)}">↻ Reprogramada (era ${dm(p.prazo_original).slice(0, 5)})</span>` : ''}${onde(p) ? html`<span class="at-chip">${onde(p)}</span>` : ''}${p.os ? html`<a class="at-chip at-os" href="#/posobra/os/${encodeURIComponent(p.os)}" title="Abrir a OS desta pendência">${p.os}</a>` : ''}</div>
     <div class="at-quem"><span class="at-pessoa">${nomeDe(p.responsavel, p.responsavel_nome)}</span>${p.responsavel_tipo && p.responsavel_tipo !== 'solida' ? html`<span class="at-tipo at-t-${p.responsavel_tipo}">${ROTULO_TIPO[p.responsavel_tipo] || 'Externo'}${p.responsavel_categoria ? ` · ${p.responsavel_categoria}` : ''}</span>` : ''}${a ? html`<a class="at-ata" href="#/atas?aba=atas&ata=${a.id}" title="Ata de origem">ata ${dm(a.data).slice(0, 5)}</a>` : ''}</div>
     <div class="at-acoes">
       ${p.status === 'feita' ? html`<button type="button" class="ac-mini" data-pend="${p.id}|aberta">↺ reabrir</button>` : html`<button type="button" class="ac-mini at-ok" data-pend="${p.id}|feita">✓ concluir</button>`}
@@ -410,12 +369,13 @@ function prazoDaColuna(id, hoje) {
   return '';
 }
 // formulário de pendência avulsa (sem ata): janela com rótulos e grade organizada
-export function formAvulsa(obras, prazo, setorPadrao = '') {
-  return html`<form class="at-nova-pend at-avulsa" id="pend-form" data-avulsa="1">
-    <h3>Nova pendência</h3>
+export function formAvulsa(obras, prazo, setorPadrao = '', preset = {}) {
+  const listaObras = preset.obra && !obras.includes(preset.obra) ? [preset.obra, ...obras] : obras;
+  return html`<form class="at-nova-pend at-avulsa" id="pend-form" data-avulsa="1" data-os="${preset.os || ''}">
+    <h3>Nova pendência${preset.os ? html` da ${preset.os}` : ''}</h3>
     <p class="pequeno at-av-sub">Para o que não veio de uma ata. Tudo marcado em vermelho precisa ser preenchido.</p>
     <div class="at-av-grade">
-      <label class="av-m">Obra<select name="av_obra"><option value="">Nenhuma</option>${obras.map((o) => html`<option value="${o}">${o}</option>`)}</select></label>
+      <label class="av-m">Obra<select name="av_obra"><option value="">Nenhuma</option>${listaObras.map((o) => html`<option value="${o}" ${o === preset.obra ? html.seguro('selected') : ''}>${o}</option>`)}</select></label>
       <label class="av-m">Departamento<select name="av_setor" required><option value="">— escolher —</option>${SETORES_ATA.map((s) => html`<option value="${s}" ${s === setorPadrao ? html.seguro('selected') : ''}>${s}</option>`)}</select></label>
       <div class="pf-linha av-linha" data-tipo="solida" data-kind="pendencia">
         <label class="av-ass">Assunto<input name="p_assunto" class="pf-assunto" placeholder="ex.: ACM" autocomplete="off"></label>

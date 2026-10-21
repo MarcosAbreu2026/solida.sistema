@@ -5,6 +5,7 @@ import { html } from '../formato.js';
 import { somarDias, inicioDaSemana } from '../datas.js';
 import { PRIORIDADE_SITUACAO, SITUACOES_ABERTAS } from '../regras.js';
 import { partesObra } from '../obras-pos.js';
+import { reprogramado, tituloReprogramacao } from '../servicos-pos.js';
 import { chipSituacao, chipPrazo, rotaObra, fmt } from '../componentes.js';
 
 const DIAS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -20,30 +21,57 @@ export function obrasEmAndamento(base) {
 const FASE_COR_L = { 'Análise': '#6E7782', 'Orçamento': '#B58A1B', 'Agendamento': '#3C7480', 'Planejamento': '#5B7A2E', 'Execução': '#2F5F86', 'Atrasado': '#9B3A33', 'Concluído': '#4F7D5C', 'Fixo': '#34507A', 'Pausado': '#6E7782', 'Cancelado': '#8A939D' };
 const resumoServico = (t) => { const s = String(t || '').replace(/\s+/g, ' ').trim(); return s.length > 170 ? `${s.slice(0, 170).replace(/\s+\S*$/, '')}…` : s; };
 const dBR = (iso) => (iso && /^\d{4}-\d{2}-\d{2}/.test(iso) ? fmt.data(iso) : '');
-export function renderResumo(base, semanaIni, linhasAgenda, { podeEditar = false, veValores = false } = {}) {
+const custoDe = (s) => (Number(s.custo_mo) || 0) + (Number(s.gastos) || 0) + (Number(s.materiais) || 0);
+const rotaOs = (os) => `#/posobra/os/${encodeURIComponent(os)}`;
+export const FASES_FILTRO = ['Análise', 'Orçamento', 'Agendamento', 'Planejamento', 'Execução', 'Atrasado', 'Concluído', 'Fixo', 'Pausado', 'Cancelado'];
+const PRAZOS_FILTRO = ['Vencido', 'Vence em 7 dias', 'No prazo', 'Sem prazo'];
+
+// prazo clicável (abre o mini calendário com feriados) + marca de reprogramado; só nos serviços em aberto e para quem edita
+export function celulaPrazo(s, podeEditar) {
+  const txt = dBR(s.prazo) || (s.prazo ? s.prazo : 'sem prazo');
+  const bt = podeEditar && s.aberta ? html`<button type="button" class="at-data-btn pl-prazo-bt" data-os-prazo="${s.os}" title="Clique para reprogramar (escolher outra data)">${txt}</button>` : html`<span class="${dBR(s.prazo) ? '' : 'muted'}">${txt}</span>`;
+  return html`<span class="pl-prazo">${bt}${s.aberta && s.statusPrazo && s.statusPrazo !== 'Sem prazo' ? chipPrazo(s.statusPrazo) : ''}${reprogramado(s) ? html`<span class="at-repro-tag" title="${tituloReprogramacao(s)}">↻ era ${dBR(s.prazo_original).slice(0, 5)}</span>` : ''}</span>`;
+}
+export function celulaFase(s, podeEditar) {
+  return podeEditar ? html`<select class="pl-fase-sel" data-os-fase="${s.os}" style="background:${FASE_COR_L[s.situacao] || '#8A939D'}" title="Mudar a fase">${FASES_FILTRO.map((f) => html`<option ${f === s.situacao ? html.seguro('selected') : ''}>${f}</option>`)}${s.situacao && !FASES_FILTRO.includes(s.situacao) ? html`<option selected>${s.situacao}</option>` : ''}${!s.situacao ? html`<option selected value="">sem fase</option>` : ''}</select>`
+    : html`<span class="pl-fase" style="background:${FASE_COR_L[s.situacao] || '#8A939D'}">${s.situacao || 'sem fase'}</span>`;
+}
+
+export function renderResumo(base, params, { podeEditar = false, veValores = false } = {}) {
+  const faseF = params.get('fase') || ''; const prazoF = params.get('prazo') || ''; const q = (params.get('q') || '').toLocaleLowerCase('pt-BR');
+  const filtrando = !!(faseF || prazoF || q);
+  const passa = (s) => (!faseF || s.situacao === faseF) && (!prazoF || (s.aberta ? s.statusPrazo : 'Encerrado') === prazoF)
+    && (!q || `${s.os} ${s.obra} ${s.relato} ${s.profissionais} ${partesObra(base.obraPorNome.get(s.obra) || { obra: s.obra }).titulo}`.toLocaleLowerCase('pt-BR').includes(q));
   const em = obrasEmAndamento(base);
   const encerradas = base.obras.filter((o) => !SITUACOES_ABERTAS.includes(o.situacao));
   const atrasadas = em.filter((o) => o.situacao === 'Atrasado').length;
   const abertas = em.reduce((t, o) => t + (o.abertas || 0), 0);
   const incompletas = em.filter((o) => partesObra(o).incompleta);
-  const linhaOs = (s) => html`<tr><td class="pl-os-cod">${s.os}</td><td class="pl-os-resumo">${resumoServico(s.relato) || html`<span class="muted">sem descrição</span>`}</td>
-    <td><span class="pl-fase" style="background:${FASE_COR_L[s.situacao] || '#8A939D'}">${s.situacao || 'sem fase'}</span></td>
+  const colunas = html`<colgroup><col class="c-os"><col class="c-serv"><col class="c-fase"><col class="c-ini"><col class="c-prazo"><col class="c-quem">${veValores ? html`<col class="c-custo">` : ''}</colgroup>`;
+  const linhaOs = (s) => html`<tr>
+    <td class="pl-os-cod"><a href="${rotaOs(s.os)}" title="Abrir a OS">${s.os}</a></td>
+    <td class="pl-os-resumo"><a href="${rotaOs(s.os)}" title="Abrir a OS">${resumoServico(s.relato) || html`<span class="muted">sem descrição</span>`}</a></td>
+    <td>${celulaFase(s, podeEditar)}</td>
     <td>${dBR(s.data_inicio) || html`<span class="muted">—</span>`}</td>
-    <td>${dBR(s.prazo) || (s.prazo ? s.prazo : html`<span class="muted">sem prazo</span>`)} ${s.aberta && s.statusPrazo && s.statusPrazo !== 'Sem prazo' ? chipPrazo(s.statusPrazo) : ''}</td>
-    <td>${s.profissionais || html`<span class="muted">—</span>`}</td>
-    ${veValores ? html`<td class="n">${(Number(s.custo_mo) || 0) + (Number(s.gastos) || 0) + (Number(s.materiais) || 0) ? fmt.reais((Number(s.custo_mo) || 0) + (Number(s.gastos) || 0) + (Number(s.materiais) || 0)) : html`<span class="muted">—</span>`}</td>` : ''}</tr>`;
-  const tabela = (lista) => html`<table class="pl-os"><thead><tr><th>OS</th><th>Serviço</th><th>Fase</th><th>Início</th><th>Prazo</th><th>Quem</th>${veValores ? html`<th class="n">Custo</th>` : ''}</tr></thead><tbody>${lista.map(linhaOs)}</tbody></table>`;
+    <td>${celulaPrazo(s, podeEditar)}</td>
+    <td class="pl-quem">${s.profissionais || html`<span class="muted">—</span>`}</td>
+    ${veValores ? html`<td class="n">${custoDe(s) ? fmt.reais(custoDe(s)) : html`<span class="muted">—</span>`}</td>` : ''}</tr>`;
+  const tabela = (lista) => html`<table class="pl-os">${colunas}<thead><tr><th>OS</th><th>Serviço</th><th>Fase</th><th>Início</th><th>Prazo</th><th>Quem</th>${veValores ? html`<th class="n">Custo</th>` : ''}</tr></thead><tbody>${lista.map(linhaOs)}</tbody></table>`;
   const bloco = (o, aberto = true) => {
-    const pt = partesObra(o); const abertasO = (o.servicos || []).filter((s) => s.aberta); const feitas = (o.servicos || []).filter((s) => !s.aberta);
-    return html`<details class="pl-obra pl-${String(o.situacao || 'sem').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, '-')}" ${aberto ? html.seguro('open') : ''}>
+    const pt = partesObra(o); const todos = (o.servicos || []).filter(passa);
+    const abertasO = todos.filter((s) => s.aberta); const feitas = todos.filter((s) => !s.aberta);
+    if (filtrando && !todos.length) return '';
+    const nAbertas = (o.servicos || []).filter((s) => s.aberta).length;
+    return html`<details class="pl-obra pl-${String(o.situacao || 'sem').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, '-')}" ${aberto || filtrando ? html.seguro('open') : ''}>
       <summary><span class="pl-tit"><a href="${rotaObra(o.obra)}" title="Abrir o andamento desta obra">${pt.titulo}</a></span> ${chipSituacao(o.situacao)}
         <span class="pl-sub ${pt.sub ? '' : 'pl-falta'}">${pt.sub || 'cliente e endereço ainda não cadastrados'}</span>
-        <span class="pl-cont">${abertasO.length} ${abertasO.length === 1 ? 'serviço aberto' : 'serviços abertos'}${o.proximoPrazo ? ` · próx. prazo ${fmt.data(o.proximoPrazo)}` : ''}</span>
+        <span class="pl-cont">${nAbertas} ${nAbertas === 1 ? 'serviço aberto' : 'serviços abertos'}${o.proximoPrazo ? ` · próx. prazo ${fmt.data(o.proximoPrazo)}` : ''}</span>
         ${podeEditar ? html`<button type="button" class="ac-mini" data-po-editar="${o.obra}" title="Completar nome, cliente e endereço">${pt.incompleta ? 'completar dados' : 'editar dados'}</button>` : ''}</summary>
-      ${abertasO.length ? tabela(abertasO) : html`<p class="pequeno pl-vazio">Nenhum serviço aberto nesta obra.</p>`}
-      ${feitas.length ? html`<details class="pl-feitos"><summary>Concluídos e cancelados (${feitas.length})</summary>${tabela(feitas)}</details>` : ''}
+      ${abertasO.length ? tabela(abertasO) : html`<p class="pequeno pl-vazio">${filtrando ? 'Nenhum serviço em aberto com este filtro.' : 'Nenhum serviço aberto nesta obra.'}</p>`}
+      ${feitas.length ? html`<details class="pl-feitos" ${filtrando ? html.seguro('open') : ''}><summary>Concluídos e cancelados (${feitas.length})</summary>${tabela(feitas)}</details>` : ''}
     </details>`;
   };
+  const sel = (nome, rotulo, opcoes, atual) => html`<label>${rotulo}<select data-atas-filtro="${nome}"><option value="">Todas</option>${opcoes.map((v) => html`<option ${v === atual ? html.seguro('selected') : ''}>${v}</option>`)}</select></label>`;
   return html`<section class="pl">
     <div class="pg-faixa">
       <div><b>${em.length}</b><span>pós-obras em andamento</span></div>
@@ -51,14 +79,48 @@ export function renderResumo(base, semanaIni, linhasAgenda, { podeEditar = false
       <div><b>${abertas}</b><span>serviços abertos</span></div>
     </div>
     ${incompletas.length ? html`<p class="aviso pl-aviso">${incompletas.length} ${incompletas.length === 1 ? 'pós-obra está sem' : 'pós-obras estão sem'} cliente ou endereço cadastrado, por isso nem sempre dá para saber de onde é cada serviço. ${podeEditar ? 'Use "completar dados" em cada um: o que você preencher vale por cima da planilha.' : 'Peça ao gestor do pós-obra para completar.'}</p>` : ''}
-    <h2 class="pg-tit">Em andamento <span class="pequeno">cada pós-obra com os serviços (OS) embaixo; clique no nome da obra para ver o andamento</span>
-      <span class="pl-tudo"><button type="button" class="ac-mini" data-po-todos="abrir">abrir tudo</button> <button type="button" class="ac-mini" data-po-todos="fechar">recolher tudo</button></span></h2>
+    <div class="at-filtros pl-filtros">${sel('fase', 'Fase', FASES_FILTRO, faseF)}${sel('prazo', 'Prazo', PRAZOS_FILTRO.concat(['Encerrado']), prazoF)}
+      <label>Procurar<input type="search" data-atas-filtro="q" value="${params.get('q') || ''}" placeholder="OS, obra, cliente, pessoa…"></label>
+      ${filtrando ? html`<a class="ac-mini" href="#/posobra">limpar filtros</a>` : ''}
+      <span class="pl-tudo"><button type="button" class="ac-mini" data-po-todos="abrir">abrir tudo</button> <button type="button" class="ac-mini" data-po-todos="fechar">recolher tudo</button></span></div>
+    <h2 class="pg-tit">Em andamento <span class="pequeno">cada pós-obra com os serviços (OS) embaixo; clique na OS para ver os detalhes</span></h2>
     ${em.length ? html`<div class="pl-lista">${em.map((o) => bloco(o, true))}</div>` : html`<p class="vazio">Nenhum pós-obra em andamento.</p>`}
-    ${encerradas.length ? html`<details class="pg-enc"><summary>Concluídos, cancelados e sem serviço aberto (${encerradas.length})</summary><div class="pl-lista">${encerradas.map((o) => bloco(o, false))}</div></details>` : ''}
-    <p class="pequeno pg-rodape">Tabelas da planilha: <a class="link" href="#/posobra/painel">painel</a> · <a class="link" href="#/posobra/obras">obras</a> · <a class="link" href="#/posobra/servicos-tabela">serviços (tabela da planilha)</a>. Os serviços abertos também aparecem como pendências em <a class="link" href="#/atas">Atas e pendências</a> (setor Pós-obra).</p>
+    ${encerradas.length ? html`<details class="pg-enc" ${filtrando ? html.seguro('open') : ''}><summary>Concluídos, cancelados e sem serviço aberto (${encerradas.length})</summary><div class="pl-lista">${encerradas.map((o) => bloco(o, false))}</div></details>` : ''}
+    <p class="pequeno pg-rodape">Tabelas da planilha: <a class="link" href="#/posobra/painel">painel</a> · <a class="link" href="#/posobra/obras">obras</a> · <a class="link" href="#/posobra/servicos-tabela">serviços (tabela da planilha)</a>. As pendências de cada OS aparecem em <a class="link" href="#/atas">Atas e pendências</a>.</p>
   </section>`;
 }
 
+// ---------------------------------------------------------------- página de uma OS: dados, atualizações e pendências dela
+const quando = (iso) => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+export function renderOS({ base, os, atualizacoes = [], pendencias = [], podeEditar = false, veValores = false }) {
+  const s = (base.servicos || []).find((x) => x.os === os);
+  if (!s) return html`<p class="vazio">OS "${os}" não encontrada. <a class="link" href="#/posobra">Voltar aos pós-obras</a></p>`;
+  const o = base.obraPorNome.get(s.obra) || { obra: s.obra }; const pt = partesObra(o);
+  const minhas = pendencias.filter((p) => p.os === os && p.status !== 'cancelada' && p.na_lista !== false);
+  const abertas = minhas.filter((p) => p.status === 'aberta'); const feitas = minhas.filter((p) => p.status === 'feita');
+  const dado = (rotulo, valor) => html`<div class="os-dado"><span>${rotulo}</span><b>${valor}</b></div>`;
+  const pend = (p) => html`<div class="os-pend ${p.status === 'feita' ? 'feita' : ''}"><div class="os-pend-desc">${descricaoComAssunto(p.descricao)}</div>
+    <div class="os-pend-info"><span>${p.responsavel_nome || '—'}</span><span>${p.prazo ? `prazo ${fmt.data(p.prazo)}` : 'sem prazo'}</span>${p.prazo_original && p.prazo_original !== p.prazo ? html`<span class="at-repro-tag">↻ era ${dBR(p.prazo_original).slice(0, 5)}</span>` : ''}
+      ${p.status === 'feita' ? html`<span class="muted">concluída</span>` : html`<button type="button" class="ac-mini" data-cal-prazo="${p.id}" title="Reprogramar">↻ data</button><button type="button" class="ac-mini at-ok" data-pend="${p.id}|feita">✓ concluir</button>`}</div></div>`;
+  return html`<div class="os-pagina">
+    <p><a class="link" href="#/posobra">← Pós-obras</a></p>
+    <h2 class="po-nome">${s.os} ${celulaFase(s, podeEditar)}</h2>
+    <p class="pequeno po-meta"><a class="link" href="${rotaObra(s.obra)}">${pt.titulo}</a>${pt.sub ? ` · ${pt.sub}` : ' · cliente e endereço ainda não cadastrados'}</p>
+    <div class="os-dados">${dado('Início', dBR(s.data_inicio) || '—')}${dado('Prazo', celulaPrazo(s, podeEditar))}${dado('Concluído em', dBR(s.concluido_em) || '—')}${dado('Quem faz', s.profissionais || '—')}${s.diasAtraso ? dado('Dias em atraso', s.diasAtraso) : ''}${veValores ? dado('Custo até agora', custoDe(s) ? fmt.reais(custoDe(s)) : '—') : ''}${dado('Origem', s.noSistema ? 'criada no sistema' : 'planilha do pós-obra')}</div>
+    <h3>O serviço</h3><div class="os-relato">${s.relato || html`<span class="muted">sem descrição</span>`}</div>${s.obs ? html`<p class="pequeno"><b>Observação:</b> ${s.obs}</p>` : ''}
+
+    <h3>Pendências desta OS <span class="pequeno">${abertas.length} ${abertas.length === 1 ? 'aberta' : 'abertas'}</span>${podeEditar ? html` <button type="button" class="ac-mini" data-os-pend="${os}" data-os-obra="${s.obra}">+ nova pendência</button>` : ''}</h3>
+    <p class="pequeno">Só entra aqui o que realmente é pendência (alguém precisa fazer algo, com responsável e prazo). Elas também aparecem em <a class="link" href="#/atas?obra=${encodeURIComponent(s.obra)}">Atas e pendências</a>.</p>
+    ${abertas.length ? html`<div class="os-pends">${abertas.map(pend)}</div>` : html`<p class="vazio">Nenhuma pendência aberta nesta OS.</p>`}
+    ${feitas.length ? html`<details class="po-feitas"><summary>Pendências concluídas (${feitas.length})</summary><div class="os-pends">${feitas.map(pend)}</div></details>` : ''}
+
+    <h3>Atualizações</h3>
+    ${podeEditar ? html`<form class="os-nota" id="os-nota" data-os="${os}"><textarea name="texto" rows="2" required placeholder="O que aconteceu? (visita, retorno do cliente, orçamento enviado…)"></textarea><button type="submit" class="botao on">Registrar atualização</button></form>` : ''}
+    ${atualizacoes.length ? html`<ol class="os-linha">${atualizacoes.map((a) => html`<li class="os-at os-at-${a.tipo}"><span class="os-at-quando">${quando(a.criado_em)}${a.por_nome ? ` · ${a.por_nome}` : ''}</span>
+      <div>${a.tipo === 'fase' ? html`Fase: <b>${a.de || '—'}</b> → <b>${a.para}</b>` : a.tipo === 'prazo' ? html`Prazo reprogramado: <b>${a.de ? dBR(a.de) : 'sem prazo'}</b> → <b>${dBR(a.para)}</b>` : a.texto}</div></li>`)}</ol>` : html`<p class="vazio">Ainda não há atualizações desta OS.</p>`}
+  </div>`;
+}
+const descricaoComAssunto = (t) => { const s = String(t || ''); const i = s.indexOf(','); return i > 0 && i < 60 ? html`<b>${s.slice(0, i).toLocaleUpperCase('pt-BR')}</b>${s.slice(i)}` : s; };
 // janela para completar os dados de uma obra
 export function formObra(o) {
   const pt = partesObra(o);
@@ -175,9 +237,9 @@ export function renderServicos({ base, params, podeEditar }) {
   const lista = (base.servicos || []).filter((s) => (!obraF || s.obra === obraF) && (!q || `${s.os} ${s.obra} ${s.relato} ${s.profissionais}`.toLocaleLowerCase('pt-BR').includes(q)));
   const obrasLista = [...new Set((base.servicos || []).map((s) => s.obra).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
   const cartao = (s) => html`<article class="sv-card" ${podeEditar ? html.seguro('draggable="true"') : ''} data-sv-os="${s.os}">
-    <div class="sv-topo"><b>${s.os}</b>${s.noSistema ? html`<span class="sv-novo">novo</span>` : ''}<span class="sv-obra" title="${s.obra}">${partesObra({ obra: s.obra, ...((base.obraPorNome.get(s.obra)) || {}) }).titulo}</span></div>
+    <div class="sv-topo"><a class="sv-os" href="${rotaOs(s.os)}" title="Abrir a OS"><b>${s.os}</b></a>${s.noSistema ? html`<span class="sv-novo">novo</span>` : ''}<span class="sv-obra" title="${s.obra}">${partesObra({ obra: s.obra, ...((base.obraPorNome.get(s.obra)) || {}) }).titulo}</span></div>
     <div class="sv-relato">${s.relato || html`<span class="muted">sem descrição</span>`}</div>
-    <div class="sv-info"><span>${s.profissionais ? `com ${s.profissionais}` : 'sem responsável'}</span>${s.prazo && /^\d{4}/.test(s.prazo) ? html`<span>prazo ${fmt.data(s.prazo)}</span>` : ''}${s.statusPrazo && s.aberta ? chipPrazo(s.statusPrazo) : ''}</div>
+    <div class="sv-info"><span>${s.profissionais ? `com ${s.profissionais}` : 'sem responsável'}</span>${celulaPrazo(s, podeEditar)}</div>
     ${podeEditar ? html`<div class="sv-acoes"><select data-sv-mover="${s.os}" title="Mover para outra fase"><option value="">Mover para…</option>${FASES_TODAS.filter((f) => f !== s.situacao).map((f) => html`<option>${f}</option>`)}</select>${s.noSistema ? html`<button type="button" class="ac-mini" data-sv-apagar="${s.os}" title="Apagar este serviço (só os criados aqui)">apagar</button>` : ''}</div>` : ''}
   </article>`;
   const coluna = (fase, estreita = false) => {

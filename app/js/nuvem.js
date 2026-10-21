@@ -173,7 +173,15 @@ export async function gravarServicoPos(linha) {
   const { error } = await sb.from('servicos_pos').upsert({ ...linha, atualizado_em: new Date().toISOString(), atualizado_por: perfil.id });
   if (error) throw new Error(error.message);
 }
-export async function apagarServicoPos(os) {
+export async function listarAtualizacoesOs() {
+  const { data, error } = await sb.from('os_atualizacoes').select('*').order('criado_em', { ascending: false }).limit(2000);
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+export async function criarAtualizacaoOs(linha) {
+  const { error } = await sb.from('os_atualizacoes').insert({ ...linha, criado_por: perfil.id });
+  if (error) throw new Error(error.message);
+}export async function apagarServicoPos(os) {
   const { error } = await sb.from('servicos_pos').delete().eq('os', os);
   if (error) throw new Error(error.message);
 }

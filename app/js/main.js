@@ -150,7 +150,13 @@ function telaPosObraPlanilha(rota) {
   if (!rota.sub) {
     if (!estado.base) return { abas, conteudo: '', resumo: semBase().conteudo };
     carregarAgendaSemana();
-    return { abas, conteudo: '', resumo: String(posGeral.renderResumo(estado.base, inicioDaSemana(hojeISO()), agendaPos.linhas, { podeEditar: podeEditarPos(), veValores: veValores() })) };
+    return { abas, conteudo: '', resumo: String(posGeral.renderResumo(estado.base, rota.params, { podeEditar: podeEditarPos(), veValores: veValores() })) };
+  }
+  // Página de uma OS: dados, atualizações e as pendências dela
+  if (rota.sub === 'os') {
+    if (!estado.base) return semBase();
+    garantirAtasCarregadas();
+    return { abas, conteudo: `<div class="pagina" style="margin-top:26px">${String(posGeral.renderOS({ base: estado.base, os: rota.arg, atualizacoes: svPos.atualizacoesDa(rota.arg), pendencias: atas.todasPendencias(), podeEditar: podeEditarPos(), veValores: veValores() }))}</div>` };
   }
   // Serviços: quadro por fase (análise, orçamento, execução, concluído…), arrastando os cartões
   if (rota.sub === 'servicos') {
@@ -190,25 +196,8 @@ function telaPosObraPlanilha(rota) {
   };
 }
 
-// Serviços do pós-obra × pendências: o serviço aparece também em Atas e pendências (origem "os:…") e os dois andam juntos
 const podeEditarPos = () => ['socio', 'posobra', 'coord_operacoes'].includes(funcaoAtual().id);
-async function espelharStatusNoServico(id, status) {
-  const p = atas.pendenciaPorId(id); if (!p || !atas.pendenciaDeServico(p)) return;
-  const s = ((estado.base && estado.base.servicos) || []).find((x) => x.os === p.origem.slice(3)); if (!s || !podeEditarPos()) return;
-  if (status === 'feita' && s.aberta) await svPos.mudarFase(s, 'Concluído'); else if (status === 'aberta' && !s.aberta) await svPos.mudarFase(s, 'Execução');
-  reconstruirBase();
-}
-async function espelharPrazoNoServico(id, novo) {
-  const p = atas.pendenciaPorId(id); if (!p || !atas.pendenciaDeServico(p) || !podeEditarPos()) return;
-  const s = ((estado.base && estado.base.servicos) || []).find((x) => x.os === p.origem.slice(3)); if (s) { await svPos.definirPrazo(s, novo); reconstruirBase(); }
-}
-// cria em Atas e pendências o que falta dos serviços abertos e ajusta os concluídos (só quem edita o pós-obra roda isso)
-let sincServicos = false;
-async function sincronizarServicosPos() {
-  if (sincServicos || !podeEditarPos() || !estado.base) return;
-  sincServicos = true;
-  try { const n = await atas.sincronizarServicos(estado.base.servicos); if (n && ['atas', 'posobra'].includes(rotaAtual().tela)) desenhar(); } catch (err) { console.warn('Serviços → pendências:', err); } finally { sincServicos = false; }
-}
+
 // a base do pós-obra = planilha + o que o sistema mudou nos serviços (fases) e os serviços novos
 function reconstruirBase() {
   if (!estado.dadosBase) return;
@@ -652,7 +641,6 @@ async function atualizar() {
     estado.dadosBase = baseR.value;
     await Promise.all([svPos.carregar(), obrasPos.carregar()]);
     reconstruirBase();
-    sincronizarServicosPos();
     estado.erroBase = null;
   } else {
     estado.erroBase = `Não foi possível ler a planilha do pós-obra: ${baseR.reason.message}`;
@@ -1169,7 +1157,7 @@ document.addEventListener('submit', async (e) => {
   } catch (err) { alert(`Não foi possível salvar (${err.message || err}).`); }
 });
 // Pós-obra › Serviços em quadro por fase: arrastar o cartão para a coluna (ou "Mover para…"), "+" para criar, "apagar" nos criados aqui
-async function svFazer(fn) { try { await fn(); reconstruirBase(); await sincronizarServicosPos(); desenhar(); } catch (err) { alert(`Não foi possível mexer no serviço (${err.message || err}).`); } }
+async function svFazer(fn) { try { await fn(); reconstruirBase(); desenhar(); } catch (err) { alert(`Não foi possível mexer no serviço (${err.message || err}).`); } }
 const svPorOs = (os) => ((estado.base && estado.base.servicos) || []).find((s) => s.os === os);
 document.addEventListener('dragstart', (e) => { const c = e.target.closest && e.target.closest('[data-sv-os]'); if (c) { e.dataTransfer.setData('text/plain', `sv:${c.dataset.svOs}`); e.dataTransfer.effectAllowed = 'move'; } });
 document.addEventListener('dragover', (e) => { const col = e.target.closest && e.target.closest('[data-sv-fase]'); if (col) { e.preventDefault(); col.classList.add('sv-sobre'); } });
@@ -1199,6 +1187,31 @@ document.addEventListener('submit', (e) => {
   const f = e.target.closest && e.target.closest('#sv-form'); if (!f) return;
   e.preventDefault(); const fd = new FormData(f);
   svFazer(async () => { await svPos.criar({ obra: String(fd.get('obra') || ''), relato: String(fd.get('relato') || '').trim(), profissionais: String(fd.get('profissionais') || '').trim(), prazo: String(fd.get('prazo') || ''), situacao: f.dataset.fase }); const m = document.getElementById('at-modal'); if (m) m.remove(); });
+});
+// OS do pós-obra: prazo clicável (calendário com feriados), fase, nova pendência da OS e atualizações (anotações)
+document.addEventListener('click', (e) => {
+  const pz = e.target.closest && e.target.closest('[data-os-prazo]');
+  if (pz) {
+    const s = svPorOs(pz.dataset.osPrazo); if (!s) return;
+    abrirCalendario({ ancora: pz, valor: /^\d{4}/.test(s.prazo || '') ? s.prazo : '', aoEscolher: (novo) => svFazer(() => svPos.reprogramarPrazo(s, novo)) });
+    return;
+  }
+  const np = e.target.closest && e.target.closest('[data-os-pend]');
+  if (np) {
+    const antigo = document.getElementById('at-modal'); if (antigo) antigo.remove();
+    const m = document.createElement('div'); m.id = 'at-modal'; m.className = 'at-modal';
+    m.innerHTML = `<div class="at-modal-caixa">${String(atas.formAvulsa(obrasDeAtas(), '', 'Pós-obra', { obra: np.dataset.osObra, os: np.dataset.osPend }))}</div>`; document.body.appendChild(m);
+    const campo = m.querySelector('[name="p_assunto"]'); if (campo) campo.focus();
+  }
+});
+document.addEventListener('change', (e) => {
+  const sel = e.target.closest && e.target.closest('[data-os-fase]'); if (!sel || !sel.value) return;
+  const s = svPorOs(sel.dataset.osFase); if (s && s.situacao !== sel.value) svFazer(() => svPos.mudarFase(s, sel.value));
+});
+document.addEventListener('submit', (e) => {
+  const f = e.target.closest && e.target.closest('#os-nota'); if (!f) return;
+  e.preventDefault(); const texto = String(new FormData(f).get('texto') || '').trim(); if (!texto) return;
+  svFazer(() => svPos.nota(f.dataset.os, texto));
 });
 // Pós-obra › Agenda: cartões de funcionários arrastados para a obra e o dia (ou toque no nome e depois no quadrado)
 const apFaixa = () => [estado.posAgenda.semana, somarDias(estado.posAgenda.semana, 6)];
@@ -1254,7 +1267,7 @@ document.addEventListener('click', (e) => {
   const b = e.target.closest && e.target.closest('[data-cal-prazo]'); if (!b) return;
   const id = b.dataset.calPrazo; const p = atas.pendenciaPorId(id);
   abrirCalendario({ ancora: b, valor: p ? p.prazo : '', aoEscolher: async (novo) => {
-    try { await atas.reprogramar(id, novo); await espelharPrazoNoServico(id, novo); desenhar(); } catch (err) { alert(`Não foi possível mudar o prazo (${err.message || err}).`); }
+    try { await atas.reprogramar(id, novo); desenhar(); } catch (err) { alert(`Não foi possível mudar o prazo (${err.message || err}).`); }
   } });
 });
 // nova pendência avulsa (sem ata), aberta pelo + de cada caixinha do quadro por prazo
@@ -1293,7 +1306,7 @@ document.addEventListener('click', async (e) => {
   const del = e.target.closest('[data-pf-del]');
   if (del) { const l = del.closest('.pf-linha'); const box = l.parentElement; if (box.id === 'pend-linhas' && box.children.length === 1) { l.querySelectorAll('input,select').forEach((c) => { c.value = ''; }); } else if (box.id === 'pend-linhas') l.remove(); return; }
   const st = e.target.closest('[data-pend]');
-  if (st) { const [id, status] = st.dataset.pend.split('|'); try { await atas.mudarStatus(id, status); await espelharStatusNoServico(id, status); desenhar(); } catch (err) { alert(`Não foi possível (${err.message || err}). Só quem é o responsável, quem criou ou a diretoria pode mudar.`); } return; }
+  if (st) { const [id, status] = st.dataset.pend.split('|'); try { await atas.mudarStatus(id, status); desenhar(); } catch (err) { alert(`Não foi possível (${err.message || err}). Só quem é o responsável, quem criou ou a diretoria pode mudar.`); } return; }
   const pd = e.target.closest('[data-pend-del]');
   if (pd) {
     const dePendencia = atas.pendenciaPorId(pd.dataset.pendDel);
@@ -1347,7 +1360,7 @@ document.addEventListener('submit', async (e) => {
       if (!p.descricao || (p.externoTipo === '' && !p.responsavel) || (p.externoTipo === 'terceirizado' && !p.externoCategoria && !p.externoNome)) { alert('Escreva a pendência e escolha o responsável.'); return; }
       if (g.dataset.avulsa) {
         const setorV = String(new FormData(g).get('av_setor') || ''); if (!setorV) { alert('Escolha o departamento da pendência.'); return; }
-        await atas.criarPendencia({ ata_id: null, ...p, obra: String(new FormData(g).get('av_obra') || ''), setor: setorV });
+        await atas.criarPendencia({ ata_id: null, ...p, obra: String(new FormData(g).get('av_obra') || ''), setor: setorV, os: g.dataset.os || null });
         const mod = document.getElementById('at-modal'); if (mod) mod.remove();
       } else await atas.criarPendencia({ ata_id: Number(g.dataset.ata), ...p, obra: g.dataset.obra, setor: g.dataset.setor });
     }
