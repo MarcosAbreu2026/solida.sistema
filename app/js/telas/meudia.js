@@ -268,14 +268,15 @@ export function instalarQuadro(aoMudar) {
 // Preencher é de quem está na obra. Sócio e coordenação consultam em Operação › Metas e produtividade.
 const veTodasAsObras = () => false;
 
-export function render({ dia, CFG, aba, semanaRef }) {
+export function render({ dia, CFG, aba, semanaRef, soFuncoes = false }) {
   const s = sessao();
   const f = funcaoAtual();
   const todas = veTodasAsObras(f);
   const todasProgs = CFG ? programacoes(CFG) : [];
   const obras = todas ? todasProgs.map((p) => p.obra) : obrasDaPessoa();
   // a aba Semana (lançar produtividade) é de quem preenche: gestor de obra, estagiário e encarregado
-  const abas = ABAS.filter((a) => !a.obra || f.editaProdutividade || todas);
+  // "Minhas funções" é uma página própria no menu; em "Minha semana" fica só o lançamento da semana
+  const abas = ABAS.filter((a) => (soFuncoes ? a.id === 'funcoes' : a.id !== 'funcoes') && (!a.obra || f.editaProdutividade || todas));
   const ativa = abas.find((a) => a.id === aba) || abas[0];
   const progs = todasProgs.filter((p) => obras.includes(p.obra));
   const ref = semanaRef || dia;

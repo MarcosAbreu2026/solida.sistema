@@ -1,4 +1,4 @@
-// Perfil: pontuação das tarefas da semana (quadro de funções, Minha semana › Funções) e sugestões do que melhorar.
+﻿// Perfil: pontuação das tarefas da semana (quadro de funções, Minhas funções) e sugestões do que melhorar.
 // A pontuação sai das marcações ✓ feito / ✕ não feito que cada pessoa faz (gravadas no servidor,
 // dados/tarefas-feitas.jsonl). Só contam as tarefas recorrentes da grade (as "fora do quadro" ficam de fora),
 // em dias úteis passados, sem feriado, a partir do primeiro dia em que a pessoa marcou alguma coisa.
@@ -83,7 +83,7 @@ function dicaPara(t) {
 
 export function sugestoes(p) {
   const out = [];
-  if (p.taxa == null) return ['Ainda não há marcações suficientes. Marque ✓ feito ou ✕ não feito em Minha semana › Funções todos os dias.'];
+  if (p.taxa == null) return ['Ainda não há marcações suficientes. Marque ✓ feito ou ✕ não feito em Minhas funções todos os dias.'];
   if (p.esperadas >= 5 && p.semMarca / p.esperadas > 0.3) {
     out.push(`${p.semMarca} de ${p.esperadas} tarefas ficaram sem marcação. Marque ✓ ou ✕ no fim de cada dia — tarefa sem marcação conta como não entregue.`);
   }
@@ -189,14 +189,14 @@ export function render({ eu, alvo, podeVerTodos, extra = '', CFG = null }) {
           <td>${x.tarefa.texto}</td><td class="pequeno">${descreverDias(x.tarefa.dias)}${x.tarefa.hora ? ` · ${x.tarefa.hora}` : ''}</td>
           <td class="pf-num">${x.feitas}/${x.esperadas}${x.nao ? html` <span class="pequeno">(${x.nao} não)</span>` : ''}</td>
           <td class="pf-barra"><span class="pf-b ${nivel(v)}"><i style="width:${Math.round(v * 100)}%"></i></span><b>${pct(v)}</b></td></tr>`; })}</tbody>
-      </table></div>` : html`<p class="vazio">Ainda não há tarefas marcadas. Marque ✓ ou ✕ em <a class="link" href="#/meudia/funcoes">Minha semana › Funções</a>.</p>`}
+      </table></div>` : html`<p class="vazio">Ainda não há tarefas marcadas. Marque ✓ ou ✕ em <a class="link" href="#/funcoes">Minhas funções</a>.</p>`}
     </section>`}
 
     ${podeVerTodos ? html`<section class="secao"><h2>Ranking da equipe <span class="pequeno">últimas 4 semanas · só a diretoria vê</span></h2>
       ${rk.length ? html`<div class="pf-rank">${rk.map((p, i) => html`<a class="pf-rk ${p.chave === pessoa.chave ? 'on' : ''}" href="#/perfil?p=${encodeURIComponent(p.chave)}">
         <span class="pf-rk-n">${i + 1}º</span>${avatar(p.nome, 32)}<span class="pf-rk-nome"><b>${p.nome}</b><small>${funcaoPorId(p.funcao).nome}</small></span>
         <span class="pf-b ${nivel(p.taxa)}"><i style="width:${Math.round((p.taxa || 0) * 100)}%"></i></span><b class="pf-rk-t">${pct(p.taxa)}</b><span class="pequeno">${p.pontos} pts</span></a>`)}</div>`
-        : html`<p class="vazio">Ninguém marcou tarefas ainda. A pontuação aparece assim que as pessoas começarem a marcar em Minha semana › Funções.</p>`}
+        : html`<p class="vazio">Ninguém marcou tarefas ainda. A pontuação aparece assim que as pessoas começarem a marcar em Minhas funções.</p>`}
     </section>` : ''}
     ${extra}
   </div>`;

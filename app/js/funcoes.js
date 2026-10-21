@@ -76,7 +76,7 @@ export const funcaoPorId = (id) => FUNCOES.find((f) => f.id === (ANTIGAS[id] || 
 // escolher outras na tela Acessos (guardado no banco, tabela funcao_abas) e isso passa a valer no lugar do padrão.
 export const SETORES = [['operacao', 'Operação'], ['posobra', 'Pós-obra'], ['transporte', 'Transporte e logística'], ['suprimentos', 'Suprimentos e compras'],
   ['planejamento', 'Planejamento'], ['projetos', 'Projetos'], ['comercial', 'Comercial e orçamentos'], ['financeiro', 'Financeiro'], ['rh', 'RH']];
-export const PAGINAS = [['meudia', 'Minha semana'], ['feed', 'Feed'], ['estoque', 'Estoque'], ['escritorio', 'Escritório virtual'], ['treinamentos', 'Treinamentos'], ['atas', 'Atas e pendências'], ['marketing', 'Marketing']];
+export const PAGINAS = [['meudia', 'Minha semana e funções'], ['feed', 'Feed'], ['estoque', 'Estoque'], ['escritorio', 'Escritório virtual'], ['treinamentos', 'Treinamentos'], ['atas', 'Atas e pendências'], ['marketing', 'Marketing']];
 // páginas que, por padrão, só algumas funções veem (a diretoria pode mudar em Acessos): Marketing é de quem cuida da marca e da verba
 const PAGINAS_RESTRITAS = { marketing: ['socio', 'administrativo', 'financeiro'] };
 const IDS_SETORES = SETORES.map((s) => s[0]);

@@ -1,4 +1,4 @@
-// Treinamentos: guias curtos, passo a passo, do que a equipe faz todo dia na Sólida (primeira versão de 16/10, para
+﻿// Treinamentos: guias curtos, passo a passo, do que a equipe faz todo dia na Sólida (primeira versão de 16/10, para
 // a diretoria revisar). Cada pessoa vê primeiro os da sua função e marca "já li" (fica só neste navegador).
 // Os textos vêm do que já está definido nos processos e nos formulários da empresa (guia de movimentação, folha de
 // ferramentas obrigatórias, relatório diário no WhatsApp, Mais Controle). Para sugerir outro, "Pedir alteração".
@@ -16,7 +16,7 @@ export const TREINAMENTOS = [
     resumo: 'Login, Minha semana, marcar tarefas, Feed e Perfil.',
     passos: [
       'Entre com o seu usuário e a senha. No primeiro acesso o sistema pede para você criar a sua senha.',
-      'Minha semana › Funções mostra as tarefas da sua função, cada uma num cartão, no dia e horário do quadro.',
+      'Minhas funções mostra as tarefas da sua função, cada uma num cartão, no dia e horário do quadro.',
       'Quando fizer a tarefa, clique em ✓ Feito. Se não fez, clique em ✕ Não. Clicar de novo desfaz. Tarefa sem marcação conta como não entregue.',
       'Quando o sistema acha a prova sozinho (arquivo no Drive ou produtividade no grupo), o cartão já vem como "✓ automático".',
       'Dá para arrastar um cartão para outro horário ou dia da semana, puxar a borda de baixo para mudar a duração e clicar para ver os detalhes. É só um ajuste seu.',

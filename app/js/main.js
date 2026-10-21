@@ -185,7 +185,7 @@ function desenharNav(sel) {
   // perfil (primeira coisa do menu): bonequinho + nome; clicando abre a pontuação e as sugestões
   $('#nav').innerHTML = `<div class="marca"><img src="img/logo.png" alt="Sólida"><span>Painel da empresa</span></div>`
     + `<a class="nav-perfil${sel === 'perfil' ? ' sel' : ''}" href="#/perfil" title="Meu perfil">${perfil.avatar(s.nome, 38)}<span><b>${esc(s.nome)}</b><small>${esc(f.nome)}</small></span></a>`
-    + item('geral', 'Visão geral') + (paginaVisivel(f, 'feed') ? itemFeed() : '') + (paginaVisivel(f, 'atas') ? itemAtas() : '') + (!f.semMinhaSemana && paginaVisivel(f, 'meudia') ? item('meudia', 'Minha semana') : '') + (f.veQuadro ? item('quadro', 'Quadro de funções') : '')
+    + item('geral', 'Visão geral') + (paginaVisivel(f, 'feed') ? itemFeed() : '') + (paginaVisivel(f, 'atas') ? itemAtas() : '') + (!f.semMinhaSemana && paginaVisivel(f, 'meudia') && f.editaProdutividade ? item('meudia', 'Minha semana') : '') + (!f.semMinhaSemana && paginaVisivel(f, 'meudia') ? item('funcoes', 'Minhas funções') : '') + (f.veQuadro ? item('quadro', 'Quadro de funções') : '')
     + '<div class="nav-sep"></div>'
     + (CFG ? CFG.areas.filter(podeVerArea).map((a) => item(a.id, a.nome, a.status)).join('') : '')
     + (paginaVisivel(f, 'estoque') ? item('estoque', 'Estoque') : '')
@@ -341,14 +341,16 @@ function desenhar() {
   let tela = rota.tela;
   const f = funcaoAtual();
   if (tela === 'agentes' && !f.veAgentes) tela = 'geral';
-  if (tela === 'quadro' && !f.veQuadro) tela = 'meudia';
-  if (tela === 'meudia' && f.semMinhaSemana) tela = 'geral';
+  if (tela === 'quadro' && !f.veQuadro) tela = 'funcoes';
+  if ((tela === 'meudia' || tela === 'funcoes') && f.semMinhaSemana) tela = 'geral';
+  if (tela === 'meudia' && !f.editaProdutividade) tela = 'funcoes';   // quem não lança produtividade só tem as funções
+  if (tela === 'funcoes' && !paginaVisivel(f, 'meudia')) tela = 'geral';
   if (['meudia', 'feed', 'estoque', 'escritorio', 'treinamentos', 'atas', 'marketing'].includes(tela) && !paginaVisivel(f, tela)) tela = 'geral';   // aba que a diretoria tirou desta função
 
   let area = CFG && CFG.areas.find((a) => a.id === tela);
   if (area && !podeVerArea(area)) { area = null; tela = 'geral'; }   // setor fora do perfil: nem existe
   const ehObraPlan = tela === 'planejamento' && rota.sub === 'obra';
-  const fixas = ['agentes', 'meudia', 'quadro', 'estoque', 'escritorio', 'perfil', 'feed', 'treinamentos', 'acessos', 'atas', 'marketing'];
+  const fixas = ['agentes', 'meudia', 'funcoes', 'quadro', 'estoque', 'escritorio', 'perfil', 'feed', 'treinamentos', 'acessos', 'atas', 'marketing'];
   const sel = tela === 'funcionarios' ? 'rh' : (area || fixas.includes(tela)) ? tela : 'geral';
   desenharNav(sel);
   desenharPerfil();
@@ -359,7 +361,7 @@ function desenhar() {
   $('#data').textContent = d.charAt(0).toUpperCase() + d.slice(1);
   const titulo = ehObraPlan ? rota.arg
     : area ? area.nome
-    : ({ agentes: 'Agentes', funcionarios: 'Funcionários por obra', meudia: 'Minha semana', quadro: 'Quadro de funções', estoque: 'Estoque', escritorio: 'Escritório virtual', perfil: 'Perfil', feed: 'Feed', treinamentos: 'Treinamentos', acessos: 'Acessos', atas: 'Atas e pendências', marketing: 'Marketing' }[tela] || 'Visão geral');
+    : ({ agentes: 'Agentes', funcionarios: 'Funcionários por obra', meudia: 'Minha semana', funcoes: 'Minhas funções', quadro: 'Quadro de funções', estoque: 'Estoque', escritorio: 'Escritório virtual', perfil: 'Perfil', feed: 'Feed', treinamentos: 'Treinamentos', acessos: 'Acessos', atas: 'Atas e pendências', marketing: 'Marketing' }[tela] || 'Visão geral');
   $('#titulo').textContent = titulo;
   document.title = `${titulo} · Sólida`;
 
@@ -404,8 +406,8 @@ function desenhar() {
     desenharAvatares();
     return;
   }
-  if (tela === 'meudia') {
-    $('#conteudo').innerHTML = `<div>${meudia.render({ dia: estado.dia, CFG, pendAberta: estado.pendAberta, aba: rota.sub, params: rota.params, semanaRef: estado.semanaRef })}</div>`;
+  if (tela === 'meudia' || tela === 'funcoes') {
+    $('#conteudo').innerHTML = `<div>${meudia.render({ dia: estado.dia, CFG, pendAberta: estado.pendAberta, soFuncoes: tela === 'funcoes', aba: tela === 'funcoes' ? 'funcoes' : rota.sub, params: rota.params, semanaRef: estado.semanaRef })}</div>`;
     return;
   }
   // escritório virtual: tela com animação própria (não redesenha sozinha a cada 5 min)
@@ -578,7 +580,7 @@ async function atualizar() {
   } else {
     estado.erroBase = `Não foi possível ler a planilha do pós-obra: ${baseR.reason.message}`;
   }
-  if (!estado.cfg && !['meudia', 'quadro'].includes(rotaAtual().tela)) {
+  if (!estado.cfg && !['meudia', 'funcoes', 'quadro'].includes(rotaAtual().tela)) {
     $('#conteudo').innerHTML = `<div class="erro">Não foi possível carregar os dados do painel. ${esc(estado.sync.erro || '')}<br>
       Abra o sistema pelo <b>iniciar.bat</b> (não abra o arquivo index.html direto).</div>`;
   }
