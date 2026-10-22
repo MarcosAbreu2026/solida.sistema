@@ -6,14 +6,14 @@
 
 import { html, data as fmtData } from '../formato.js';
 import { somarDias, hojeISO, inicioDaSemana } from '../datas.js';
-import { TAREFAS, valeNoDia, naGrade, funcaoPorId, FUNCOES, descreverDias } from '../funcoes.js';
+import { TAREFAS, valeNoDia, naGrade, funcaoPorId, FUNCOES, descreverDias, tempoPadrao } from '../funcoes.js';
 import { lerTodosChecks, lerPessoasTarefas } from '../armazenamento.js';
 import { feriado } from '../feriados.js';
 import { pessoaDoLogin } from '../escritorio/pessoas.js';
 import { provaDe } from '../evidencias.js';
 import { NA_NUVEM, listarFotos, enviarFoto as fotoNuvem, removerFoto as tirarFotoNuvem } from '../nuvem.js';
 
-const PONTOS_FEITO = 10;
+const PONTOS_POR_HORA = 10;   // 10 pontos por hora de trabalho previsto entregue (tempo padrão da tarefa)
 const DIAS = ['', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
 
 // Pontuação de uma pessoa entre duas datas (inclusive)
@@ -30,8 +30,8 @@ export function pontuar(pessoa, funcaoId, de, ate, checksTodos = lerTodosChecks(
     // (só a partir desta semana: antes do sistema ninguém marcava, não dá para cobrar)
     for (let d = de > inicioDaSemana(hoje) ? de : inicioDaSemana(hoje); d <= ate && d <= hoje && !desde; d = somarDias(d, 1)) if (tarefasF.some((t) => valeNoDia(t, d) && provaDe(t, d, { funcao: funcaoId, obras: ctx.obras || [] }, ctx.CFG))) desde = d;
   }
-  const r = { esperadas: 0, feitas: 0, auto: 0, nao: 0, semMarca: 0, porTarefa: new Map(), porDia: [0, 0, 0, 0, 0, 0, 0].map(() => ({ esperadas: 0, feitas: 0 })), desde };
-  if (!desde) return { ...r, taxa: null, pontos: 0, porTarefa: [] };
+  const r = { esperadas: 0, feitas: 0, esperadasMin: 0, feitasMin: 0, auto: 0, nao: 0, semMarca: 0, porTarefa: new Map(), porDia: [0, 0, 0, 0, 0, 0, 0].map(() => ({ esperadas: 0, feitas: 0 })), desde };
+  if (!desde) return { ...r, taxa: null, pontos: 0, horasFeitas: 0, horasEsperadas: 0, porTarefa: [] };
   const tarefas = TAREFAS.filter((t) => t.funcao === funcaoId && naGrade(t));
   for (let d = de < desde ? desde : de; d <= ate && d <= hoje; d = somarDias(d, 1)) {
     if (feriado(d)) continue;
@@ -41,26 +41,29 @@ export function pontuar(pessoa, funcaoId, de, ate, checksTodos = lerTodosChecks(
       if (!v && ctx && provaDe(t, d, { funcao: funcaoId, obras: ctx.obras || [] }, ctx.CFG)) { v = 'feito'; r.auto++; }
       if (d === hoje && !v) continue;            // hoje ainda dá tempo
       r.esperadas++;
+      const peso = tempoPadrao(t);   // minutos do tempo padrão da tarefa: igual para todo mundo
+      r.esperadasMin += peso;
       const pt = r.porTarefa.get(t.id) || { tarefa: t, esperadas: 0, feitas: 0, nao: 0, semMarca: 0 };
       pt.esperadas++;
       const ds = new Date(`${d}T12:00:00`).getDay() || 7;
       r.porDia[ds].esperadas++;
-      if (v === 'feito') { r.feitas++; pt.feitas++; r.porDia[ds].feitas++; } else if (v === 'nao') { r.nao++; pt.nao++; } else { r.semMarca++; pt.semMarca++; }
+      if (v === 'feito') { r.feitas++; r.feitasMin += peso; pt.feitas++; r.porDia[ds].feitas++; } else if (v === 'nao') { r.nao++; pt.nao++; } else { r.semMarca++; pt.semMarca++; }
       r.porTarefa.set(t.id, pt);
     }
   }
-  return { ...r, taxa: r.esperadas ? r.feitas / r.esperadas : null, pontos: r.feitas * PONTOS_FEITO, porTarefa: [...r.porTarefa.values()] };
+  // a taxa e os pontos pesam cada tarefa pelo tempo padrão: quem faz 50 tarefas rápidas não ganha mais que quem faz poucas tarefas longas
+  return { ...r, taxa: r.esperadasMin ? r.feitasMin / r.esperadasMin : null, pontos: Math.round((r.feitasMin / 60) * PONTOS_POR_HORA), horasFeitas: r.feitasMin / 60, horasEsperadas: r.esperadasMin / 60, porTarefa: [...r.porTarefa.values()] };
 }
 
 // Todas as pessoas que já marcaram tarefas (sem os testes do "Ver como"), com a pontuação das últimas 4 semanas
-export function ranking(hoje = hojeISO(), CFG = null) {
+export function rankingPeriodo(de, ate, CFG = null) {
   const pessoas = lerPessoasTarefas(); const checks = lerTodosChecks();
-  const de = somarDias(inicioDaSemana(hoje), -21);
   return Object.entries(pessoas).filter(([, p]) => !p.teste && p.funcao && p.funcao !== 'socio')
-    .map(([chave, p]) => ({ chave, ...p, ...pontuar(chave, p.funcao, de, hoje, checks, { obras: p.obras || [], CFG }) }))
+    .map(([chave, p]) => ({ chave, ...p, ...pontuar(chave, p.funcao, de, ate, checks, { obras: p.obras || [], CFG }) }))
     .filter((p) => p.esperadas > 0)
     .sort((a, b) => (b.taxa - a.taxa) || (b.pontos - a.pontos));
 }
+export function ranking(hoje = hojeISO(), CFG = null) { return rankingPeriodo(somarDias(inicioDaSemana(hoje), -21), hoje, CFG); }
 
 // ---------------------------------------------------------------- sugestões (regras)
 const DICAS = [
@@ -170,7 +173,7 @@ export function render({ eu, alvo, podeVerTodos, extra = '', CFG = null }) {
     ${semQuadro ? '' : html`<div class="pf-cards">
       <div class="pf-card ${nivel(semana.taxa)}"><span>Esta semana</span><b>${pct(semana.taxa)}</b><small>${semana.feitas} de ${semana.esperadas} tarefas</small></div>
       <div class="pf-card ${nivel(mes.taxa)}"><span>Últimas 4 semanas</span><b>${pct(mes.taxa)}</b><small>${mes.feitas} de ${mes.esperadas}${mes.auto ? ` (${mes.auto} automáticas)` : ''} · ${mes.nao} não feitas · ${mes.semMarca} sem marcar</small></div>
-      <div class="pf-card"><span>Pontos (4 semanas)</span><b>${mes.pontos}</b><small>${PONTOS_FEITO} por tarefa feita</small></div>
+      <div class="pf-card"><span>Pontos (4 semanas)</span><b>${mes.pontos}</b><small>${PONTOS_POR_HORA} por hora de trabalho previsto entregue</small></div>
       <div class="pf-card"><span>Posição</span><b>${pos >= 0 ? `${pos + 1}º` : '—'}</b><small>${pos >= 0 ? `de ${rk.length} pessoas` : 'sem marcações ainda'}</small></div>
     </div>
 
@@ -193,11 +196,8 @@ export function render({ eu, alvo, podeVerTodos, extra = '', CFG = null }) {
       </table></div>` : html`<p class="vazio">Ainda não há tarefas marcadas. Marque ✓ ou ✕ em <a class="link" href="#/funcoes">Minhas funções</a>.</p>`}
     </section>`}
 
-    ${podeVerTodos ? html`<section class="secao"><h2>Ranking da equipe <span class="pequeno">últimas 4 semanas · só a diretoria vê</span></h2>
-      ${rk.length ? html`<div class="pf-rank">${rk.map((p, i) => html`<a class="pf-rk ${p.chave === pessoa.chave ? 'on' : ''}" href="#/perfil?p=${encodeURIComponent(p.chave)}">
-        <span class="pf-rk-n">${i + 1}º</span>${avatar(p.nome, 32)}<span class="pf-rk-nome"><b>${p.nome}</b><small>${funcaoPorId(p.funcao).nome}</small></span>
-        <span class="pf-b ${nivel(p.taxa)}"><i style="width:${Math.round((p.taxa || 0) * 100)}%"></i></span><b class="pf-rk-t">${pct(p.taxa)}</b><span class="pequeno">${p.pontos} pts</span></a>`)}</div>`
-        : html`<p class="vazio">Ninguém marcou tarefas ainda. A pontuação aparece assim que as pessoas começarem a marcar em Minhas funções.</p>`}
+    ${podeVerTodos ? html`<section class="secao"><h2>Ranking da equipe</h2>
+      <p>O ranking, o funcionário do mês e as recompensas agora ficam na aba <a class="link" href="#/equipe"><b>Equipe</b></a>, no menu da esquerda, logo abaixo de Treinamentos.</p>
     </section>` : ''}
     ${extra}
   </div>`;

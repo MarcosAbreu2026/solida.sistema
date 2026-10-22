@@ -79,7 +79,21 @@ export const funcaoPorId = (id) => FUNCOES.find((f) => f.id === (ANTIGAS[id] || 
 // Abas que cada função vê: setores + páginas gerais. O padrão está nas listas acima (areas); a diretoria pode
 // escolher outras na tela Acessos (guardado no banco, tabela funcao_abas) e isso passa a valer no lugar do padrão.
 export const SETORES = [['operacao', 'Operação'], ['posobra', 'Pós-obra'], ['transporte', 'Transporte e logística'], ['suprimentos', 'Suprimentos e compras'],
-  ['planejamento', 'Planejamento'], ['projetos', 'Projetos'], ['comercial', 'Comercial e orçamentos'], ['financeiro', 'Financeiro'], ['rh', 'RH']];
+  ['planejamento', 'Planejamento'], ['projetos', 'Projetos'], ['comercial', 'Comercial'], ['orcamentos', 'Orçamentos'], ['financeiro', 'Financeiro'], ['rh', 'RH']];
+
+// Peso de cada tarefa na pontuação (21/10): o TEMPO PADRÃO previsto no quadro (faixa de horário da tarefa; sem faixa = 1 hora).
+// É o mesmo para todas as pessoas que têm a tarefa, e NÃO muda quando a pessoa ajusta a duração do cartão (senão daria para "inflar" o peso).
+export function tempoPadrao(t) {
+  const f = String((t && t.hora) || '').match(/(\d{1,2})h(\d{2})?\s*[–-]\s*(\d{1,2})h(\d{2})?/);
+  if (!f) return 60;
+  return Math.max(30, (Number(f[3]) * 60 + Number(f[4] || 0)) - (Number(f[1]) * 60 + Number(f[2] || 0)));
+}
+// Recompensas por desempenho no mês (padrão provisório; valores e prêmios a definir com o Marcos)
+export const RECOMPENSAS = [
+  { id: 'meta', nome: 'Meta do mês', min: 0.90, premio: 'A definir com o Marcos' },
+  { id: 'excelencia', nome: 'Excelência', min: 0.95, premio: 'A definir com o Marcos' },
+];
+export const MIN_TAREFAS_FUNCIONARIO_DO_MES = 10;   // para concorrer, a pessoa precisa ter pelo menos isto de tarefas previstas no mês
 export const PAGINAS = [['meudia', 'Minha semana e funções'], ['feed', 'Feed'], ['estoque', 'Estoque'], ['escritorio', 'Escritório virtual'], ['treinamentos', 'Treinamentos'], ['atas', 'Atas e pendências'], ['marketing', 'Marketing']];
 // páginas que, por padrão, só algumas funções veem (a diretoria pode mudar em Acessos): Marketing é de quem cuida da marca e da verba
 const PAGINAS_RESTRITAS = { marketing: ['socio', 'administrativo', 'financeiro'] };

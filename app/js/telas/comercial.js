@@ -1,4 +1,4 @@
-// Comercial e orçamentos: Resumo (agente) · Orçamentos · Arquiteturas. Só consulta.
+// Comercial: Resumo (agente) · Propostas (orçamentos enviados e conversão) · Arquiteturas. Só consulta.
 // Fonte: SL_ORÇAMENTOS<ano> no Drive (ORÇAMENTOS\), lida por scripts/exportar-drive.ps1.
 // A situação de cada orçamento é a cor da linha na planilha (legenda no topo dela).
 
@@ -7,7 +7,7 @@ import { hojeISO } from '../datas.js';
 
 export const ABAS_COMERCIAL = [
   { id: '', nome: 'Resumo' },
-  { id: 'orcamentos', nome: 'Orçamentos' },
+  { id: 'orcamentos', nome: 'Propostas' },
   { id: 'arquiteturas', nome: 'Arquiteturas' },
 ];
 

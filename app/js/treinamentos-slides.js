@@ -1,4 +1,4 @@
-﻿// Treinamentos com slides (21/10): cards de tópicos, cada um com subtópicos; clicar num subtópico abre uma apresentação
+// Treinamentos com slides (21/10): cards de tópicos, cada um com subtópicos; clicar num subtópico abre uma apresentação
 // com prints reais do sistema, caixas e setas vermelhas e a legenda de cada número. Os prints ficam em img/treinamentos/
 // e são gerados por scripts/gerar-prints-treinamento.mjs (refazer sempre que a tela mudar). Para criar outro treinamento:
 // acrescente um subtópico em TOPICOS, com os slides (imagem, título, texto, legenda dos números) e rode o gerador.
@@ -17,7 +17,8 @@ export const TOPICOS = [
   { id: 'suprimentos', nome: 'Suprimentos e compras', tipo: 'setor', icone: '📦' },
   { id: 'planejamento', nome: 'Planejamento', tipo: 'setor', icone: '📅' },
   { id: 'projetos', nome: 'Projetos', tipo: 'setor', icone: '📐' },
-  { id: 'comercial', nome: 'Comercial e orçamentos', tipo: 'setor', icone: '💼' },
+  { id: 'comercial', nome: 'Comercial', tipo: 'setor', icone: '💼' },
+  { id: 'orcamentos', nome: 'Orçamentos', tipo: 'setor', icone: '🧾' },
   { id: 'financeiro', nome: 'Financeiro', tipo: 'setor', icone: '💰' },
   { id: 'rh', nome: 'RH', tipo: 'setor', icone: '👥' },
   { id: 'estoque', nome: 'Estoque', tipo: 'pagina', pagina: 'estoque', icone: '🧰' },

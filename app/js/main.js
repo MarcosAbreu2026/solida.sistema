@@ -6,6 +6,8 @@ import { carregarDados, carregarPainel, carregarProdutividade, carregarDrive, ca
 import * as terceiros from './telas/terceirizados.js';
 import * as ferrChk from './telas/ferramentas-checklist.js';
 import * as efetivoTela from './telas/efetivo.js';
+import * as equipeRank from './telas/equipe-ranking.js';
+import * as orcamentosTela from './telas/orcamentos.js';
 import * as reposicao from './telas/reposicao.js';
 import * as ordenar from './ordenar.js';
 import * as atas from './telas/atas.js';
@@ -282,6 +284,7 @@ function desenharNav(sel) {
     + '<div class="nav-sep"></div>'   // equipe: escritório virtual, treinamentos (e o que vier depois)
     + (paginaVisivel(f, 'escritorio') ? item('escritorio', 'Escritório virtual') : '')
     + (paginaVisivel(f, 'treinamentos') ? item('treinamentos', 'Treinamentos') : '')
+    + (f.id === 'socio' ? item('equipe', 'Equipe') : '')   // ranking, funcionário do mês e recompensas: só o sócio / diretoria
     + (f.veAgentes ? `<div class="nav-sep"></div>${item('agentes', 'Agentes')}${nuvem.NA_NUVEM && funcaoReal().id === 'socio' ? item('acessos', 'Acessos') : ''}` : '')
     + `<div class="navfoot">${estado.sync.origem === 'link' ? 'Atualiza sozinho a cada 5 minutos.' : 'Mostrando os últimos dados baixados.'}</div>`;
   desenharAvatares($('#nav'));
@@ -432,6 +435,7 @@ function desenhar() {
   let tela = rota.tela;
   const f = funcaoAtual();
   if (tela === 'agentes' && !f.veAgentes) tela = 'geral';
+  if (tela === 'equipe' && f.id !== 'socio') tela = 'geral';
   if (tela === 'quadro' && !f.veQuadro) tela = 'funcoes';
   if ((tela === 'meudia' || tela === 'funcoes') && f.semMinhaSemana) tela = 'geral';
   if (tela === 'meudia' && !f.editaProdutividade) tela = 'funcoes';   // quem não lança produtividade só tem as funções
@@ -442,7 +446,7 @@ function desenhar() {
   let area = CFG && CFG.areas.find((a) => a.id === tela);
   if (area && !podeVerArea(area)) { area = null; tela = 'geral'; }   // setor fora do perfil: nem existe
   const ehObraPlan = tela === 'planejamento' && rota.sub === 'obra';
-  const fixas = ['agentes', 'meudia', 'funcoes', 'quadro', 'estoque', 'escritorio', 'perfil', 'feed', 'treinamentos', 'acessos', 'atas', 'marketing'];
+  const fixas = ['agentes', 'meudia', 'funcoes', 'quadro', 'estoque', 'escritorio', 'perfil', 'feed', 'treinamentos', 'acessos', 'atas', 'marketing', 'equipe'];
   const sel = tela === 'funcionarios' ? 'rh' : (area || fixas.includes(tela)) ? tela : 'geral';
   desenharNav(sel);
   desenharPerfil();
@@ -453,7 +457,7 @@ function desenhar() {
   $('#data').textContent = d.charAt(0).toUpperCase() + d.slice(1);
   const titulo = ehObraPlan ? rota.arg
     : area ? area.nome
-    : ({ agentes: 'Agentes', funcionarios: 'Funcionários por obra', meudia: 'Minha semana', funcoes: 'Minhas funções', quadro: 'Quadro de funções', estoque: 'Estoque', escritorio: 'Escritório virtual', perfil: 'Perfil', feed: 'Feed', treinamentos: 'Treinamentos', acessos: 'Acessos', atas: 'Atas e pendências', marketing: 'Marketing' }[tela] || 'Visão geral');
+    : ({ agentes: 'Agentes', funcionarios: 'Funcionários por obra', meudia: 'Minha semana', funcoes: 'Minhas funções', quadro: 'Quadro de funções', estoque: 'Estoque', escritorio: 'Escritório virtual', perfil: 'Perfil', feed: 'Feed', treinamentos: 'Treinamentos', acessos: 'Acessos', atas: 'Atas e pendências', marketing: 'Marketing', equipe: 'Equipe' }[tela] || 'Visão geral');
   $('#titulo').textContent = titulo;
   document.title = `${titulo} · Sólida`;
 
@@ -589,6 +593,8 @@ function desenhar() {
       const topo = ehCom ? abas : `${abas}${projetos.resumoProjetos(CFG, estado.drive.projetos, visiveis)}`;
       out = corpo ? `<div>${abas}<div style="margin-top:26px">${corpo()}</div></div>` : T.telaArea(area, `<div style="margin-bottom:34px">${topo}</div>`);
     }
+    else if (tela === 'equipe') out = equipeRank.render({ params: rota.params });
+    else if (area && area.id === 'orcamentos') out = orcamentosTela.render(CFG, estado.drive.projetos, veValores(), deObra ? obrasDaPessoa() : null);
     else if (tela === 'funcionarios') out = T.telaPessoas(estado.pessoas);
     else if (tela === 'agentes') out = T.telaAgentes();
     else if (area && area.id === 'posobra') {
@@ -651,6 +657,16 @@ function separarProjetos(cfg) {
   }, projetosArea);
 }
 
+// Comercial e Orçamentos são áreas separadas (21/10): "Comercial" fica com o resumo das propostas e as arquiteturas;
+// "Orçamentos" mostra o orçamento (escopo e aditivos) das obras em andamento. Só entra no menu de quem tem essa aba liberada.
+function separarOrcamentos(cfg) {
+  const i = cfg.areas.findIndex((a) => a.id === 'comercial');
+  if (i >= 0) cfg.areas[i] = { ...cfg.areas[i], nome: 'Comercial' };
+  if (i < 0 || cfg.areas.some((a) => a.id === 'orcamentos')) return;
+  cfg.areas.splice(i + 1, 0, { id: 'orcamentos', nome: 'Orçamentos', status: 'ok', resumo: '', kpis: [], alertas: [], processos: [], instrucoes: '', frequencia: '',
+    fontes: [{ nome: 'Drive', via: 'GERENCIAMENTO > DOC > ESCOPO de cada obra em andamento (escopo e aditivos)', ultima: '—' }] });
+}
+
 async function atualizar() {
   // marcações de tarefas de todos (pontuação do Perfil); quem está logado manda o que só tinha neste navegador
   const atual = logado() ? { pessoa: idPessoa(), nome: sessao().nome, funcao: funcaoAtual().id, teste: simulando(), obras: obrasDaPessoa() } : null;
@@ -664,7 +680,7 @@ async function atualizar() {
   if (painelR.status === 'fulfilled') {
     const env = painelR.value;
     const cfg = normalizar(env.dados);
-    if (cfg) { separarProjetos(cfg); estado.cfg = cfg; }
+    if (cfg) { separarProjetos(cfg); separarOrcamentos(cfg); estado.cfg = cfg; }
     estado.sync = { origem: env.origem, atualizado: env.atualizado, erro: env.erro || (cfg ? null : 'O dados.json não tem "geral" e "areas".') };
   } else {
     estado.sync = { ...estado.sync, erro: painelR.reason.message };
