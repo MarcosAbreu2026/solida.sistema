@@ -103,7 +103,9 @@ function caixaTarefa(t, data, estado, hoje, prova, rotuloDia = '', opc = {}) {
   const meta = [rotuloDia, opc.mover ? '' : t.hora].filter(Boolean).join(' · ');
   // opc.mover: o cartão pode ser arrastado para outro dia ou horário (grade por hora); opc.mudou: já foi movido do horário do quadro
   if (opc.mover) {
-    return html`<div class="fn-caixa fn-${cls} fn-movivel ${opc.mudou ? 'fn-mudou' : ''}" draggable="true" data-mover="${t.id}|${data}" title="${infoTarefa(t)} — arraste para mudar o dia ou o horário">
+    // a altura mínima cresce com o tempo que a tarefa ocupa no dia (30 min = baixa; 3 h = alta)
+    const alt = opc.dur ? Math.round((opc.dur / 30) * 26) : 0;
+    return html`<div class="fn-caixa fn-${cls} fn-movivel ${opc.mudou ? 'fn-mudou' : ''}" ${alt ? html.seguro(`style="min-height:${alt}px"`) : ''} draggable="true" data-mover="${t.id}|${data}" title="${infoTarefa(t)} — clique para mudar a duração; arraste para outra hora do dia">
     <div class="fn-nome">${textoTarefa(t)}</div>
     ${meta || opc.mudou ? html`<div class="fn-meta">${meta}${opc.mudou ? html` <button type="button" class="fn-volta" data-volta="${t.id}|${data}" title="Voltar ao dia e horário do quadro">↺ movida</button>` : ''}</div>` : ''}
     ${acoes ? html`<div class="fn-acoes">${acoes}</div>` : ''}
@@ -179,7 +181,7 @@ function funcoesSemana(ref, CFG) {
   // horário escolhido pela pessoa: vale para a tarefa em TODOS os dias e semanas, só para ela (não muda sozinho)
   const fixos = lerHorariosFixos(idPessoa());
   const horarios = {};
-  for (const d of dias) { horarios[d] = {}; for (const [tid, v] of Object.entries(fixos)) horarios[d][tid] = { ini: v.ini }; }
+  for (const d of dias) { horarios[d] = {}; for (const [tid, v] of Object.entries(fixos)) horarios[d][tid] = { ...v }; }
   const todos = [];
   for (const d of dias) for (const t of doDia(d)) todos.push(efetivo(t, d, horarios, dias));
   const colunas = dias.map((c) => { const l = lados(todos.filter((e) => e.dia === c)); return { c, l, fe: l.filter((e) => feita(e.t, e.d)).length }; });
@@ -190,7 +192,7 @@ function funcoesSemana(ref, CFG) {
 
   // Vista em lista (padrão, 21/10): um cartão por tarefa, com o texto inteiro e os botões ✓ Feito / ✕ Não feito na própria tarefa.
   // A vista "Por horário" (quadro com horas) continua disponível para quem quer arrastar e mudar horários.
-  const dispo = (e) => hhmm(e.ini) + '–' + hhmm(e.ini + e.dur);
+  const dispo = (e) => `${hhmm(e.ini)}–${hhmm(e.ini + e.dur)} · ${durTxt(e.dur)}`;
   const vistaLista = html`<div class="fl-lista">${colunas.map(({ c, l, fe }, i) => html`<div class="fl-col ${c === hoje ? 'hoje' : ''}">
       <div class="fq-cab ${c === hoje ? 'hoje' : ''}"><b>${DIA_CURTO[i]} ${c.slice(8, 10)}/${c.slice(5, 7)}</b><small>${feriado(c) ? 'feriado' : l.length ? (c > hoje ? `${l.length} previstas` : `${fe} de ${l.length} feitas`) : 'sem tarefas'}</small></div>
       ${[...l].sort((a, b) => a.ini - b.ini).map((e) => caixaTarefa(e.t, e.d, estadoDe(e.t, e.d), hoje, null, dispo(e)))}
@@ -203,27 +205,18 @@ function funcoesSemana(ref, CFG) {
   const vistaHoras = html`<div class="fh-grade">
     <div class="fh-canto"></div>
     ${colunas.map(({ c, l, fe }, i) => html`<div class="fq-cab fh-dia ${c === hoje ? 'hoje' : ''}"><b>${DIA_CURTO[i]} ${c.slice(8, 10)}/${c.slice(5, 7)}</b><small>${feriado(c) ? 'feriado' : l.length ? (c > hoje ? `${l.length} previstas` : `${fe} de ${l.length}`) : 'sem tarefas'}</small></div>`)}
-    ${horasComTarefa.map((h) => html`<div class="fh-hora"><b>${h}h</b></div>${colunas.map(({ c, l }) => html`<div class="fh-cel ${c === hoje ? 'hoje' : ''}" data-cel-dia="${c}" data-cel-hora="${h}">${l.filter((e) => Math.floor(e.ini / 60) === h).sort((a, b) => a.ini - b.ini).map((e) => caixaTarefa(e.t, e.d, estadoDe(e.t, e.d), hoje, null, dispo(e), { mover: true, mudou: e.mudou }))}</div>`)}`)}
+    ${horasComTarefa.map((h) => html`<div class="fh-hora"><b>${h}h</b></div>${colunas.map(({ c, l }) => html`<div class="fh-cel ${c === hoje ? 'hoje' : ''}" data-cel-dia="${c}" data-cel-hora="${h}">${l.filter((e) => Math.floor(e.ini / 60) === h).sort((a, b) => a.ini - b.ini).map((e) => caixaTarefa(e.t, e.d, estadoDe(e.t, e.d), hoje, null, dispo(e), { mover: true, mudou: e.mudou, dur: e.dur }))}</div>`)}`)}
   </div>
-  <p class="legenda-semana">Quer mudar o horário de uma tarefa? Segure o cartão e arraste para outra hora do mesmo dia (solte na metade de cima da hora para hora cheia, ou na de baixo para "e meia"). O novo horário vale para todas as semanas e é só seu. "↺ movida" volta ao horário do quadro.</p>`;
+  <p class="legenda-semana">Para mudar o horário de uma tarefa, segure o cartão e arraste para outra hora do mesmo dia (solte na metade de cima da hora para hora cheia, ou na de baixo para "e meia"). Para mudar quanto tempo ela ocupa no dia, clique na tarefa. O que você ajustar vale para todas as semanas e é só seu. "↺ movida" volta ao quadro original.</p>`;
   const botoesVista = html`<div class="fl-vista" role="group" aria-label="Como ver as tarefas"><span class="pequeno">Ver:</span>
     <button type="button" class="botao ${vista === 'lista' ? 'on' : ''}" data-vista-fn="lista">Lista por dia</button>
     <button type="button" class="botao ${vista === 'quadro' ? 'on' : ''}" data-vista-fn="quadro">Por horário</button></div>`;
 
   let pop = '';
-  if (popup && vista === 'quadro') {
+  if (popup) {   // janelinha ao clicar na tarefa: mudar quanto tempo ela ocupa no dia, marcar feito/não feito
     const e = todos.find((x) => x.t.id === popup.id && x.d === popup.d);
     if (e) pop = janela(e, dias, hoje, estadoDe(e.t, e.d), provaDoDia(e.t, e.d)); else popup = null;
   }
-
-  // ficaram sem marcar em semanas anteriores (até 4 semanas, desde que a pessoa começou a usar)
-  const desde = primeiroDia(idPessoa(), hoje);
-  const atrasadas = [];
-  for (let d = somarDias(ini, -1); d >= desde && d >= somarDias(ini, -28); d = somarDias(d, -1)) {
-    if (d > hoje) continue;
-    for (const t of doDia(d)) if (!estadoDe(t, d) && !provaDoDia(t, d)) atrasadas.push({ t, d });
-  }
-  const nomeDia = (d) => `${DIA_CURTO[(diaSemana(d) + 6) % 7] || ''} ${d.slice(8, 10)}/${d.slice(5, 7)}`;
 
   return html`${nav}
     <section class="fn-painel">
@@ -233,8 +226,6 @@ function funcoesSemana(ref, CFG) {
       ${vista === 'lista' ? html`<div class="fh-larga">${vistaHoras}</div><div class="fh-estreita">${vistaLista}</div>` : html`<div class="fq-quadro"><div class="fq-canto"></div>${cabecas}<div class="fq-horas" style="height:${altTotal}px">${horas}</div>${trilhos}</div>
       <p class="legenda-semana">Arraste um cartão para outro dia ou horário; puxe a borda de baixo para mudar a duração; clique para ver os detalhes. Cartões no mesmo horário ficam lado a lado. O ajuste fica guardado neste navegador.</p>`}
       <p class="legenda-semana"><span class="lg lg-ok"></span> feito <span class="lg lg-abaixo"></span> não feito <span class="lg lg-sem"></span> falta marcar · você mesmo marca cada tarefa: ✓ Feito ou ✕ Não feito · clique numa marcação para desfazer</p>
-      ${atrasadas.length ? html`<h4 class="fn-sub">⚠ Ficaram sem marcar em semanas anteriores <span class="pequeno">${atrasadas.length} ${atrasadas.length > 1 ? 'tarefas' : 'tarefa'} — marque aqui ou em "Semana anterior"</span></h4>
-        <div class="fn-grade">${atrasadas.map(({ t, d }) => caixaTarefa(t, d, undefined, hoje, null, nomeDia(d)))}</div>` : ''}
     </section>
     ${pop}
     ${foraDoQuadro(f.id)}
@@ -264,12 +255,15 @@ export function instalarQuadro(aoMudar) {
     e.preventDefault();
     const r = cel.getBoundingClientRect(); const meia = (e.clientY - r.top) / Math.max(1, r.height) >= 0.5;
     const ini = Number(cel.dataset.celHora) * 60 + (meia ? 30 : 0);
-    fixarHorario(idPessoa(), movendo.id, ini);
+    fixarHorario(idPessoa(), movendo.id, { ini });
     movendo = null; aoMudar();
   });
   document.addEventListener('click', (e) => {
-    const v = e.target.closest && e.target.closest('[data-volta]'); if (!v) return;
-    fixarHorario(idPessoa(), v.dataset.volta.split('|')[0], null); aoMudar();
+    const v = e.target.closest && e.target.closest('[data-volta]');
+    if (v) { fixarHorario(idPessoa(), v.dataset.volta.split('|')[0], null); aoMudar(); return; }
+    // clicar na tarefa (fora dos botões) abre a janelinha com a duração e a situação
+    const c = e.target.closest && e.target.closest('.fn-movivel');
+    if (c && !e.target.closest('button, a')) { const [id, d] = c.dataset.mover.split('|'); popup = { id, d }; aoMudar(); }
   });
 
   let a = null;
@@ -322,15 +316,14 @@ export function instalarQuadro(aoMudar) {
     const [acao, valor] = b.dataset.fn.split('|');
     const pessoa = idPessoa();
     if (acao === 'fechar') popup = null;
-    else if (acao === 'volta') moverHorario(pessoa, popup.d, popup.id, null);
-    else {
+    else if (acao === 'volta') fixarHorario(pessoa, popup.id, null);
+    else if (acao === 'dur') {   // quanto tempo a tarefa ocupa no dia: vale para todas as semanas, só para esta pessoa
       const t = TAREFAS.find((x) => x.id === popup.id);
       const ini = inicioDaSemana(popup.d);
       const dias = [0, 1, 2, 3, 4, 5].map((i) => somarDias(ini, i));
-      const atual = efetivo(t, popup.d, lerHorarios(pessoa), dias);
-      if (acao === 'dia') moverHorario(pessoa, popup.d, popup.id, { dia: valor });
-      else if (acao === 'hora') moverHorario(pessoa, popup.d, popup.id, { ini: atual.ini + Number(valor) });
-      else if (acao === 'dur') moverHorario(pessoa, popup.d, popup.id, { dur: limitar(atual.dur + Number(valor), GRADE.passo, (GRADE.faixas - atual.faixa) * GRADE.passo) });
+      const fx = lerHorariosFixos(pessoa);
+      const atual = efetivo(t, popup.d, { [popup.d]: { [t.id]: fx[t.id] || {} } }, dias);
+      fixarHorario(pessoa, popup.id, { dur: limitar(atual.dur + Number(valor), GRADE.passo, 12 * 60) });
     }
     aoMudar();
   });

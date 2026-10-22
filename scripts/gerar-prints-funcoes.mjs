@@ -98,6 +98,9 @@ function dadosExemplo(obra) {
 
 // ---------------------------------------------------------------- roteiro dos prints
 await avaliar('1');
+// os prints são de teste: não deixar nenhuma marcação de exemplo chegar ao servidor (dados/tarefas-feitas.jsonl) nem vir de lá
+await cdp('Page.enable');
+await cdp('Page.addScriptToEvaluateOnNewDocument', { source: `(() => { const f = window.fetch.bind(window); window.fetch = (u, o) => (String(u).includes('/api/tarefas') ? Promise.resolve(new Response((o && o.method === 'POST') ? '{}' : '[]', { status: 200 })) : f(u, o)); })();` });
 await cdp('Page.navigate', { url: BASE });
 await esperar('#login:not([hidden]) form, #nav a');
 if (await avaliar(`!!document.querySelector('#login:not([hidden]) form')`)) {
@@ -147,6 +150,12 @@ async function etiquetar() {
       alvo.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt, clientY: r.bottom - 3 })); card.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: dt })); })()`);
     await espera(900); await etiquetar(); await avaliar(`document.querySelector('.fn-mudou').scrollIntoView({ block: 'center' })`); await espera(400);
     await marcar([{ sel: '.fn-mudou' }, { sel: '.fn-mudou .fn-volta' }, { sel: '.fh-larga .legenda-semana' }]);
+  } },
+  { nome: 'func-12-duracao', async montar() {
+    await ir('#/funcoes'); await esperar('.fh-grade'); if (!(await etiquetar())) throw new Error('sem tarefa até hoje'); await espera(300);
+    await avaliar(`document.querySelector('[data-tr="0"] .fn-nome').click()`); await esperar('.fq-pop'); await espera(300);
+    await avaliar(`document.querySelector('.fq-pop [data-fn="dur|30"]').click()`); await espera(400);
+    await marcar([{ sel: '.fq-pop-nome' }, { sel: '.fq-pop [data-fn="dur|-30"]', rotulo: 'Menos tempo', lado: 'esquerda', dist: 50, larg: 150 }, { sel: '.fq-pop [data-fn="dur|30"]', rotulo: 'Mais tempo', lado: 'baixo', dist: 45, larg: 150 }, { sel: '.fq-pop .fn-acoes' }]);
   } },
   { nome: 'func-07-semanas', async montar() {
     await ir('#/funcoes'); await esperar('.periodo');

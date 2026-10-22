@@ -52,20 +52,22 @@ export function moverHorario(pessoa, data, tarefa, patch) {
 // fixos[pessoa][tarefa] = { ini } (minutos desde 00:00). Fica neste navegador e, na nuvem, na tabela horarios_tarefas (segue a pessoa em outro aparelho).
 const CHAVE_FIXOS = 'solida.horariosFixos';
 export const lerHorariosFixos = (pessoa) => lerJSON(CHAVE_FIXOS, {})[pessoa] || {};
-export function fixarHorario(pessoa, tarefa, ini) {
+// patch = { ini?, dur? } (junta com o que já estava); null volta ao horário e à duração do quadro
+export function fixarHorario(pessoa, tarefa, patch) {
   const tudo = lerJSON(CHAVE_FIXOS, {});
   tudo[pessoa] = tudo[pessoa] || {};
-  if (ini == null) delete tudo[pessoa][tarefa]; else tudo[pessoa][tarefa] = { ini };
+  if (patch == null) delete tudo[pessoa][tarefa]; else tudo[pessoa][tarefa] = { ...(tudo[pessoa][tarefa] || {}), ...patch };
   gravarJSON(CHAVE_FIXOS, tudo);
-  if (NA_NUVEM) (ini == null ? apagarHorarioTarefa(tarefa) : gravarHorarioTarefa(tarefa, ini)).catch(() => { /* fica só neste navegador; sobe na próxima sincronização */ });
+  const v = tudo[pessoa][tarefa];
+  if (NA_NUVEM) (v ? gravarHorarioTarefa(tarefa, v) : apagarHorarioTarefa(tarefa)).catch(() => { /* fica só neste navegador; sobe na próxima sincronização */ });
 }
 // Traz os horários da nuvem; o que só existe neste navegador (movido antes de subir) é enviado.
 export async function sincronizarHorarios(pessoa) {
   if (!NA_NUVEM || !pessoa) return false;
   let linhas; try { linhas = await listarHorariosTarefas(); } catch { return false; }
   const tudo = lerJSON(CHAVE_FIXOS, {}); const locais = tudo[pessoa] || {}; const nuvem = {};
-  for (const l of linhas) nuvem[l.tarefa] = { ini: l.ini };
-  for (const [t, v] of Object.entries(locais)) if (!nuvem[t]) { nuvem[t] = v; gravarHorarioTarefa(t, v.ini).catch(() => {}); }
+  for (const l of linhas) nuvem[l.tarefa] = { ...(l.ini != null ? { ini: l.ini } : {}), ...(l.dur != null ? { dur: l.dur } : {}) };
+  for (const [t, v] of Object.entries(locais)) if (!nuvem[t]) { nuvem[t] = v; gravarHorarioTarefa(t, v).catch(() => {}); }
   tudo[pessoa] = nuvem; gravarJSON(CHAVE_FIXOS, tudo);
   return true;
 }
