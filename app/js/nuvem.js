@@ -163,6 +163,20 @@ export async function gravarObraPos(linha) {
   const { error } = await sb.from('obras_pos').upsert({ ...linha, atualizado_em: new Date().toISOString(), atualizado_por: perfil.id });
   if (error) throw new Error(error.message);
 }
+// horário que cada pessoa escolheu para cada tarefa de "Minhas funções" (só ela vê e grava; vale para todas as semanas)
+export async function listarHorariosTarefas() {
+  const { data, error } = await sb.from('horarios_tarefas').select('tarefa, ini');
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+export async function gravarHorarioTarefa(tarefa, ini) {
+  const { error } = await sb.from('horarios_tarefas').upsert({ pessoa: perfil.id, tarefa, ini, atualizado_em: new Date().toISOString() });
+  if (error) throw new Error(error.message);
+}
+export async function apagarHorarioTarefa(tarefa) {
+  const { error } = await sb.from('horarios_tarefas').delete().eq('pessoa', perfil.id).eq('tarefa', tarefa);
+  if (error) throw new Error(error.message);
+}
 // serviços do pós-obra em quadro por fase
 export async function listarServicosPos() {
   const { data, error } = await sb.from('servicos_pos').select('*');

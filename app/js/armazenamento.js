@@ -48,9 +48,30 @@ export function moverHorario(pessoa, data, tarefa, patch) {
   }
   gravarJSON('solida.horarios', tudo);
 }
+// Horário que a PESSOA escolheu para cada tarefa (21/10): vale para todos os dias e semanas, só para ela, e não muda sozinho.
+// fixos[pessoa][tarefa] = { ini } (minutos desde 00:00). Fica neste navegador e, na nuvem, na tabela horarios_tarefas (segue a pessoa em outro aparelho).
+const CHAVE_FIXOS = 'solida.horariosFixos';
+export const lerHorariosFixos = (pessoa) => lerJSON(CHAVE_FIXOS, {})[pessoa] || {};
+export function fixarHorario(pessoa, tarefa, ini) {
+  const tudo = lerJSON(CHAVE_FIXOS, {});
+  tudo[pessoa] = tudo[pessoa] || {};
+  if (ini == null) delete tudo[pessoa][tarefa]; else tudo[pessoa][tarefa] = { ini };
+  gravarJSON(CHAVE_FIXOS, tudo);
+  if (NA_NUVEM) (ini == null ? apagarHorarioTarefa(tarefa) : gravarHorarioTarefa(tarefa, ini)).catch(() => { /* fica só neste navegador; sobe na próxima sincronização */ });
+}
+// Traz os horários da nuvem; o que só existe neste navegador (movido antes de subir) é enviado.
+export async function sincronizarHorarios(pessoa) {
+  if (!NA_NUVEM || !pessoa) return false;
+  let linhas; try { linhas = await listarHorariosTarefas(); } catch { return false; }
+  const tudo = lerJSON(CHAVE_FIXOS, {}); const locais = tudo[pessoa] || {}; const nuvem = {};
+  for (const l of linhas) nuvem[l.tarefa] = { ini: l.ini };
+  for (const [t, v] of Object.entries(locais)) if (!nuvem[t]) { nuvem[t] = v; gravarHorarioTarefa(t, v.ini).catch(() => {}); }
+  tudo[pessoa] = nuvem; gravarJSON(CHAVE_FIXOS, tudo);
+  return true;
+}
 // ---------------------------------------------------------------- marcações compartilhadas (servidor)
 // O servidor guarda todas as marcações (dados/tarefas-feitas.jsonl); este navegador fica com uma cópia.
-import { NA_NUVEM, linhasTarefas, marcarTarefa } from './nuvem.js';
+import { NA_NUVEM, linhasTarefas, marcarTarefa, listarHorariosTarefas, gravarHorarioTarefa, apagarHorarioTarefa } from './nuvem.js';
 
 function enviarCheck(c) {
   if (NA_NUVEM) { if (!c.registro) marcarTarefa(c).catch(() => {}); return; }

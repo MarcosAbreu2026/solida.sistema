@@ -1983,3 +1983,13 @@ nav { position: relative; transition: width .18s ease; }
 body.nav-recolhido .nav-handle { left: 26px; }
 body.sem-login .nav-handle { display: none; }
 @media (max-width: 760px) { .nav-handle { display: none; } }
+
+/* ---- Minhas funções: arrastar o cartão dentro do dia ---- */
+.fh-cel { min-height: 34px; }
+.fn-movivel { cursor: grab; }
+.fn-movivel.arrastando { opacity: .4; }
+.fn-movivel .fn-b { cursor: pointer; }
+.fh-cel.alvo { background: rgba(160, 125, 79, .20); outline: 2px dashed var(--bronze, #A07D4F); outline-offset: -2px; border-radius: 8px; }
+.fn-mudou { box-shadow: inset 0 0 0 1px #E0B04A; }
+.fn-volta { font: inherit; font-size: 11px; font-weight: 700; padding: 0 6px; border: 1px solid #E0B04A; border-radius: 10px; background: #FFF6E3; color: #7A5A1E; cursor: pointer; }
+.fn-volta:hover { background: #FBE9BE; }
