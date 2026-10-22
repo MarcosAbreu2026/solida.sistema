@@ -2,7 +2,7 @@
 // Para trocar a fonte (ex.: ler a planilha direto do Google Drive), basta reescrever carregarDados()
 // devolvendo o mesmo formato: { obras, servicos, equipe, agenda, financeiro, listas }.
 
-import { NA_NUVEM, baixar } from './nuvem.js';
+import { NA_NUVEM, baixar, listarEfetivoDiario } from './nuvem.js';
 
 const TABELAS = ['obras', 'servicos', 'equipe', 'agenda', 'financeiro', 'listas'];
 const PASTA = '../dados/json/';
@@ -29,7 +29,16 @@ export async function carregarFerramentasChk() {
 // Efetivo do dia de cada obra, lido dos grupos de WhatsApp pelo leitor automático (RH).
 export async function carregarEfetivo() {
   try {
-    if (NA_NUVEM) return (await baixar('efetivo')) || { dias: {} };
+    if (NA_NUVEM) {
+      const arq = (await baixar('efetivo')) || { dias: {} };
+      // o banco guarda o histórico completo: o que vier de lá vale por cima do arquivo
+      try {
+        const linhas = await listarEfetivoDiario();
+        arq.dias = arq.dias || {};
+        for (const l of linhas) { (arq.dias[l.dia] = arq.dias[l.dia] || {})[l.obra] = { hora: l.hora || '', solida: { qtd: l.solida_qtd || 0, nomes: l.solida_nomes || [] }, terceiros: l.terceiros || [], total: l.total || 0 }; }
+      } catch { /* sem acesso ao histórico: fica o arquivo */ }
+      return arq;
+    }
     const r = await fetch(`${PASTA}efetivo.json`, { cache: 'no-store' });
     return r.ok ? await r.json() : { dias: {} };
   } catch { return { dias: {} }; }

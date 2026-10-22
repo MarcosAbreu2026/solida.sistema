@@ -89,5 +89,22 @@ for (const [nome, d] of tarefas) {
     ok++;
   } catch (e) { erros.push(e.message); }
 }
+// Histórico do efetivo (quem estava em cada obra em cada dia): fica no banco, tabela efetivo_diario (grava e atualiza, nunca apaga)
+const ef = ler(join(pasta, 'efetivo.json'));
+if (ef && ef.dias) {
+  const linhas = [];
+  for (const [dia, obras] of Object.entries(ef.dias)) for (const [obra, e] of Object.entries(obras || {})) {
+    linhas.push({ dia, obra, hora: e.hora || null, postado_por: null, solida_qtd: (e.solida && e.solida.qtd) || 0, solida_nomes: (e.solida && e.solida.nomes) || [], terceiros: e.terceiros || [], total: e.total || 0, atualizado_em: new Date().toISOString() });
+  }
+  if (linhas.length) {
+    try {
+      const r = await fetch(`${supabaseUrl}/rest/v1/efetivo_diario?on_conflict=dia,obra`, {
+        method: 'POST', headers: { Authorization: `Bearer ${token}`, apikey: chave, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(linhas),
+      });
+      if (r.ok) ok++; else erros.push(`efetivo_diario: ${r.status} ${await r.text()}`);
+      tarefas.push(['efetivo_diario', linhas]);
+    } catch (e) { erros.push(`efetivo_diario: ${e.message}`); tarefas.push(['efetivo_diario', linhas]); }
+  }
+}
 console.log(`Nuvem: ${ok} de ${tarefas.length} arquivos enviados${erros.length ? ` · erros: ${erros.join(' | ')}` : ''}`);
 process.exit(erros.length ? 1 : 0);

@@ -250,7 +250,7 @@ function ajustarMenuRecolhivel() {
     b.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   };
   b.addEventListener('click', () => { document.body.classList.toggle('nav-recolhido'); pintar(); });
-  $('#nav').addEventListener('click', (e) => { if (e.target.closest('a.nav-item, a.nav-perfil')) { document.body.classList.add('nav-recolhido'); pintar(); } });
+  // o menu só recolhe quando a pessoa clica na setinha (clicar numa aba não recolhe mais)
   pintar();
 }
 
@@ -426,6 +426,8 @@ function desenhar() {
   if (!logado()) { mostrarLogin(); desenharPedido(); return; }
   esconderLogin();
   const CFG = estado.cfg;
+  // onde está cada funcionário: só o efetivo de HOJE (zera todo dia); a lista de nomes vem do RH
+  if (CFG) { CFG.funcionariosRH = CFG.funcionariosRH || CFG.funcionarios; CFG.funcionarios = efetivoTela.funcionariosDeHoje(CFG.funcionariosRH, estado.efetivo); }
   const rota = rotaAtual();
   let tela = rota.tela;
   const f = funcaoAtual();
@@ -550,8 +552,11 @@ function desenhar() {
       else out = T.telaArea(area, abas ? `<div style="margin-bottom:34px">${abas}</div>` : '', { depoisIndicadores: ferrChk.cartoes(CFG, estado.ferrChk, deObra ? obrasDaPessoa() : null, estado.drive.estoque) });
     }
     else if (area && area.id === 'rh') {
-      // RH: indicadores do agente + efetivo de hoje lido sozinho dos grupos das obras
-      out = T.telaArea(area, '', { depoisIndicadores: efetivoTela.cartoes(CFG, estado.efetivo, deObra ? obrasDaPessoa() : null) });
+      // RH: números e cartões do efetivo de HOJE (lido sozinho dos grupos das obras; zera todo dia) + histórico de quem esteve em cada obra por dia
+      const visiveisRH = deObra ? obrasDaPessoa() : null;
+      const abasRH = subnav([{ id: '', nome: 'Hoje', href: '#/rh' }, { id: 'efetivo', nome: 'Histórico do efetivo', href: '#/rh/efetivo' }], rota.sub === 'efetivo' ? 'efetivo' : '');
+      if (rota.sub === 'efetivo') out = `<div>${abasRH}<div style="margin-top:26px">${efetivoTela.historico(CFG, estado.efetivo, rota.params, visiveisRH)}</div></div>`;
+      else out = T.telaArea(efetivoTela.areaDeHoje(area, CFG, estado.efetivo, visiveisRH), `<div style="margin-bottom:34px">${abasRH}</div>`, { depoisIndicadores: efetivoTela.cartoes(CFG, estado.efetivo, visiveisRH) });
     }
     else if (area && area.id === 'planejamento') {
       // Planejamento: Resumo · Programação semanal · Produtividade · Diário de obra

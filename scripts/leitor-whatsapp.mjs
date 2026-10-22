@@ -190,7 +190,7 @@ if (gruposEfetivo.length) {
     }
     for (const [dia, e] of porDia) { ef.dias[dia] = ef.dias[dia] || {}; ef.dias[dia][g.codigo] = { hora: e.hora, por: e.por, postadoEm: e.postadoEm, solida: e.solida, terceiros: e.terceiros, total: e.total }; }
   }
-  for (const dia of Object.keys(ef.dias)) if (dia < corte) delete ef.dias[dia];
+  // o histórico NÃO é apagado: fica tudo (quem estava em cada obra em cada dia); o `corte` só limita quanto das mensagens guardadas é relido
   ef.atualizadoEm = agora(); ef.fonte = 'WhatsApp · grupos das obras (leitura automática, só leitura)';
   gravarJSON(efArq, ef);
 }

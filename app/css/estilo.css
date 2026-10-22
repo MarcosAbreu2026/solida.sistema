@@ -1993,3 +1993,31 @@ body.sem-login .nav-handle { display: none; }
 .fn-mudou { box-shadow: inset 0 0 0 1px #E0B04A; }
 .fn-volta { font: inherit; font-size: 11px; font-weight: 700; padding: 0 6px; border: 1px solid #E0B04A; border-radius: 10px; background: #FFF6E3; color: #7A5A1E; cursor: pointer; }
 .fn-volta:hover { background: #FBE9BE; }
+
+/* ---- RH: histórico do efetivo (quem esteve em cada obra em cada dia) ---- */
+.ef-nav { margin: 6px 0 14px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.ef-baixar { margin-left: auto; text-decoration: none; }
+.ef-rolagem { overflow-x: auto; border: 1px solid var(--linha2); border-radius: 12px; background: #fff; }
+.ef-tab { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13.5px; }
+.ef-tab thead th { position: sticky; top: 0; background: var(--gesso, #F3F0EA); text-align: center; padding: 10px 8px; font-size: 12.5px; letter-spacing: .02em; border-bottom: 1px solid var(--linha2); }
+.ef-tab thead th:first-child { text-align: left; padding-left: 14px; }
+.ef-tab td, .ef-tab tbody th { padding: 7px 8px; border-bottom: 1px solid var(--linha2); text-align: center; }
+.ef-tab tbody th.ef-dia { text-align: left; padding-left: 14px; white-space: nowrap; font-weight: 500; }
+.ef-tab tbody th.ef-dia small { color: var(--muted); margin-left: 4px; text-transform: uppercase; font-size: 10.5px; letter-spacing: .04em; }
+.ef-tab tr:last-child td, .ef-tab tr:last-child th { border-bottom: 0; }
+.ef-hoje th, .ef-hoje td { background: #FFF9EC; }
+.ef-c a { display: flex; flex-direction: column; align-items: center; gap: 1px; text-decoration: none; color: #2F6B43; padding: 3px 6px; border-radius: 8px; }
+.ef-c a b { font-size: 16px; }
+.ef-c a small { font-size: 10.5px; color: #5E8A6B; }
+.ef-c a:hover { background: #E1EFE5; }
+.ef-ok { background: rgba(78, 138, 98, .07); }
+.ef-sel a { background: #D4E8DA; box-shadow: inset 0 0 0 2px #4E8A62; }
+.ef-nao { color: #C4BDB0; }
+.ef-fds { color: #D5CFC4; background: rgba(0, 0, 0, .018); }
+.ef-esp { font-size: 11px; color: #7A5A1E; }
+.ef-tot { font-weight: 700; color: var(--grafite, #333); background: rgba(0, 0, 0, .025); }
+.ef-detalhe { margin-top: 18px; background: #fff; border: 1px solid var(--linha2); border-radius: 12px; padding: 14px 18px 16px; }
+.ef-detalhe h3 { margin: 0 0 2px; font-size: 16px; }
+.ef-detalhe h4 { margin: 10px 0 4px; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.ef-listas { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; }
+.ef-listas ul { margin: 0; padding-left: 18px; line-height: 1.7; }

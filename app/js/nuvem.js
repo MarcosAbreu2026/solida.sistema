@@ -163,6 +163,12 @@ export async function gravarObraPos(linha) {
   const { error } = await sb.from('obras_pos').upsert({ ...linha, atualizado_em: new Date().toISOString(), atualizado_por: perfil.id });
   if (error) throw new Error(error.message);
 }
+// histórico do efetivo (quem estava em cada obra em cada dia), gravado pelo coletor; só a diretoria, o administrativo, o RH e a coordenação leem
+export async function listarEfetivoDiario() {
+  const { data, error } = await sb.from('efetivo_diario').select('dia, obra, hora, solida_qtd, solida_nomes, terceiros, total').order('dia', { ascending: false }).range(0, 4999);
+  if (error) throw new Error(error.message);
+  return data || [];
+}
 // horário que cada pessoa escolheu para cada tarefa de "Minhas funções" (só ela vê e grava; vale para todas as semanas)
 export async function listarHorariosTarefas() {
   const { data, error } = await sb.from('horarios_tarefas').select('tarefa, ini, dur');
