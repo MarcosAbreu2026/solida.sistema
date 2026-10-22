@@ -139,72 +139,111 @@ export function areaDeHoje(area, CFG, ef, visiveis = null) {
   };
 }
 
-// ---------------------------------------------------------------- histórico: quem estava em cada obra em cada dia
+// ---------------------------------------------------------------- histórico POR FUNCIONÁRIO: em que obra cada um esteve em cada dia
+// Lista de funcionários com os últimos 5 dias úteis (obra de cada dia); clicar abre o mês em calendário, com setas para meses anteriores.
+// Tudo sai do efetivo que as obras postam nos grupos (e que fica guardado no banco, sem apagar). Sólides e Tangerino ainda não entram.
 const DIA_SEM = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+const NOME_MES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 const csvCel = (v) => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
+const CORES = [['#E3EEF9', '#1F4E79'], ['#E4F2E8', '#2F6B43'], ['#FBEFD5', '#7A5A1E'], ['#F5E1EA', '#8A2F55'], ['#E8E4F5', '#4B3A8A'], ['#DDF1F0', '#1F6B68'], ['#F8E4DC', '#9A4A2A'], ['#EAEAEA', '#444444']];
+const corDe = (o) => { let h = 0; for (const c of String(o)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return CORES[h % CORES.length]; };
+const chipObra = (o) => { const [bg, fg] = corDe(o); return html`<span class="ef-chip" style="background:${bg};color:${fg}">${o}</span>`; };
+const isoDe = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const iniciais = (n) => String(n).replace(/\(.*?\)/g, '').split(/\s+/).filter(Boolean).slice(0, 2).map((x) => x[0]).join('').toUpperCase();
+
+// casa cada nome do efetivo de cada dia com um funcionário da lista do RH; quem não está na lista entra como "só no efetivo"
+function indicePessoas(CFG, ef) {
+  const lista = (CFG && (CFG.funcionariosRH || CFG.funcionarios)) || [];
+  const pessoas = lista.filter((f) => f && f.nome).map((f, i) => ({ chave: `f${i}`, nome: f.nome, funcao: f.funcao || '', extra: false }));
+  const extras = new Map(); const porDia = {};
+  const dias = (ef && ef.dias) || {};
+  for (const dia of Object.keys(dias).sort()) {
+    porDia[dia] = {}; const usados = new Set();
+    for (const [obra, e] of Object.entries(dias[dia] || {})) {
+      ((e.solida && e.solida.nomes) || []).forEach((n) => {
+        const i = pessoas.findIndex((p) => !usados.has(p.chave) && casa(n, { nome: p.nome }));
+        let chave;
+        if (i >= 0) { chave = pessoas[i].chave; usados.add(chave); }
+        else { chave = `x:${semPapel(n)}`; if (!extras.has(chave)) extras.set(chave, { chave, nome: String(n).replace(/\s*\(.*\)\s*$/, '').trim(), funcao: papelDe(n) || '—', extra: true }); }
+        (porDia[dia][chave] = porDia[dia][chave] || []).push(obra);
+      });
+    }
+  }
+  return { pessoas: [...pessoas, ...extras.values()], porDia };
+}
+const ultimosUteis = (n, hoje) => { const r = []; const d = new Date(`${hoje}T12:00:00`); while (r.length < n) { if (d.getDay() !== 0 && d.getDay() !== 6) r.push(isoDe(d)); d.setDate(d.getDate() - 1); } return r; };
+const visivelObra = (o, visiveis) => !visiveis || visiveis.some((v) => o.startsWith(v) || v.startsWith(o));
+
 export function historico(CFG, ef, params = {}, visiveis = null) {
   const hoje = hojeISO();
-  const dias = (ef && ef.dias) || {};
-  const mes = /^\d{4}-\d{2}$/.test(params.mes || '') ? params.mes : hoje.slice(0, 7);
-  const [a, m] = mes.split('-').map(Number);
-  const nDias = new Date(a, m, 0).getDate();
-  const mesAnt = m === 1 ? `${a - 1}-12` : `${a}-${pad(m - 1)}`; const mesProx = m === 12 ? `${a + 1}-01` : `${a}-${pad(m + 1)}`;
-  const NOME_MES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
-  // colunas: as obras ativas + qualquer outra com dados neste mês (Mo565 e Mo565D são a mesma obra: fica a do cadastro)
-  const doCadastro = ((CFG && CFG.obras) || []).filter((o) => /^Mo/i.test(o));
-  const comDadosNoMes = [...new Set(Object.entries(dias).filter(([d]) => d.startsWith(mes)).flatMap(([, o]) => Object.keys(o)))];
-  let obras = [...new Set([...doCadastro, ...comDadosNoMes.filter((o) => !doCadastro.some((c) => c.startsWith(o) || o.startsWith(c)))])].sort();
-  if (visiveis) obras = obras.filter((o) => visiveis.some((v) => o.startsWith(v) || v.startsWith(o)));
-  const lista = []; for (let i = nDias; i >= 1; i--) { const iso = `${mes}-${pad(i)}`; if (iso <= hoje) lista.push(iso); }
-  const agora = new Date(); const aguardando = agora.getHours() * 60 + agora.getMinutes() < (aMin((ef && ef.prazo) || '12:00') || 720);
-  const [selDia, selObra] = String(params.sel || '').split('|');
-  const reg = (dia, o) => { const mapa = dias[dia] || {}; const k = chaveDe(mapa, o); return k ? mapa[k] : null; };
-  const terTot = (e) => (e.terceiros || []).reduce((s, t) => s + (t.qtd || 0), 0);
+  const { pessoas, porDia } = indicePessoas(CFG, ef);
+  const obrasDe = (chave, dia) => ((porDia[dia] || {})[chave] || []).filter((o) => visivelObra(o, visiveis));
+  const gp = (k) => String((params && typeof params.get === 'function' ? params.get(k) : params && params[k]) || '');   // params vem como URLSearchParams
+  const ehPessoa = pessoas.find((p) => p.chave === gp('p'));
+  const mes = /^\d{4}-\d{2}$/.test(gp('mes')) ? gp('mes') : hoje.slice(0, 7);
 
-  const linhas = lista.map((dia) => {
-    const dow = new Date(`${dia}T12:00:00`).getDay(); const fds = dow === 0 || dow === 6;
-    let somaDia = 0; let algum = false;
-    const cels = obras.map((o) => {
-      const e = reg(dia, o);
-      if (e) { somaDia += totalDe(e); algum = true; const t = terTot(e); const sel = selDia === dia && selObra === o ? ' ef-sel' : '';
-        return html`<td class="ef-c ef-ok${sel}"><a href="#/rh/efetivo?mes=${mes}&sel=${dia}|${o}" title="Ver quem estava em ${o} em ${fmtData(dia)}"><b>${totalDe(e)}</b>${t ? html`<small>${e.solida.qtd}+${t}</small>` : ''}</a></td>`; }
-      if (fds) return html`<td class="ef-c ef-fds">·</td>`;
-      if (dia === hoje && aguardando) return html`<td class="ef-c ef-esp">aguardando</td>`;
-      return html`<td class="ef-c ef-nao" title="Não enviou o efetivo neste dia">—</td>`;
-    });
-    return html`<tr class="${dia === hoje ? 'ef-hoje' : ''}"><th class="ef-dia" scope="row"><b>${fmtData(dia).slice(0, 5)}</b> <small>${DIA_SEM[dow]}</small></th>${cels}<td class="ef-tot">${algum ? somaDia : ''}</td></tr>`;
-  });
-
-  // detalhe da célula escolhida
-  let detalhe = '';
-  if (selDia && selObra) {
-    const e = reg(selDia, selObra);
-    detalhe = e
-      ? html`<section class="ef-detalhe"><h3>${selObra} · ${fmtData(selDia)} (${DIA_SEM[new Date(`${selDia}T12:00:00`).getDay()]})</h3>
-        <p class="pequeno">Efetivo postado${e.hora ? ` às ${e.hora}` : ''} no grupo da obra · total de ${totalDe(e)} ${totalDe(e) === 1 ? 'pessoa' : 'pessoas'}</p>
-        <div class="ef-listas"><div><h4>Equipe Sólida (${e.solida.qtd})</h4>${(e.solida.nomes || []).length ? html`<ul>${e.solida.nomes.map((n) => html`<li>${n}</li>`)}</ul>` : html`<p class="muted">Nenhum nome informado.</p>`}</div>
-        <div><h4>Terceirizados (${terTot(e)})</h4>${(e.terceiros || []).length ? html`<ul>${e.terceiros.map((t) => html`<li>${t.empresa}${t.qtd ? ` · ${t.qtd}` : ''}${t.funcao ? ` (${t.funcao})` : ''}</li>`)}</ul>` : html`<p class="muted">Nenhum.</p>`}</div></div></section>`
-      : html`<section class="ef-detalhe"><h3>${selObra} · ${fmtData(selDia)}</h3><p class="muted">Não há efetivo registrado para esta obra neste dia.</p></section>`;
+  // ----------------------------------------------------- calendário de um funcionário
+  if (ehPessoa) {
+    const [a, m] = mes.split('-').map(Number);
+    const nDias = new Date(a, m, 0).getDate(); const primeiro = (new Date(a, m - 1, 1).getDay() + 6) % 7;   // semana começa na segunda
+    const mesAnt = m === 1 ? `${a - 1}-12` : `${a}-${pad(m - 1)}`; const mesProx = m === 12 ? `${a + 1}-01` : `${a}-${pad(m + 1)}`;
+    const contagem = new Map(); let diasEmObra = 0; let uteisSemRegistro = 0;
+    const inicioDados = Object.keys((ef && ef.dias) || {}).sort()[0] || hoje;   // antes disso o sistema ainda não guardava o efetivo: não dá para dizer "sem registro"
+    const cels = [];
+    for (let i = 0; i < primeiro; i++) cels.push(html`<div class="ef-cal-vazio"></div>`);
+    for (let d = 1; d <= nDias; d++) {
+      const iso = `${mes}-${pad(d)}`; const dow = new Date(`${iso}T12:00:00`).getDay(); const fds = dow === 0 || dow === 6;
+      const obras = iso <= hoje ? obrasDe(ehPessoa.chave, iso) : [];
+      if (obras.length) { diasEmObra++; for (const o of new Set(obras)) contagem.set(o, (contagem.get(o) || 0) + 1); }
+      else if (!fds && iso < hoje && iso >= inicioDados) uteisSemRegistro++;
+      const cls = ['ef-cal-dia', obras.length ? 'ef-cal-obra' : '', fds ? 'ef-cal-fds' : '', iso === hoje ? 'ef-cal-hoje' : '', iso > hoje ? 'ef-cal-fut' : ''].filter(Boolean).join(' ');
+      const hora = obras.length ? ((((ef.dias || {})[iso] || {})[chaveDe((ef.dias || {})[iso] || {}, obras[0])] || {}).hora || '') : '';
+      cels.push(html`<div class="${cls}" title="${obras.length ? `${[...new Set(obras)].join(' e ')}${hora ? ` · efetivo postado às ${hora}` : ''}` : (fds ? 'Fim de semana' : iso > hoje ? '' : iso < inicioDados ? 'Antes de o sistema começar a guardar o efetivo' : 'Não apareceu no efetivo de nenhuma obra')}"><span class="ef-cal-n">${d}</span>${obras.length ? html`<div class="ef-cal-obras">${[...new Set(obras)].map(chipObra)}</div>` : (!fds && iso <= hoje && iso >= inicioDados ? html`<span class="ef-cal-sem">sem registro</span>` : '')}</div>`);
+    }
+    const csv = ['Data;Dia;Obra;Funcionário'].concat(Array.from({ length: nDias }, (_, i) => `${mes}-${pad(i + 1)}`).filter((iso) => iso <= hoje).flatMap((iso) => {
+      const os = obrasDe(ehPessoa.chave, iso); return [[fmtData(iso), DIA_SEM[new Date(`${iso}T12:00:00`).getDay()], os.length ? [...new Set(os)].join(' / ') : '', ehPessoa.nome].map(csvCel).join(';')];
+    })).join('\r\n');
+    const href = `data:text/csv;charset=utf-8,${encodeURIComponent(`﻿${csv}`)}`;
+    return html`<section class="ef-hist">
+      <a class="voltar" href="#/rh/efetivo">← Todos os funcionários</a>
+      <div class="ef-pessoa"><span class="ef-av ef-av-g">${iniciais(ehPessoa.nome)}</span><div><h2>${ehPessoa.nome}</h2><p class="pequeno">${ehPessoa.funcao}${ehPessoa.extra ? ' · só aparece no efetivo (não está na lista do RH)' : ''}</p></div></div>
+      <div class="periodo ef-nav">
+        <a class="botao" href="#/rh/efetivo?p=${encodeURIComponent(ehPessoa.chave)}&mes=${mesAnt}">← ${NOME_MES[(m + 10) % 12]}</a>
+        <div class="atual"><span>Mês</span><b>${NOME_MES[m - 1]} de ${a}</b></div>
+        ${mes < hoje.slice(0, 7) ? html`<a class="botao" href="#/rh/efetivo?p=${encodeURIComponent(ehPessoa.chave)}&mes=${mesProx}">${NOME_MES[m % 12]} →</a>` : ''}
+        <a class="botao on ef-baixar" download="${ehPessoa.nome.replace(/[^\wÀ-ú]+/g, '-')}-${mes}.csv" href="${html.seguro(href)}">⬇ Baixar planilha do mês</a>
+      </div>
+      <p class="ef-resumo"><b>${diasEmObra}</b> ${diasEmObra === 1 ? 'dia' : 'dias'} em obra no mês${[...contagem.entries()].length ? ' · ' : ''}${[...contagem.entries()].sort((x, y) => y[1] - x[1]).map(([o, n]) => html`${chipObra(o)} <span class="muted">${n}×</span> `)}${uteisSemRegistro ? html` · <span class="muted">${uteisSemRegistro} ${uteisSemRegistro === 1 ? 'dia útil' : 'dias úteis'} sem registro</span>` : ''}</p>
+      <div class="ef-cal"><div class="ef-cal-cab">${['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map((x) => html`<span>${x}</span>`)}</div><div class="ef-cal-grade">${cels}</div></div>
+      <p class="legenda-semana">Cada cor é uma obra. "sem registro" = o funcionário não apareceu no efetivo de nenhuma obra naquele dia (pode ser folga, falta, ou a obra não postou). Dados do efetivo dos grupos de WhatsApp. O sistema começou a guardar o efetivo em ${fmtData(inicioDados)}; os dias antes disso ficam em branco.</p>
+    </section>`;
   }
 
-  // planilha (CSV, abre no Excel): uma linha por obra e dia do mês
-  const csv = ['Data;Dia;Obra;Horário do envio;Equipe Sólida (qtd);Nomes da Sólida;Terceirizados (qtd);Terceirizados;Total']
-    .concat(Object.keys(dias).filter((d) => d.startsWith(mes)).sort().flatMap((dia) => Object.entries(dias[dia]).filter(([o]) => !visiveis || visiveis.some((v) => o.startsWith(v) || v.startsWith(o))).map(([o, e]) =>
-      [fmtData(dia), DIA_SEM[new Date(`${dia}T12:00:00`).getDay()], o, e.hora || '', e.solida.qtd, (e.solida.nomes || []).join(', '), terTot(e), (e.terceiros || []).map((t) => `${t.empresa} (${t.qtd || 1})`).join(', '), totalDe(e)].map(csvCel).join(';'))))
-    .join('\r\n');
-  const href = `data:text/csv;charset=utf-8,${encodeURIComponent(`﻿${csv}`)}`;
-  const temDados = Object.keys(dias).some((d) => d.startsWith(mes));
-
+  // ----------------------------------------------------- lista de funcionários com os últimos 5 dias úteis
+  const cinco = ultimosUteis(5, hoje);
+  const linhas = pessoas.map((p) => ({ p, dias: cinco.map((d) => ({ d, os: [...new Set(obrasDe(p.chave, d))] })) }))
+    .map((x) => ({ ...x, n: x.dias.filter((y) => y.os.length).length }))
+    .sort((x, y) => (y.n - x.n) || x.p.nome.localeCompare(y.p.nome, 'pt-BR'));
+  const [a, m] = hoje.slice(0, 7).split('-').map(Number);
+  const csvAll = ['Funcionário;Função'].map((h) => h + ';' + Array.from({ length: new Date(a, m, 0).getDate() }, (_, i) => `${pad(i + 1)}/${pad(m)}`).join(';'))
+    .concat(pessoas.map((p) => [p.nome, p.funcao].map(csvCel).join(';') + ';' + Array.from({ length: new Date(a, m, 0).getDate() }, (_, i) => { const iso = `${hoje.slice(0, 7)}-${pad(i + 1)}`; return csvCel(iso <= hoje ? [...new Set(obrasDe(p.chave, iso))].join(' / ') : ''); }).join(';'))).join('\r\n');
+  const hrefAll = `data:text/csv;charset=utf-8,${encodeURIComponent(`﻿${csvAll}`)}`;
   return html`<section class="ef-hist">
-    <div class="painel-h"><h2>Histórico do efetivo</h2><p>Quem estava em cada obra em cada dia, lido do efetivo que as obras postam nos grupos de WhatsApp. Clique num número para ver os nomes. "—" = a obra não enviou o efetivo naquele dia; "·" = fim de semana. Sólides e Tangerino ainda não entram aqui.</p></div>
-    <div class="periodo ef-nav">
-      <a class="botao" href="#/rh/efetivo?mes=${mesAnt}">← ${NOME_MES[(m + 10) % 12]}</a>
-      <div class="atual"><span>Mês</span><b>${NOME_MES[m - 1]} de ${a}</b></div>
-      ${mes < hoje.slice(0, 7) ? html`<a class="botao" href="#/rh/efetivo?mes=${mesProx}">${NOME_MES[m % 12]} →</a>` : ''}
-      <a class="botao on ef-baixar" download="efetivo-${mes}.csv" href="${html.seguro(href)}">⬇ Baixar planilha do mês</a>
-    </div>
-    ${temDados || lista.length ? html`<div class="ef-rolagem"><table class="ef-tab"><thead><tr><th>Dia</th>${obras.map((o) => html`<th>${o}</th>`)}<th>Total</th></tr></thead><tbody>${linhas}</tbody></table></div>` : html`<p class="vazio">Nenhum dia neste mês.</p>`}
-    ${detalhe}
-    <p class="legenda-semana">Número grande = total de pessoas no dia; pequeno = Sólida + terceirizados. O histórico fica guardado no banco de dados e não é apagado.</p>
+    <div class="painel-h"><h2>Histórico do efetivo</h2><p>Em que obra cada funcionário esteve, dia a dia, segundo o efetivo que as obras postam nos grupos de WhatsApp. Clique no funcionário para ver o mês em calendário. Sólides e Tangerino ainda não entram.</p></div>
+    <div class="ef-barra"><input id="ef-busca" type="search" placeholder="Buscar funcionário ou função" autocomplete="off"><a class="botao on ef-baixar" download="efetivo-funcionarios-${hoje.slice(0, 7)}.csv" href="${html.seguro(hrefAll)}">⬇ Planilha do mês (funcionário × dia)</a></div>
+    <div class="ef-cinco-cab"><span>Últimos 5 dias úteis</span><span>${cinco.slice().reverse().map((d) => html`<b>${DIA_SEM[new Date(`${d}T12:00:00`).getDay()]} ${fmtData(d).slice(0, 5)}</b>`)}</span></div>
+    <div class="ef-lista">${linhas.length ? linhas.map(({ p, dias }) => html`<a class="ef-linha" href="#/rh/efetivo?p=${encodeURIComponent(p.chave)}" data-busca="${norm(`${p.nome} ${p.funcao}`)}">
+      <span class="ef-av">${iniciais(p.nome)}</span>
+      <span class="ef-nome"><b>${p.nome}</b><small>${p.funcao}${p.extra ? ' · só no efetivo' : ''}</small></span>
+      <span class="ef-cinco">${dias.slice().reverse().map(({ d, os }) => html`<span class="ef-d ${os.length ? '' : 'ef-d-vazio'}" title="${fmtData(d)}">${os.length ? os.map(chipObra) : html`<i>—</i>`}</span>`)}</span>
+      <span class="ef-seta" aria-hidden="true">›</span></a>`) : html`<p class="vazio">Ainda não há efetivo registrado.</p>`}</div>
   </section>`;
+}
+// busca na lista de funcionários (filtra as linhas sem recarregar a página)
+if (typeof document !== 'undefined') {
+  document.addEventListener('input', (e) => {
+    if (!e.target || e.target.id !== 'ef-busca') return;
+    const q = norm(e.target.value);
+    document.querySelectorAll('.ef-linha').forEach((l) => { l.style.display = !q || (l.dataset.busca || '').includes(q) ? '' : 'none'; });
+  });
 }
