@@ -285,7 +285,7 @@ function desenharNav(sel) {
     + (paginaVisivel(f, 'escritorio') ? item('escritorio', 'Escritório virtual') : '')
     + (paginaVisivel(f, 'treinamentos') ? item('treinamentos', 'Treinamentos') : '')
     + (f.id === 'socio' ? item('equipe', 'Equipe') : '')   // ranking, funcionário do mês e recompensas: só o sócio / diretoria
-    + (f.veAgentes ? `<div class="nav-sep"></div>${item('agentes', 'Agentes')}${nuvem.NA_NUVEM && funcaoReal().id === 'socio' ? item('acessos', 'Acessos') : ''}` : '')
+    + (f.veAgentes ? `<div class="nav-sep"></div>${item('agentes', 'Agentes')}${nuvem.NA_NUVEM && funcaoReal().id === 'socio' ? item('acessos', 'Cadastros') : ''}` : '')
     + `<div class="navfoot">${estado.sync.origem === 'link' ? 'Atualiza sozinho a cada 5 minutos.' : 'Mostrando os últimos dados baixados.'}</div>`;
   desenharAvatares($('#nav'));
 }
@@ -457,7 +457,7 @@ function desenhar() {
   $('#data').textContent = d.charAt(0).toUpperCase() + d.slice(1);
   const titulo = ehObraPlan ? rota.arg
     : area ? area.nome
-    : ({ agentes: 'Agentes', funcionarios: 'Funcionários por obra', meudia: 'Minha semana', funcoes: 'Minhas funções', quadro: 'Quadro de funções', estoque: 'Estoque', escritorio: 'Escritório virtual', perfil: 'Perfil', feed: 'Feed', treinamentos: 'Treinamentos', acessos: 'Acessos', atas: 'Atas e pendências', marketing: 'Marketing', equipe: 'Equipe' }[tela] || 'Visão geral');
+    : ({ agentes: 'Agentes', funcionarios: 'Funcionários por obra', meudia: 'Minha semana', funcoes: 'Minhas funções', quadro: 'Quadro de funções', estoque: 'Estoque', escritorio: 'Escritório virtual', perfil: 'Perfil', feed: 'Feed', treinamentos: 'Treinamentos', acessos: 'Cadastros', atas: 'Atas e pendências', marketing: 'Marketing', equipe: 'Equipe' }[tela] || 'Visão geral');
   $('#titulo').textContent = titulo;
   document.title = `${titulo} · Sólida`;
 
@@ -476,7 +476,7 @@ function desenhar() {
   }
   if (tela === 'acessos' && nuvem.NA_NUVEM && funcaoReal().id === 'socio') {
     $('#conteudo').innerHTML = '<div class="carregando">Carregando a equipe…</div>';
-    nuvem.listarPerfis().then((ps) => { if (rotaAtual().tela === 'acessos') $('#conteudo').innerHTML = `<div>${acessos.render({ perfis: ps, obras: obrasDeAcesso(), meuId: nuvem.perfilAtual() && nuvem.perfilAtual().id, msg: estado.acessosMsg || '', aviso: estado.acessosAviso })}</div>`; estado.acessosMsg = ''; estado.acessosAviso = null; });
+    Promise.all([nuvem.listarPerfis(), nuvem.listarObras().catch(() => estado.obrasCad || [])]).then(([ps, oc]) => { estado.obrasCad = oc; if (rotaAtual().tela === 'acessos') $('#conteudo').innerHTML = `<div>${acessos.render({ perfis: ps, obras: obrasDeAcesso(), obrasCad: oc, meuId: nuvem.perfilAtual() && nuvem.perfilAtual().id, msg: estado.acessosMsg || '', aviso: estado.acessosAviso })}</div>`; estado.acessosMsg = ''; estado.acessosAviso = null; });
     return;
   }
   if (tela === 'atas') {
@@ -499,7 +499,7 @@ function desenhar() {
     const podeVerTodos = f.id === 'socio';
     const alvo = podeVerTodos && pAlvo && reg[pAlvo] ? { chave: pAlvo, ...reg[pAlvo] } : null;
     // diretoria: além do ranking, as sugestões da equipe sobre o sistema (pedidos de alteração)
-    const extra = podeVerTodos && !alvo ? `${nuvem.NA_NUVEM ? '<section class="secao"><h2>Logins da equipe</h2><p><a class="botao on" href="#/acessos">Criar login · redefinir senha · função e obras</a></p></section>' : ''}` : '';   // os pedidos de alteração agora ficam na aba Equipe
+    const extra = podeVerTodos && !alvo ? `${nuvem.NA_NUVEM ? '<section class="secao"><h2>Cadastros</h2><p><a class="botao on" href="#/acessos">Logins da equipe · obras (andamento, pausada, finalizada)</a></p></section>' : ''}` : '';   // os pedidos de alteração agora ficam na aba Equipe
     $('#conteudo').innerHTML = `<div>${perfil.render({ eu, alvo, podeVerTodos, extra, CFG })}</div>`;
     desenharAvatares();
     return;
@@ -623,9 +623,13 @@ function desenhar() {
 // obras que podem ser vinculadas a uma pessoa (as do planejamento + as da lista do RH)
 function obrasDisponiveis() {
   const CFG = estado.cfg;
-  if (!CFG) return [];
-  const plan = (CFG.areas.find((a) => a.id === 'planejamento') || {}).porObra || [];
-  return [...new Set([...plan.map((o) => o.obra), ...(CFG.obras || []).filter((o) => /^(Mo|Po)/i.test(o))])];
+  // cadastro de obras (aba Cadastros): obras em andamento ou pausadas entram; as finalizadas saem
+  const cad = estado.obrasCad || [];
+  const fin = new Set(cad.filter((c) => c.situacao === 'finalizada').map((c) => c.codigo));
+  const plan = CFG ? ((CFG.areas.find((a) => a.id === 'planejamento') || {}).porObra || []) : [];
+  const base = CFG ? [...plan.map((o) => o.obra), ...(CFG.obras || []).filter((o) => /^(Mo|Po)/i.test(o))] : [];
+  if (!CFG && !cad.length) return [];
+  return [...new Set([...base, ...cad.filter((c) => c.situacao !== 'finalizada').map((c) => c.codigo)])].filter((o) => !fin.has(o));
 }
 
 // ---------------------------------------------------------------- dados
@@ -671,6 +675,7 @@ async function atualizar() {
   // marcações de tarefas de todos (pontuação do Perfil); quem está logado manda o que só tinha neste navegador
   const atual = logado() ? { pessoa: idPessoa(), nome: sessao().nome, funcao: funcaoAtual().id, teste: simulando(), obras: obrasDaPessoa() } : null;
   if (nuvem.NA_NUVEM && logado()) { try { aplicarAbas(await nuvem.carregarAbas()); } catch { /* sem a tabela: fica o padrão de cada função */ } }
+  if (nuvem.NA_NUVEM && logado()) { try { estado.obrasCad = await nuvem.listarObras(); } catch { /* sem o cadastro: ficam só as obras dos dados */ } }
   const [painelR, baseR, prodR, driveR, , , , , ferrR, terR, , efR] = await Promise.allSettled([carregarPainel(), carregarDados(), carregarProdutividade(), carregarDrive(), sincronizarTarefas(atual), perfil.carregarFotos(), feed.carregar(), evidencias.carregar(), carregarFerramentasChk(), carregarTerceirizados(), atas.carregar(), carregarEfetivo(), sincronizarHorarios(logado() ? idPessoa() : null)]);
   if (efR.status === 'fulfilled') estado.efetivo = efR.value;
   if (terR.status === 'fulfilled') estado.terceiros = terR.value;
@@ -1050,6 +1055,24 @@ function configurar() {
     if (!confirm(`Excluir o login de ${nome}?\n\nIsso apaga o acesso e tudo o que a pessoa marcou no sistema (tarefas, publicações). Não dá para desfazer.\nPara só impedir a entrada, use "ativo" desmarcado.`)) return;
     try { await nuvem.excluirLogin(id); estado.acessosMsg = `Login de ${nome} excluído.`; desenhar(); }
     catch (err) { alert(`Não foi possível excluir (${err.message || err}).`); }
+  });
+  // Cadastro de obras: incluir, mudar a situação (andamento · pausada · finalizada) e excluir
+  const codigoObra = (txt) => { const s = String(txt || '').trim().replace(/\s+/g, ''); const m = s.match(/^(mo|po)(\d+.*)$/i); return m ? `${m[1][0].toUpperCase()}${m[1][1].toLowerCase()}${m[2]}` : s; };
+  document.addEventListener('submit', async (e) => {
+    const f = e.target.closest('#ob-novo, [data-obra-cad]'); if (!f) return;
+    e.preventDefault();
+    const fd = new FormData(f);
+    const codigo = f.id === 'ob-novo' ? codigoObra(fd.get('codigo')) : f.dataset.obraCad;
+    if (!codigo) { alert('Digite o código da obra (ex.: Mo565).'); return; }
+    try { await nuvem.salvarObra({ codigo, nome: String(fd.get('nome') || '').trim(), situacao: fd.get('situacao') || 'andamento' }); estado.acessosMsg = `Obra ${codigo} salva.`; desenhar(); }
+    catch (err) { alert(`Não foi possível salvar a obra (${err.message || err}).`); }
+  });
+  document.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-excluir-obra]'); if (!b) return;
+    const codigo = b.dataset.excluirObra;
+    if (!confirm(`Tirar a obra ${codigo} do cadastro? (Para só encerrar, mude a situação para "finalizada".)`)) return;
+    try { await nuvem.excluirObra(codigo); estado.acessosMsg = `Obra ${codigo} removida do cadastro.`; desenhar(); }
+    catch (err) { alert(`Não foi possível remover (${err.message || err}).`); }
   });
   // abas por função: voltar uma linha ao padrão e salvar a tabela
   document.addEventListener('click', (e) => {

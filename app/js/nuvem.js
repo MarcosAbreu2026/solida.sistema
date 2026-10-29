@@ -81,6 +81,20 @@ export async function salvarAbas(gravar, apagar) {
     if (error) throw new Error(error.message);
   }
 }
+// Cadastro de obras (diretoria): código, nome e situação (andamento · pausada · finalizada). Todos leem; só a diretoria grava.
+export async function listarObras() {
+  const { data, error } = await sb.from('obras_cadastro').select('codigo, nome, situacao').order('codigo');
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+export async function salvarObra({ codigo, nome, situacao }) {
+  const { error } = await sb.from('obras_cadastro').upsert({ codigo, nome: nome || null, situacao, atualizado_em: new Date().toISOString() });
+  if (error) throw new Error(error.message);
+}
+export async function excluirObra(codigo) {
+  const { error } = await sb.from('obras_cadastro').delete().eq('codigo', codigo);
+  if (error) throw new Error(error.message);
+}
 export function senhaProvisoria() {
   const L = 'abcdefghjkmnpqrstuvwxyz', N = '23456789', M = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
   const r = (s, n) => Array.from(crypto.getRandomValues(new Uint32Array(n)), (v) => s[v % s.length]).join('');

@@ -14,7 +14,17 @@ const caixinhasObras = (obras, sel = []) => html`<div class="ac-chips">
 
 const ABAS = [...SETORES, ...PAGINAS];
 
-export function render({ perfis = [], obras = [], msg = '', aviso = null, meuId = null }) {
+const SITUACOES = [['andamento', 'Em andamento'], ['pausada', 'Pausada'], ['finalizada', 'Finalizada']];
+const opcoesSituacao = (sel) => SITUACOES.map(([v, n]) => html`<option value="${v}" ${v === sel ? html.seguro('selected') : ''}>${n}</option>`);
+
+export function render({ perfis = [], obras = [], obrasCad = [], msg = '', aviso = null, meuId = null }) {
+  const linhaObra = (o) => html`<form class="ac-linha ${o.situacao === 'finalizada' ? 'ac-bloq' : ''}" data-obra-cad="${o.codigo}">
+    <div class="ac-quem"><b>${o.codigo}</b></div>
+    <label>Nome<input name="nome" value="${o.nome || ''}" placeholder="ex.: Residencial X"></label>
+    <label>Situação<select name="situacao">${opcoesSituacao(o.situacao)}</select></label>
+    <span class="ac-botoes"><button type="submit" class="botao on">Salvar</button>
+      <button type="button" class="botao ac-excluir" data-excluir-obra="${o.codigo}">Remover</button></span>
+  </form>`;
   const linha = (p) => {
     const protegido = p.id === meuId || p.funcao === 'coletor';
     return html`<form class="ac-linha ${p.ativo === false ? 'ac-bloq' : ''}" data-acesso="${p.id}">
@@ -39,6 +49,15 @@ export function render({ perfis = [], obras = [], msg = '', aviso = null, meuId 
     ${aviso ? html`<div class="ac-aviso"><b>${aviso.titulo}</b><p>Usuário: <code>${aviso.usuario}</code> · senha provisória: <code>${aviso.senha}</code></p>
       <p class="pequeno">Passe para a pessoa. No primeiro acesso ela cria a própria senha. Esta senha não aparece de novo.</p></div>` : ''}
     ${msg ? html`<p class="msg ok">${msg}</p>` : ''}
+    <section class="secao"><h2>Obras <span class="pequeno">${obrasCad.length}</span></h2>
+      <p class="pequeno">Cadastre aqui as obras que faltam e mude a situação: <b>em andamento</b> e <b>pausada</b> aparecem para escolher nos logins e nas listas; <b>finalizada</b> sai das listas.</p>
+      <form class="ac-novo" id="ob-novo">
+        <label>Código<input name="codigo" placeholder="ex.: Mo565" autocapitalize="none" spellcheck="false" required></label>
+        <label>Nome <span class="pequeno">(opcional)</span><input name="nome" placeholder="ex.: Residencial X"></label>
+        <label>Situação<select name="situacao">${opcoesSituacao('andamento')}</select></label>
+        <button type="submit" class="botao on">Cadastrar obra</button>
+      </form>
+      ${obrasCad.map(linhaObra)}</section>
     <section class="secao"><h2>Criar login</h2>
       <form class="ac-novo" id="ac-novo">
         <label>Nome<input name="nome" placeholder="ex.: Mariana C." required></label>
