@@ -1,4 +1,4 @@
-// "Minha semana" (antes "Meu dia"): duas abas, as duas no formato de quadro da semana.
+﻿// "Minha semana" (antes "Meu dia"): duas abas, as duas no formato de quadro da semana.
 //   Semana  — itens da programação × segunda a sexta: programado na semana, meta e executado de cada dia,
 //             lançado direto na célula (só funções de obra, sócio e coordenação)
 //   Funções — tarefas da função (POP R14) × segunda a sábado, com ✓ feito / ✕ não feito em cada célula
@@ -42,7 +42,7 @@ export const ABAS = [
 // Cada tarefa é um cartão: arrastar muda o dia/horário, puxar a borda de baixo muda a duração, clicar abre
 // uma janelinha com os detalhes (e os mesmos ajustes, para quem está no celular). Cartões no mesmo horário
 // ficam lado a lado, com o texto cortado em "…". O ajuste fica guardado neste navegador, por dia da tarefa.
-export const GRADE = { ini: 7 * 60, passo: 30, faixas: 24, alt: 64 };   // alt = altura de cada meia hora (maior = cartões com o texto inteiro)
+export const GRADE = { ini: 7 * 60, passo: 30, faixas: 24, alt: 44 };   // alt = altura de cada meia hora (maior = cartões com o texto inteiro)
 const PADRAO = 8 * 60; // sem horário no quadro: começa às 8h
 function previsto(t) {
   const txt = String(t.hora || '');

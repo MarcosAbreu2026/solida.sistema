@@ -1,4 +1,4 @@
-// Gera os prints do treinamento "Como usar Minhas funções" (telas reais, com caixas e setas vermelhas) usando o Edge sem janela.
+﻿// Gera os prints do treinamento "Como usar Minhas funções" (telas reais, com caixas e setas vermelhas) usando o Edge sem janela.
 // Pré-requisito: o sistema rodando em http://localhost:8080 (iniciar.bat). Uso:
 //   node scripts/gerar-prints-funcoes.mjs            gera todos os prints func-* em app/img/treinamentos/
 //   node scripts/gerar-prints-funcoes.mjs func-03     gera só os que começam com esse nome
@@ -152,7 +152,7 @@ const SLIDES = [
     await ir('#/funcoes'); await esperar('.fq-quadro'); if (!(await etiquetar())) throw new Error('sem tarefa até hoje'); await aoCentro('[data-tr="0"]'); await espera(300);
     // arrasta de verdade o primeiro cartão do dia para as 14h do dia seguinte (como a pessoa faz, segurando e soltando)
     await avaliar(`(async () => { const card = document.querySelector('[data-tr="0"]'); const trilhos = [...document.querySelectorAll('.fq-trilho')]; const col = [...document.querySelectorAll('.fq-cab')].findIndex((h) => h.dataset.tr === 'col');
-      const alvo = trilhos[col + 1] || trilhos[col - 1]; const rA = alvo.getBoundingClientRect(); const rc = card.getBoundingClientRect(); const alt = 64;
+      const alvo = trilhos[col + 1] || trilhos[col - 1]; const rA = alvo.getBoundingClientRect(); const rc = card.getBoundingClientRect(); const alt = 44;
       const yAlvo = rA.top + (14 - 7) * 2 * alt + 10 + 10; const mk = (tipo, x, y) => new PointerEvent(tipo, { bubbles: true, cancelable: true, button: 0, pointerId: 1, isPrimary: true, clientX: x, clientY: y });
       card.dispatchEvent(mk('pointerdown', rc.left + 10, rc.top + 10)); document.dispatchEvent(mk('pointermove', rc.left + 50, rc.top + 50)); document.dispatchEvent(mk('pointermove', rA.left + 30, yAlvo)); document.dispatchEvent(mk('pointerup', rA.left + 30, yAlvo)); })()`);
     await espera(900); await aoCentro('.fq-card.mudou'); await espera(400);

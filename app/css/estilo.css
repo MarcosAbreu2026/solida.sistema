@@ -1,4 +1,4 @@
-/* Sistema Sólida — mesmo visual do Painel da Empresa (Solida.exe):
+﻿/* Sistema Sólida — mesmo visual do Painel da Empresa (Solida.exe):
    barra lateral azul-marinho, fundo calcário, Manrope, detalhes em bronze, clicáveis em azul. */
 
 :root {
@@ -2141,7 +2141,7 @@ body.nav-recolhido .fh-cont { font-size: 12.5px; }
 .fq-quadro { column-gap: 8px; overflow-x: visible; }
 .fq-horas { font-size: 12.5px; color: var(--muted); }
 .fq-horas span { border-top: 1px solid var(--linha2); padding-top: 2px; font-weight: 600; }
-.fq-trilho { background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 63px, var(--linha2) 63px, var(--linha2) 64px); }
+.fq-trilho { background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 43px, var(--linha2) 43px, var(--linha2) 44px); }
 .fq-card { padding: 5px 7px 7px 8px; font-size: 12.5px; line-height: 16px; gap: 3px; }
 .fq-nome { display: block; flex: 1 1 auto; min-height: 0; overflow: hidden; text-overflow: clip; -webkit-line-clamp: unset; -webkit-box-orient: unset; font-weight: 600; word-break: break-word; }
 .fq-card .fn-meta { font-size: 11px; line-height: 13px; flex: none; }
