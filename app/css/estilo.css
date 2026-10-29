@@ -1904,7 +1904,7 @@ button.at-prazo:hover { filter: brightness(.96); box-shadow: 0 0 0 2px rgba(45, 
 .leitura-velha { background: rgba(217,83,79,.10); border-color: #D9534F; color: #A02E2A; }
 
 /* ---- Minhas funções: vista em lista por dia (texto inteiro; os 6 dias sempre cabem na tela, sem rolar para o lado) ---- */
-.fl-lista { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; align-items: start; }
+.fl-lista { display: grid; grid-template-columns: repeat(var(--nd, 5), minmax(0, 1fr)); gap: 8px; align-items: start; }
 .fl-col { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .fl-col .fq-cab { padding: 6px 8px; }
 .fl-col .fq-cab b { font-size: 13px; }
@@ -1920,7 +1920,7 @@ button.at-prazo:hover { filter: brightness(.96); box-shadow: 0 0 0 2px rgba(45, 
 @media (max-width: 560px) { .fl-lista { grid-template-columns: minmax(0, 1fr); } }
 
 /* ---- Minhas funções: grade por hora (horas na lateral; tarefas do mesmo horário empilhadas, texto inteiro) ---- */
-.fh-grade { display: grid; grid-template-columns: 44px repeat(6, minmax(0, 1fr)); gap: 6px; align-items: stretch; }
+.fh-grade { display: grid; grid-template-columns: 44px repeat(var(--nd, 5), minmax(0, 1fr)); gap: 6px; align-items: stretch; }
 .fh-canto { }
 .fh-dia { padding: 6px 8px; }
 .fh-dia b { font-size: 13px; }
@@ -1954,7 +1954,7 @@ nav { position: relative; transition: width .18s ease; }
 @media (min-width: 761px) {
   body.nav-recolhido .conteudo { padding-left: 32px; padding-right: 32px; }
   body.nav-recolhido header.topo { padding-left: 32px; padding-right: 32px; }
-  body.nav-recolhido .fh-grade { grid-template-columns: 52px repeat(6, minmax(0, 1fr)); gap: 9px; }
+  body.nav-recolhido .fh-grade { grid-template-columns: 52px repeat(var(--nd, 5), minmax(0, 1fr)); gap: 9px; }
   body.nav-recolhido .fh-dia b { font-size: 15px; }
   body.nav-recolhido .fh-dia small { font-size: 12.5px; }
   body.nav-recolhido .fh-hora { font-size: 15px; }
@@ -2127,3 +2127,12 @@ body.sem-login .nav-handle { display: none; }
 .fh-cel { min-height: 28px; }
 .fh-hora.fh-meia { opacity: .55; font-size: 12px; }
 .fh-cel-meia { border-top-style: dashed; }
+
+/* a tarefa também aparece nas linhas de meia hora que ela ocupa (ex.: 8h às 9h aparece em 8h e em 8h30) */
+.fh-cont { display: flex; align-items: baseline; gap: 5px; padding: 3px 8px; border-left: 4px solid #E0B04A; border-radius: 6px; background: rgba(224, 176, 74, .12); font-size: 11.5px; line-height: 1.3; color: #6A5326; min-width: 0; }
+.fh-cont span { flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.fh-cont small { flex: none; color: #8A7A55; font-size: 10.5px; }
+.fh-cont.fn-ok { border-left-color: #4E8A62; background: rgba(78, 138, 98, .12); color: #2F6B43; }
+.fh-cont.fn-nao { border-left-color: #D9534F; background: rgba(217, 83, 79, .10); color: #9B3A33; }
+.fh-cont.fn-futuro { border-left-color: #C9CFD6; background: rgba(0, 0, 0, .04); color: #7A828C; }
+body.nav-recolhido .fh-cont { font-size: 12.5px; }
