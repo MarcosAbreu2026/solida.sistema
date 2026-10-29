@@ -114,46 +114,53 @@ const CSS_OCULTAR = '#ver-como, #pedido, .pedido, #dica { display: none !importa
 const ocultar = () => avaliar(`(() => { const s = document.createElement('style'); s.textContent = ${JSON.stringify(CSS_OCULTAR)}; document.head.appendChild(s); window.scrollTo(0, 0); })()`);
 await ocultar();
 const hoje = hojeIso;
-async function recarregar() { await avaliar(`['solida.funcoesVista', 'solida.checks', 'solida.horarios'].forEach((k) => localStorage.removeItem(k))`); await cdp('Page.reload'); await espera(1200); await esperar('#nav a'); await ocultar(); }
-// Vista em lista (padrão): cada dia é uma coluna e cada tarefa um cartão com ✓ Feito / ✕ Não feito.
-// `etiquetar` marca os cartões do dia escolhido (hoje, ou o último dia com tarefa) com data-tr=0,1,2… para o script apontar para eles.
+async function recarregar() { await avaliar(`['solida.funcoesVista', 'solida.checks', 'solida.horarios', 'solida.horariosFixos'].forEach((k) => localStorage.removeItem(k))`); await cdp('Page.reload'); await espera(1200); await esperar('#nav a'); await ocultar(); }
+// Agenda: cada dia é uma coluna, as horas ficam na lateral (de meia em meia hora) e cada tarefa é UM cartão com a altura do tempo que ocupa.
+// `etiquetar` marca os cartões do dia escolhido (hoje, ou o último dia com tarefa) com data-tr=0,1,2… (os mais largos primeiro) para o script apontar para eles.
 async function etiquetar() {
   return avaliar(`(() => { const hoje = ${JSON.stringify(hoje)}; const [a, m, d] = hoje.split('-'); const rot = d + '/' + m;
-    const dias = [...document.querySelectorAll('.fh-dia')]; const comTarefa = (h) => !/previstas|sem tarefas|feriado/.test(h.querySelector('small').innerText);
-    let i = dias.findIndex((h) => h.querySelector('b').innerText.includes(rot) && comTarefa(h)); if (i < 0) { for (let k = dias.length - 1; k >= 0; k--) if (comTarefa(dias[k])) { i = k; break; } } if (i < 0) return false;
-    dias[i].dataset.tr = 'col'; const celulas = [...document.querySelectorAll('.fh-cel')].filter((_, k) => k % dias.length === i); let n = 0;
-    celulas.forEach((c) => c.querySelectorAll('.fn-caixa').forEach((x) => { x.dataset.tr = n++; })); return n > 0; })()`);
-}const SLIDES = [
+    const cabs = [...document.querySelectorAll('.fq-cab')]; const comTarefa = (h) => !/previstas|sem tarefas|feriado/.test(h.querySelector('small').innerText);
+    let i = cabs.findIndex((h) => h.querySelector('b').innerText.includes(rot) && comTarefa(h)); if (i < 0) { for (let k = cabs.length - 1; k >= 0; k--) if (comTarefa(cabs[k])) { i = k; break; } } if (i < 0) return false;
+    cabs.forEach((h) => delete h.dataset.tr); cabs[i].dataset.tr = 'col';
+    const cards = [...document.querySelectorAll('.fq-trilho')[i].querySelectorAll('.fq-card')];
+    cards.sort((x, y) => (x.classList.contains('fq-estreito') ? 1 : 0) - (y.classList.contains('fq-estreito') ? 1 : 0) || Number(x.dataset.faixa) - Number(y.dataset.faixa));
+    cards.forEach((c, k) => { c.dataset.tr = k; }); return cards.length > 0; })()`);
+}
+const aoCentro = (sel) => avaliar(`(() => { const e = document.querySelector(${JSON.stringify(sel)}); if (e) e.scrollIntoView({ block: 'center' }); })()`);
+// simula o toque no cartão (abre a janelinha de detalhes)
+const clicarCartao = (sel) => avaliar(`(() => { const c = document.querySelector(${JSON.stringify(sel)}); const r = c.getBoundingClientRect(); const o = { bubbles: true, cancelable: true, button: 0, pointerId: 1, isPrimary: true, clientX: r.left + 8, clientY: r.top + 8 }; c.dispatchEvent(new PointerEvent('pointerdown', o)); document.dispatchEvent(new PointerEvent('pointerup', o)); })()`);
+const SLIDES = [
   { nome: 'func-01-menu', async montar() {
-    await ir('#/funcoes'); await esperar('.fh-grade');
+    await ir('#/funcoes'); await esperar('.fq-quadro');
     await marcar([{ sel: '#nav a[href="#/funcoes"]', rotulo: 'Aqui você faz o seu dia a dia', lado: 'direita', dist: 90, larg: 240 }, { sel: '#nav a[href="#/treinamentos"]' }]);
   } },
   { nome: 'func-02-quadro', async montar() {
-    await ir('#/funcoes'); await esperar('.fh-grade'); await etiquetar(); await espera(300);
-    await marcar([{ sel: '.fn-cab h3', rotulo: 'Suas tarefas da semana', lado: 'direita', dist: 70, larg: 230 }, { sel: '.fn-painel .pct' }, { sel: '[data-tr="col"]' }, { sel: '[data-tr="0"]' }]);
+    await ir('#/funcoes'); await esperar('.fq-quadro'); await etiquetar(); await rolar('.fn-painel'); await espera(300);
+    await marcar([{ sel: '.fn-cab h3', rotulo: 'Suas tarefas da semana', lado: 'direita', dist: 70, larg: 230 }, { sel: '.fn-painel .pct' }, { sel: '[data-tr="col"]' }, { sel: '.fq-horas', pad: 2 }]);
   } },
   { nome: 'func-03-marcar', async montar() {
-    await ir('#/funcoes'); await esperar('.fh-grade'); if (!(await etiquetar())) throw new Error('sem tarefa até hoje'); await espera(300);
-    await marcar([{ sel: '[data-tr="0"] .fn-nome' }, { sel: '[data-tr="0"] .fn-b.fn-feito', }, { sel: '[data-tr="0"] .fn-b.fn-nao' }]);
+    await ir('#/funcoes'); await esperar('.fq-quadro'); if (!(await etiquetar())) throw new Error('sem tarefa até hoje'); await aoCentro('[data-tr="0"]'); await espera(300);
+    await marcar([{ sel: '[data-tr="0"] .fq-nome' }, { sel: '[data-tr="0"] .fn-b.fn-feito' }, { sel: '[data-tr="0"] .fn-b.fn-nao' }]);
   } },
   { nome: 'func-04-cores', async montar() {
-    await ir('#/funcoes'); await esperar('.fh-grade'); if (!(await etiquetar())) throw new Error('sem tarefa até hoje');
-    await clicar('[data-tr="0"] .fn-b.fn-feito'); await espera(500); await etiquetar(); await clicar('[data-tr="1"] .fn-b.fn-nao'); await espera(500); await etiquetar(); await espera(200);
+    await ir('#/funcoes'); await esperar('.fq-quadro'); if (!(await etiquetar())) throw new Error('sem tarefa até hoje');
+    await aoCentro('[data-tr="0"]'); await clicar('[data-tr="0"] .fn-b.fn-feito'); await espera(500); await etiquetar();
+    await clicar('[data-tr="1"] .fn-b.fn-nao'); await espera(500); await etiquetar(); await aoCentro('[data-tr="1"]'); await espera(300);
     await marcar([{ sel: '[data-tr="0"]' }, { sel: '[data-tr="1"]' }, { sel: '[data-tr="2"]' }]);
   } },
   { nome: 'func-11-mover', async montar() {
-    await ir('#/funcoes'); await esperar('.fh-grade'); if (!(await etiquetar())) throw new Error('sem tarefa até hoje'); await espera(300);
-    // arrasta de verdade a primeira tarefa do dia para as 11h e meia (como a pessoa faz)
-    await avaliar(`(async () => { const card = document.querySelector('[data-tr="0"]'); const col = [...document.querySelectorAll('.fh-dia')].findIndex((h) => h.dataset.tr === 'col');
-      const alvo = [...document.querySelectorAll('.fh-cel')].filter((_, k) => k % document.querySelectorAll('.fh-dia').length === col).find((c) => c.dataset.celMin === '690'); const r = alvo.getBoundingClientRect(); const dt = new DataTransfer();
-      card.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: dt })); alvo.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt, clientY: r.top + 2 }));
-      alvo.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt, clientY: r.top + 2 })); card.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: dt })); })()`);
-    await espera(900); await etiquetar(); await avaliar(`document.querySelector('.fn-mudou').scrollIntoView({ block: 'center' })`); await espera(400);
-    await marcar([{ sel: '.fn-mudou' }, { sel: '.fn-mudou .fn-volta' }, { sel: '.fh-larga .legenda-semana' }]);
+    await ir('#/funcoes'); await esperar('.fq-quadro'); if (!(await etiquetar())) throw new Error('sem tarefa até hoje'); await aoCentro('[data-tr="0"]'); await espera(300);
+    // arrasta de verdade o primeiro cartão do dia para as 14h do dia seguinte (como a pessoa faz, segurando e soltando)
+    await avaliar(`(async () => { const card = document.querySelector('[data-tr="0"]'); const trilhos = [...document.querySelectorAll('.fq-trilho')]; const col = [...document.querySelectorAll('.fq-cab')].findIndex((h) => h.dataset.tr === 'col');
+      const alvo = trilhos[col + 1] || trilhos[col - 1]; const rA = alvo.getBoundingClientRect(); const rc = card.getBoundingClientRect(); const alt = 64;
+      const yAlvo = rA.top + (14 - 7) * 2 * alt + 10 + 10; const mk = (tipo, x, y) => new PointerEvent(tipo, { bubbles: true, cancelable: true, button: 0, pointerId: 1, isPrimary: true, clientX: x, clientY: y });
+      card.dispatchEvent(mk('pointerdown', rc.left + 10, rc.top + 10)); document.dispatchEvent(mk('pointermove', rc.left + 50, rc.top + 50)); document.dispatchEvent(mk('pointermove', rA.left + 30, yAlvo)); document.dispatchEvent(mk('pointerup', rA.left + 30, yAlvo)); })()`);
+    await espera(900); await aoCentro('.fq-card.mudou'); await espera(400);
+    await marcar([{ sel: '.fq-card.mudou' }, { sel: '.fq-card.mudou .fn-meta' }]);
   } },
   { nome: 'func-12-duracao', async montar() {
-    await ir('#/funcoes'); await esperar('.fh-grade'); if (!(await etiquetar())) throw new Error('sem tarefa até hoje'); await espera(300);
-    await avaliar(`document.querySelector('[data-tr="0"] .fn-nome').click()`); await esperar('.fq-pop'); await espera(300);
+    await ir('#/funcoes'); await esperar('.fq-quadro'); if (!(await etiquetar())) throw new Error('sem tarefa até hoje'); await aoCentro('[data-tr="0"]'); await espera(300);
+    await clicarCartao('[data-tr="0"]'); await esperar('.fq-pop'); await espera(300);
     await avaliar(`document.querySelector('.fq-pop [data-fn="dur|30"]').click()`); await espera(400);
     await marcar([{ sel: '.fq-pop-nome' }, { sel: '.fq-pop [data-fn="dur|-30"]', rotulo: 'Menos tempo', lado: 'esquerda', dist: 50, larg: 150 }, { sel: '.fq-pop [data-fn="dur|30"]', rotulo: 'Mais tempo', lado: 'baixo', dist: 45, larg: 150 }, { sel: '.fq-pop .fn-acoes' }]);
   } },
@@ -162,15 +169,16 @@ async function etiquetar() {
     await marcar([{ texto: 'Semana anterior', em: '.periodo button', rotulo: 'Veja ou marque semanas passadas', lado: 'baixo', dist: 60, larg: 240 }, { sel: '.periodo .atual' }, { texto: 'Próxima semana', em: '.periodo button' }]);
   } },
   { nome: 'func-08-fora', async montar() {
-    await ir('#/funcoes'); await esperar('.fh-grade'); await rolar('.fora-quadro', 'center'); await espera(300);
+    await ir('#/funcoes'); await esperar('.fq-quadro'); await rolar('.fora-quadro', 'center'); await espera(300);
     await marcar([{ sel: '.fora-quadro', rotulo: 'Tarefas mensais e ocasionais ficam fora do quadro', lado: 'cima', dist: 60, larg: 300 }]);
   } },
   { nome: 'func-10-menu', async montar() {
-    await ir('#/funcoes'); await esperar('.fh-grade'); await clicar('#nav a[href="#/funcoes"]'); await espera(900);
-    await marcar([{ sel: '#navToggle', rotulo: 'Clique na setinha para abrir o menu de novo', lado: 'direita', dist: 70, larg: 250 }]);
+    await ir('#/funcoes'); await esperar('.fq-quadro'); await clicar('#nav a[href="#/funcoes"]'); await espera(300);
+    await avaliar(`document.body.classList.add('nav-recolhido'); document.querySelector('#navToggle') && (document.querySelector('#navToggle').dataset.estado = 'fechado')`); await espera(700);
+    await marcar([{ sel: '#navToggle', rotulo: 'Clique na setinha para recolher ou abrir o menu', lado: 'direita', dist: 70, larg: 270 }]);
   } },
   { nome: 'func-09-treinamento', async montar() {
-    await ir('#/funcoes'); await esperar('.fh-grade'); await rolar('[data-trein-slides="funcoes-usar"]', 'center'); await espera(300);
+    await ir('#/funcoes'); await esperar('.fq-quadro'); await rolar('[data-trein-slides="funcoes-usar"]', 'center'); await espera(300);
     await marcar([{ sel: '[data-trein-slides="funcoes-usar"]', rotulo: 'Para rever este passo a passo, clique aqui', lado: 'esquerda', dist: 70, larg: 260 }]);
   } },
 ];

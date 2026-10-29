@@ -42,7 +42,7 @@ export const ABAS = [
 // Cada tarefa é um cartão: arrastar muda o dia/horário, puxar a borda de baixo muda a duração, clicar abre
 // uma janelinha com os detalhes (e os mesmos ajustes, para quem está no celular). Cartões no mesmo horário
 // ficam lado a lado, com o texto cortado em "…". O ajuste fica guardado neste navegador, por dia da tarefa.
-export const GRADE = { ini: 7 * 60, passo: 30, faixas: 24, alt: 52 };   // alt = altura de cada meia hora (maior = cartões com o texto inteiro)
+export const GRADE = { ini: 7 * 60, passo: 30, faixas: 24, alt: 64 };   // alt = altura de cada meia hora (maior = cartões com o texto inteiro)
 const PADRAO = 8 * 60; // sem horário no quadro: começa às 8h
 function previsto(t) {
   const txt = String(t.hora || '');
@@ -119,18 +119,16 @@ function caixaTarefa(t, data, estado, hoje, prova, rotuloDia = '', opc = {}) {
 }
 
 // Cartão no quadro
+// Um cartão só por tarefa, com a altura do tempo que ela ocupa (8h às 9h = duas linhas de meia hora). Tarefas no mesmo horário ficam lado a lado.
 function cartao(e, estado, hoje, prova) {
   const { t } = e;
   const altura = e.span * GRADE.alt - 2;
-  const grande = e.n === 1 && e.span >= 3;
-  const { cls, marca, acoes } = situacao(t, e.d, estado, hoje, prova, true);
-  const linhas = Math.max(1, Math.floor((altura - 8 - (grande ? 28 : 0) - (e.n === 1 && e.span >= 2 ? 14 : 0)) / 17));
-  const estilo = `top:${e.faixa * GRADE.alt}px;height:${altura}px;left:calc(${e.lane} * 100% / ${e.n} + 2px);width:calc(100% / ${e.n} - 4px);--l:${linhas}`;
-  return html`<div class="fq-card fn-${cls} ${e.mudou ? 'mudou' : ''}" style="${estilo}" title="${t.texto} — ${hhmm(e.ini)} a ${hhmm(e.ini + e.dur)} (${durTxt(e.dur)})" data-card="${t.id}|${e.d}" data-faixa="${e.faixa}" data-span="${e.span}">
-    ${marca ? html`<span class="fq-marca">${marca}</span>` : ''}
+  const { cls, acoes } = situacao(t, e.d, estado, hoje, prova, true, e.dia);
+  const estilo = `top:${e.faixa * GRADE.alt}px;height:${altura}px;left:calc(${e.lane} * 100% / ${e.n} + 2px);width:calc(100% / ${e.n} - 4px)`;
+  return html`<div class="fq-card fn-${cls} ${e.mudou ? 'mudou' : ''} ${e.n > 1 ? 'fq-estreito' : ''}" style="${estilo}" title="${t.texto} — ${hhmm(e.ini)} a ${hhmm(e.ini + e.dur)} (${durTxt(e.dur)}). Arraste para mudar o horário ou o dia; puxe a borda de baixo para mudar a duração; clique para ver os detalhes." data-card="${t.id}|${e.d}" data-faixa="${e.faixa}" data-span="${e.span}">
     <div class="fq-nome">${t.texto}</div>
-    ${e.n === 1 && e.span >= 2 ? html`<div class="fn-meta">${hhmm(e.ini)}–${hhmm(e.ini + e.dur)}</div>` : ''}
-    ${grande && acoes ? html`<div class="fn-acoes">${acoes}</div>` : ''}
+    <div class="fn-meta">${hhmm(e.ini)}–${hhmm(e.ini + e.dur)}${e.mudou ? ' · ↺' : ''}</div>
+    ${acoes ? html`<div class="fn-acoes">${acoes}</div>` : ''}
     <div class="fq-alca" title="Puxe para mudar a duração"></div>
   </div>`;
 }
@@ -190,7 +188,8 @@ function funcoesSemana(ref, CFG) {
   // a semana é de segunda a sexta: o sábado só aparece se a pessoa tiver alguma tarefa nele
   const colunas = dias.map((c) => { const l = lados(todos.filter((e) => e.dia === c)); return { c, l, fe: l.filter((e) => feita(e.t, e.d)).length }; }).filter(({ l }, i) => i < 5 || l.length);
   const altTotal = GRADE.faixas * GRADE.alt;
-  const horas = Array.from({ length: GRADE.faixas / 2 }, (_, i) => html`<span style="top:${i * 2 * GRADE.alt}px">${GRADE.ini / 60 + i}h</span>`);
+  const rotuloSlot = (s) => (s % 60 ? `${Math.floor(s / 60)}h30` : `${s / 60}h`);
+  const horas = Array.from({ length: GRADE.faixas }, (_, i) => html`<span style="top:${i * GRADE.alt}px">${rotuloSlot(GRADE.ini + i * GRADE.passo)}</span>`);
   const cabecas = colunas.map(({ c, l, fe }, i) => html`<div class="fq-cab ${c === hoje ? 'hoje' : ''}"><b>${DIA_CURTO[i]} ${c.slice(8, 10)}/${c.slice(5, 7)}</b><small>${feriado(c) ? 'feriado' : l.length ? (c > hoje ? `${l.length} previstas` : `${fe} de ${l.length}`) : 'sem tarefas'}</small></div>`);
   const trilhos = colunas.map(({ c, l }) => html`<div class="fq-trilho ${c === hoje ? 'hoje' : ''}" data-trilho="${c}" style="height:${altTotal}px">${l.map((e) => cartao(e, estadoDe(e.t, e.d), hoje, provaDoDia(e.t, e.d)))}</div>`);
 
@@ -201,21 +200,12 @@ function funcoesSemana(ref, CFG) {
       <div class="fq-cab ${c === hoje ? 'hoje' : ''}"><b>${DIA_CURTO[i]} ${c.slice(8, 10)}/${c.slice(5, 7)}</b><small>${feriado(c) ? 'feriado' : l.length ? (c > hoje ? `${l.length} previstas` : `${fe} de ${l.length} feitas`) : 'sem tarefas'}</small></div>
       ${[...l].sort((a, b) => a.ini - b.ini).map((e) => caixaTarefa(e.t, e.d, estadoDe(e.t, e.d), hoje, null, dispo(e)))}
     </div>`)}</div>`;
-  // Grade por hora (padrão em tela larga): horas na lateral, um dia por coluna. Tarefas do mesmo horário ficam empilhadas na célula
-  // (cada uma com o texto inteiro), então nada fica espremido nem cortado e os 6 dias cabem na tela sem rolar para o lado.
-  // todas as horas do dia de trabalho (7h às 18h, ou mais se houver tarefa fora disso): assim dá para soltar um cartão em qualquer horário
-  // cada linha da grade é MEIA HORA (9h, 9h30, 10h…): assim um cartão às 9h30 aparece na linha das 9h30, e não junto com o das 9h
-  const ms = colunas.flatMap(({ l }) => l.map((e) => Math.floor(e.ini / 30) * 30));
-  const ini30 = Math.min(7 * 60, ...ms); const fim30 = Math.max(18 * 60 + 30, ...ms);
-  const slots = Array.from({ length: (fim30 - ini30) / 30 + 1 }, (_, i) => ini30 + i * 30);
-  const rotuloSlot = (s) => (s % 60 ? `${Math.floor(s / 60)}h30` : `${s / 60}h`);
-  const vistaHoras = html`<div class="fh-grade" style="--nd:${colunas.length}">
-    <div class="fh-canto"></div>
-    ${colunas.map(({ c, l, fe }, i) => html`<div class="fq-cab fh-dia ${c === hoje ? 'hoje' : ''}"><b>${DIA_CURTO[i]} ${c.slice(8, 10)}/${c.slice(5, 7)}</b><small>${feriado(c) ? 'feriado' : l.length ? (c > hoje ? `${l.length} previstas` : `${fe} de ${l.length}`) : 'sem tarefas'}</small></div>`)}
-    ${slots.map((s) => html`<div class="fh-hora ${s % 60 ? 'fh-meia' : ''}"><b>${rotuloSlot(s)}</b></div>${colunas.map(({ c, l }) => html`<div class="fh-cel ${c === hoje ? 'hoje' : ''} ${s % 60 ? 'fh-cel-meia' : ''}" data-cel-dia="${c}" data-cel-min="${s}">${l.filter((e) => e.ini < s && Math.floor(e.ini / 30) * 30 < s && e.ini + e.dur > s).map((e) => html`<div class="fh-cont fn-${situacao(e.t, e.d, estadoDe(e.t, e.d), hoje, null, true, e.dia).cls}" title="${e.t.texto} · ${hhmm(e.ini)}–${hhmm(e.ini + e.dur)}">↳ <span>${e.t.texto}</span> <small>até ${hhmm(e.ini + e.dur)}</small></div>`)}${l.filter((e) => Math.floor(e.ini / 30) * 30 === s).sort((a, b) => a.ini - b.ini).map((e) => caixaTarefa(e.t, e.d, estadoDe(e.t, e.d), hoje, null, dispo(e), { mover: true, mudou: e.mudou, dur: e.dur, dataVista: e.dia }))}</div>`)}`)}
-  </div>
-  <p class="legenda-semana">Para mudar o horário ou o dia de uma tarefa, segure o cartão e arraste para outra linha da grade, no mesmo dia ou em outro dia da semana (cada linha é meia hora: 9h, 9h30, 10h…). Para mudar quanto tempo ela ocupa no dia, clique na tarefa. O que você ajustar vale para todas as semanas e é só seu. "↺ movida" volta ao quadro original.</p>`;
-  const botoesVista = html`<div class="fl-vista" role="group" aria-label="Como ver as tarefas"><span class="pequeno">Ver:</span>
+  // Agenda (padrão em tela larga): horas de meia em meia hora na lateral, um dia por coluna, e UM cartão por tarefa com a altura do tempo
+  // que ela ocupa (8h às 9h ocupa as linhas de 8h e 8h30). Tarefas no mesmo horário ficam lado a lado e a coluna do dia alarga para caber.
+  const lanes = (l) => Math.max(1, ...l.map((e) => e.n || 1));
+  const colsCss = `52px ${colunas.map(({ l }) => `minmax(${lanes(l) * 48}px, ${lanes(l)}fr)`).join(' ')}`;   // no mínimo ~48 px por cartão lado a lado (a página não rola para o lado)
+  const vistaQuadro = html`<div class="fq-quadro" style="grid-template-columns:${colsCss}"><div class="fq-canto"></div>${cabecas}<div class="fq-horas" style="height:${altTotal}px">${horas}</div>${trilhos}</div>
+  <p class="legenda-semana">Segure um cartão e arraste para outro horário ou outro dia da semana (cada linha é meia hora); puxe a borda de baixo do cartão para mudar quanto tempo a tarefa ocupa; clique no cartão para ver os detalhes. O que você ajustar vale para as próximas semanas e é só seu. "↺" no cartão = foi mexido; abra o cartão para voltar ao quadro original.</p>`;  const botoesVista = html`<div class="fl-vista" role="group" aria-label="Como ver as tarefas"><span class="pequeno">Ver:</span>
     <button type="button" class="botao ${vista === 'lista' ? 'on' : ''}" data-vista-fn="lista">Lista por dia</button>
     <button type="button" class="botao ${vista === 'quadro' ? 'on' : ''}" data-vista-fn="quadro">Por horário</button></div>`;
 
@@ -230,7 +220,7 @@ function funcoesSemana(ref, CFG) {
       <header class="fn-cab"><h3>${f.nome}</h3>
         <span class="pequeno">${previstas ? `${feitas} de ${previstas} feitas até hoje` : 'nenhuma tarefa até hoje'}</span></header>
       ${previstas ? html`<div class="pct" style="margin:6px 0 12px"><i style="width:${Math.round((feitas / previstas) * 100)}%"></i></div>` : ''}
-      ${vista === 'lista' ? html`<div class="fh-larga">${vistaHoras}</div><div class="fh-estreita">${vistaLista}</div>` : html`<div class="fq-quadro"><div class="fq-canto"></div>${cabecas}<div class="fq-horas" style="height:${altTotal}px">${horas}</div>${trilhos}</div>
+      ${vista === 'lista' ? html`<div class="fh-larga">${vistaQuadro}</div><div class="fh-estreita">${vistaLista}</div>` : html`<div class="fq-quadro"><div class="fq-canto"></div>${cabecas}<div class="fq-horas" style="height:${altTotal}px">${horas}</div>${trilhos}</div>
       <p class="legenda-semana">Arraste um cartão para outro dia ou horário; puxe a borda de baixo para mudar a duração; clique para ver os detalhes. Cartões no mesmo horário ficam lado a lado. O ajuste fica guardado neste navegador.</p>`}
       <p class="legenda-semana"><span class="lg lg-ok"></span> feito <span class="lg lg-abaixo"></span> não feito <span class="lg lg-sem"></span> falta marcar · você mesmo marca cada tarefa: ✓ Feito ou ✕ Não feito · clique numa marcação para desfazer</p>
     </section>
@@ -304,13 +294,16 @@ export function instalarQuadro(aoMudar) {
     if (!x.moveu) { reset(); if (!x.alca) { popup = { id: x.id, d: x.d }; aoMudar(); } return; }
     if (x.alca) {
       const span = Math.max(1, Math.round((x.h0 + (e.clientY - x.y0) + 2) / GRADE.alt));
-      moverHorario(pessoa, x.d, x.id, { dur: span * GRADE.passo });
+      fixarHorario(pessoa, x.id, { dur: span * GRADE.passo });   // quanto tempo a tarefa ocupa: vale para todas as semanas, só para esta pessoa
     } else {
       const trilhos = [...document.querySelectorAll('.fq-trilho')];
       const alvo = trilhos.find((t) => { const r = t.getBoundingClientRect(); return e.clientX >= r.left && e.clientX < r.right; }) || x.trilho;
       const r = alvo.getBoundingClientRect();
       const faixa = limitar(Math.round((e.clientY - x.desloc - r.top) / GRADE.alt), 0, GRADE.faixas - x.span);
-      moverHorario(pessoa, x.d, x.id, { dia: alvo.dataset.trilho, ini: GRADE.ini + faixa * GRADE.passo });
+      // horário novo (linha de meia hora) e dia da semana novo: valem para a tarefa nas próximas semanas, só para esta pessoa
+      const dowDe = (iso) => new Date(`${iso}T12:00:00`).getDay();
+      const origem = dowDe(x.d); const destino = dowDe(alvo.dataset.trilho);
+      fixarHorario(pessoa, x.id, { ini: GRADE.ini + faixa * GRADE.passo, dias: { [origem]: destino === origem ? null : destino } });
     }
     reset();
     aoMudar();

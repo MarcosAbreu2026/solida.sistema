@@ -2136,3 +2136,27 @@ body.sem-login .nav-handle { display: none; }
 .fh-cont.fn-nao { border-left-color: #D9534F; background: rgba(217, 83, 79, .10); color: #9B3A33; }
 .fh-cont.fn-futuro { border-left-color: #C9CFD6; background: rgba(0, 0, 0, .04); color: #7A828C; }
 body.nav-recolhido .fh-cont { font-size: 12.5px; }
+
+/* ---- Agenda de Minhas funções (21/10): um cartão por tarefa ocupando as linhas de meia hora, horários todos iguais ---- */
+.fq-quadro { column-gap: 8px; overflow-x: visible; }
+.fq-horas { font-size: 12.5px; color: var(--muted); }
+.fq-horas span { border-top: 1px solid var(--linha2); padding-top: 2px; font-weight: 600; }
+.fq-trilho { background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 63px, var(--linha2) 63px, var(--linha2) 64px); }
+.fq-card { padding: 5px 7px 7px 8px; font-size: 12.5px; line-height: 16px; gap: 3px; }
+.fq-nome { display: block; flex: 1 1 auto; min-height: 0; overflow: hidden; text-overflow: clip; -webkit-line-clamp: unset; -webkit-box-orient: unset; font-weight: 600; word-break: break-word; }
+.fq-card .fn-meta { font-size: 11px; line-height: 13px; flex: none; }
+.fq-card .fn-acoes { flex: none; margin-top: auto; flex-wrap: nowrap; gap: 4px; }
+.fq-card .fn-b { padding: 2px 9px; font-size: 13px; }
+.fq-card.fq-estreito { font-size: 11.5px; line-height: 14px; padding: 4px 5px 6px 6px; }
+.fq-card.fq-estreito .fn-b { padding: 1px 7px; font-size: 12px; }
+.fq-card.mudou { box-shadow: inset 0 0 0 1px #E0B04A; }
+body.nav-recolhido .fq-card { font-size: 13.5px; line-height: 17px; }
+body.nav-recolhido .fq-card.fq-estreito { font-size: 12.5px; line-height: 15px; }
+
+/* cartões lado a lado (tarefas no mesmo horário): letra e botões compactos para caber */
+.fq-quadro { overflow-x: auto; }
+.fq-card.fq-estreito { font-size: 11px; line-height: 13px; padding: 3px 3px 4px 5px; gap: 2px; }
+.fq-card.fq-estreito .fn-meta { font-size: 9.5px; line-height: 11px; }
+.fq-card.fq-estreito .fn-acoes { gap: 2px; }
+.fq-card.fq-estreito .fn-b { padding: 0 5px; font-size: 12px; min-width: 20px; line-height: 20px; }
+body.nav-recolhido .fq-card.fq-estreito { font-size: 11.5px; line-height: 14px; }
