@@ -56,7 +56,13 @@ export const lerHorariosFixos = (pessoa) => lerJSON(CHAVE_FIXOS, {})[pessoa] || 
 export function fixarHorario(pessoa, tarefa, patch) {
   const tudo = lerJSON(CHAVE_FIXOS, {});
   tudo[pessoa] = tudo[pessoa] || {};
-  if (patch == null) delete tudo[pessoa][tarefa]; else tudo[pessoa][tarefa] = { ...(tudo[pessoa][tarefa] || {}), ...patch };
+  if (patch == null) delete tudo[pessoa][tarefa];
+  else {
+    // patch.dias = { "<dia da semana de origem 1..6>": <dia da semana novo 1..6> | null }: muda a tarefa de dia em todas as semanas (null desfaz)
+    const atual = tudo[pessoa][tarefa] || {}; const { dias: pd, ...resto } = patch; const novo = { ...atual, ...resto };
+    if (pd) { novo.dias = { ...(atual.dias || {}) }; for (const [k, v] of Object.entries(pd)) { if (v == null) delete novo.dias[k]; else novo.dias[k] = v; } if (!Object.keys(novo.dias).length) delete novo.dias; }
+    if (Object.keys(novo).length) tudo[pessoa][tarefa] = novo; else delete tudo[pessoa][tarefa];
+  }
   gravarJSON(CHAVE_FIXOS, tudo);
   const v = tudo[pessoa][tarefa];
   if (NA_NUVEM) (v ? gravarHorarioTarefa(tarefa, v) : apagarHorarioTarefa(tarefa)).catch(() => { /* fica só neste navegador; sobe na próxima sincronização */ });
@@ -66,7 +72,7 @@ export async function sincronizarHorarios(pessoa) {
   if (!NA_NUVEM || !pessoa) return false;
   let linhas; try { linhas = await listarHorariosTarefas(); } catch { return false; }
   const tudo = lerJSON(CHAVE_FIXOS, {}); const locais = tudo[pessoa] || {}; const nuvem = {};
-  for (const l of linhas) nuvem[l.tarefa] = { ...(l.ini != null ? { ini: l.ini } : {}), ...(l.dur != null ? { dur: l.dur } : {}) };
+  for (const l of linhas) nuvem[l.tarefa] = { ...(l.ini != null ? { ini: l.ini } : {}), ...(l.dur != null ? { dur: l.dur } : {}), ...(l.dias ? { dias: l.dias } : {}) };
   for (const [t, v] of Object.entries(locais)) if (!nuvem[t]) { nuvem[t] = v; gravarHorarioTarefa(t, v).catch(() => {}); }
   tudo[pessoa] = nuvem; gravarJSON(CHAVE_FIXOS, tudo);
   return true;

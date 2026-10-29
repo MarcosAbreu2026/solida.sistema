@@ -171,12 +171,12 @@ export async function listarEfetivoDiario() {
 }
 // horário que cada pessoa escolheu para cada tarefa de "Minhas funções" (só ela vê e grava; vale para todas as semanas)
 export async function listarHorariosTarefas() {
-  const { data, error } = await sb.from('horarios_tarefas').select('tarefa, ini, dur');
+  const { data, error } = await sb.from('horarios_tarefas').select('tarefa, ini, dur, dias');
   if (error) throw new Error(error.message);
   return data || [];
 }
 export async function gravarHorarioTarefa(tarefa, v) {   // v = { ini?, dur? }
-  const { error } = await sb.from('horarios_tarefas').upsert({ pessoa: perfil.id, tarefa, ini: v.ini ?? null, dur: v.dur ?? null, atualizado_em: new Date().toISOString() });
+  const { error } = await sb.from('horarios_tarefas').upsert({ pessoa: perfil.id, tarefa, ini: v.ini ?? null, dur: v.dur ?? null, dias: v.dias ?? null, atualizado_em: new Date().toISOString() });
   if (error) throw new Error(error.message);
 }
 export async function apagarHorarioTarefa(tarefa) {
