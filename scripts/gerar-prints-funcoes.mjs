@@ -145,9 +145,9 @@ async function etiquetar() {
     await ir('#/funcoes'); await esperar('.fh-grade'); if (!(await etiquetar())) throw new Error('sem tarefa até hoje'); await espera(300);
     // arrasta de verdade a primeira tarefa do dia para as 11h e meia (como a pessoa faz)
     await avaliar(`(async () => { const card = document.querySelector('[data-tr="0"]'); const col = [...document.querySelectorAll('.fh-dia')].findIndex((h) => h.dataset.tr === 'col');
-      const alvo = [...document.querySelectorAll('.fh-cel')].filter((_, k) => k % 6 === col).find((c) => c.dataset.celHora === '11'); const r = alvo.getBoundingClientRect(); const dt = new DataTransfer();
-      card.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: dt })); alvo.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt, clientY: r.bottom - 3 }));
-      alvo.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt, clientY: r.bottom - 3 })); card.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: dt })); })()`);
+      const alvo = [...document.querySelectorAll('.fh-cel')].filter((_, k) => k % 6 === col).find((c) => c.dataset.celMin === '690'); const r = alvo.getBoundingClientRect(); const dt = new DataTransfer();
+      card.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: dt })); alvo.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt, clientY: r.top + 2 }));
+      alvo.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt, clientY: r.top + 2 })); card.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: dt })); })()`);
     await espera(900); await etiquetar(); await avaliar(`document.querySelector('.fn-mudou').scrollIntoView({ block: 'center' })`); await espera(400);
     await marcar([{ sel: '.fn-mudou' }, { sel: '.fn-mudou .fn-volta' }, { sel: '.fh-larga .legenda-semana' }]);
   } },

@@ -203,14 +203,17 @@ function funcoesSemana(ref, CFG) {
   // Grade por hora (padrão em tela larga): horas na lateral, um dia por coluna. Tarefas do mesmo horário ficam empilhadas na célula
   // (cada uma com o texto inteiro), então nada fica espremido nem cortado e os 6 dias cabem na tela sem rolar para o lado.
   // todas as horas do dia de trabalho (7h às 18h, ou mais se houver tarefa fora disso): assim dá para soltar um cartão em qualquer horário
-  const hs = colunas.flatMap(({ l }) => l.map((e) => Math.floor(e.ini / 60)));
-  const horasComTarefa = Array.from({ length: Math.max(18, ...hs) - Math.min(7, ...hs) + 1 }, (_, i) => Math.min(7, ...hs) + i);
+  // cada linha da grade é MEIA HORA (9h, 9h30, 10h…): assim um cartão às 9h30 aparece na linha das 9h30, e não junto com o das 9h
+  const ms = colunas.flatMap(({ l }) => l.map((e) => Math.floor(e.ini / 30) * 30));
+  const ini30 = Math.min(7 * 60, ...ms); const fim30 = Math.max(18 * 60 + 30, ...ms);
+  const slots = Array.from({ length: (fim30 - ini30) / 30 + 1 }, (_, i) => ini30 + i * 30);
+  const rotuloSlot = (s) => (s % 60 ? `${Math.floor(s / 60)}h30` : `${s / 60}h`);
   const vistaHoras = html`<div class="fh-grade">
     <div class="fh-canto"></div>
     ${colunas.map(({ c, l, fe }, i) => html`<div class="fq-cab fh-dia ${c === hoje ? 'hoje' : ''}"><b>${DIA_CURTO[i]} ${c.slice(8, 10)}/${c.slice(5, 7)}</b><small>${feriado(c) ? 'feriado' : l.length ? (c > hoje ? `${l.length} previstas` : `${fe} de ${l.length}`) : 'sem tarefas'}</small></div>`)}
-    ${horasComTarefa.map((h) => html`<div class="fh-hora"><b>${h}h</b></div>${colunas.map(({ c, l }) => html`<div class="fh-cel ${c === hoje ? 'hoje' : ''}" data-cel-dia="${c}" data-cel-hora="${h}">${l.filter((e) => Math.floor(e.ini / 60) === h).sort((a, b) => a.ini - b.ini).map((e) => caixaTarefa(e.t, e.d, estadoDe(e.t, e.d), hoje, null, dispo(e), { mover: true, mudou: e.mudou, dur: e.dur, dataVista: e.dia }))}</div>`)}`)}
+    ${slots.map((s) => html`<div class="fh-hora ${s % 60 ? 'fh-meia' : ''}"><b>${rotuloSlot(s)}</b></div>${colunas.map(({ c, l }) => html`<div class="fh-cel ${c === hoje ? 'hoje' : ''} ${s % 60 ? 'fh-cel-meia' : ''}" data-cel-dia="${c}" data-cel-min="${s}">${l.filter((e) => Math.floor(e.ini / 30) * 30 === s).sort((a, b) => a.ini - b.ini).map((e) => caixaTarefa(e.t, e.d, estadoDe(e.t, e.d), hoje, null, dispo(e), { mover: true, mudou: e.mudou, dur: e.dur, dataVista: e.dia }))}</div>`)}`)}
   </div>
-  <p class="legenda-semana">Para mudar o horário ou o dia de uma tarefa, segure o cartão e arraste para outra hora, no mesmo dia ou em outro dia da semana (solte na metade de cima da hora para hora cheia, ou na de baixo para "e meia"). Para mudar quanto tempo ela ocupa no dia, clique na tarefa. O que você ajustar vale para todas as semanas e é só seu. "↺ movida" volta ao quadro original.</p>`;
+  <p class="legenda-semana">Para mudar o horário ou o dia de uma tarefa, segure o cartão e arraste para outra linha da grade, no mesmo dia ou em outro dia da semana (cada linha é meia hora: 9h, 9h30, 10h…). Para mudar quanto tempo ela ocupa no dia, clique na tarefa. O que você ajustar vale para todas as semanas e é só seu. "↺ movida" volta ao quadro original.</p>`;
   const botoesVista = html`<div class="fl-vista" role="group" aria-label="Como ver as tarefas"><span class="pequeno">Ver:</span>
     <button type="button" class="botao ${vista === 'lista' ? 'on' : ''}" data-vista-fn="lista">Lista por dia</button>
     <button type="button" class="botao ${vista === 'quadro' ? 'on' : ''}" data-vista-fn="quadro">Por horário</button></div>`;
@@ -256,8 +259,7 @@ export function instalarQuadro(aoMudar) {
   document.addEventListener('drop', (e) => {
     const cel = celula(e); if (!cel || !movendo) return;
     e.preventDefault();
-    const r = cel.getBoundingClientRect(); const meia = (e.clientY - r.top) / Math.max(1, r.height) >= 0.5;
-    const ini = Number(cel.dataset.celHora) * 60 + (meia ? 30 : 0);
+    const ini = Number(cel.dataset.celMin);   // o horário é o da linha em que o cartão foi solto
     // dia da semana de origem (da tarefa) e de destino (da célula): o novo dia vale para essa ocorrência em todas as semanas
     const dowDe = (iso) => new Date(`${iso}T12:00:00`).getDay();
     const origem = dowDe(movendo.d); const destino = dowDe(cel.dataset.celDia);

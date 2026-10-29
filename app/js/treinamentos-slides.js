@@ -46,7 +46,7 @@ export const SUBTOPICOS = [
             dica: 'Sempre marque no mesmo dia: é mais fácil de lembrar e o seu progresso fica certo.' },
           { imagem: img('func-11-mover'), titulo: 'Mude o horário ou o dia de uma tarefa', texto: 'Quer fazer uma tarefa em outra hora, ou em outro dia da semana? Segure o cartão, arraste e solte no dia e na hora que quiser. O novo horário e o novo dia ficam valendo nas próximas semanas, só para você: ninguém mais é afetado e eles não voltam sozinhos.',
             legenda: ['O cartão que você moveu fica marcado e mostra o novo horário.', '↺ movida: clique para voltar ao horário original do quadro.'],
-            dica: 'Solte na metade de cima da hora para hora cheia (ex.: 11h) e na metade de baixo para "e meia" (11h30). Tarefa que você mudou de dia só pode ser marcada a partir do dia em que ela passou a ficar.' },
+            dica: 'Cada linha da grade é meia hora (11h, 11h30, 12h…): solte o cartão na linha do horário que você quer. Tarefa que você mudou de dia só pode ser marcada a partir do dia em que ela passou a ficar.' },
           { imagem: img('func-12-duracao'), titulo: 'Quanto tempo a tarefa ocupa no dia', texto: 'Clique em uma tarefa (no texto do cartão) para abrir uma caixinha. Nela você muda quanto tempo a tarefa ocupa no seu dia e também pode marcar feito ou não feito. O cartão fica mais alto quando a tarefa ocupa mais tempo.',
             legenda: ['O nome completo da tarefa.', '− 30 min: a tarefa passa a ocupar menos tempo.', '+ 30 min: a tarefa passa a ocupar mais tempo.', 'Situação: ✓ Feito ou ✕ Não feito, igual no cartão.'],
             dica: 'A duração que você escolher vale para essa tarefa em todas as semanas e é só sua. Para voltar ao original, use "↺ Voltar ao quadro" na caixinha.' },

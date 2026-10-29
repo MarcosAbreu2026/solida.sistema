@@ -2122,3 +2122,8 @@ body.sem-login .nav-handle { display: none; }
 .or-ad-nao { background: #F8E1DF; color: #9B3A33; }
 .or-val { margin: 0; display: flex; flex-direction: column; gap: 2px; font-size: 13px; color: var(--muted); }
 .or-card footer { margin-top: auto; display: flex; gap: 8px; }
+
+/* grade por meia hora: as linhas de "e meia" são mais baixas e discretas */
+.fh-cel { min-height: 28px; }
+.fh-hora.fh-meia { opacity: .55; font-size: 12px; }
+.fh-cel-meia { border-top-style: dashed; }
