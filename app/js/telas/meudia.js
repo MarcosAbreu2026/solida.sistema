@@ -38,11 +38,11 @@ export const ABAS = [
   { id: 'funcoes', nome: 'Funções' },
 ];
 
-// Quadro da semana (Funções): dias em colunas, horas na vertical (7h às 19h, faixas de 30 min).
+// Quadro da semana (Funções): dias em colunas, horas na vertical (7h às 17h, faixas de 30 min).
 // Cada tarefa é um cartão: arrastar muda o dia/horário, puxar a borda de baixo muda a duração, clicar abre
 // uma janelinha com os detalhes (e os mesmos ajustes, para quem está no celular). Cartões no mesmo horário
 // ficam lado a lado, com o texto cortado em "…". O ajuste fica guardado neste navegador, por dia da tarefa.
-export const GRADE = { ini: 7 * 60, passo: 30, faixas: 24, alt: 44 };   // alt = altura de cada meia hora (maior = cartões com o texto inteiro)
+export const GRADE = { ini: 7 * 60, passo: 30, faixas: 20, alt: 44 };   // alt = altura de cada meia hora (maior = cartões com o texto inteiro)
 const PADRAO = 8 * 60; // sem horário no quadro: começa às 8h
 function previsto(t) {
   const txt = String(t.hora || '');
