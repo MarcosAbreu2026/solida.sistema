@@ -114,7 +114,7 @@ async function atualizarPedidos() {
   const antes = JSON.stringify(estado.pedido.lista);
   estado.pedido.lista = await pedidos.listar();
   // perfil da diretoria mostra os pedidos da equipe: redesenha quando a lista muda
-  if (rotaAtual().tela === 'perfil' && antes !== JSON.stringify(estado.pedido.lista)) desenhar();
+  if (['perfil', 'equipe'].includes(rotaAtual().tela) && antes !== JSON.stringify(estado.pedido.lista)) desenhar();
   const ativo = document.activeElement;
   if (!(ativo && ativo.closest && ativo.closest('#pedido'))) desenharPedido();
 }
@@ -499,7 +499,7 @@ function desenhar() {
     const podeVerTodos = f.id === 'socio';
     const alvo = podeVerTodos && pAlvo && reg[pAlvo] ? { chave: pAlvo, ...reg[pAlvo] } : null;
     // diretoria: além do ranking, as sugestões da equipe sobre o sistema (pedidos de alteração)
-    const extra = podeVerTodos && !alvo ? `${nuvem.NA_NUVEM ? '<section class="secao"><h2>Logins da equipe</h2><p><a class="botao on" href="#/acessos">Criar login · redefinir senha · função e obras</a></p></section>' : ''}${pedidos.secaoEquipe(estado.pedido.lista)}` : '';
+    const extra = podeVerTodos && !alvo ? `${nuvem.NA_NUVEM ? '<section class="secao"><h2>Logins da equipe</h2><p><a class="botao on" href="#/acessos">Criar login · redefinir senha · função e obras</a></p></section>' : ''}` : '';   // os pedidos de alteração agora ficam na aba Equipe
     $('#conteudo').innerHTML = `<div>${perfil.render({ eu, alvo, podeVerTodos, extra, CFG })}</div>`;
     desenharAvatares();
     return;
@@ -593,7 +593,7 @@ function desenhar() {
       const topo = ehCom ? abas : `${abas}${projetos.resumoProjetos(CFG, estado.drive.projetos, visiveis)}`;
       out = corpo ? `<div>${abas}<div style="margin-top:26px">${corpo()}</div></div>` : T.telaArea(area, `<div style="margin-bottom:34px">${topo}</div>`);
     }
-    else if (tela === 'equipe') out = equipeRank.render({ params: rota.params });
+    else if (tela === 'equipe') out = equipeRank.render({ params: rota.params, extra: pedidos.secaoEquipe(estado.pedido.lista) });
     else if (area && area.id === 'orcamentos') out = orcamentosTela.render(CFG, estado.drive.projetos, veValores(), deObra ? obrasDaPessoa() : null);
     else if (tela === 'funcionarios') out = T.telaPessoas(estado.pessoas);
     else if (tela === 'agentes') out = T.telaAgentes();

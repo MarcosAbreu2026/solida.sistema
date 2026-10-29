@@ -197,7 +197,7 @@ export function render({ eu, alvo, podeVerTodos, extra = '', CFG = null }) {
     </section>`}
 
     ${podeVerTodos ? html`<section class="secao"><h2>Ranking da equipe</h2>
-      <p>O ranking, o funcionário do mês e as recompensas agora ficam na aba <a class="link" href="#/equipe"><b>Equipe</b></a>, no menu da esquerda, logo abaixo de Treinamentos.</p>
+      <p>O ranking, o funcionário do mês, as recompensas e os pedidos de alteração da equipe agora ficam na aba <a class="link" href="#/equipe"><b>Equipe</b></a>, no menu da esquerda, logo abaixo de Treinamentos.</p>
     </section>` : ''}
     ${extra}
   </div>`;

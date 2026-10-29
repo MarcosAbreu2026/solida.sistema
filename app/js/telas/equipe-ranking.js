@@ -14,7 +14,7 @@ const pct = (v) => (v == null ? '—' : `${Math.round(v * 100)}%`);
 const horas = (h) => `${(Math.round(h * 10) / 10).toString().replace('.', ',')} h`;
 const nivel = (v) => (v == null ? '' : v >= 0.9 ? 'bom' : v >= 0.6 ? 'medio' : 'baixo');
 
-export function render({ params } = {}) {
+export function render({ params, extra = '' } = {}) {
   const hoje = hojeISO();
   const gp = (k) => String((params && typeof params.get === 'function' ? params.get(k) : params && params[k]) || '');
   const mes = /^\d{4}-\d{2}$/.test(gp('mes')) ? gp('mes') : hoje.slice(0, 7);
@@ -68,5 +68,6 @@ export function render({ params } = {}) {
       <li><b>Pontos:</b> 10 por hora de trabalho previsto entregue.</li>
       <li><b>Velocidade real:</b> o sistema hoje só sabe se a tarefa foi feita ou não, não quanto tempo cada um levou. Para comparar quem faz mais rápido ou mais devagar seria preciso registrar início e fim de algumas tarefas-chave.</li>
     </ul></div></details>
+    ${extra}
   </div>`;
 }
