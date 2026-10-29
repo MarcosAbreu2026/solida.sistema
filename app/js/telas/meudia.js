@@ -1,11 +1,11 @@
-﻿// "Minha semana" (antes "Meu dia"): duas abas, as duas no formato de quadro da semana.
+// "Minha semana" (antes "Meu dia"): duas abas, as duas no formato de quadro da semana.
 //   Semana  — itens da programação × segunda a sexta: programado na semana, meta e executado de cada dia,
 //             lançado direto na célula (só funções de obra, sócio e coordenação)
 //   Funções — tarefas da função (POP R14) × segunda a sábado, com ✓ feito / ✕ não feito em cada célula
 
 import { html, data as fmtData } from '../formato.js';
 import { somarDias, hojeISO, inicioDaSemana } from '../datas.js';
-import { TAREFAS, valeNoDia, descreverDias, naGrade, OBSERVACOES, diaSemana, soMinhasFuncoes } from '../funcoes.js';
+import { FUNCOES, TAREFAS, valeNoDia, descreverDias, naGrade, OBSERVACOES, diaSemana, soMinhasFuncoes } from '../funcoes.js';
 import { sessao, funcaoAtual, idPessoa, obrasDaPessoa } from '../sessao.js';
 import { lerChecks, lerHorarios, moverHorario, primeiroDia, lerHorariosFixos, fixarHorario } from '../armazenamento.js';
 import { programacoes } from '../programacao.js';
@@ -58,6 +58,9 @@ const limitar = (v, a, b) => Math.max(a, Math.min(b, v));
 
 // Como a pessoa vê as tarefas: 'lista' (padrão, texto inteiro) ou 'quadro' (por horário). Guardado neste navegador.
 const CHAVE_VISTA = 'solida.funcoesVista';
+// Consulta (só o gestor de obra): ver, sem marcar nem mexer, o quadro do estagiário ou do encarregado. Não vale para os funcionários.
+const CONSULTAVEIS = ['estagiario', 'encarregado'];
+let consulta = null;
 let vista = 'lista';   // 21/10: a vista "Por horário" (quadro com horas) foi desligada: com várias tarefas no mesmo horário o texto ficava cortado e sobreposto
 function trocarVista() { vista = 'lista'; try { localStorage.removeItem(CHAVE_VISTA); } catch { /* sem armazenamento */ } }
 
@@ -151,10 +154,13 @@ function janela(e, dias, hoje, estado, prova) {
 }
 
 function funcoesSemana(ref, CFG) {
-  const f = funcaoAtual();
-  const checks = lerChecks(idPessoa());
+  const eu0 = funcaoAtual();
+  const cons = eu0.id === 'gestor_obra' && CONSULTAVEIS.includes(consulta) ? consulta : null;   // quadro de outra função, só para olhar
+  const f = cons ? FUNCOES.find((x) => x.id === cons) : eu0;
+  const checks = cons ? {} : lerChecks(idPessoa());
   const eu = { funcao: f.id, obras: obrasDaPessoa() };
   const hoje = hojeISO();
+  const hojeCard = cons ? '0000-00-00' : hoje;   // na consulta os cartões ficam neutros e sem botões
   const ini = inicioDaSemana(ref);
   const dias = [0, 1, 2, 3, 4, 5].map((i) => somarDias(ini, i));
   const tarefas = TAREFAS.filter((t) => t.funcao === f.id && naGrade(t));
@@ -177,7 +183,7 @@ function funcoesSemana(ref, CFG) {
   if (!tarefas.length) return html`${nav}<p class="vazio">Nenhuma tarefa cadastrada para a sua função.</p>`;
 
   // horário escolhido pela pessoa: vale para a tarefa em TODOS os dias e semanas, só para ela (não muda sozinho)
-  const fixos = lerHorariosFixos(idPessoa());
+  const fixos = cons ? {} : lerHorariosFixos(idPessoa());
   const horarios = {};
   for (const d of dias) {
     horarios[d] = {}; const dow = String(new Date(`${d}T12:00:00`).getDay());   // 1 = segunda … 6 = sábado
@@ -190,15 +196,15 @@ function funcoesSemana(ref, CFG) {
   const altTotal = GRADE.faixas * GRADE.alt;
   const rotuloSlot = (s) => (s % 60 ? `${Math.floor(s / 60)}h30` : `${s / 60}h`);
   const horas = Array.from({ length: GRADE.faixas }, (_, i) => html`<span style="top:${i * GRADE.alt}px">${rotuloSlot(GRADE.ini + i * GRADE.passo)}</span>`);
-  const cabecas = colunas.map(({ c, l, fe }, i) => html`<div class="fq-cab ${c === hoje ? 'hoje' : ''}"><b>${DIA_CURTO[i]} ${c.slice(8, 10)}/${c.slice(5, 7)}</b><small>${feriado(c) ? 'feriado' : l.length ? (c > hoje ? `${l.length} previstas` : `${fe} de ${l.length}`) : 'sem tarefas'}</small></div>`);
-  const trilhos = colunas.map(({ c, l }) => html`<div class="fq-trilho ${c === hoje ? 'hoje' : ''}" data-trilho="${c}" style="height:${altTotal}px">${l.map((e) => cartao(e, estadoDe(e.t, e.d), hoje, provaDoDia(e.t, e.d)))}</div>`);
+  const cabecas = colunas.map(({ c, l, fe }, i) => html`<div class="fq-cab ${c === hoje ? 'hoje' : ''}"><b>${DIA_CURTO[i]} ${c.slice(8, 10)}/${c.slice(5, 7)}</b><small>${feriado(c) ? 'feriado' : l.length ? (cons || c > hoje ? `${l.length} tarefas` : `${fe} de ${l.length}`) : 'sem tarefas'}</small></div>`);
+  const trilhos = colunas.map(({ c, l }) => html`<div class="fq-trilho ${c === hoje ? 'hoje' : ''}" data-trilho="${c}" style="height:${altTotal}px">${l.map((e) => cartao(e, estadoDe(e.t, e.d), hojeCard, provaDoDia(e.t, e.d)))}</div>`);
 
   // Vista em lista (padrão, 21/10): um cartão por tarefa, com o texto inteiro e os botões ✓ Feito / ✕ Não feito na própria tarefa.
   // A vista "Por horário" (quadro com horas) continua disponível para quem quer arrastar e mudar horários.
   const dispo = (e) => `${hhmm(e.ini)}–${hhmm(e.ini + e.dur)} · ${durTxt(e.dur)}`;
   const vistaLista = html`<div class="fl-lista" style="--nd:${colunas.length}">${colunas.map(({ c, l, fe }, i) => html`<div class="fl-col ${c === hoje ? 'hoje' : ''}">
-      <div class="fq-cab ${c === hoje ? 'hoje' : ''}"><b>${DIA_CURTO[i]} ${c.slice(8, 10)}/${c.slice(5, 7)}</b><small>${feriado(c) ? 'feriado' : l.length ? (c > hoje ? `${l.length} previstas` : `${fe} de ${l.length} feitas`) : 'sem tarefas'}</small></div>
-      ${[...l].sort((a, b) => a.ini - b.ini).map((e) => caixaTarefa(e.t, e.d, estadoDe(e.t, e.d), hoje, null, dispo(e)))}
+      <div class="fq-cab ${c === hoje ? 'hoje' : ''}"><b>${DIA_CURTO[i]} ${c.slice(8, 10)}/${c.slice(5, 7)}</b><small>${feriado(c) ? 'feriado' : l.length ? (cons || c > hoje ? `${l.length} tarefas` : `${fe} de ${l.length} feitas`) : 'sem tarefas'}</small></div>
+      ${[...l].sort((a, b) => a.ini - b.ini).map((e) => caixaTarefa(e.t, e.d, estadoDe(e.t, e.d), hojeCard, null, dispo(e)))}
     </div>`)}</div>`;
   // Agenda (padrão em tela larga): horas de meia em meia hora na lateral, um dia por coluna, e UM cartão por tarefa com a altura do tempo
   // que ela ocupa (8h às 9h ocupa as linhas de 8h e 8h30). Tarefas no mesmo horário ficam lado a lado e a coluna do dia alarga para caber.
@@ -209,20 +215,26 @@ function funcoesSemana(ref, CFG) {
     <button type="button" class="botao ${vista === 'lista' ? 'on' : ''}" data-vista-fn="lista">Lista por dia</button>
     <button type="button" class="botao ${vista === 'quadro' ? 'on' : ''}" data-vista-fn="quadro">Por horário</button></div>`;
 
+  const seletor = eu0.id === 'gestor_obra' ? html`<div class="fl-vista" role="group" aria-label="Qual quadro ver"><span class="pequeno">Ver:</span>
+    <button type="button" class="botao ${cons ? '' : 'on'}" data-consulta="">Minhas funções</button>
+    ${CONSULTAVEIS.map((id) => html`<button type="button" class="botao ${cons === id ? 'on' : ''}" data-consulta="${id}">${FUNCOES.find((x) => x.id === id).nome.replace(' de obra', '')} (consulta)</button>`)}</div>` : '';
+
   let pop = '';
+  if (cons) popup = null;
   if (popup) {   // janelinha ao clicar na tarefa: mudar quanto tempo ela ocupa no dia, marcar feito/não feito
     const e = todos.find((x) => x.t.id === popup.id && x.d === popup.d);
     if (e) pop = janela(e, dias, hoje, estadoDe(e.t, e.d), provaDoDia(e.t, e.d)); else popup = null;
   }
 
   return html`${nav}
-    <section class="fn-painel">
+    ${seletor}
+    <section class="fn-painel ${cons ? 'fq-consulta' : ''}">
       <header class="fn-cab"><h3>${f.nome}</h3>
-        <span class="pequeno">${previstas ? `${feitas} de ${previstas} feitas até hoje` : 'nenhuma tarefa até hoje'}</span></header>
-      ${previstas ? html`<div class="pct" style="margin:6px 0 12px"><i style="width:${Math.round((feitas / previstas) * 100)}%"></i></div>` : ''}
+        <span class="pequeno">${cons ? 'só para consultar' : previstas ? `${feitas} de ${previstas} feitas até hoje` : 'nenhuma tarefa até hoje'}</span></header>
+      ${previstas && !cons ? html`<div class="pct" style="margin:6px 0 12px"><i style="width:${Math.round((feitas / previstas) * 100)}%"></i></div>` : ''}
       ${vista === 'lista' ? html`<div class="fh-larga">${vistaQuadro}</div><div class="fh-estreita">${vistaLista}</div>` : html`<div class="fq-quadro"><div class="fq-canto"></div>${cabecas}<div class="fq-horas" style="height:${altTotal}px">${horas}</div>${trilhos}</div>
       <p class="legenda-semana">Arraste um cartão para outro dia ou horário; puxe a borda de baixo para mudar a duração; clique para ver os detalhes. Cartões no mesmo horário ficam lado a lado. O ajuste fica guardado neste navegador.</p>`}
-      <p class="legenda-semana"><span class="lg lg-ok"></span> feito <span class="lg lg-abaixo"></span> não feito <span class="lg lg-sem"></span> falta marcar · você mesmo marca cada tarefa: ✓ Feito ou ✕ Não feito · clique numa marcação para desfazer</p>
+      ${cons ? html`<p class="legenda-semana">Visualização só para consulta: é o quadro de tarefas de ${f.nome.toLowerCase()}, para você saber o que essa função faz. Aqui não dá para marcar nem mexer.</p>` : html`<p class="legenda-semana"><span class="lg lg-ok"></span> feito <span class="lg lg-abaixo"></span> não feito <span class="lg lg-sem"></span> falta marcar · você mesmo marca cada tarefa: ✓ Feito ou ✕ Não feito · clique numa marcação para desfazer</p>`}
     </section>
     ${pop}
     ${foraDoQuadro(f.id)}
@@ -270,7 +282,7 @@ export function instalarQuadro(aoMudar) {
   document.addEventListener('pointerdown', (e) => {
     if (e.button || a) return;
     const card = e.target.closest && e.target.closest('.fq-card');
-    if (!card || e.target.closest('button')) return;
+    if (!card || e.target.closest('button, .fq-consulta')) return;
     const trilho = card.parentElement;
     a = { card, trilho, alca: !!e.target.closest('.fq-alca'), x0: e.clientX, y0: e.clientY, moveu: false,
       h0: card.getBoundingClientRect().height, desloc: e.clientY - card.getBoundingClientRect().top };
@@ -311,6 +323,8 @@ export function instalarQuadro(aoMudar) {
   document.addEventListener('pointercancel', reset);
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && popup) { popup = null; aoMudar(); } });
   document.addEventListener('click', (e) => {
+    const q = e.target.closest && e.target.closest('[data-consulta]');
+    if (q) { consulta = q.dataset.consulta || null; popup = null; aoMudar(); return; }
     const v = e.target.closest && e.target.closest('[data-vista-fn]');
     if (v) { trocarVista(v.dataset.vistaFn); aoMudar(); return; }
     const b = e.target.closest && e.target.closest('[data-fn]');
