@@ -498,8 +498,7 @@ function desenhar() {
     const pAlvo = rota.params.get('p'); const reg = lerPessoasTarefas();
     const podeVerTodos = f.id === 'socio';
     const alvo = podeVerTodos && pAlvo && reg[pAlvo] ? { chave: pAlvo, ...reg[pAlvo] } : null;
-    // diretoria: além do ranking, as sugestões da equipe sobre o sistema (pedidos de alteração)
-    const extra = podeVerTodos && !alvo && nuvem.NA_NUVEM ? html.seguro('<section class="secao"><h2>Cadastros</h2><p><a class="botao on" href="#/acessos">Logins da equipe · obras (andamento, pausada, finalizada)</a></p></section>') : '';   // os pedidos de alteração agora ficam na aba Equipe
+    const extra = '';   // bloco Cadastros removido do perfil da diretoria (acesso pela aba Cadastros no menu)
     $('#conteudo').innerHTML = `<div>${perfil.render({ eu, alvo, podeVerTodos, extra, CFG })}</div>`;
     desenharAvatares();
     return;
