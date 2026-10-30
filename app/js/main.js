@@ -499,7 +499,7 @@ function desenhar() {
     const podeVerTodos = f.id === 'socio';
     const alvo = podeVerTodos && pAlvo && reg[pAlvo] ? { chave: pAlvo, ...reg[pAlvo] } : null;
     // diretoria: além do ranking, as sugestões da equipe sobre o sistema (pedidos de alteração)
-    const extra = podeVerTodos && !alvo ? `${nuvem.NA_NUVEM ? '<section class="secao"><h2>Cadastros</h2><p><a class="botao on" href="#/acessos">Logins da equipe · obras (andamento, pausada, finalizada)</a></p></section>' : ''}` : '';   // os pedidos de alteração agora ficam na aba Equipe
+    const extra = podeVerTodos && !alvo && nuvem.NA_NUVEM ? html.seguro('<section class="secao"><h2>Cadastros</h2><p><a class="botao on" href="#/acessos">Logins da equipe · obras (andamento, pausada, finalizada)</a></p></section>') : '';   // os pedidos de alteração agora ficam na aba Equipe
     $('#conteudo').innerHTML = `<div>${perfil.render({ eu, alvo, podeVerTodos, extra, CFG })}</div>`;
     desenharAvatares();
     return;
