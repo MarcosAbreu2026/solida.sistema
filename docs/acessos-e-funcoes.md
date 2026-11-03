@@ -80,3 +80,7 @@ ficam escondidos na tela), e o sistema acessível do celular na obra.
 - Quem registra: sócio, administrativo, ferramentas, executor de ferramentas e estagiário de compras/ferramentas (galpão). Estas três últimas funções, que só viam Minhas funções e Treinamentos, passam a ver também a aba Estoque.
 - Dados: tabelas `movimentacoes_galpao` e `movimentacoes_fotos` (supabase/05-movimentacao-galpao.sql); a foto vai para o armazenamento `fotos`, na pasta de quem enviou.
 - O estoque mostrado continua vindo da planilha do Drive: a guia só **registra** a movimentação; o gestor de ferramentas consolida na Planilha Mestre (POP 12.1).
+## Contagem do estoque no site (03/11/2026)
+- Aba **Estoque**, caixa "Contagem do estoque" (mesmas funções da guia de movimentação). Escolhe o local (galpão, carros ou obra), digita a quantidade atual dos itens contados e salva; a folha escrita à mão deixa de ser necessária.
+- Dados: tabela `contagens_estoque` (supabase/06-contagem-estoque.sql), uma linha por data + local + item. A contagem aparece no estoque do site por cima da planilha enquanto for mais nova que a conferência do local na planilha; "comprar" e "consertar" continuam vindo da planilha.
+- A planilha SL_FERRAMENTAS_SOLIDA_Rnn no Drive **não** é alterada pelo site (nova revisão R61 só com autorização do Felipe).

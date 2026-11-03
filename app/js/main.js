@@ -50,6 +50,7 @@ import * as comercial from './telas/comercial.js';
 import * as projetos from './telas/projetos.js';
 import * as estoque from './telas/estoque.js';
 import * as movimentacao from './movimentacao.js';
+import * as contagem from './contagem.js';
 import * as analiseMed from './telas/analise-medicoes.js';
 import * as pedidos from './telas/pedidos.js';
 import * as escritorio from './telas/escritorio.js';
@@ -514,11 +515,13 @@ function desenhar() {
     return;
   }
   if (tela === 'estoque') {
-    if (movimentacao.emEdicao()) return;   // preenchendo a guia de movimentação: não redesenha, senão perde o que foi escrito
+    if (movimentacao.emEdicao() || contagem.emEdicao()) return;   // preenchendo a guia de movimentação: não redesenha, senão perde o que foi escrito
     movimentacao.garantir(desenhar);
-    const dEst = estado.drive.estoque;
+    contagem.garantir(desenhar);
+    const dEst = contagem.aplicar(estado.drive.estoque);   // contagens feitas no site por cima da planilha
+    const caixaCont = contagem.PODE_CONTAR.includes(f.id) && dEst && dEst.itens ? contagem.caixa({ dados: dEst }) : '';
     const caixaMov = movimentacao.PODE_MOVIMENTAR.includes(f.id) ? movimentacao.caixa({ itens: ((dEst && dEst.itens) || []).map((i) => ({ cod: i.cod, item: i.item })), obras: (dEst && dEst.obras) || [] }) : '';
-    $('#conteudo').innerHTML = `<div>${caixaMov}${estoque.render(estado.drive.estoque, { podeCompleto: estoque.VE_ESTOQUE_COMPLETO.includes(f.id), veConsumiveis: estoque.VE_CONSUMIVEIS.includes(f.id), verTudo: rota.params.get('ver') === 'tudo' })}</div>`;
+    $('#conteudo').innerHTML = `<div>${caixaCont}${caixaMov}${estoque.render(dEst, { podeCompleto: estoque.VE_ESTOQUE_COMPLETO.includes(f.id), veConsumiveis: estoque.VE_CONSUMIVEIS.includes(f.id), verTudo: rota.params.get('ver') === 'tudo' })}</div>`;
     return;
   }
   if (tela === 'quadro') {
@@ -1181,6 +1184,7 @@ function configurar() {
 
 configurar();
 movimentacao.ligar(() => desenhar());
+contagem.ligar(() => desenhar());
 if (nuvem.NA_NUVEM) {
   // link de 'esqueci a senha' volta com a sessão de recuperação: pede a senha nova
   await nuvem.carregarPerfil();

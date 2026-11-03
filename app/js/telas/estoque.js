@@ -6,11 +6,11 @@
 
 import { html, numero, data as fmtData } from '../formato.js';
 
-const CATEGORIAS = {
+export const CATEGORIAS = {
   FER: 'Ferramentas', MAQ: 'Maquinários', CON: 'Consumíveis', EPI: 'EPI', LIM: 'Limpeza',
   GER: 'Geral (andaimes, escadas…)', ESC: 'Escritório', COZ: 'Cozinha',
 };
-const ORDEM = ['FER', 'MAQ', 'CON', 'EPI', 'LIM', 'GER', 'ESC', 'COZ'];
+export const ORDEM = ['FER', 'MAQ', 'CON', 'EPI', 'LIM', 'GER', 'ESC', 'COZ'];
 
 // funções que veem carros e obras além do galpão
 export const VE_ESTOQUE_COMPLETO = ['socio', 'ferramentas', 'executor_ferramentas'];
@@ -96,7 +96,7 @@ function renderGalpao(dados, itens, cats, podeCompleto) {
   return html`<div class="pagina est-compacto">
     ${pedidosFuturos()}
     <p class="est-resumo"><b>${tem.length}</b> itens no galpão (${numero(tem.reduce((s, i) => s + gal(i).atual, 0))} un.) · <b class="pendente">${abaixo.length}</b> abaixo do mínimo · <b>${numero(quebradas)}</b> quebradas
-      <span class="pequeno"> · ${dados.arquivo}${conf.galpao ? `, conferido em ${dm(conf.galpao)}` : ''}</span>
+      <span class="pequeno"> · ${dados.arquivo}${conf.galpao ? `, conferido em ${dm(conf.galpao)}${dados.viaSite && dados.viaSite.galpao ? ` (contagem feita no site por ${dados.viaSite.galpao.por})` : ''}` : ''}</span>
       ${podeCompleto ? html` · <a class="link" href="#/estoque?ver=tudo">ver carros e obras →</a>` : ''}</p>
     ${abasCategorias(itens, cats)}
     <div class="filtros est-busca"><label>Procurar item<input type="search" id="busca-estoque" placeholder="ex.: furadeira, EPI12" autocomplete="off"></label>
