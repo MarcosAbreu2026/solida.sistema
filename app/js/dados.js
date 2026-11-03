@@ -62,6 +62,13 @@ export async function carregarProdutividade() {
   return r.json();
 }
 
+// Medição lida no Mais Controle pelo agente de Operação (por obra e semana, item a item). Ver docs/contrato-agentes.md.
+export async function carregarMedicoesMC() {
+  if (NA_NUVEM) return (await baixar('medicoes-mc')) || { obras: [] };
+  const r = await fetch(`${PASTA}medicoes-mc.json`, { cache: 'no-store' });
+  return r.ok ? r.json() : { obras: [] };
+}
+
 // Orçamentos (SL_ORÇAMENTOS<ano>) e projetos/as-built/cronograma por obra, lidos no Google Drive por
 // scripts/exportar-drive.ps1 (o servidor roda em segundo plano, no máximo a cada 10 minutos).
 export async function carregarDrive() {

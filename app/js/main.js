@@ -2,7 +2,7 @@
 // mais: perfis por função, "Meu dia" (quadro de funções), Operação › Metas e produtividade,
 // e no Pós-obra os detalhes da planilha integrada (dados/json).
 
-import { carregarDados, carregarPainel, carregarProdutividade, carregarDrive, carregarFerramentasChk, carregarTerceirizados, carregarEfetivo } from './dados.js';
+import { carregarDados, carregarPainel, carregarProdutividade, carregarDrive, carregarFerramentasChk, carregarTerceirizados, carregarEfetivo, carregarMedicoesMC } from './dados.js';
 import * as terceiros from './telas/terceirizados.js';
 import * as ferrChk from './telas/ferramentas-checklist.js';
 import * as efetivoTela from './telas/efetivo.js';
@@ -50,6 +50,7 @@ import * as comercial from './telas/comercial.js';
 import * as projetos from './telas/projetos.js';
 import * as estoque from './telas/estoque.js';
 import * as movimentacao from './movimentacao.js';
+import * as analiseMed from './telas/analise-medicoes.js';
 import * as pedidos from './telas/pedidos.js';
 import * as escritorio from './telas/escritorio.js';
 
@@ -537,16 +538,18 @@ function desenhar() {
       // Só o Resumo (cronograma, programação e medições de todas as obras) e, embaixo, Por obra (15/10).
       // Metas diárias continuam em #/operacao/metas (link no Resumo).
       const base = '#/operacao';
-      if (rota.sub === 'metas') {
+      if (rota.sub === 'medicoes') {
+        out = analiseMed.render({ CFG, mc: estado.mc, efetivo: estado.efetivo, params: rota.params, visiveis });
+      } else if (rota.sub === 'metas') {
         out = `<div><a class="link" href="${base}">← Operação</a><div style="margin-top:18px">${produtividade.render({ CFG, params: rota.params, dia: estado.dia, semanaRef: estado.semanaRef })}</div></div>`;
       } else {
         const ob = operacao.porObra(CFG, visiveis, estado.drive.projetos, rota.params, base, { veValores: !!f.veValores });
         // ordem (pedido do Felipe, 15/10): indicadores → alertas das metas → cronograma/programação/medições → Por obra
         const tabela = operacao.abaProgramacao(CFG, visiveis, (o) => `${base}?obra=${encodeURIComponent(o)}&aba=cronograma`);
-        const depois = `${produtividade.alertasMetas(CFG, visiveis)}${terceiros.render(CFG, estado.terceiros, visiveis)}${tabela}<div style="margin-top:34px">${ob.cards}</div>`;
+        const depois = `${produtividade.alertasMetas(CFG, visiveis)}${analiseMed.alertasResumo({ CFG, mc: estado.mc, efetivo: estado.efetivo, visiveis })}${terceiros.render(CFG, estado.terceiros, visiveis)}${tabela}<div style="margin-top:34px">${ob.cards}</div>`;
         // obra aberta: só ela (com o link para voltar)
         if (ob.aberta) out = `<div>${ob.painel}</div>`;
-        else out = `<div class="atalho-metas"><a class="botao on" href="#/operacao/metas">Análise das metas da semana</a> <span class="pequeno">o que está dentro da meta, o que não está e o que fazer, obra por obra</span></div>${deObra ? `<div>${depois}</div>` : T.telaArea(area, '', { semEstado: true, semAlertas: true, depoisIndicadores: depois })}`;
+        else out = `<div class="atalho-metas"><a class="botao on" href="#/operacao/metas">Análise das metas da semana</a> <span class="pequeno">o que está dentro da meta, o que não está e o que fazer, obra por obra</span> <a class="botao on" href="#/operacao/medicoes">Análise das medições</a> <span class="pequeno">produtividade × efetivo × programação × Mais Controle</span></div>${deObra ? `<div>${depois}</div>` : T.telaArea(area, '', { semEstado: true, semAlertas: true, depoisIndicadores: depois })}`;
       }
     }
     else if (area && area.id === 'transporte') {
@@ -683,6 +686,7 @@ async function atualizar() {
   if (terR.status === 'fulfilled') estado.terceiros = terR.value;
   if (ferrR.status === 'fulfilled') estado.ferrChk = ferrR.value;
   if (prodR.status === 'fulfilled') estado.whats = prodR.value;
+  try { estado.mc = await carregarMedicoesMC(); } catch { /* ainda sem a leitura da medição no Mais Controle */ }
   if (driveR.status === 'fulfilled') estado.drive = driveR.value;
   if (painelR.status === 'fulfilled') {
     const env = painelR.value;

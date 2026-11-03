@@ -122,3 +122,58 @@ já teve medição. Rotina (só leitura, no Chrome já logado em https://acessar
    (`contrato: false` = nenhum fornecedor com esse nome nos contratos da obra; usar `obs` para pedir conferência do nome).
 3. `verificadoEm` = quando leu o Mais Controle; `avisos` = observações gerais (ex.: obra com pouquíssimos contratos).
 Empresa que aparece na programação e não está no arquivo entra na tela sozinha como "ainda não conferida".
+
+## Agente de Operação: análise das medições de obra (pedido de 03/11/2026)
+
+A Operação ganhou **Análise das medições** (`#/operacao/medicoes`, botão ao lado de "Análise das metas da semana"). O sistema cruza,
+obra por obra e semana por semana (segunda a sexta): **produtividade enviada** (relatórios diários do grupo), **efetivo enviado**,
+**programação semanal** e **metas**, e compara a **medição lançada no Mais Controle, item a item**, com o que foi produzido. Quem
+calcula é o sistema; o agente só precisa **ler a medição no Mais Controle** e gravar o arquivo abaixo. Rodada: **toda segunda de manhã**,
+sobre a semana que acabou (a mesma semana que o POP 1.3 fecha na segunda).
+
+### O que o agente faz (só leitura, no Chrome já logado em https://acessar.maiscontroleerp.com.br)
+
+1. Se aparecer tela de login, parar e pedir ao usuário para entrar (nunca digitar senha).
+2. Para cada obra em andamento (cinza **e** laranja): Obras › Medição de Contratos (e a medição semanal da obra), abrir as medições
+   **da semana** (segunda a domingo anteriores) e anotar, por serviço medido: o nome **como está no Mais Controle**, a unidade, a
+   quantidade **medida na semana** (não o acumulado), o contrato/fornecedor, se é cinza ou laranja e o status (registrada, aprovada…).
+   Se o Mais Controle só mostrar percentual, mandar `pct` e deixar `medido` vazio.
+3. **Não gravar valores em R$** nem dados pessoais.
+4. Gravar `dados/json/medicoes-mc.json` (o coletor manda para a nuvem a cada 10 min). Obra sem nenhuma medição na semana entra com
+   `itens: []` (é isso que mostra "medição não lançada"). Obra que o agente não conseguiu ler: não incluir, e dizer ao usuário.
+
+```json
+{
+  "semana": { "inicio": "2026-10-26" },
+  "verificadoEm": "2026-11-02T09:10",
+  "obras": [
+    { "obra": "Mo533",
+      "obs": "texto curto, opcional (ex.: 2 contratos ainda sem medição)",
+      "itens": [
+        { "item": "Pintura das paredes, 2ª demão", "unidade": "m²", "medido": 97, "contrato": "Pinturas X", "tipo": "cinza", "status": "aprovada" },
+        { "item": "Bancadas, tentos e bancos", "unidade": "un", "medido": 23, "contrato": "Marmoraria", "tipo": "laranja" },
+        { "item": "Rejunte de cerâmica", "unidade": "m²", "pct": 40 }
+      ] }
+  ]
+}
+```
+
+- `semana.inicio`: a **segunda-feira** da semana analisada (AAAA-MM-DD). Arquivo de outra semana não é usado para a semana pedida.
+- `item`: o nome do serviço no Mais Controle. O sistema casa com o item da programação/produtividade por **semelhança** (acentos, vírgulas
+  e "de/da" não contam) e avisa "nome parecido" quando não é idêntico. Serviço medido em mais de um contrato: pode vir em linhas separadas, o sistema soma.
+- `tipo`: `cinza` (equipe Sólida, POP 1.1 e 1.3) ou `laranja` (terceirizado, POP 1.4). Sem `tipo`, vale `cinza`.
+- Laranja não tem produtividade diária: o sistema compara o medido com a **quantidade programada** da semana.
+
+### Como o sistema avalia (tolerância 10%, em `app/js/analise-medicoes.js`)
+
+| Situação | Quando | Nível |
+|---|---|---|
+| Bate | medido dentro de 10% do produzido | ok |
+| Medido a mais | medido > produzido + 10%, ou medido sem produtividade enviada | **crítico** (aparece nos alertas da Operação) |
+| Medido a menos | medido < produzido − 10% | atenção |
+| Não medido | produzido e sem medição no Mais Controle | atenção |
+| Só em % / unidade diferente | sem quantidade comparável | atenção |
+
+Também entram: dia com produtividade e sem efetivo, equipe na obra sem produtividade, semana sem nenhum relatório, medição ainda não lida.
+O agente **não** precisa repetir essas contas; se quiser, pode acrescentar na área `operacao` do dados.json um alerta `critico` por
+medição "a mais" no formato dos demais ("1.3 · LARISSA — Mo533: Rejunte medido 28 m² a mais que o produzido").

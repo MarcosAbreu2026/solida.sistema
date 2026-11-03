@@ -2184,3 +2184,28 @@ body.nav-recolhido .fq-card.fq-estreito { font-size: 11.5px; line-height: 14px; 
   .mov-linha .mov-item, .mov-linha .mov-obs { grid-column: 1 / -1; }
   .mov-tirar { grid-column: 2; justify-self: end; }
 }
+
+/* Operação › Análise das medições */
+.am-fonte { margin: 10px 0 18px; }
+.am-obra { margin-top: 14px; }
+.am-obra > summary { flex-wrap: wrap; gap: 6px 14px; }
+.am-obra h4 { margin: 18px 0 6px; font-size: 14px; color: #14283C; }
+.am-st { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 600; white-space: nowrap; background: #E7E3DA; color: #4A4A4A; }
+.am-st-ok { background: #DDEBDD; color: #1F5F2A; }
+.am-st-atencao { background: #F6E7C8; color: #7A5200; }
+.am-st-critico { background: #F3D4CF; color: #9A2B1B; }
+.am-st-sem { background: #E7E3DA; color: #5A5A5A; }
+.am-o-critico { border-color: #D8A39A; } .am-o-atencao { border-color: #E2C98E; }
+.am-achados { list-style: none; margin: 4px 0 6px; padding: 0; }
+.am-achados li { padding: 7px 0 7px 12px; border-left: 4px solid var(--linha); margin: 6px 0; font-size: 14px; }
+.am-a-critico { border-left-color: #C0392B !important; } .am-a-atencao { border-left-color: #D69E2E !important; } .am-a-info { border-left-color: #8AA0B8 !important; }
+.am-tab td.n, .am-tab th.n { text-align: right; white-space: nowrap; }
+.am-contr { display: block; }
+.am-aprox { font-size: 11.5px; color: #7A5200; background: #F6E7C8; border-radius: 4px; padding: 0 6px; font-style: normal; }
+.am-dif { font-weight: 600; }
+.am-dias { display: grid; grid-template-columns: repeat(5, minmax(120px, 1fr)); gap: 8px; margin: 6px 0; }
+.am-dia { border: 1px solid var(--linha); border-radius: 8px; padding: 8px 10px; background: #fff; display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.am-dia b { font-size: 13px; } .am-dia em { font-style: normal; font-size: 12px; color: #9A2B1B; }
+.am-dia-ruim { border-color: #D8A39A; background: #FBF1EF; } .am-fer, .am-fut { background: #F2EFE8; color: #777; }
+.am-prod { margin: 4px 0; padding-left: 18px; font-size: 14px; }
+@media (max-width: 820px) { .am-dias { grid-template-columns: repeat(2, 1fr); } }
