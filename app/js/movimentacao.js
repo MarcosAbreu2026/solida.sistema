@@ -1,4 +1,4 @@
-// Guia de movimentação do galpão (SL_MOVIMENTAÇÃO_R01, página 1), dentro da aba Estoque.
+// Guia de movimentação (SL_MOVIMENTAÇÃO_R01, página 1), dentro da aba Estoque. A movimentação é livre: entre galpão, obras, manutenção, descarte…
 // O estagiário do galpão preenche as linhas (item, qtd, origem, destino, obs) ou envia a foto da folha preenchida.
 // O estoque mostrado na tela continua vindo da planilha do Drive: aqui só se REGISTRA o que foi movimentado
 // (quem consolida na Planilha Mestre é o gestor de ferramentas, POP 12.1).
@@ -54,8 +54,8 @@ function linhaForm(v = {}) {
   return html`<div class="mov-linha">
     <label class="mov-item">Item / ferramenta<input name="item" list="mov-itens" value="${v.item || ''}" placeholder="ex.: Furadeira" autocomplete="off"></label>
     <label class="mov-qtd">Qtd<input name="qtd" type="number" min="0.01" step="any" inputmode="decimal" value="${v.qtd || ''}" placeholder="1"></label>
-    <label>Origem<input name="origem" list="mov-locais" value="${v.origem || 'GALPÃO'}" placeholder="GALPÃO ou obra" autocomplete="off"></label>
-    <label>Destino<input name="destino" list="mov-locais" value="${v.destino || ''}" placeholder="obra, MANUTENÇÃO…" autocomplete="off"></label>
+    <label>Origem (de onde)<input name="origem" list="mov-locais" value="${v.origem || ''}" placeholder="galpão, obra…" autocomplete="off"></label>
+    <label>Destino (para onde)<input name="destino" list="mov-locais" value="${v.destino || ''}" placeholder="obra, galpão, MANUTENÇÃO…" autocomplete="off"></label>
     <label class="mov-obs">Obs<input name="obs" value="${v.obs || ''}" autocomplete="off"></label>
     <button type="button" class="ac-mini mov-tirar" data-mov-tirar title="Tirar esta linha">×</button>
   </div>`;
@@ -70,10 +70,10 @@ export function caixa(c) {
   const locais = [...FIXOS, ...(ctx.obras || [])];
   const nome = sessao().nome || '';
   return html`<details class="caixa mov-caixa" id="mov-caixa" open>
-    <summary><span class="caixa-tit">Guia de movimentação do galpão</span><span class="pequeno">registre o que saiu, entrou, foi para manutenção ou descarte — ou envie a foto da folha preenchida</span></summary>
+    <summary><span class="caixa-tit">Guia de movimentação</span><span class="pequeno">registre qualquer movimentação de ferramentas e materiais (galpão, obras, manutenção, descarte) — ou envie a foto da folha preenchida</span></summary>
     <div class="caixa-corpo">
       <h4>Preencher aqui</h4>
-      <p class="pequeno">Igual à folha SL_MOVIMENTAÇÃO R01: cada linha é uma movimentação. Em origem e destino escreva GALPÃO, o nome da obra, MANUTENÇÃO ou DESCARTE. Preencha na hora em que movimentar. Ao registrar, fica gravado seu nome e a hora (no lugar da assinatura).</p>
+      <p class="pequeno">Igual à folha SL_MOVIMENTAÇÃO R01: cada linha é uma movimentação, de qualquer lugar para qualquer lugar (galpão → obra, obra → obra, obra → galpão…). Em origem e destino escreva GALPÃO, o nome da obra, MANUTENÇÃO ou DESCARTE (ou outro lugar). Preencha na hora em que movimentar. Ao registrar, fica gravado seu nome e a hora (no lugar da assinatura).</p>
       <form id="mov-form" autocomplete="off">
         <div class="mov-cab">
           <label>Data<input type="date" name="data" value="${hoje()}" required></label>
@@ -204,8 +204,8 @@ export function ligar(redesenhar) {
   });
   document.addEventListener('click', (e) => {
     const t = e.target.closest && e.target.closest('[data-mov-mais],[data-mov-tirar],[data-mov-ver],[data-mov-apagar],[data-mov-apagar-foto]'); if (!t) return;
-    if (t.matches('[data-mov-mais]')) { const box = document.querySelector('#mov-form .mov-linhas'); if (box) { const d = document.createElement('div'); d.innerHTML = String(linhaForm({ origem: 'GALPÃO' })); box.appendChild(d.firstElementChild); const n = box.lastElementChild.querySelector('[name=item]'); if (n) n.focus(); } return; }
-    if (t.matches('[data-mov-tirar]')) { const box = t.closest('.mov-linhas'); if (box && box.children.length > 1) t.closest('.mov-linha').remove(); else if (box) box.querySelectorAll('input').forEach((i) => { if (i.name !== 'origem') i.value = ''; }); return; }
+    if (t.matches('[data-mov-mais]')) { const box = document.querySelector('#mov-form .mov-linhas'); if (box) { const d = document.createElement('div'); d.innerHTML = String(linhaForm()); box.appendChild(d.firstElementChild); const n = box.lastElementChild.querySelector('[name=item]'); if (n) n.focus(); } return; }
+    if (t.matches('[data-mov-tirar]')) { const box = t.closest('.mov-linhas'); if (box && box.children.length > 1) t.closest('.mov-linha').remove(); else if (box) box.querySelectorAll('input').forEach((i) => { i.value = ''; }); return; }
     if (t.matches('[data-mov-ver]')) { verFoto(t.dataset.movVer); return; }
     if (t.matches('[data-mov-apagar]')) { apagar('linha', t.dataset.movApagar, redesenhar); return; }
     if (t.matches('[data-mov-apagar-foto]')) apagar('foto', t.dataset.movApagarFoto, redesenhar);

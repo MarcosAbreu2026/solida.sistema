@@ -75,8 +75,8 @@ Com isso: login por usuário e senha (no Supabase o usuário vira `usuario@solid
 lançamentos gravados no banco e visíveis para todos, valores em R$ protegidos no servidor (hoje só
 ficam escondidos na tela), e o sistema acessível do celular na obra.
 
-## Guia de movimentação do galpão (03/11/2026)
-- Aba **Estoque** ganhou a caixa "Guia de movimentação do galpão" (igual à página 1 da folha SL_MOVIMENTAÇÃO R01): o estagiário do galpão registra item, quantidade, origem, destino e obs, ou envia a **foto da folha preenchida**.
+## Guia de movimentação (03/11/2026)
+- Aba **Estoque** ganhou a caixa "Guia de movimentação" (igual à página 1 da folha SL_MOVIMENTAÇÃO R01): o estagiário do galpão registra item, quantidade, origem, destino (livres: galpão, obra, manutenção, descarte…) e obs, ou envia a **foto da folha preenchida**.
 - Quem registra: sócio, administrativo, ferramentas, executor de ferramentas e estagiário de compras/ferramentas (galpão). Estas três últimas funções, que só viam Minhas funções e Treinamentos, passam a ver também a aba Estoque.
 - Dados: tabelas `movimentacoes_galpao` e `movimentacoes_fotos` (supabase/05-movimentacao-galpao.sql); a foto vai para o armazenamento `fotos`, na pasta de quem enviou.
 - O estoque mostrado continua vindo da planilha do Drive: a guia só **registra** a movimentação; o gestor de ferramentas consolida na Planilha Mestre (POP 12.1).
