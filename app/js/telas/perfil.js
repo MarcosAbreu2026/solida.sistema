@@ -45,7 +45,7 @@ export function pontuar(pessoa, funcaoId, de, ate, checksTodos = lerTodosChecks(
       r.esperadasMin += peso;
       const pt = r.porTarefa.get(t.id) || { tarefa: t, esperadas: 0, feitas: 0, nao: 0, semMarca: 0 };
       pt.esperadas++;
-      const ds = new Date(`${d}T12:00:00`).getDay() || 7;
+      const ds = new Date(`${d}T12:00:00`).getDay();   // 0 = domingo (porDia tem 7 posições, 0 a 6; o domingo não entra no "dia mais fraco")
       r.porDia[ds].esperadas++;
       if (v === 'feito') { r.feitas++; r.feitasMin += peso; pt.feitas++; r.porDia[ds].feitas++; } else if (v === 'nao') { r.nao++; pt.nao++; } else { r.semMarca++; pt.semMarca++; }
       r.porTarefa.set(t.id, pt);
