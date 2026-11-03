@@ -13,7 +13,6 @@ import { sessao, idPessoa, funcaoReal, funcaoAtual } from '../sessao.js';
 import { lerPessoasTarefas } from '../armazenamento.js';
 import { analisarAta, lerArquivoAta, acharResponsavel } from '../ata-leitor.js';
 import { analisarReuniao, analisarFala, pareceResumoEmTopicos } from '../fala-leitor.js';
-import { suportado as gravadorSuportado, gravaAudio, textoAtual as transcricaoAtual } from '../gravador.js';
 
 export const ABAS = [['pendencias', 'Pendências'], ['atas', 'Atas'], ['nova', 'Nova ata']];
 export const SETORES_ATA = [...SETORES.map(([, nome]) => nome), 'Diretoria / geral'];
@@ -466,17 +465,13 @@ function formNova(obras, revisarId = '') {
   const r = ataRev ? ataComoRascunho(ataRev) : rascunho;
   const proxRev = ataRev ? (Number(ataRev.revisao) || 0) + 1 : 0;
   const linhasIniciais = r && (r.pendencias.length || (r.informativosLista || []).length) ? [...r.pendencias, ...(r.informativosLista || [])].sort((x, y) => (Number(x.item) || 0) - (Number(y.item) || 0)).map((p) => linhaForm(p)).join('') : linhaForm();
-  const importador = html`<details class="caixa at-importar" ${r ? '' : html.seguro('open')}><summary><span class="caixa-tit">Gravar a reunião ou importar uma ata pronta</span><span class="pequeno">grave a conversa, ou envie PDF/texto: eu leio e separo informativos e pendências</span></summary>
+  const importador = html`<details class="caixa at-importar" ${r ? '' : html.seguro('open')}><summary><span class="caixa-tit">Importar uma ata pronta ou colar a transcrição</span><span class="pequeno">envie PDF/texto, ou cole a transcrição: eu leio e separo informativos e pendências</span></summary>
     <div class="caixa-corpo">
       <div class="at-gravar">
-        <h4>Gravar a reunião</h4>
-        ${gravadorSuportado || gravaAudio ? html`<p class="pequeno">Aperte gravar e deixe o microfone aberto durante a reunião. ${gravadorSuportado ? 'A transcrição aparece abaixo, ao vivo (reconhecimento de voz do navegador, mais simples). ' : ''}${NA_NUVEM ? 'Ao parar, o áudio é enviado para o computador do escritório, que transcreve com o Whisper (bem mais preciso, leva uns minutos) e devolve o texto aqui embaixo, em Gravações.' : ''} Com o texto, aperte "Montar a ata": o sistema separa o que é pendência (ação, responsável e prazo) do que é informativo. É uma leitura automática: depois você confere e corrige cada linha.</p>
-        <p><button type="button" class="botao on" data-gravar>● Gravar a reunião</button> <span class="pequeno at-grav-msg"></span></p>
-        <label>Transcrição <span class="pequeno">(pode corrigir ou colar aqui a transcrição de outro lugar)</span><textarea id="ata-fala" rows="6" placeholder="A fala da reunião aparece aqui…">${transcricaoAtual()}</textarea></label>
-        <p><button type="button" class="botao" data-ata-ler-fala>Montar a ata com a transcrição</button></p>
-        ${NA_NUVEM ? html`<div class="at-grav-lista" id="grav-lista"></div>` : ''}` : html`<p class="pequeno">Este navegador não grava e transcreve a voz. Abra o sistema no Chrome ou no Edge para gravar. Dá para colar abaixo a transcrição de outro lugar.</p>
+        <h4>Colar a transcrição da reunião</h4>
+        <p class="pequeno">Cole abaixo a transcrição (de outro programa ou do computador do escritório) e aperte "Montar a ata": o sistema separa o que é pendência (ação, responsável e prazo) do que é informativo. É uma leitura automática: depois você confere e corrige cada linha.</p>
         <label>Transcrição colada<textarea id="ata-fala" rows="6" placeholder="Cole aqui a transcrição da reunião"></textarea></label>
-        <p><button type="button" class="botao" data-ata-ler-fala>Montar a ata com a transcrição</button></p>`}
+        <p><button type="button" class="botao" data-ata-ler-fala>Montar a ata com a transcrição</button></p>
       </div>
       <h4>Importar uma ata pronta</h4>
       <p class="pequeno">Envie o PDF (ou um arquivo de texto) da ata, ou cole o texto abaixo. O sistema acha o título, a data, a obra, os participantes e as linhas que são ação (verbo no infinitivo, "responsável:", "prazo:", itens sob "Ações" ou "Pendências"), com responsável pelo primeiro nome e prazo. Depois você confere tudo e salva. PDF de foto ou digitalização não tem texto para ler: cole o texto.</p>

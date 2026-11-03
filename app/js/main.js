@@ -43,7 +43,6 @@ import * as obrasPos from './obras-pos.js';
 import * as financeiro from './telas/financeiro.js';
 import * as meudia from './telas/meudia.js';
 import { abrirCalendario } from './calendario.js';
-import * as gravador from './gravador.js';
 import * as quadro from './telas/quadro.js';
 import * as produtividade from './telas/produtividade.js';
 import * as operacao from './telas/operacao.js';
@@ -480,7 +479,6 @@ function desenhar() {
     return;
   }
   if (tela === 'atas') {
-    if (gravador.gravando() && document.getElementById('ata-fala') && rota.params.get('aba') === 'nova') return;   // gravando a reunião: não redesenha, senão perde a tela
     $('#conteudo').innerHTML = `<div>${atas.render({ params: rota.params, obras: obrasDeAtas(), sugestoes: ((estado.terceiros && estado.terceiros.empresas) || []).map((e) => e.empresa), msg: estado.atasMsgHash === location.hash ? (estado.atasMsg || '') : '' })}</div>`;
     ordenar.aplicar();
     { const fm = document.getElementById('ata-form'); if (fm) atas.atualizarNomeDoForm(fm); }
@@ -1182,32 +1180,6 @@ atualizar();
 setInterval(atualizar, ATUALIZAR_A_CADA_MS);
 
 // Quadro da semana › Funções: arrastar, redimensionar e abrir os cartões
-// parar a gravação: o áudio vai para o computador do escritório transcrever (Whisper) e o texto volta em "Gravações"
-function pararEEnviar(botao) {
-  const msg = () => document.querySelector('.at-grav-msg');
-  gravador.parar().then(async (r) => {
-    const b = botao || document.querySelector('[data-gravar]'); if (b) { b.textContent = '● Gravar a reunião'; b.classList.add('on'); }
-    if (r && nuvem.NA_NUVEM) {
-      if (msg()) msg().textContent = 'Enviando o áudio para o computador do escritório…';
-      try { await nuvem.enviarGravacao(r.blob, r.duracaoS); if (msg()) msg().textContent = 'Áudio enviado. O computador do escritório está transcrevendo (leva uns minutos): o texto aparece aqui embaixo, em Gravações.'; await gravAtualizar(); }
-      catch (err) { if (msg()) msg().textContent = `Não consegui enviar o áudio (${err.message || err}). A transcrição ao vivo continua na caixa.`; }
-    } else if (msg()) msg().textContent = 'Gravação parada.';
-  });
-}
-let gravs = [];
-const fmtGrav = (g) => { const dh = new Date(g.criado_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); const min = g.duracao_s ? `${Math.max(1, Math.round(g.duracao_s / 60))} min` : '';
-  const st = g.status === 'pronta' ? `<b>pronta</b> (${String(g.texto || '').split(/\s+/).length} palavras${g.modelo ? `, Whisper ${esc(g.modelo)}` : ''}) <button type="button" class="ac-mini at-ok" data-grav-usar="${g.id}">Usar esta transcrição</button>`
-    : g.status === 'erro' ? `<span class="pendente">erro: ${esc(g.erro || '')}</span>` : g.status === 'transcrevendo' ? 'transcrevendo no computador do escritório…' : 'aguardando o computador do escritório';
-  return `<li>${dh}${min ? ` · ${min}` : ''} — ${st} <button type="button" class="ac-mini" data-grav-apagar="${g.id}">apagar</button></li>`; };
-function desenharGravs() { const el = document.getElementById('grav-lista'); if (el) el.innerHTML = gravs.length ? `<h4>Gravações</h4><ul class="at-gravs">${gravs.map(fmtGrav).join('')}</ul>` : ''; }
-async function gravAtualizar() { if (!nuvem.NA_NUVEM || !document.getElementById('grav-lista')) return; try { gravs = await nuvem.listarGravacoes(); } catch { return; } desenharGravs(); }
-setInterval(() => { if (document.getElementById('grav-lista') && gravs.some((g) => g.status === 'pendente' || g.status === 'transcrevendo')) gravAtualizar(); }, 20000);
-document.addEventListener('click', async (e) => {
-  const us = e.target.closest && e.target.closest('[data-grav-usar]');
-  if (us) { const g = gravs.find((x) => String(x.id) === us.dataset.gravUsar); const c = document.getElementById('ata-fala'); if (g && c) { c.value = g.texto || ''; gravador.definirTexto(g.texto || ''); const m = document.querySelector('.at-grav-msg'); if (m) m.textContent = 'Transcrição do Whisper colocada na caixa: confira e aperte "Montar a ata com a transcrição".'; c.scrollIntoView({ block: 'center' }); } return; }
-  const ap = e.target.closest && e.target.closest('[data-grav-apagar]');
-  if (ap) { const g = gravs.find((x) => String(x.id) === ap.dataset.gravApagar); if (g && confirm('Apagar esta gravação (áudio e transcrição)?')) { try { await nuvem.apagarGravacao(g); await gravAtualizar(); } catch (err) { alert(`Não foi possível apagar (${err.message || err}).`); } } }
-});
 // Pós-obra: completar os dados de uma obra, abrir/recolher a lista, e escolher quais obras aparecem na agenda da semana
 const apExtrasTodos = () => { try { return JSON.parse(localStorage.getItem('solida.apExtras')) || {}; } catch { return {}; } };
 const apExtras = () => apExtrasTodos()[estado.posAgenda.semana] || [];
@@ -1460,23 +1432,7 @@ document.addEventListener('change', (e) => {
 });
 document.addEventListener('click', (e) => {
   if (e.target.closest && e.target.closest('[data-ata-ler]')) { importarAta({ texto: (document.getElementById('ata-colada') || {}).value || '' }); return; }
-  // gravar a reunião: transcreve ao vivo para a caixa "Transcrição"; "Montar a ata" separa informativos e pendências
-  const gb = e.target.closest && e.target.closest('[data-gravar]');
-  if (gb) {
-    const msg = document.querySelector('.at-grav-msg'); const caixa = document.getElementById('ata-fala');
-    if (gravador.gravando()) { pararEEnviar(gb); return; }
-    if (caixa && caixa.value.trim()) gravador.definirTexto(caixa.value);   // continua do que já está escrito
-    const estados = { gravando: '● Gravando… fale normalmente', negado: 'O navegador não deixou usar o microfone: libere o microfone no cadeado da barra de endereço e tente de novo.', parado: 'Gravação parada.' };
-    try {
-      gravador.iniciar({
-        aoTexto: (t) => { const c = document.getElementById('ata-fala'); if (c) { c.value = t; c.scrollTop = c.scrollHeight; } },
-        aoEstado: (s) => { const mm = document.querySelector('.at-grav-msg'); const b = document.querySelector('[data-gravar]'); if (mm) mm.textContent = estados[s] || (s.startsWith('erro') ? `Problema no reconhecimento de voz (${s.slice(5)}).` : s); if (b) { const g = s === 'gravando' || s === 'religando'; b.textContent = g ? '■ Parar a gravação' : '● Gravar a reunião'; b.classList.toggle('on', !g); } },
-      });
-      gb.textContent = '■ Parar a gravação'; gb.classList.remove('on');
-    } catch (err) { if (msg) msg.textContent = err.message || String(err); }
-    return;
-  }
-  if (e.target.closest && e.target.closest('[data-ata-ler-fala]')) { if (gravador.gravando()) pararEEnviar(null); importarAta({ texto: (document.getElementById('ata-fala') || {}).value || '', fala: true }); return; }
+  if (e.target.closest && e.target.closest('[data-ata-ler-fala]')) { importarAta({ texto: (document.getElementById('ata-fala') || {}).value || '', fala: true }); return; }
   if (e.target.closest && e.target.closest('[data-ata-descartar]')) { if (confirm('Descartar a ata lida e começar do zero?')) { atas.descartarRascunho(); desenhar(); } }
 });
 

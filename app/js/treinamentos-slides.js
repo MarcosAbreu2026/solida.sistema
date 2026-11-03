@@ -62,7 +62,7 @@ export const SUBTOPICOS = [
       },
       {
         id: 'ata-criar', topico: 'atas', funcoes: 'todos', oculto: true, titulo: 'Como criar uma ata no sistema', para: 'Todos',
-        resumo: 'Do menu até a ata pronta: dados, itens, gravação do áudio, PDF e pauta da próxima reunião.',
+        resumo: 'Do menu até a ata pronta: dados, itens, importação de ata pronta, PDF e pauta da próxima reunião.',
         slides: [
           { imagem: img('ata-01-menu'), titulo: 'Onde ficam as atas', texto: 'Toda reunião vira uma ata no sistema, e quem faz a ata é qualquer pessoa da equipe. No menu da esquerda, clique em Atas e pendências.',
             legenda: ['Atas e pendências: todo mundo vê este menu. O número vermelho ao lado mostra quantas pendências abertas são suas.'] },
@@ -79,10 +79,7 @@ export const SUBTOPICOS = [
             dica: 'Linha em branco é ignorada. Só as linhas que você começou a preencher precisam estar completas.' },
           { imagem: img('ata-06-salvar'), titulo: 'A ata sai no padrão da Sólida', texto: 'Ao clicar em Salvar ata, ela aparece como a ata da Sólida: cabeçalho com logo, tabela com item, tipo, responsável e data limite.',
             legenda: ['Nome da ata, no padrão: obra, data, tipo e revisão.', 'A tabela da ata: pendência em vermelho, informativo em verde. O PDF vai sozinho para a pasta da obra no Drive (Gerenciamento › ATA), em até 10 minutos. Ata sem obra fica só no sistema.', 'Criar revisão: abre a ata para você mexer em qualquer coisa (dados, itens, participantes). A ata ganha R01, R02… e o PDF novo vai para o Drive; o antigo continua lá.', 'Pauta da próxima reunião: monta o que ficou aberto desta ata, pronto para copiar.'] },
-          { imagem: img('ata-07-gravar'), titulo: 'Opção 1: gravar a reunião em áudio', texto: 'Em vez de digitar, grave a reunião: o sistema transcreve e separa o que é pendência do que é informativo. Use o Chrome ou o Edge e libere o microfone quando o navegador pedir.',
-            legenda: ['Gravar a reunião: aperte e deixe o microfone aberto durante a conversa. Para terminar, aperte de novo.', 'Transcrição: o texto aparece aqui, ao vivo. Na versão da internet, o áudio também vai para o computador do escritório, que transcreve com mais qualidade (leva uns minutos) e devolve o texto na lista Gravações, com o botão "Usar esta transcrição".', 'Montar a ata: o sistema separa pendências e informativos e preenche as linhas para você.'],
-            dica: 'Sempre confira o resultado: nomes, assuntos, responsáveis e prazos podem precisar de ajuste. Tire o que não serve.' },
-          { imagem: img('ata-08-importar'), titulo: 'Opção 2: importar um PDF ou colar o texto', texto: 'Já tem a ata pronta em PDF, ou o texto num e-mail ou aplicativo? Não precisa digitar de novo.',
+          { imagem: img('ata-08-importar'), titulo: 'Importar um PDF ou colar o texto', texto: 'Já tem a ata pronta em PDF, ou o texto num e-mail ou aplicativo? Não precisa digitar de novo.',
             legenda: ['Escolher arquivo: envie o PDF (ou arquivo de texto) da ata. Atas no padrão da Sólida são lidas por inteiro, linha a linha.', 'Ou cole o texto da ata aqui.', 'Ler o texto colado: o sistema monta as linhas da ata, com responsável e prazo quando conseguir achar.'],
             dica: 'PDF que é foto ou digitalização não tem texto para ler: nesse caso cole o texto. Depois de importar, confira e complete o que faltar.' },
           { imagem: img('ata-09-depois'), titulo: 'Depois da ata: reprogramar uma data', texto: 'Na ata salva, clique na data de uma pendência para escolher outro dia. A data antiga fica guardada e a pendência aparece como "reprogramada".',

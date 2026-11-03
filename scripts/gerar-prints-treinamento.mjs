@@ -154,10 +154,6 @@ const SLIDES = [
     await ir('#/atas?aba=atas&ata=1'); await esperar('.sd-folha');
     await marcar([{ sel: '.at-ata-det h2' }, { sel: '.sd-folha' }, { texto: 'Criar revisão', em: '.at-ata-det a.botao' }, { texto: 'Pauta da próxima', em: '.at-ata-det button' }]);
   } },
-  { nome: 'ata-07-gravar', async montar() {
-    await ir('#/atas?aba=nova'); await esperar('[data-gravar]'); await rolar('.at-gravar'); await espera(300);
-    await marcar([{ sel: '[data-gravar]', rotulo: 'Aperte aqui para começar a gravar', lado: 'direita', dist: 60, larg: 250 }, { sel: '#ata-fala' }, { sel: '[data-ata-ler-fala]', rotulo: 'Depois: montar a ata', lado: 'direita', dist: 60, larg: 200 }]);
-  } },
   { nome: 'ata-08-importar', async montar() {
     await ir('#/atas?aba=nova'); await esperar('#ata-arquivo'); await rolar('.at-imp-linha', 'center'); await espera(300);
     await marcar([{ sel: '.at-imp-linha .botao', rotulo: 'Escolha o PDF da ata', lado: 'direita', dist: 70, larg: 230 }, { sel: '#ata-colada' }, { sel: '[data-ata-ler]', rotulo: 'Depois: ler o texto colado', lado: 'direita', dist: 70, larg: 230 }]);

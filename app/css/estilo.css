@@ -1776,8 +1776,6 @@ button.at-prazo:hover { filter: brightness(.96); box-shadow: 0 0 0 2px rgba(45, 
 .sv-info { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 11.5px; color: var(--muted); align-items: center; }
 .sv-acoes { display: flex; gap: 6px; align-items: center; } .sv-acoes select { flex: 1; min-width: 0; font-size: 12px; height: 28px; }
 
-.at-grav-lista h4 { margin: 10px 0 4px; font-size: 14px; color: #14283C; }
-.at-gravs { list-style: none; margin: 0 0 8px; padding: 0; font-size: 13px; } .at-gravs li { padding: 5px 0; border-top: 1px solid var(--linha2); }
 
 /* Pós-obra: lista de obras com os serviços (OS) embaixo */
 .pl-lista { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
