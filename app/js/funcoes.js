@@ -63,6 +63,9 @@ export const FUNCOES = [
 // As demais abas são só da diretoria (sócio) e do perfil Administrativo.
 export const ACESSO_COMPLETO = ['socio', 'administrativo'];
 export const soMinhasFuncoes = (f) => !ACESSO_COMPLETO.includes(f.id);
+// ...e quem cuida das ferramentas e do galpão também entra no Estoque (guia de movimentação do galpão)
+export const ACESSO_ESTOQUE = ['ferramentas', 'executor_ferramentas', 'estagiario_compras'];
+export const temEstoqueRestrito = (f) => ACESSO_ESTOQUE.includes(f.id);
 // Indicadores da Visão geral que quem é de obra não precisa ver (são de gestão da empresa)
 export const INDICADORES_SO_GESTAO = [/setores em dia/i, /convers/i, /fechad/i, /or[çc]ament/i];
 

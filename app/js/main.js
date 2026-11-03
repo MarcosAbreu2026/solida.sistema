@@ -18,7 +18,7 @@ import { definirPerfil } from './componentes.js';
 import { normalizar, criarTelas, pt } from './painel-empresa.js';
 import { sessao, funcaoAtual, veValores, entrar, sair, logado, idPessoa, podeVerArea, obrasDaPessoa,
   podeVerComo, simulando, verComo, funcaoReal } from './sessao.js';
-import { FUNCOES, funcaoPorId, veBlocoGeral, INDICADORES_SO_GESTAO, paginaVisivel, aplicarAbas, abasPadrao, soMinhasFuncoes } from './funcoes.js';
+import { FUNCOES, funcaoPorId, veBlocoGeral, INDICADORES_SO_GESTAO, paginaVisivel, aplicarAbas, abasPadrao, soMinhasFuncoes, temEstoqueRestrito } from './funcoes.js';
 import * as marketing from './telas/marketing.js';
 import * as login from './telas/login.js';
 import { marcarCheck, gravarLancamento, apagarLancamento, gravarManual, vincularDia, sincronizarTarefas, lerPessoasTarefas, sincronizarHorarios } from './armazenamento.js';
@@ -49,6 +49,7 @@ import * as operacao from './telas/operacao.js';
 import * as comercial from './telas/comercial.js';
 import * as projetos from './telas/projetos.js';
 import * as estoque from './telas/estoque.js';
+import * as movimentacao from './movimentacao.js';
 import * as pedidos from './telas/pedidos.js';
 import * as escritorio from './telas/escritorio.js';
 
@@ -267,7 +268,7 @@ function desenharNav(sel) {
   if (soMinhasFuncoes(f)) {
     $('#nav').innerHTML = botaoRecolher() + `<div class="marca"><img src="img/logo.png" alt="Sólida"><span>Painel da empresa</span></div>`
       + `<div class="nav-perfil">${perfil.avatar(s.nome, 38)}<span><b>${esc(s.nome)}</b><small>${esc(f.nome)}</small></span></div>`
-      + item('funcoes', 'Minhas funções') + item('treinamentos', 'Treinamentos')
+      + item('funcoes', 'Minhas funções') + (temEstoqueRestrito(f) && paginaVisivel(f, 'estoque') ? item('estoque', 'Estoque') : '') + item('treinamentos', 'Treinamentos')
       + `<div class="navfoot">${estado.sync.origem === 'link' ? 'Atualiza sozinho a cada 5 minutos.' : 'Mostrando os últimos dados baixados.'}</div>`;
     desenharAvatares($('#nav'));
     return;
@@ -440,7 +441,7 @@ function desenhar() {
   if (tela === 'meudia' && !f.editaProdutividade) tela = 'funcoes';   // quem não lança produtividade só tem as funções
   if (tela === 'funcoes' && !paginaVisivel(f, 'meudia')) tela = 'geral';
   if (['meudia', 'feed', 'estoque', 'escritorio', 'treinamentos', 'atas', 'marketing'].includes(tela) && !paginaVisivel(f, tela)) tela = 'geral';   // aba que a diretoria tirou desta função
-  if (soMinhasFuncoes(f)) tela = tela === 'treinamentos' ? 'treinamentos' : 'funcoes';   // por enquanto: só Minhas funções e Treinamentos (o resto é da diretoria e do Administrativo)
+  if (soMinhasFuncoes(f)) tela = (tela === 'treinamentos' || (tela === 'estoque' && temEstoqueRestrito(f))) ? tela : 'funcoes';   // por enquanto: só Minhas funções e Treinamentos (o resto é da diretoria e do Administrativo)
 
   let area = CFG && CFG.areas.find((a) => a.id === tela);
   if (area && !podeVerArea(area)) { area = null; tela = 'geral'; }   // setor fora do perfil: nem existe
@@ -512,7 +513,11 @@ function desenhar() {
     return;
   }
   if (tela === 'estoque') {
-    $('#conteudo').innerHTML = `<div>${estoque.render(estado.drive.estoque, { podeCompleto: estoque.VE_ESTOQUE_COMPLETO.includes(f.id), veConsumiveis: estoque.VE_CONSUMIVEIS.includes(f.id), verTudo: rota.params.get('ver') === 'tudo' })}</div>`;
+    if (movimentacao.emEdicao()) return;   // preenchendo a guia de movimentação: não redesenha, senão perde o que foi escrito
+    movimentacao.garantir(desenhar);
+    const dEst = estado.drive.estoque;
+    const caixaMov = movimentacao.PODE_MOVIMENTAR.includes(f.id) ? movimentacao.caixa({ itens: ((dEst && dEst.itens) || []).map((i) => ({ cod: i.cod, item: i.item })), obras: (dEst && dEst.obras) || [] }) : '';
+    $('#conteudo').innerHTML = `<div>${caixaMov}${estoque.render(estado.drive.estoque, { podeCompleto: estoque.VE_ESTOQUE_COMPLETO.includes(f.id), veConsumiveis: estoque.VE_CONSUMIVEIS.includes(f.id), verTudo: rota.params.get('ver') === 'tudo' })}</div>`;
     return;
   }
   if (tela === 'quadro') {
@@ -1171,6 +1176,7 @@ function configurar() {
 }
 
 configurar();
+movimentacao.ligar(() => desenhar());
 if (nuvem.NA_NUVEM) {
   // link de 'esqueci a senha' volta com a sessão de recuperação: pede a senha nova
   await nuvem.carregarPerfil();
