@@ -6,7 +6,9 @@
 // ("coletor", que só consegue gravar no armazenamento "dados"):
 //   { "supabaseUrl": "https://....supabase.co", "chavePublica": "...", "coletorEmail": "...", "coletorSenha": "..." }
 // (ainda aceita { "serviceRoleKey": "..." } no lugar da conta do coletor)
-// Uso: node scripts/enviar-nuvem.mjs   (o servidor.ps1 roda sozinho a cada leitura do Drive)
+// Uso: node scripts/enviar-nuvem.mjs                  (manda tudo)
+//      node scripts/enviar-nuvem.mjs produtividade    (manda só os arquivos citados; útil quando este computador só tem dado novo de uma fonte)
+// produtividade.json é MESCLADO com o que já está na nuvem (por obra e dia), para um computador não apagar o que o outro mandou.
 
 import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -77,11 +79,35 @@ const arquivos = {
 };
 const SO_VALORES = new Set(['financeiro']);   // não vai para todos/
 
+const so = new Set(process.argv.slice(2));   // vazio = tudo
 let ok = 0; const erros = [];
+
+// mescla os registros de produtividade deste computador com os da nuvem: vale o registro mais completo de cada obra e dia
+async function mesclarProdutividade(local) {
+  try {
+    const r = await fetch(`${supabaseUrl}/storage/v1/object/dados/valores/produtividade.json`, { headers: { Authorization: `Bearer ${token}`, apikey: chave } });
+    if (!r.ok) return local;
+    const nuvem = await r.json();
+    const nota = (x) => (x.relatorio ? 4 : 0) + (x.programacao ? 1 : 0) + ((x.itens || []).length) + ((x.extras || []).length) + (x.semRelatorio ? 0 : 1);
+    const mapa = new Map();
+    for (const x of (nuvem.registros || [])) mapa.set(`${x.obra}|${x.data}`, x);
+    for (const x of (local.registros || [])) { const k = `${x.obra}|${x.data}`; const o = mapa.get(k); if (!o || nota(x) >= nota(o)) mapa.set(k, x); }
+    const todos = [...mapa.values()];
+    const ultimo = todos.map((x) => x.data).sort().pop() || '';
+    const corte = ultimo ? new Date(Date.parse(`${ultimo}T12:00:00Z`) - 30 * 86400000).toISOString().slice(0, 10) : '';
+    const registros = todos.filter((x) => x.data >= corte).sort((a, b) => `${a.data}${a.obra}`.localeCompare(`${b.data}${b.obra}`));
+    return { ...nuvem, ...local, atualizadoEm: [local.atualizadoEm, nuvem.atualizadoEm].filter(Boolean).sort().pop(), registros };
+  } catch { return local; }
+}
 const painel = ler(join(raiz, 'dados', 'painel-cache.json'));
 const tarefas = [];
-if (painel) tarefas.push(['painel', { atualizado: new Date().toISOString(), dados: painel }]);
-for (const [nome, arq] of Object.entries(arquivos)) { const d = ler(join(pasta, arq)); if (d) tarefas.push([nome, d]); }
+if (painel && (!so.size || so.has('painel'))) tarefas.push(['painel', { atualizado: new Date().toISOString(), dados: painel }]);
+for (const [nome, arq] of Object.entries(arquivos)) {
+  if (so.size && !so.has(nome)) continue;
+  let d = ler(join(pasta, arq));
+  if (d && nome === 'produtividade') d = await mesclarProdutividade(d);
+  if (d) tarefas.push([nome, d]);
+}
 for (const [nome, d] of tarefas) {
   try {
     await enviar(`valores/${nome}.json`, d);
@@ -90,7 +116,7 @@ for (const [nome, d] of tarefas) {
   } catch (e) { erros.push(e.message); }
 }
 // Histórico do efetivo (quem estava em cada obra em cada dia): fica no banco, tabela efetivo_diario (grava e atualiza, nunca apaga)
-const ef = ler(join(pasta, 'efetivo.json'));
+const ef = (!so.size || so.has('efetivo')) ? ler(join(pasta, 'efetivo.json')) : null;
 if (ef && ef.dias) {
   const linhas = [];
   for (const [dia, obras] of Object.entries(ef.dias)) for (const [obra, e] of Object.entries(obras || {})) {
