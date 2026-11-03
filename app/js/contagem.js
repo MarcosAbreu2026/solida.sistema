@@ -16,6 +16,38 @@ const CHAVE = 'solida.contagemEstoque';
 const DIAS = 120;
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 
+// Lista de itens do GALPÃO (folha "ESTOQUE CHECKLIST VERIFICAÇÃO", 3 páginas), na ordem da folha. Os códigos da folha são de uma versão antiga da
+// planilha (a planilha foi renumerada), por isso a lista casa por NOME. Nome diferente na planilha: ver APELIDOS_GALPAO.
+const FOLHA_GALPAO = [
+  "Cadeiras", "Kit Primeiros Socorros", "Mesa do escritório", "Bebedouro", "Cafeteira", "Estufa", "Mesa do refeitório", "Micro-ondas", "Pá Quadrada", "Régua",
+  "Tapete de Obra", "Tecido Branco Lycra", "Alicate", "Arco de Serra", "Balde de Ferro", "Balde de Plástico", "Bandeja Rolo Grande", "Bandeja Rolo Pequeno",
+  "Broxa", "Chave Allen", "Chave de Fenda", "Chave Philips", "Colher de Pedreiro", "Desempenadeira Dentada Metálica", "Desempenadeira Lisa Madeira/PVC", "Escova de Aço",
+  "Espátula Metálica 12cm", "Espátula Metálica 6cm", "Espátula PVC 12cm", "Espátula PVC 6cm", "Esquadro de mão", "Esquadro Grande", "Estilete", "Formão", "Garfo para Rolo Grande",
+  "Garfo para Rolo Pequeno 13cm", "Garfo para Rolo Pequeno 9cm", "Grampeador Pistola", "Marreta", "Martelo", "Martelo de Borracha", "Nível de Mão", "Painel de Ferramentas",
+  "Pistola de Silicone", "Ponteira Manual", "Riscador de Rejunte", "Serrote Drywall", "Talhadeira Manual", "Trena", "Adesivo Plástico PVC", "Aguarrás", "Anel de Vedação",
+  "Balão Teste Tubulação", "Bocal", "Caixa de Bucha", "Caixa de Parafuso", "Caixa de Prego", "Disco Esmerilhadeira - Ferro", "Disco Makita - Ferro", "Disco Makita - Madeira",
+  "Disco Makita - Parede", "Disco Makita - Porcelanato", "Estopa Saco 400g", "F12 Branca", "F12 Madeira", "Fio 2.5mm", "Fita Crepe", "Fita Isolante", "Fita Teflon Grande",
+  "Fita Telada para Trincas", "Fita Zebrada - Rolo", "Furadeira - Broca 10mm Concreto", "Furadeira - Broca 6mm Concreto", "Furadeira - Broca 8mm Concreto",
+  "Furadeira - Kit de Brocas", "Gesso 5kg", "Gesso Cola", "Kit SOS Hidráulica", "Lâmina Starret", "Lápis de Carpinteiro", "Lixa Ferro 120", "Lixa Ferro 80",
+  "Lixa Madeira 150", "Maçarico - Botija + Cilindro", "Mangueira Teste de Tubulação", "Martelete 3 kg - Broca 8mm", "Martelete 3 kg - Ponteira", "Martelete 3 kg - Talhadeira",
+  "Martelete 5 kg - Ponteira", "Martelete 5 kg - Talhadeira", "Massa Acrílica", "Massa Zarcão", "Módulo de Interruptor", "Módulo de Tomada", "Niple Metal 1/2",
+  "Niple PVC", "Parafusadeira - Kit de Bit", "Parafusadeira - Kit de Brocas", "Pedaço de Drywall", "Pedaço de Madeira", "Pedaço de Montante", "Pilhas AA",
+  "Prego de Aço 15x15 - Saco", "Prego Sem Cabeça 60mm - Saco", "PU", "Rabicho Flexivel Inox 15", "Rebolo Diamantado 125mm", "Rejunte Branco - Saco", "Rolo Brasileirinho",
+  "Rolo de Fio de Arame", "Rolo de Linha de Pedreiro", "Rolo de Papelão", "Rolo Pintura Espuma 10cm", "Rolo Pintura Espuma 15cm", "Rolo Pintura Lã Grande",
+  "Rolo Plástico Preto", "Saco de Ráfia", "Serra Copo de Concreto", "Serra Copo de Madeira", "Silicone", "Trincha 2\"", "Trincha 4\"", "Veda Trinca", "Esmerilhadeira",
+  "Extensão", "Extensor de Cabo 15m", "Furadeira", "Laser", "Maçarico", "Makita / Serra Mármore", "Martelete 3 kg", "Misturador Elétrico - Haste", "Parafusadeira",
+  "Soprador Térmico", "Lixeira de Plástico 60l", "Pá de Lixo Pequena", "Pano de Chão", "Rodo", "Vassoura de Pelo", "Vassoura Piaçava", "Bota 40", "Bota 42",
+  "Bota 44", "Bota 46", "Calça GG", "Calça M", "Calça P", "Camisa Azul G", "Camisa Azul GG", "Camisa Azul M", "Camisa Azul P", "Capa de Chuva", "Luva", "Luva de Vaqueta",
+  "Máscara", "Óculos Escuros", "Óculos Transparente", "Protetor Auricular", "Refil Purificador", "Capacete Branco", "Capacete Verde", "Capacete Amarelo", "Capacete Azul",
+  "Capacete Vermelho", "Capacete Laranja",
+];
+// nome na folha → nome na planilha (quando a planilha escreve diferente) ou { nome, cat } para escolher entre itens de mesmo nome
+const APELIDOS_GALPAO = {
+  'Tecido Branco Lycra': 'Tecido Branco Lycra 4m²', 'Alicate': 'Alicate Comum', 'Adesivo Plástico PVC': 'Adesivo Plástico PVC Pequeno', 'Aguarrás': 'Aguarrás Pequeno',
+  'Balão Teste Tubulação': 'Balão Teste Tubulação, 50, 75 e 100ml', 'Disco Makita - Parede': 'Disco Makita - Parede (Concreto)', 'Gesso Cola': 'Gesso Cola - Saco 1kg',
+  'Massa Acrílica': 'Massa Acrílica - Saco 25kg', 'Luva': 'Luva Pigmentada', 'Pano de Chão': { nome: 'Pano de Chão', cat: 'LIM' },
+};
+
 let linhas = [];            // contagens dos últimos DIAS dias (mais novas primeiro)
 let ultimas = new Map();    // `${local}|${cod}` → contagem mais nova
 let ultima = 0;
@@ -81,7 +113,24 @@ function dadosDoItem(dados, i, local) {
   if (ehObra(dados, local)) return { min: num(i.minObra), atual: num((i.obras || {})[local]) };
   const x = (i.locais || {})[local] || {}; return { min: num(x.min), atual: num(x.atual) };
 }
+const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+// itens do galpão na ordem da folha, achados na planilha pelo nome; faltam = nomes da folha que a planilha não tem (ou tem com outro nome)
+function listaGalpao(dados) {
+  const itens = []; const faltam = []; const usados = new Set(); const porNome = new Map();
+  for (const i of dados.itens || []) { const k = norm(i.item); if (!porNome.has(k)) porNome.set(k, []); porNome.get(k).push(i); }
+  for (const nome of FOLHA_GALPAO) {
+    const ap = APELIDOS_GALPAO[nome]; const alvo = typeof ap === 'string' ? ap : (ap && ap.nome) || nome; const cat = ap && ap.cat;
+    let cand = porNome.get(norm(alvo)) || [];
+    if (cat) cand = cand.filter((i) => i.categoria === cat || String(i.cod).startsWith(cat));
+    const i = cand.find((x) => !usados.has(x.cod));
+    if (i) { usados.add(i.cod); itens.push(i); } else faltam.push(nome);
+  }
+  return { itens, faltam };
+}
+const agrupar = (itens) => { const gs = []; for (const i of itens) { const g = gs[gs.length - 1]; if (g && g.c === i.categoria) g.itens.push(i); else gs.push({ c: i.categoria, itens: [i] }); } return gs; };
+
 function itensDoLocal(dados, local, todos) {
+  if (local === 'galpao' && !todos) return listaGalpao(dados).itens;   // a folha do galpão
   return (dados.itens || []).filter((i) => {
     if (todos) return true;
     const x = dadosDoItem(dados, i, local);
@@ -92,14 +141,17 @@ const nomeLocal = (dados, local) => ((dados.locais || []).find((l) => l.id === l
 
 function tabela(dados, local, todos) {
   const itens = itensDoLocal(dados, local, todos);
-  const cats = [...ORDEM, ...new Set(itens.map((i) => i.categoria).filter((c) => !ORDEM.includes(c)))].map((c) => ({ c, itens: itens.filter((i) => i.categoria === c) })).filter((g) => g.itens.length);
+  const porFolha = local === 'galpao' && !todos;
+  const faltam = porFolha ? listaGalpao(dados).faltam : [];
+  const cats = porFolha ? agrupar(itens) : [...ORDEM, ...new Set(itens.map((i) => i.categoria).filter((c) => !ORDEM.includes(c)))].map((c) => ({ c, itens: itens.filter((i) => i.categoria === c) })).filter((g) => g.itens.length);
   if (!cats.length) return html`<p class="pequeno">Nenhum item cadastrado para este local. Marque "mostrar todos os itens".</p>`;
   return html`<div class="tabela-rolagem"><table class="tab cont-tab"><thead><tr><th>Cód.</th><th>Item</th><th class="n">Mín.</th><th class="n">Hoje no sistema</th><th>Contei agora</th><th>Obs.</th></tr></thead>
     ${cats.map((g) => html`<tbody class="cont-grupo"><tr class="est-cat"><th colspan="6">${CATEGORIAS[g.c] || g.c} <span class="pequeno">${g.itens.length} itens</span></th></tr>
       ${g.itens.map((i) => { const x = dadosDoItem(dados, i, local); return html`<tr data-texto="${`${i.cod} ${i.item}`.toLowerCase()}"><td class="est-cod">${i.cod}</td><td>${i.item}</td>
         <td class="n">${x.min == null ? '' : numero(x.min)}</td><td class="n">${x.atual == null ? '—' : numero(x.atual)}</td>
         <td><input class="cont-n" type="number" min="0" step="any" inputmode="decimal" data-c="${i.cod}" data-item="${i.item}" aria-label="Contagem de ${i.item}"></td>
-        <td><input class="cont-o" data-o="${i.cod}" aria-label="Observação sobre ${i.item}" autocomplete="off"></td></tr>`; })}</tbody>`)}</table></div>`;
+        <td><input class="cont-o" data-o="${i.cod}" aria-label="Observação sobre ${i.item}" autocomplete="off"></td></tr>`; })}</tbody>`)}</table></div>
+    ${faltam.length ? html`<p class="pequeno">Da folha do galpão, <b>${faltam.length}</b> ${faltam.length === 1 ? 'item não está' : 'itens não estão'} na planilha com esse nome: ${faltam.join(', ')}. Para contar, marque "mostrar todos os itens" e procure pelo nome na planilha.</p>` : ''}`;
 }
 
 const podeApagar = (s) => (NA_NUVEM ? (perfilAtual() && (s.criado_por === perfilAtual().id || sessao().funcao === 'socio')) : true);
