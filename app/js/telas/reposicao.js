@@ -34,6 +34,9 @@ const ENTRAM = new Set(['CON9', 'CON61', 'CON67']);
 const consumivelItem = (i) => !ENTRAM.has(i.cod) && (i.categoria === 'CON' || (i.categoria === 'LIM' && GASTA.test(i.item || '')));
 // Feito no próprio galpão: não se compra, fabrica (mesa do escritório)
 const FABRICA = new Set(['ESC3']);
+// EPI não tem mínimo por obra (é do funcionário), só o mínimo do galpão: entra na reposição pelo galpão (pedido do Felipe, 04/11)
+const ehEpiDoGalpao = (i) => i.categoria === 'EPI' && (Number(i.locais && i.locais.galpao && i.locais.galpao.min) || 0) > 0;
+const entraNaReposicao = (i) => (Number(i.minObra) > 0 || ehEpiDoGalpao(i)) && !consumivelItem(i);
 const num =(v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 
 // Quantidade de uma célula: número, vazio (não contado) ou texto tipo "2-7D" / "7-7D, 2-5D"
@@ -55,7 +58,7 @@ const mostra = (q) => (q.detalhe ? q.detalhe : q.n == null ? (q.texto || '—') 
 
 export function calcular(est) {
   const hoje = hojeISO();
-  const itens = ((est && est.itens) || []).filter((i) => num(i.minObra) > 0 && !consumivelItem(i));
+  const itens = ((est && est.itens) || []).filter(entraNaReposicao);
   const obrasCols = (est && est.obras) || [];
   const cad = (est && est.cadastroObras) || [];
   const finalizada = (o) => { const c = cad.find((x) => x.obra === o); return !!c && /finaliz|encerr|conclu|entreg/i.test(c.status || ''); };
@@ -85,7 +88,7 @@ export function calcular(est) {
   };
 
   for (const i of itens) {
-    const min = num(i.minObra);
+    const min = num(i.minObra) || 0;   // EPI: sem mínimo de obra (só o do galpão)
     const consumivel = false;
     const gMin = num(i.locais.galpao.min) || 0;
     const g = qtd(i.locais.galpao.atual);
@@ -95,6 +98,7 @@ export function calcular(est) {
 
     const sobraObra = []; const faltas = []; // faltas: { id, falta, tem, min }
     for (const l of locais.filter((x) => x.tipo === 'obra')) {
+      if (!(min > 0)) break;   // sem mínimo por obra: nada a comparar nas obras
       const q = qtd(i.obras[l.id]);
       if (q.texto) { l.verificar.push({ cod: i.cod, item: i.item, texto: q.texto }); continue; }
       if (q.n == null) { l.sem.push({ cod: i.cod, item: i.item }); continue; }
@@ -342,7 +346,7 @@ export function render(est0) {
   const obrasComFalta = obras.filter((o) => o.faltas.length).length;
   const velhas = r.locais.filter((l) => l.velha && !l.finalizada);
   // chips de categoria (contam os itens obrigatórios de obra de cada uma, sem o filtro)
-  const cont = new Map(); for (const i of est0.itens) if (num(i.minObra) > 0 && !consumivelItem(i)) cont.set(i.categoria, (cont.get(i.categoria) || 0) + 1);
+  const cont = new Map(); for (const i of est0.itens) if (entraNaReposicao(i)) cont.set(i.categoria, (cont.get(i.categoria) || 0) + 1);
   const cats = [...ORDEM, ...[...cont.keys()].filter((c) => !ORDEM.includes(c))].filter((c) => cont.has(c));
   const chips = html`<div class="subnav rp-cats" role="tablist" aria-label="Filtrar por categoria"><span class="pequeno rp-cats-rot">Categoria</span>
     <a href="#/estoque/reposicao" role="tab" data-rp-cat="" class="${filtroCat.size ? '' : 'on'}">Todas <span class="est-n">${[...cont.values()].reduce((s, n) => s + n, 0)}</span></a>
@@ -361,7 +365,7 @@ export function render(est0) {
     <div class="rp-cab-imp"><h1>Reposição de ferramentas obrigatórias</h1><p>Impresso em ${fmtData(hojeISO())} · planilha ${est.arquivo || ''} · Sólida Construção</p></div>
     ${chips}
     ${filtroCat.size ? html`<p class="pequeno rp-nota">Mostrando só: <b>${[...filtroCat].map((c) => (CATEGORIAS[c] || c).replace(/ (.*)$/, '')).join(', ')}</b>. Compras, rotas e o detalhe de cada lugar consideram só essas categorias. Clique em "Todas" para ver tudo.</p>` : ''}
-    <div class="rp-barra"><p class="pequeno">Só itens <b>obrigatórios de obra</b> (${est.itens.filter((i) => num(i.minObra) > 0 && !consumivelItem(i)).length} ${filtroCat.size ? 'itens destas categorias' : 'itens'}, sem consumíveis; bucha, parafuso e prego entram). Planilha ${est.arquivo || ''}, lida do Drive.</p><button type="button" class="botao" data-imprimir>🖨 Imprimir</button></div>
+    <div class="rp-barra"><p class="pequeno">Só itens <b>obrigatórios de obra</b> (${est.itens.filter(entraNaReposicao).length} ${filtroCat.size ? 'itens destas categorias' : 'itens'}, sem consumíveis; EPI entra pelo mínimo do galpão; bucha, parafuso e prego entram). Planilha ${est.arquivo || ''}, lida do Drive.</p><button type="button" class="botao" data-imprimir>🖨 Imprimir</button></div>
 
     <section class="ob-sec rp-resumo">
       ${resumo(comprarJa.length, comprarJa.length === 1 ? 'item para comprar' : 'itens para comprar', `${un(comprarJa.reduce((s, c) => s + c.total, 0))} unidades`)}
