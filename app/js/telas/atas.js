@@ -697,6 +697,7 @@ function renderPautas(params, obras) {
   return html`<div class="at-filtros at-filtros-pauta">
       ${sel('pauta', 'Pauta para', FILTROS_PAUTA, filtro, 'Todas as pautas')}
       ${sel('ordem', 'Ordenar por', [['data', 'Data (prazo mais próximo)'], ['alfa', 'Ordem alfabética']], alfa ? 'alfa' : 'data', 'Data (prazo mais próximo)')}
+      ${sel('setor', 'Departamento', SETORES_ATA.map((x) => [x, x]), params.get('setor') || '', 'Todos')}
       ${sel('obra', 'Obra', obras.map((o) => [o, o]), params.get('obra') || '', 'Todas')}
       <label>Procurar<input type="search" data-atas-filtro="q" value="${params.get('q') || ''}" placeholder="texto…"></label>
     </div>

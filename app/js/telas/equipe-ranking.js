@@ -4,7 +4,7 @@
 // quanto do trabalho previsto foi entregue. Ver perfil.js › pontuar.
 
 import { html, data as fmtData } from '../formato.js';
-import { hojeISO } from '../datas.js';
+import { hojeISO, somarDias, inicioDaSemana } from '../datas.js';
 import { rankingPeriodo, avatar } from './perfil.js';
 import { funcaoPorId, RECOMPENSAS, MIN_TAREFAS_FUNCIONARIO_DO_MES } from '../funcoes.js';
 
@@ -17,14 +17,18 @@ const nivel = (v) => (v == null ? '' : v >= 0.9 ? 'bom' : v >= 0.6 ? 'medio' : '
 export function render({ params, extra = '' } = {}) {
   const hoje = hojeISO();
   const gp = (k) => String((params && typeof params.get === 'function' ? params.get(k) : params && params[k]) || '');
-  const mes = /^\d{4}-\d{2}$/.test(gp('mes')) ? gp('mes') : hoje.slice(0, 7);
+  // por padrão: as últimas 4 semanas (o mesmo período do perfil), para não ficar vazio no começo do mês; ?mes=AAAA-MM mostra um mês fechado
+  const rolante = !/^\d{4}-\d{2}$/.test(gp('mes'));
+  const mes = rolante ? hoje.slice(0, 7) : gp('mes');
   const [a, m] = mes.split('-').map(Number);
   const fimMes = `${mes}-${pad(new Date(a, m, 0).getDate())}`;
   const parcial = fimMes >= hoje;
-  const ate = parcial ? hoje : fimMes;
+  const ate = rolante || parcial ? hoje : fimMes;
+  const de = rolante ? somarDias(inicioDaSemana(hoje), -21) : `${mes}-01`;
+  const rotuloPeriodo = rolante ? 'últimas 4 semanas' : `${NOME_MES[m - 1]} de ${a}`;
   const mesAnt = m === 1 ? `${a - 1}-12` : `${a}-${pad(m - 1)}`; const mesProx = m === 12 ? `${a + 1}-01` : `${a}-${pad(m + 1)}`;
 
-  const rk = rankingPeriodo(`${mes}-01`, ate, null);
+  const rk = rankingPeriodo(de, ate, null);
   const elegiveis = rk.filter((p) => p.esperadas >= MIN_TAREFAS_FUNCIONARIO_DO_MES);
   const vencedor = elegiveis[0] || null;
   const alcancou = (min) => elegiveis.filter((p) => p.taxa != null && p.taxa >= min);
@@ -32,32 +36,33 @@ export function render({ params, extra = '' } = {}) {
 
   return html`<div class="pagina equipe">
     <div class="periodo eq-nav">
-      <a class="botao" href="#/equipe?mes=${mesAnt}">← ${NOME_MES[(m + 10) % 12]}</a>
-      <div class="atual"><span>Mês</span><b>${NOME_MES[m - 1]} de ${a}</b></div>
-      ${mes < hoje.slice(0, 7) ? html`<a class="botao" href="#/equipe?mes=${mesProx}">${NOME_MES[m % 12]} →</a>` : ''}
-      <span class="pequeno eq-parcial">${parcial ? `Parcial: de 01/${pad(m)} até hoje (${fmtData(hoje).slice(0, 5)})` : `Mês fechado: de 01/${pad(m)} a ${fmtData(fimMes).slice(0, 5)}`}</span>
+      <a class="botao ${rolante ? 'on' : ''}" href="#/equipe">Últimas 4 semanas</a>
+      <a class="botao" href="#/equipe?mes=${rolante ? mesAnt : mesAnt}">← ${NOME_MES[(m + 10) % 12]}</a>
+      <div class="atual"><span>${rolante ? 'Período' : 'Mês'}</span><b>${rolante ? `${fmtData(de).slice(0, 5)} a ${fmtData(hoje).slice(0, 5)}` : `${NOME_MES[m - 1]} de ${a}`}</b></div>
+      ${rolante ? html`<a class="botao" href="#/equipe?mes=${mes}">${NOME_MES[m - 1]} (mês) →</a>` : (mes < hoje.slice(0, 7) ? html`<a class="botao" href="#/equipe?mes=${mesProx}">${NOME_MES[m % 12]} →</a>` : '')}
+      <span class="pequeno eq-parcial">${rolante ? 'Quem já marcou tarefas nas últimas 4 semanas (começa na segunda-feira de 3 semanas atrás)' : parcial ? `Parcial: de 01/${pad(m)} até hoje (${fmtData(hoje).slice(0, 5)})` : `Mês fechado: de 01/${pad(m)} a ${fmtData(fimMes).slice(0, 5)}`}</span>
     </div>
 
     <section class="eq-heroi ${vencedor ? '' : 'eq-heroi-vazio'}">
-      <div class="eq-heroi-tit"><span class="eq-trofeu" aria-hidden="true">🏆</span><div><small>Funcionário do mês${parcial ? ' (até agora)' : ''}</small><h2>${NOME_MES[m - 1]} de ${a}</h2></div></div>
+      <div class="eq-heroi-tit"><span class="eq-trofeu" aria-hidden="true">🏆</span><div><small>${rolante ? 'Destaque do período' : `Funcionário do mês${parcial ? ' (até agora)' : ''}`}</small><h2>${rotuloPeriodo}</h2></div></div>
       ${vencedor ? html`<div class="eq-vencedor">${avatar(vencedor.nome, 72)}<div><b>${vencedor.nome}</b><span>${funcaoPorId(vencedor.funcao).nome}</span>
           <p><strong>${pct(vencedor.taxa)}</strong> do trabalho previsto entregue · ${horas(vencedor.horasFeitas)} de ${horas(vencedor.horasEsperadas)} · ${vencedor.pontos} pontos</p></div></div>`
-        : html`<p class="eq-vazio">Ainda não há dados suficientes. Para concorrer, a pessoa precisa de pelo menos ${MIN_TAREFAS_FUNCIONARIO_DO_MES} tarefas previstas no mês, marcadas em Minhas funções.</p>`}
+        : html`<p class="eq-vazio">Ainda não há dados suficientes. Para concorrer, a pessoa precisa de pelo menos ${MIN_TAREFAS_FUNCIONARIO_DO_MES} tarefas previstas no período, marcadas na Agenda.</p>`}
     </section>
 
-    <section class="secao"><h2>Ranking da equipe <span class="pequeno">${NOME_MES[m - 1]} · % do trabalho previsto entregue</span></h2>
+    <section class="secao"><h2>Ranking da equipe <span class="pequeno">${rotuloPeriodo} · % do trabalho previsto entregue</span></h2>
       ${rk.length ? html`<div class="pf-rank">${rk.map((p, i) => { const f = faixasDe(p); return html`<a class="pf-rk" href="#/perfil?p=${encodeURIComponent(p.chave)}" title="Ver o perfil de ${p.nome}">
         <span class="pf-rk-n">${i + 1}º</span>${avatar(p.nome, 34)}<span class="pf-rk-nome"><b>${p.nome}</b><small>${funcaoPorId(p.funcao).nome}</small></span>
         <span class="pf-b ${nivel(p.taxa)}"><i style="width:${Math.round((p.taxa || 0) * 100)}%"></i></span><b class="pf-rk-t">${pct(p.taxa)}</b>
         <span class="pequeno eq-hs">${horas(p.horasFeitas)} entregues</span><span class="pequeno">${p.pontos} pts</span>
         <span class="eq-faixas">${f.map((r) => html`<span class="eq-faixa" title="${r.nome}: a partir de ${Math.round(r.min * 100)}%">${r.nome}</span>`)}</span></a>`; })}</div>`
-        : html`<p class="vazio">Ninguém marcou tarefas neste mês ainda. A pontuação aparece assim que as pessoas começarem a marcar em Minhas funções.</p>`}
+        : html`<p class="vazio">Ninguém marcou tarefas neste período ainda. A pontuação aparece assim que as pessoas começarem a marcar na Agenda.</p>`}
     </section>
 
     <section class="secao"><h2>Recompensas <span class="pequeno">padrão provisório · prêmios a definir com o Marcos</span></h2>
       <div class="eq-recs">${RECOMPENSAS.map((r) => { const q = alcancou(r.min); return html`<div class="eq-rec"><div class="eq-rec-cab"><b>${r.nome}</b><span class="eq-rec-min">${Math.round(r.min * 100)}%</span></div>
-        <p class="pequeno">A partir de ${Math.round(r.min * 100)}% do trabalho previsto entregue no mês.</p><p><b>Prêmio:</b> ${r.premio}</p>
-        <p class="eq-rec-quem"><b>${q.length}</b> ${q.length === 1 ? 'pessoa alcançou' : 'pessoas alcançaram'} neste mês${q.length ? ': ' : ''}${q.map((p) => p.nome).join(', ')}</p></div>`; })}</div>
+        <p class="pequeno">A partir de ${Math.round(r.min * 100)}% do trabalho previsto entregue no período.</p><p><b>Prêmio:</b> ${r.premio}</p>
+        <p class="eq-rec-quem"><b>${q.length}</b> ${q.length === 1 ? 'pessoa alcançou' : 'pessoas alcançaram'} neste período${q.length ? ': ' : ''}${q.map((p) => p.nome).join(', ')}</p></div>`; })}</div>
     </section>
 
     <details class="caixa eq-como"><summary><span class="caixa-tit">Como a pontuação é calculada</span><span class="pequeno">clique para ver</span></summary><div class="caixa-corpo"><ul>
