@@ -3,7 +3,7 @@
 // A pessoa cria a própria senha no primeiro acesso. As regras do banco garantem que só a diretoria faz isso.
 
 import { html } from '../formato.js';
-import { FUNCOES, funcaoPorId, SETORES, PAGINAS, abasDa, abasPadrao } from '../funcoes.js';
+import { FUNCOES, funcaoPorId, SETORES, SETORES_ORGANOGRAMA, PAGINAS, abasDa, abasPadrao } from '../funcoes.js';
 
 const opcoesFuncao = (sel = '') => FUNCOES.map((x) => html`<option value="${x.id}" ${x.id === sel ? html.seguro('selected') : ''}>${x.nome}</option>`);
 // obras como caixinhas de marcar (antes era uma lista de seleção múltipla, difícil de usar)
@@ -19,7 +19,7 @@ const caixinhasObras = (obras, sel = [], pos = []) => {
 };
 
 // setores onde a pessoa atua (gestor ou estagiário do setor, conforme o organograma): quem não está em obra nenhuma também fica ligado ao gestor
-const caixinhasSetores = (sel = []) => html`<div class="ac-chips">${SETORES.map(([, nome]) => html`<label class="ac-chip"><input type="checkbox" name="setores" value="${nome}" ${sel.includes(nome) ? html.seguro('checked') : ''}><span>${nome}</span></label>`)}</div>`;
+const caixinhasSetores = (sel = []) => html`<div class="ac-chips">${SETORES_ORGANOGRAMA.map((nome) => html`<label class="ac-chip"><input type="checkbox" name="setores" value="${nome}" ${sel.includes(nome) ? html.seguro('checked') : ''}><span>${nome}</span></label>`)}</div>`;
 
 const ABAS = [...SETORES, ...PAGINAS];
 
@@ -35,6 +35,8 @@ export function render({ perfis = [], obras = [], posObras = [], obrasCad = [], 
       <button type="button" class="botao ac-excluir" data-excluir-obra="${o.codigo}">Remover</button></span>
   </form>`;
   const linha = (p) => {
+    // a conta do computador do escritório (coletor) não se edita aqui: mudar a função dela faz o envio de dados parar
+    if (p.funcao === 'coletor' || /^coletor@/i.test(p.email || '')) return html`<div class="ac-linha"><div class="ac-quem"><b>${p.nome || 'Coletor'}</b><span class="pequeno">conta do computador do escritório (envia os dados ao site) · não editar</span></div></div>`;
     const protegido = p.id === meuId || p.funcao === 'coletor';
     return html`<form class="ac-linha ${p.ativo === false ? 'ac-bloq' : ''}" data-acesso="${p.id}">
     <div class="ac-quem"><b>${p.nome || p.usuario}</b><span class="pequeno">usuário: <b>${p.usuario || p.email}</b>${p.trocar_senha ? ' · ainda não criou a senha' : ''}${p.ativo === false ? ' · bloqueado' : ''}${p.id === meuId ? ' · você' : ''}</span></div>

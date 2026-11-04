@@ -8,14 +8,14 @@
 import { html, data as fmtData } from '../formato.js';
 import { hojeISO, somarDias, inicioDaSemana, diasEntre, ehData } from '../datas.js';
 import { NA_NUVEM, perfilAtual, listarAtasPendencias, criarAtaNuvem, criarPendenciaNuvem, atualizarPendenciaNuvem, atualizarAtaNuvem, apagarPendenciaNuvem, apagarAtaNuvem } from '../nuvem.js';
-import { SETORES } from '../funcoes.js';
+import { SETORES, SETORES_ORGANOGRAMA } from '../funcoes.js';
 import { sessao, idPessoa, funcaoReal, funcaoAtual } from '../sessao.js';
 import { lerPessoasTarefas } from '../armazenamento.js';
 import { analisarAta, lerArquivoAta, acharResponsavel } from '../ata-leitor.js';
 import { analisarReuniao, analisarFala, pareceResumoEmTopicos } from '../fala-leitor.js';
 
 export const ABAS = [['pendencias', 'Pendências'], ['atas', 'Atas'], ['nova', 'Nova ata']];
-export const SETORES_ATA = [...SETORES.map(([, nome]) => nome), 'Diretoria / geral'];
+export const SETORES_ATA = [...SETORES_ORGANOGRAMA, 'Diretoria / geral'];
 
 let dados = { atas: [], pendencias: [], pessoas: [], erro: '' };
 let rascunho = null;   // ata lida de um arquivo/texto, esperando conferência
