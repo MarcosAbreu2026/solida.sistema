@@ -53,3 +53,13 @@ update public.perfis set gestor_id = (select id from public.perfis where funcao 
 -- pendências que já existem
 update public.pendencias set gestor = public.gestor_da_pendencia(responsavel, obra) where responsavel is not null and gestor is null;
 update public.pendencias p set gestor_nome = (select nome from public.perfis where id = p.gestor) where gestor is not null;
+
+-- tela Acessos: ao mudar o gestor de alguém ou as obras de um gestor, a diretoria recalcula os gestores das pendências abertas
+create or replace function public.recalcular_gestores() returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not coalesce(public.eh_diretoria(), false) then raise exception 'Só a diretoria'; end if;
+  update public.pendencias p set gestor = public.gestor_da_pendencia(p.responsavel, p.obra) where p.responsavel is not null and p.status = 'aberta';
+  update public.pendencias p set gestor_nome = (select nome from public.perfis where id = p.gestor) where p.status = 'aberta';
+end $$;
+revoke execute on function public.recalcular_gestores() from public, anon;
+grant execute on function public.recalcular_gestores() to authenticated;

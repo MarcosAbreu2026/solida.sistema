@@ -17,6 +17,8 @@ const ABAS = [...SETORES, ...PAGINAS];
 const SITUACOES = [['andamento', 'Em andamento'], ['pausada', 'Pausada'], ['finalizada', 'Finalizada']];
 const opcoesSituacao = (sel) => SITUACOES.map(([v, n]) => html`<option value="${v}" ${v === sel ? html.seguro('selected') : ''}>${n}</option>`);
 
+// quem tem gestor: estagiários (o gestor aparece junto do responsável nas pendências)
+const PRECISA_GESTOR = ['estagiario', 'estagiario_compras', 'orc_terceirizado'];
 export function render({ perfis = [], obras = [], obrasCad = [], msg = '', aviso = null, meuId = null }) {
   const linhaObra = (o) => html`<form class="ac-linha ${o.situacao === 'finalizada' ? 'ac-bloq' : ''}" data-obra-cad="${o.codigo}">
     <div class="ac-quem"><b>${o.codigo}</b></div>
@@ -31,6 +33,7 @@ export function render({ perfis = [], obras = [], obrasCad = [], msg = '', aviso
     <div class="ac-quem"><b>${p.nome || p.usuario}</b><span class="pequeno">usuário: <b>${p.usuario || p.email}</b>${p.trocar_senha ? ' · ainda não criou a senha' : ''}${p.ativo === false ? ' · bloqueado' : ''}${p.id === meuId ? ' · você' : ''}</span></div>
     <label>Função<select name="funcao"><option value="">— escolher —</option>${opcoesFuncao(p.funcao)}</select></label>
     <div class="ac-obras"><span class="ac-rot">Obras <span class="pequeno">(funções de obra)</span></span>${caixinhasObras(obras, p.obras || [])}</div>
+    ${PRECISA_GESTOR.includes(p.funcao) ? html`<label>Gestor <span class="pequeno">(vê as pendências dele)</span><select name="gestor_id"><option value="">${p.funcao === 'estagiario' ? '— o gestor da obra —' : '— escolher —'}</option>${perfis.filter((x) => x.id !== p.id && x.funcao && !['coletor', 'ajudante', ...PRECISA_GESTOR].includes(x.funcao)).map((x) => html`<option value="${x.id}" ${x.id === p.gestor_id ? html.seguro('selected') : ''}>${x.nome || x.usuario}</option>`)}</select></label>` : ''}
    <span class="ac-botoes"><button type="submit" class="botao on">Salvar</button>
       <button type="button" class="botao" data-redefinir-senha="${p.id}|${p.nome || p.usuario}">Nova senha</button>
       ${protegido ? '' : html`<button type="button" class="botao ac-excluir" data-excluir-login="${p.id}|${p.nome || p.usuario}">Excluir</button>`}</span>
