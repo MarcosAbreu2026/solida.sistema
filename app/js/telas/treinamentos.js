@@ -20,6 +20,15 @@ const topicoVisivel = (t, f) => {
   return t.tipo === 'setor' ? !f.areas || f.areas.includes(t.id) : paginaVisivel(f, t.pagina);
 };
 
+// Os blocos seguem os mesmos grupos do menu da esquerda (pedido do Felipe, 04/11): Meu trabalho · Departamentos · Resultados · Equipe · Diretoria
+const GRUPOS = [
+  ['Meu trabalho', ['agenda', 'tarefas', 'atas']],
+  ['Departamentos', ['operacao', 'posobra', 'transporte', 'suprimentos', 'planejamento', 'projetos', 'comercial', 'orcamentos', 'financeiro', 'rh']],
+  ['Resultados', []],
+  ['Equipe', ['estoque', 'feed', 'treinamentos', 'marketing']],
+  ['Diretoria', []],
+];
+
 export function render() {
   const f = funcaoAtual();
   const vistosSet = slidesVistos();
@@ -33,7 +42,11 @@ export function render() {
     <summary><span class="pl-tit"><span class="tr-ico">${t.icone}</span>${t.nome}</span></summary>
     <table class="pl-os tr-tab"><colgroup><col class="tr-c-tit"><col class="tr-c-pas"><col class="tr-c-sit"><col class="tr-c-acao"></colgroup>
       <tbody>${doTopico(t).map(linha)}</tbody></table></details>`;
+  // cada tópico entra no grupo do menu a que pertence; o que não estiver na lista vai para "Outros"
+  const mapeados = new Set(GRUPOS.flatMap(([, ids]) => ids));
+  const grupos = [...GRUPOS, ['Outros', topicos.filter((t) => !mapeados.has(t.id)).map((t) => t.id)]]
+    .map(([nome, ids]) => [nome, ids.map((id) => topicos.find((t) => t.id === id)).filter(Boolean)]).filter(([, l]) => l.length);
   return html`<div class="pagina treinamentos pl">
-    ${topicos.length ? html`<div class="pl-lista">${topicos.map(bloco)}</div>` : html`<p class="vazio">Nada por aqui ainda.</p>`}
+    ${grupos.length ? grupos.map(([nome, lista]) => html`<section class="tr-grupo"><h2 class="tr-grupo-tit">${nome}</h2><div class="pl-lista">${lista.map(bloco)}</div></section>`) : html`<p class="vazio">Nada por aqui ainda.</p>`}
   </div>`;
 }

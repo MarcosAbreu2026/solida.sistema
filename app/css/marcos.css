@@ -256,3 +256,7 @@ body.nav-recolhido nav::after { display: none; }
 .ac-sit { font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px; background: #DCE8F6; color: #1F4677; }
 .ac-sit-pausada { background: #FBEFC2; color: #7A5608; } .ac-sit-finalizada { background: #EDF0F3; color: #5B6570; }
 .ac-obra-item .ac-linha { border: 0; border-top: 1px solid var(--linha2); border-radius: 0 0 8px 8px; margin: 0; }
+
+/* ---- Treinamentos: blocos separados pelos mesmos grupos do menu */
+.tr-grupo { margin-bottom: 26px; }
+.tr-grupo-tit { margin: 0 0 10px; padding-left: 12px; border-left: 4px solid var(--pd-amarelo, #F2C230); font-family: var(--pd-cond, inherit); font-size: 15px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--pd-chumbo, #3B4450); white-space: normal; }
