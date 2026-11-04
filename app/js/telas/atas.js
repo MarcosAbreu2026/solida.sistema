@@ -523,7 +523,7 @@ export function render({ params, obras = [], msg = '', sugestoes = [] }) {
   const aba = ABAS.some(([id]) => id === params.get('aba')) ? params.get('aba') : 'pendencias';
   const abertas = dados.pendencias.filter((p) => naLista(p) && p.status === 'aberta');
   // Tarefas e Atas já estão no menu da esquerda (desenho do Marcos): sem as abas aqui em cima; em Atas, o botão de nova ata
-  const topo = aba === 'atas' && !params.get('ata') ? html`<div class="at-topo-bt"><span class="pequeno">${dados.atas.length} ${dados.atas.length === 1 ? 'ata' : 'atas'}</span><a class="pd-bt pd-bt-cheio" href="#/atas?aba=nova">+ Nova ata</a></div>`
+  const topo = aba === 'atas' && !params.get('ata') ? html`<div class="at-topo-bt"><a class="pd-bt pd-bt-cheio" href="#/atas?aba=nova">+ Nova ata</a><span class="pequeno">${dados.atas.length} ${dados.atas.length === 1 ? 'ata' : 'atas'}</span></div>`
     : aba === 'nova' ? html`<div class="at-topo-bt"><a class="link" href="#/atas?aba=atas">← Atas</a></div>` : '';
   void abertas;
   let corpo;
