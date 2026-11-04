@@ -221,3 +221,12 @@ a.pd-obra:hover { color: var(--pd-azul); }
 /* Celular da obra: só aparece no celular (encarregado, gestor… preenchem pela obra); no computador não é uma aba */
 .nav-celular, .pd-so-celular { display: none !important; }
 @media (max-width: 760px) { .nav-celular { display: flex !important; } .pd-so-celular { display: inline-block !important; } }
+
+/* ---- pé do menu como na referência: linha amarela e faixa azul em diagonal */
+nav { padding-bottom: 0; }
+nav::after {
+  content: ''; display: block; flex: none; height: 100px; margin-top: 14px; pointer-events: none;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 196 70' preserveAspectRatio='none'><polygon points='112,70 182,0 196,0 196,70' fill='%232B5C99'/><line x1='88' y1='70' x2='162' y2='0' stroke='%23F2C230' stroke-width='3.4' stroke-linecap='round'/></svg>") no-repeat bottom left / 100% 100%;
+}
+body.nav-recolhido nav::after { display: none; }
+@media (max-width: 760px) { nav::after { display: none; } }
