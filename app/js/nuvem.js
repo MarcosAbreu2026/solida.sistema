@@ -110,8 +110,6 @@ export async function listarPerfis() {
 export async function salvarPerfil(id, mudancas) {
   const { error } = await sb.from('perfis').update(mudancas).eq('id', id);
   if (error) throw new Error(error.message);
-  // obras ou gestor mudaram: as pendências abertas passam a ter o gestor certo
-  if ('gestor_id' in mudancas || 'obras' in mudancas) await sb.rpc('recalcular_gestores');
 }
 
 // ---------------------------------------------------------------- atas e pendências (as regras de quem vê ficam no banco)
