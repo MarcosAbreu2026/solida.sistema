@@ -1565,12 +1565,6 @@ document.addEventListener('drop', async (e) => {
   } catch (err) { alert(`Não foi possível mudar o prazo (${err.message || err}).`); }
 });
 
-// Agenda › Outras funções: escolher a função e lembrar se a caixinha está aberta
-document.addEventListener('click', (e) => {
-  const b = e.target.closest && e.target.closest('[data-ag-outra]'); if (!b) return;
-  agendaSemana.escolherOutra(b.dataset.agOutra); desenhar();
-});
-document.addEventListener('toggle', (e) => { if (e.target.matches && e.target.matches('#ag-outras')) agendaSemana.lembrarOutras(e.target.open); }, true);
 // Pautas: copiar a pauta de uma obra em texto
 document.addEventListener('click', async (e) => {
   const b = e.target.closest && e.target.closest('[data-pauta-txt]'); if (!b) return;

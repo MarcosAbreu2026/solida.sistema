@@ -272,15 +272,3 @@ body.nav-recolhido nav::after { display: none; }
 .treinamentos .pl-lista { gap: 6px; }
 .treinamentos .tr-grupo { margin-bottom: 14px; }
 .treinamentos .tr-grupo-tit { margin-bottom: 6px; }
-
-/* ---- Agenda › Outras funções */
-.ag-outras { background: #fff; border: 1px solid #D5DCE4; border-radius: 10px; margin: 0 0 14px; }
-.ag-outras > summary { display: flex; align-items: center; gap: 12px; padding: 9px 14px; cursor: pointer; list-style: none; flex-wrap: wrap; }
-.ag-outras > summary::-webkit-details-marker { display: none; }
-.ag-outras > summary::before { content: '▸'; color: var(--muted); font-size: 12px; }
-.ag-outras[open] > summary::before { content: '▾'; }
-.ag-outras-corpo { padding: 4px 14px 14px; display: flex; flex-direction: column; gap: 10px; }
-.ag-outras-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.ag-chip { font-size: 13px; font-weight: 600; padding: 5px 12px; border: 1px solid #B9CCE2; border-radius: 999px; background: #E6EEF7; color: #1F4A78; cursor: pointer; }
-.ag-chip:hover { border-color: var(--pd-azul, #2B5C99); }
-.ag-chip.on { background: var(--pd-azul, #2B5C99); border-color: var(--pd-azul, #2B5C99); color: #fff; }
