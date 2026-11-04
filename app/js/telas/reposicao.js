@@ -34,9 +34,10 @@ const ENTRAM = new Set(['CON9', 'CON61', 'CON67']);
 const consumivelItem = (i) => !ENTRAM.has(i.cod) && (i.categoria === 'CON' || (i.categoria === 'LIM' && GASTA.test(i.item || '')));
 // Feito no próprio galpão: não se compra, fabrica (mesa do escritório)
 const FABRICA = new Set(['ESC3']);
-// EPI não tem mínimo por obra (é do funcionário), só o mínimo do galpão: entra na reposição pelo galpão (pedido do Felipe, 04/11)
-const ehEpiDoGalpao = (i) => i.categoria === 'EPI' && (Number(i.locais && i.locais.galpao && i.locais.galpao.min) || 0) > 0;
-const entraNaReposicao = (i) => (Number(i.minObra) > 0 || ehEpiDoGalpao(i)) && !consumivelItem(i);
+// Entra na reposição todo item (que não é consumível) com algum mínimo: o da obra, o do galpão ou o do carro. Assim a lista bate com o "Comprar" da planilha
+// (EPI, ferramentas e máquinas do galpão e dos carros não têm mínimo de obra, mas também faltam e precisam ser comprados) (pedido do Felipe, 04/11).
+const temMinimo = (i) => Number(i.minObra) > 0 || ['galpao', 'anderson', 'nascimento', 'enio'].some((l) => (Number(i.locais && i.locais[l] && i.locais[l].min) || 0) > 0);
+const entraNaReposicao = (i) => temMinimo(i) && !consumivelItem(i);
 const num =(v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 
 // Quantidade de uma célula: número, vazio (não contado) ou texto tipo "2-7D" / "7-7D, 2-5D"
@@ -54,7 +55,7 @@ function qtd(v) {
   }
   return ok ? { n: total, detalhe: s } : { n: null, texto: s };
 }
-const mostra = (q) => (q.detalhe ? q.detalhe : q.n == null ? (q.texto || '—') : numero(q.n));
+const mostra = (q) => (q.vazio ? 'em branco' : q.detalhe ? q.detalhe : q.n == null ? (q.texto || '—') : numero(q.n));
 
 export function calcular(est) {
   const hoje = hojeISO();
@@ -73,7 +74,7 @@ export function calcular(est) {
     l.conferido = conf[l.id] || null;
     l.dias = l.conferido ? diasEntre(l.conferido, hoje) : null;
     l.velha = l.dias == null || l.dias > DIAS_VELHO;
-    l.faltas = []; l.sem = []; l.verificar = []; l.ok = 0;
+    l.faltas = []; l.sem = []; l.verificar = []; l.vazios = []; l.ok = 0;
   }
   const por = new Map(locais.map((l) => [l.id, l]));
   const nomeDe = (id) => (por.get(id) ? por.get(id).nome : id);
@@ -91,7 +92,9 @@ export function calcular(est) {
     const min = num(i.minObra) || 0;   // EPI: sem mínimo de obra (só o do galpão)
     const consumivel = false;
     const gMin = num(i.locais.galpao.min) || 0;
-    const g = qtd(i.locais.galpao.atual);
+    let g = qtd(i.locais.galpao.atual);
+    // galpão em branco = não tem nada: a própria planilha conta como zero e manda comprar (pedido do Felipe, 04/11); nas obras e nos carros, branco continua sendo "não contado"
+    if (g.n == null && !g.texto && gMin > 0) { g = { n: 0, vazio: true }; por.get('galpao').vazios.push({ cod: i.cod, item: i.item }); }
     const quebradas = (num(i.quebrada) || 0) + (num(i.consertando) || 0);
     let galpao = g.n == null ? 0 : Math.max(0, g.n - quebradas);
     const notaGalpao = g.detalhe ? `no galpão: ${g.detalhe}` : '';
@@ -165,6 +168,7 @@ function blocoLocal(l, nomeDe) {
       ${nFalta ? html`<div class="tabela-rolagem"><table class="tab rp-tab"><thead><tr><th>Item</th><th class="n">Tem</th><th class="n">Mínimo</th><th class="n">Falta</th><th>Como resolver</th></tr></thead><tbody>
         ${l.faltas.map((f) => html`<tr><td><b>${f.item}</b> <span class="pequeno">${f.cod}</span></td><td class="n">${f.tem}</td><td class="n">${un(f.min)}</td><td class="n"><b class="pendente">${un(f.falta)}</b></td><td>${comoTxt(f)}</td></tr>`)}
       </tbody></table></div>` : html`<p class="pequeno">Nenhum item obrigatório abaixo do mínimo, entre os que foram contados.</p>`}
+      ${l.vazios && l.vazios.length ? html`<p class="pequeno rp-nota"><b>${l.vazios.length} ${l.vazios.length === 1 ? 'item estava' : 'itens estavam'} em branco na planilha</b> e ${l.vazios.length === 1 ? 'foi contado' : 'foram contados'} como zero (a própria planilha manda comprar): ${l.vazios.map((v) => v.item).join(', ')}.</p>` : ''}
       ${l.verificar.length ? html`<p class="pequeno rp-nota"><b>Verificar com o Anderson</b> (contagem que o sistema não entendeu): ${l.verificar.map((v) => `${v.item} = "${v.texto}"`).join('; ')}</p>` : ''}
       ${l.sem.length ? html`<details class="rp-sem"><summary class="pequeno">${l.sem.length} ${l.sem.length === 1 ? 'item' : 'itens'} sem contagem (não entram no cálculo)</summary><p class="pequeno">${l.sem.map((s) => s.item).join(', ')}</p></details>` : ''}
     </div>
@@ -365,7 +369,7 @@ export function render(est0) {
     <div class="rp-cab-imp"><h1>Reposição de ferramentas obrigatórias</h1><p>Impresso em ${fmtData(hojeISO())} · planilha ${est.arquivo || ''} · Sólida Construção</p></div>
     ${chips}
     ${filtroCat.size ? html`<p class="pequeno rp-nota">Mostrando só: <b>${[...filtroCat].map((c) => (CATEGORIAS[c] || c).replace(/ (.*)$/, '')).join(', ')}</b>. Compras, rotas e o detalhe de cada lugar consideram só essas categorias. Clique em "Todas" para ver tudo.</p>` : ''}
-    <div class="rp-barra"><p class="pequeno">Só itens <b>obrigatórios de obra</b> (${est.itens.filter(entraNaReposicao).length} ${filtroCat.size ? 'itens destas categorias' : 'itens'}, sem consumíveis; EPI entra pelo mínimo do galpão; bucha, parafuso e prego entram). Planilha ${est.arquivo || ''}, lida do Drive.</p><button type="button" class="botao" data-imprimir>🖨 Imprimir</button></div>
+    <div class="rp-barra"><p class="pequeno">Itens com <b>mínimo definido</b> (obra, carro ou galpão: ${est.itens.filter(entraNaReposicao).length} ${filtroCat.size ? 'itens destas categorias' : 'itens'}, sem consumíveis; bucha, parafuso e prego entram). Planilha ${est.arquivo || ''}, lida do Drive.</p><button type="button" class="botao" data-imprimir>🖨 Imprimir</button></div>
 
     <section class="ob-sec rp-resumo">
       ${resumo(comprarJa.length, comprarJa.length === 1 ? 'item para comprar' : 'itens para comprar', `${un(comprarJa.reduce((s, c) => s + c.total, 0))} unidades`)}
