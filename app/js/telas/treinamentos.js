@@ -5,7 +5,7 @@
 import { html } from '../formato.js';
 import { funcaoAtual } from '../sessao.js';
 import { TOPICOS, SUBTOPICOS, vistos as slidesVistos } from '../treinamentos-slides.js';
-import { paginaVisivel } from '../funcoes.js';
+import { paginaVisivel, soMinhasFuncoes, temEstoqueRestrito } from '../funcoes.js';
 
 // (mantido por compatibilidade com o menu: não há mais guias de texto)
 export const TREINAMENTOS = [];
@@ -13,7 +13,12 @@ export function alternarFeito() { /* os "já li" dos guias antigos não existem 
 
 const seApplica = (t, funcaoId) => funcaoId === 'socio' || t.funcoes === 'todos' || (Array.isArray(t.funcoes) && t.funcoes.includes(funcaoId));
 // o bloco aparece para quem tem aquele menu: setor nas áreas da função; página geral se a função vê a página
-const topicoVisivel = (t, f) => (t.tipo === 'setor' ? !f.areas || f.areas.includes(t.id) : paginaVisivel(f, t.pagina));
+// quem tem acesso restrito vê só as telas que aparecem no menu dele: Agenda, Tarefas, Atas, Feed, Treinamentos (e o Estoque, se for do galpão)
+const TELAS_RESTRITAS = ['agenda', 'tarefas', 'atas', 'feed', 'treinamentos'];
+const topicoVisivel = (t, f) => {
+  if (soMinhasFuncoes(f) && !TELAS_RESTRITAS.includes(t.id) && !(t.id === 'estoque' && temEstoqueRestrito(f))) return false;
+  return t.tipo === 'setor' ? !f.areas || f.areas.includes(t.id) : paginaVisivel(f, t.pagina);
+};
 
 export function render() {
   const f = funcaoAtual();

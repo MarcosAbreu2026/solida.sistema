@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 const raiz = join(dirname(fileURLToPath(import.meta.url)), '..');
 const saida = join(raiz, 'app', 'img', 'treinamentos'); mkdirSync(saida, { recursive: true });
 const filtro = process.argv[2] || '';
-const BASE = 'http://localhost:8080/app/';
+const BASE = `http://localhost:${process.env.PORTA || 8080}/app/`;
 const EDGE = ['C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe', 'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe'].find((p) => existsSync(p));
 if (!EDGE) { console.log('Edge não encontrado.'); process.exit(1); }
 const espera = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -132,7 +132,7 @@ const clicarCartao = (sel) => avaliar(`(() => { const c = document.querySelector
 const SLIDES = [
   { nome: 'func-01-menu', async montar() {
     await ir('#/funcoes'); await esperar('.fq-quadro');
-    await marcar([{ sel: '#nav a[href="#/funcoes"]', rotulo: 'Aqui você faz o seu dia a dia', lado: 'direita', dist: 90, larg: 240 }, { sel: '#nav a[href="#/treinamentos"]' }]);
+    await marcar([{ sel: '#nav a[href="#/agenda"]', rotulo: 'Aqui você faz o seu dia a dia', lado: 'direita', dist: 90, larg: 240 }, { sel: '#nav a[href="#/treinamentos"]' }]);
   } },
   { nome: 'func-02-quadro', async montar() {
     await ir('#/funcoes'); await esperar('.fq-quadro'); await etiquetar(); await rolar('.fn-painel'); await espera(300);
@@ -173,7 +173,7 @@ const SLIDES = [
     await marcar([{ sel: '.fora-quadro', rotulo: 'Tarefas mensais e ocasionais ficam fora do quadro', lado: 'cima', dist: 60, larg: 300 }]);
   } },
   { nome: 'func-10-menu', async montar() {
-    await ir('#/funcoes'); await esperar('.fq-quadro'); await clicar('#nav a[href="#/funcoes"]'); await espera(300);
+    await ir('#/funcoes'); await esperar('.fq-quadro'); await clicar('#nav a[href="#/agenda"]'); await espera(300);
     await avaliar(`document.body.classList.add('nav-recolhido'); document.querySelector('#navToggle') && (document.querySelector('#navToggle').dataset.estado = 'fechado')`); await espera(700);
     await marcar([{ sel: '#navToggle', rotulo: 'Clique na setinha para recolher ou abrir o menu', lado: 'direita', dist: 70, larg: 270 }]);
   } },

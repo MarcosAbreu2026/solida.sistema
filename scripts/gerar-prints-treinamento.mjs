@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 const raiz = join(dirname(fileURLToPath(import.meta.url)), '..');
 const saida = join(raiz, 'app', 'img', 'treinamentos'); mkdirSync(saida, { recursive: true });
 const filtro = process.argv[2] || '';
-const BASE = 'http://localhost:8080/app/';
+const BASE = `http://localhost:${process.env.PORTA || 8080}/app/`;
 const EDGE = ['C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe', 'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe'].find((p) => existsSync(p));
 if (!EDGE) { console.log('Edge não encontrado.'); process.exit(1); }
 const espera = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -92,6 +92,9 @@ function dadosExemplo(obra) {
     pendencias: [
       { id: 1, ata_id: 1, item: 1, descricao: 'MARCENARIA, Enviar as duas propostas para o cliente', responsavel: null, responsavel_nome: 'Maria', responsavel_tipo: 'solida', prazo: somar(2), status: 'aberta', obra, setor: 'Operação', ...base },
       { id: 2, ata_id: 1, item: 3, descricao: 'ILUMINAÇÃO, Aprovar as luminárias extras', responsavel: null, responsavel_nome: 'João', responsavel_tipo: 'cliente', prazo: somar(9), status: 'aberta', obra, setor: 'Operação', ...base },
+      { id: 4, ata_id: 1, item: 4, descricao: 'ACM, Retirar da área gourmet', responsavel: 'socio:maria', responsavel_nome: 'Maria Souza', responsavel_tipo: 'solida', prazo: hojeIso, status: 'aberta', obra, setor: 'Operação', ...base, concluida_em: null },
+      { id: 5, ata_id: null, item: null, descricao: 'PROJETO, Cobrar a hidráulica da arquiteta', responsavel: 'socio:maria', responsavel_nome: 'Maria Souza', responsavel_tipo: 'solida', prazo: somar(1), status: 'aberta', obra, setor: 'Projetos', ...base, concluida_em: null },
+      { id: 6, ata_id: null, item: null, descricao: 'ESQUADRIAS, Medir os vãos do segundo pavimento', responsavel: 'socio:maria', responsavel_nome: 'Maria Souza', responsavel_tipo: 'solida', prazo: somar(-2), status: 'aberta', obra, setor: 'Operação', ...base, concluida_em: null },
       { id: 3, ata_id: null, item: null, descricao: 'ELÉTRICA, Pedir orçamento do eletricista', responsavel: null, responsavel_nome: 'Ana', responsavel_tipo: 'arquitetura', prazo: somar(-1), status: 'aberta', obra, setor: 'Operação', ...base },
     ] });
 }
@@ -114,13 +117,75 @@ async function recarregar() {
 }
 
 const SLIDES = [
+  { nome: 'agenda-01-menu', async montar() {
+    await ir('#/agenda'); await esperar('.fq-quadro'); await esperar('.ag-cab-tarefas');
+    await marcar([{ sel: '#nav a[href="#/agenda"]', rotulo: 'Agenda: o seu dia e as suas tarefas', lado: 'direita', dist: 90, larg: 250 }, { sel: '#nav a[href="#/atas"]', rotulo: 'Tarefas: o quadro de todas', lado: 'direita', dist: 90, larg: 230 }, { sel: '#nav a[href="#/atas?aba=atas"]' }]);
+  } },
+  { nome: 'agenda-02-semana', async montar() {
+    await ir('#/agenda'); await esperar('.ag-cab-tarefas'); await rolar('.ag-resumo'); await espera(300);
+    await marcar([{ sel: '.ag-resumo' }, { sel: '.fq-cab .ag-mini', rotulo: 'Cada cartãozinho é uma tarefa com prazo neste dia', lado: 'baixo', dist: 70, larg: 260 }]);
+  } },
+  { nome: 'agenda-03-cores', async montar() {
+    await ir('#/agenda'); await esperar('.ag-cab-tarefas'); await rolar('.ag-resumo'); await espera(300);
+    await marcar([{ sel: '.ag-lg-venc' }, { sel: '.ag-lg-hoje' }, { sel: '.ag-lg-futura' }, { sel: '.ag-venc', rotulo: 'Vencida: fica no dia em que venceu, em vermelho', lado: 'baixo', dist: 70, larg: 250 }, { sel: '.ag-repro', rotulo: 'Reprogramar o prazo', lado: 'direita', dist: 50, larg: 200 }]);
+  } },
+  { nome: 'agenda-04-arrastar', async montar() {
+    await ir('#/agenda'); await esperar('.ag-cab-tarefas'); await rolar('.ag-resumo'); await espera(300);
+    await marcar([{ sel: '.ag-hoje', rotulo: 'Arraste o cartão para outro dia e o prazo muda', lado: 'baixo', dist: 80, larg: 260 }, { sel: '[data-ag-dia]:not(.hoje)', pad: 2 }]);
+  } },
+  { nome: 'tarefas-01-quadro', async montar() {
+    await ir('#/atas'); await esperar('.at-quadro'); await espera(500);
+    await marcar([{ sel: '.at-c-vencido > header', rotulo: 'Vencido: passou do prazo', lado: 'baixo', dist: 70, larg: 220 }, { sel: '.at-c-hoje > header' }, { sel: '.at-col-mais', rotulo: '+ cria uma tarefa nova', lado: 'cima', dist: 55, larg: 200 }]);
+  } },
+  { nome: 'tarefas-02-filtros', async montar() {
+    await ir('#/atas'); await esperar('.at-filtros'); await espera(300);
+    await marcar([{ sel: '.at-filtros label:nth-child(1)', rotulo: 'Todas, só as minhas, equipe, terceirizados, clientes…', lado: 'baixo', dist: 60, larg: 280 }, { sel: '.at-filtros label:nth-child(2)' }, { sel: '.at-filtros label:nth-child(3)' }, { sel: '.at-filtros label:nth-child(4)' }]);
+  } },
+  { nome: 'tarefas-03-arrastar', async montar() {
+    await ir('#/atas'); await esperar('.at-quadro'); await espera(500);
+    await marcar([{ sel: '.at-c-semana .at-card', rotulo: 'Arraste o cartão para outra coluna: o prazo muda sozinho', lado: 'esquerda', dist: 60, larg: 270 }, { sel: '.at-c-hoje' }, { sel: '.at-c-concluido > header', rotulo: 'Soltar em Concluído dá a tarefa como feita', lado: 'cima', dist: 55, larg: 230 }]);
+  } },
+  { nome: 'tarefas-04-detalhes', async montar() {
+    await ir('#/atas'); await esperar('.at-card[data-tarefa]'); await avaliar(`document.querySelector('.at-card[data-tarefa] .at-tit').click()`); await esperar('#tf-form'); await espera(500);
+    await marcar([{ sel: '#tf-form [name="t_desc"]', rotulo: 'Mude o título', lado: 'esquerda', dist: 60, larg: 160 }, { sel: '#tf-form [name="t_resp"]' }, { sel: '#tf-form [name="t_gestor"]' }, { sel: '#tf-form [name="t_prazo"]' }, { sel: '.tf-botoes .at-ok' }, { sel: '[data-tf-del]' }]);
+  } },
+  { nome: 'tarefas-05-chat', async montar() {
+    await ir('#/atas'); await esperar('.at-card[data-tarefa]'); await avaliar(`document.querySelector('.at-card[data-tarefa] .at-tit').click()`); await esperar('#tf-nota');
+    await avaliar(`(() => { const f = document.getElementById('tf-nota'); f.querySelector('textarea').value = 'Cobrei o fornecedor por WhatsApp. Responde amanhã.'; f.requestSubmit(); })()`); await espera(900);
+    await avaliar(`document.querySelector('.tf-chat').scrollIntoView({ block: 'center' })`); await espera(300);
+    await marcar([{ sel: '.tf-nota', rotulo: 'Anotações: o que foi combinado ou cobrado', lado: 'esquerda', dist: 60, larg: 240 }, { sel: '#tf-nota textarea', rotulo: 'Escreva aqui e clique em Enviar', lado: 'esquerda', dist: 60, larg: 230 }]);
+  } },
+  { nome: 'ata-11-nova', async montar() {
+    await ir('#/atas?aba=nova'); await esperar('#ata-form'); await espera(300);
+    await marcar([{ sel: '.at-importar', rotulo: 'Importar uma ata pronta: clique para abrir', lado: 'baixo', dist: 70, larg: 260 }, { sel: '#ata-form [name="obra"]' }]);
+  } },
+  { nome: 'estoque-01-abas', async montar() {
+    await ir('#/estoque'); await esperar('.pd-abas'); await espera(600);
+    await marcar([{ sel: '.pd-abas a:nth-child(1)' }, { sel: '.pd-abas a:nth-child(2)', rotulo: 'Contagem do estoque', lado: 'baixo', dist: 70, larg: 200 }, { sel: '.pd-abas a:nth-child(3)', rotulo: 'Guia de movimentação', lado: 'baixo', dist: 130, larg: 200 }, { sel: '.pd-abas a:nth-child(4)' }]);
+  } },
+  { nome: 'painel-01-departamento', async montar() {
+    await ir('#/operacao'); await esperar('.pd-pergunta'); await espera(700);
+    await marcar([{ sel: '.pd-pergunta', rotulo: 'A pergunta que o painel responde', lado: 'baixo', dist: 70, larg: 260 }, { sel: '.pd-abas a:nth-child(2)', rotulo: 'Detalhes: a tela completa de antes', lado: 'baixo', dist: 100, larg: 240 }]);
+  } },
+  { nome: 'painel-02-agir', async montar() {
+    await ir('#/operacao'); await esperar('.pd-agir'); await rolar('.pd-agir'); await espera(400);
+    await marcar([{ sel: '.pd-agir th:nth-child(1)', rotulo: 'Crítico ou atenção', lado: 'cima', dist: 60, larg: 200 }, { sel: '.pd-agir .pd-bt', rotulo: 'Criar tarefa: o alerta vira tarefa com responsável e prazo', lado: 'esquerda', dist: 60, larg: 280 }]);
+  } },
+  { nome: 'feed-01', async montar() {
+    await ir('#/feed'); await espera(600);
+    await marcar([{ sel: '#nav a[href="#/feed"]', rotulo: 'Feed: recados e novidades da equipe', lado: 'direita', dist: 90, larg: 250 }]);
+  } },
+  { nome: 'trein-01', async montar() {
+    await ir('#/treinamentos'); await espera(600);
+    await marcar([{ sel: '#nav a[href="#/treinamentos"]', rotulo: 'Treinamentos: passo a passo de cada tela', lado: 'direita', dist: 90, larg: 260 }, { sel: '.tr-topico:first-child', pad: 2 }]);
+  } },
   { nome: 'ata-01-menu', async montar() {
-    await ir('#/atas'); await esperar('#nav a[href="#/atas"]');
-    await marcar([{ sel: '#nav a[href="#/atas"]', rotulo: 'Clique aqui: Atas e pendências', lado: 'direita', dist: 90 }]);
+    await ir('#/atas?aba=atas'); await esperar('#nav a[href="#/atas?aba=atas"]');
+    await marcar([{ sel: '#nav a[href="#/atas?aba=atas"]', rotulo: 'Clique aqui: Atas', lado: 'direita', dist: 90 }]);
   } },
   { nome: 'ata-02-nova-ata', async montar() {
-    await ir('#/atas'); await esperar('.at-abas a');
-    await marcar([{ texto: 'Nova ata', em: '.at-abas a', rotulo: 'Para criar, clique em "Nova ata"', lado: 'baixo', dist: 60 }, { texto: 'Pendências', em: '.at-abas a' }]);
+    await ir('#/atas?aba=atas'); await esperar('.at-topo-bt a');
+    await marcar([{ sel: '.at-topo-bt a', rotulo: 'Para criar, clique em "+ Nova ata"', lado: 'baixo', dist: 60, larg: 230 }, { sel: '#nav a[href="#/atas"]', rotulo: 'As tarefas ficam em Tarefas', lado: 'direita', dist: 80, larg: 220 }]);
   } },
   { nome: 'ata-03-dados', async montar() {
     await ir('#/atas?aba=nova'); await esperar('#ata-form');
@@ -155,7 +220,7 @@ const SLIDES = [
     await marcar([{ sel: '.at-ata-det h2' }, { sel: '.sd-folha' }, { texto: 'Criar revisão', em: '.at-ata-det a.botao' }, { texto: 'Pauta da próxima', em: '.at-ata-det button' }]);
   } },
   { nome: 'ata-08-importar', async montar() {
-    await ir('#/atas?aba=nova'); await esperar('#ata-arquivo'); await rolar('.at-imp-linha', 'center'); await espera(300);
+    await ir('#/atas?aba=nova'); await esperar('#ata-arquivo'); await avaliar(`document.querySelector('.at-importar').open = true`); await rolar('.at-imp-linha', 'center'); await espera(300);
     await marcar([{ sel: '.at-imp-linha .botao', rotulo: 'Escolha o PDF da ata', lado: 'direita', dist: 70, larg: 230 }, { sel: '#ata-colada' }, { sel: '[data-ata-ler]', rotulo: 'Depois: ler o texto colado', lado: 'direita', dist: 70, larg: 230 }]);
   } },
   { nome: 'ata-09-depois', async montar() {
