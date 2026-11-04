@@ -18,6 +18,9 @@ const caixinhasObras = (obras, sel = [], pos = []) => {
 </div>`;
 };
 
+// setores onde a pessoa atua (gestor ou estagiário do setor, conforme o organograma): quem não está em obra nenhuma também fica ligado ao gestor
+const caixinhasSetores = (sel = []) => html`<div class="ac-chips">${SETORES.map(([, nome]) => html`<label class="ac-chip"><input type="checkbox" name="setores" value="${nome}" ${sel.includes(nome) ? html.seguro('checked') : ''}><span>${nome}</span></label>`)}</div>`;
+
 const ABAS = [...SETORES, ...PAGINAS];
 
 const SITUACOES = [['andamento', 'Em andamento'], ['pausada', 'Pausada'], ['finalizada', 'Finalizada']];
@@ -37,6 +40,7 @@ export function render({ perfis = [], obras = [], posObras = [], obrasCad = [], 
     <div class="ac-quem"><b>${p.nome || p.usuario}</b><span class="pequeno">usuário: <b>${p.usuario || p.email}</b>${p.trocar_senha ? ' · ainda não criou a senha' : ''}${p.ativo === false ? ' · bloqueado' : ''}${p.id === meuId ? ' · você' : ''}</span></div>
     <label>Função<select name="funcao"><option value="">— escolher —</option>${opcoesFuncao(p.funcao)}</select></label>
     <div class="ac-obras"><span class="ac-rot">Obras e pós-obras <span class="pequeno">(quem a pessoa acompanha)</span></span>${caixinhasObras(obras, p.obras || [], posObras)}</div>
+    <div class="ac-obras"><span class="ac-rot">Setores <span class="pequeno">(onde atua: gestor ou estagiário do setor)</span></span>${caixinhasSetores(p.setores || [])}</div>
    <span class="ac-botoes"><button type="submit" class="botao on">Salvar</button>
       <button type="button" class="botao" data-redefinir-senha="${p.id}|${p.nome || p.usuario}">Nova senha</button>
       ${protegido ? '' : html`<button type="button" class="botao ac-excluir" data-excluir-login="${p.id}|${p.nome || p.usuario}">Excluir</button>`}</span>

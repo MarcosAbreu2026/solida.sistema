@@ -1113,7 +1113,7 @@ function configurar() {
     const funcao = fd.get('funcao') || null; const obras = fd.getAll('obras');
     if (!funcao) { alert('Escolha a função da pessoa.'); return; }
     if (funcaoPorId(funcao).porObra && !obras.length) { alert('Escolha pelo menos uma obra para esta função.'); return; }
-    try { await nuvem.salvarPerfil(f.dataset.acesso, { funcao, obras }); estado.acessosMsg = 'Salvo.'; desenhar(); }
+    try { await nuvem.salvarPerfil(f.dataset.acesso, { funcao, obras, setores: fd.getAll('setores') }); estado.acessosMsg = 'Salvo.'; desenhar(); }
     catch (err) { alert(`Não foi possível salvar (${err.message || err}).`); }
   });
   // Feed: publicar, comentar, curtir, fixar e apagar
