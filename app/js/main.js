@@ -54,6 +54,13 @@ import * as contagem from './contagem.js';
 import * as analiseMed from './telas/analise-medicoes.js';
 import * as pedidos from './telas/pedidos.js';
 import * as escritorio from './telas/escritorio.js';
+import { DEPARTAMENTOS, depPorId, podeVerDep } from './organograma.js';
+import * as pd from './telas/painel-dep.js';
+import { painelDe } from './deps/index.js';
+import * as inicio from './deps/inicio.js';
+import * as obraDep from './deps/obra.js';
+import * as celularObra from './telas/celular-obra.js';
+import * as agendaSemana from './telas/agenda-semana.js';
 
 const ATUALIZAR_A_CADA_MS = 5 * 60 * 1000;
 
@@ -217,10 +224,10 @@ function carregarAgendaSemana() {
   estado.posAgenda.chave = chave;
   agendaPos.carregar(de, somarDias(de, 6)).then(() => { const r = rotaAtual(); if (r.tela === 'posobra' && (!r.sub || r.sub === 'agenda')) desenhar(); });
 }
-function garantirAtasCarregadas() {
-  if (estado.atasVisitada === '#posobra') return;
-  estado.atasVisitada = '#posobra';
-  atas.carregar().then(() => { const r = rotaAtual(); const a = document.activeElement; if (r.tela === 'posobra' && r.sub === 'pendencias' && !(a && a.closest && a.closest('#pend-form'))) desenhar(); });
+function garantirAtasCarregadas(chave = '#posobra') {
+  if (estado.atasVisitada === chave) return;
+  estado.atasVisitada = chave;
+  atas.carregar().then(() => { const r = rotaAtual(); const a = document.activeElement; if (a && a.closest && a.closest('#pend-form, #at-modal')) return; if ((r.tela === 'posobra' && r.sub === 'pendencias') || (chave !== '#posobra' && r.tela !== 'atas')) desenhar(); });
 }
 // ---------------------------------------------------------------- desenho
 
@@ -272,26 +279,75 @@ function desenharNav(sel) {
   if (soMinhasFuncoes(f)) {
     $('#nav').innerHTML = botaoRecolher() + `<div class="marca"><img src="img/logo.png" alt="Sólida"><span>Painel da empresa</span></div>`
       + `<div class="nav-perfil">${perfil.avatar(s.nome, 38)}<span><b>${esc(s.nome)}</b><small>${esc(f.nome)}</small></span></div>`
-      + item('funcoes', 'Minhas funções') + (temEstoqueRestrito(f) && paginaVisivel(f, 'estoque') ? item('estoque', 'Estoque') : '') + item('treinamentos', 'Treinamentos')
+      + item('agenda', 'Agenda') + (temEstoqueRestrito(f) && paginaVisivel(f, 'estoque') ? item('estoque', 'Estoque') : '') + item('treinamentos', 'Treinamentos')
       + `<div class="navfoot">${estado.sync.origem === 'link' ? 'Atualiza sozinho a cada 5 minutos.' : 'Mostrando os últimos dados baixados.'}</div>`;
     desenharAvatares($('#nav'));
     return;
   }
-  // perfil (primeira coisa do menu): bonequinho + nome; clicando abre a pontuação e as sugestões
+  // Menu espelhando o organograma (desenho do Marcos, 04/11/2026): Meu trabalho · Departamentos (obras dentro de Operações)
+  // · Resultados · e o que o sistema já tinha e continua (Equipe: escritório virtual, treinamentos, feed…; Diretoria: agentes, cadastros).
+  const grupo = (t) => `<div class="nav-grupo">${esc(t)}</div>`;
+  const sub = (href, nome, on) => `<a class="nav-item nav-sub${on ? ' sel' : ''}" href="${href}"><span>${esc(nome)}</span></a>`;
+  const r = rotaAtual();
+  const statusDep = (d) => { const a = CFG && d.cfg && CFG.areas.find((x) => x.id === d.cfg); return a ? a.status : ''; };
+  const obrasMenu = obrasDoMenu();
+  const deps = DEPARTAMENTOS.filter((d) => podeVerDep(d, f)).map((d) => item(d.id, d.nome, statusDep(d))
+    + (d.comObras ? obrasMenu.map((o) => sub(`#/obra/${encodeURIComponent(o)}`, o, r.tela === 'obra' && r.sub === o)).join('') : '')).join('');
+  const verAtas = paginaVisivel(f, 'atas');
+  const nTar = atas.minhasAbertas();
+  const itemTar = `<a class="nav-item${sel === 'tarefas' ? ' sel' : ''}" href="#/atas"><span>Tarefas</span>${nTar ? `<span class="nav-n">${nTar}</span>` : ''}</a>`;
   $('#nav').innerHTML = botaoRecolher() + `<div class="marca"><img src="img/logo.png" alt="Sólida"><span>Painel da empresa</span></div>`
     + `<a class="nav-perfil${sel === 'perfil' ? ' sel' : ''}" href="#/perfil" title="Meu perfil">${perfil.avatar(s.nome, 38)}<span><b>${esc(s.nome)}</b><small>${esc(f.nome)}</small></span></a>`
-    + item('geral', 'Visão geral') + (paginaVisivel(f, 'feed') ? itemFeed() : '') + (paginaVisivel(f, 'atas') ? itemAtas() : '') + (!f.semMinhaSemana && paginaVisivel(f, 'meudia') && f.editaProdutividade ? item('meudia', 'Minha semana') : '') + (!f.semMinhaSemana && paginaVisivel(f, 'meudia') ? item('funcoes', 'Minhas funções') : '') + (f.veQuadro ? item('quadro', 'Quadro de funções') : '')
-    + '<div class="nav-sep"></div>'
-    + (CFG ? CFG.areas.filter(podeVerArea).map((a) => item(a.id, a.nome, a.status)).join('') : '')
+    + grupo('Meu trabalho')
+    + item('geral', 'Início') + item('agenda', 'Agenda') + (verAtas ? itemTar + `<a class="nav-item${sel === 'atas' ? ' sel' : ''}" href="#/atas?aba=atas"><span>Atas</span></a>` : '')
+    + grupo('Departamentos') + deps
+    + (f.id === 'socio' ? grupo('Resultados') + item('equipe', 'Ranking') : '')   // ranking, funcionário do mês e recompensas: só a diretoria
+    + grupo('Equipe')
+    + (!f.semMinhaSemana && paginaVisivel(f, 'meudia') && f.editaProdutividade ? item('meudia', 'Minha semana') : '') + (f.veQuadro ? item('quadro', 'Quadro de funções') : '')
     + (paginaVisivel(f, 'estoque') ? item('estoque', 'Estoque') : '')
-    + (paginaVisivel(f, 'marketing') ? item('marketing', 'Marketing') : '')
-    + '<div class="nav-sep"></div>'   // equipe: escritório virtual, treinamentos (e o que vier depois)
+    + (paginaVisivel(f, 'feed') ? itemFeed() : '')
     + (paginaVisivel(f, 'escritorio') ? item('escritorio', 'Escritório virtual') : '')
     + (paginaVisivel(f, 'treinamentos') ? item('treinamentos', 'Treinamentos') : '')
-    + (f.id === 'socio' ? item('equipe', 'Equipe') : '')   // ranking, funcionário do mês e recompensas: só o sócio / diretoria
-    + (f.veAgentes ? `<div class="nav-sep"></div>${item('agentes', 'Agentes')}${nuvem.NA_NUVEM && funcaoReal().id === 'socio' ? item('acessos', 'Cadastros') : ''}` : '')
+    + (paginaVisivel(f, 'marketing') ? item('marketing', 'Marketing') : '')
+    + (f.veAgentes ? `${grupo('Diretoria')}${item('agentes', 'Agentes')}${nuvem.NA_NUVEM && funcaoReal().id === 'socio' ? item('acessos', 'Cadastros') : ''}` : '')
     + `<div class="navfoot">${estado.sync.origem === 'link' ? 'Atualiza sozinho a cada 5 minutos.' : 'Mostrando os últimos dados baixados.'}</div>`;
   desenharAvatares($('#nav'));
+}
+
+// obras em curso no submenu de Operações (as do planejamento + as em andamento do cadastro); quem é de obra vê só as suas
+function obrasDoMenu() {
+  const CFG = estado.cfg; const f = funcaoAtual();
+  const plan = CFG ? ((CFG.areas.find((a) => a.id === 'planejamento') || {}).porObra || []).map((o) => o.obra) : [];
+  const cad = (estado.obrasCad || []).filter((c) => c.situacao === 'andamento' && /^Mo\d/i.test(c.codigo)).map((c) => c.codigo);
+  const fin = new Set((estado.obrasCad || []).filter((c) => c.situacao === 'finalizada').map((c) => c.codigo));
+  const todas = [...new Set([...plan, ...cad])].filter((o) => !fin.has(o)).sort();
+  return f.porObra ? todas.filter((o) => obrasDaPessoa().includes(o)) : todas;
+}
+
+// página de uma obra (Operações › Mo531, desenho do Marcos): Resumo + abas; as abas antigas (cronograma, programação,
+// medições, escopo e aditivos) vêm de telas/operacao.js, as novas de deps/obra.js
+function telaObraNova(rota) {
+  const cod = rota.sub; const abaId = rota.arg || '';
+  const f = funcaoAtual();
+  if (!cod) { location.hash = '#/operacao'; return ''; }
+  if (f.porObra && !obrasDaPessoa().includes(cod)) return `<div class="erro">A obra ${esc(cod)} não está entre as suas obras.</div>`;
+  const ctx = ctxPainel(depPorId('operacao'), estado.cfg.areas.find((a) => a.id === 'operacao'));
+  const base = `#/obra/${encodeURIComponent(cod)}`;
+  const tabs = obraDep.ABAS.map((a) => ({ ...a, href: `${base}${a.id ? `/${a.id}` : ''}` }));
+  const legado = ['cronograma', 'programacao', 'medicoes', 'escopo'];
+  let corpo;
+  if (!abaId) corpo = obraDep.resumo(ctx, cod);
+  else if (legado.includes(abaId)) corpo = operacao.abaDaObra(estado.cfg, estado.drive.projetos, cod, abaId, rota.params, `${base}/escopo`, { veValores: veValores() });
+  else corpo = obraDep.aba(ctx, cod, abaId);
+  return `<div class="pd">${obraDep.cabecalho(ctx, cod)}${pd.abas(tabs, abaId)}<div class="pd-corpo">${corpo}</div></div>`;
+}
+
+// tudo o que um painel de departamento pode precisar (contrato em app/js/deps/comum.js)
+function ctxPainel(dep, area) {
+  const f = funcaoAtual();
+  return { dep, CFG: estado.cfg, area: area || null, f, veValores: veValores(), drive: estado.drive || {}, base: estado.base, efetivo: estado.efetivo || { dias: {} },
+    terceiros: estado.terceiros || { empresas: [] }, ferrChk: estado.ferrChk || { registros: [] }, mc: estado.mc || { obras: [] }, celular: celularObra.registros(),
+    pendencias: atas.todasPendencias(), hoje: hojeISO(), visiveis: f.porObra ? obrasDaPessoa() : null, sync: estado.sync, obrasMenu: obrasDoMenu() };
 }
 
 // bonequinho do escritório como foto do perfil (nenhuma foto é guardada)
@@ -435,23 +491,31 @@ function desenhar() {
   const CFG = estado.cfg;
   // onde está cada funcionário: só o efetivo de HOJE (zera todo dia); a lista de nomes vem do RH
   if (CFG) { CFG.funcionariosRH = CFG.funcionariosRH || CFG.funcionarios; CFG.funcionarios = efetivoTela.funcionariosDeHoje(CFG.funcionariosRH, estado.efetivo); }
-  const rota = rotaAtual();
+  let rota = rotaAtual();
   let tela = rota.tela;
   const f = funcaoAtual();
+  if (tela === 'funcoes') tela = 'agenda';   // "Minhas funções" virou a Agenda (desenho do Marcos)
   if (tela === 'agentes' && !f.veAgentes) tela = 'geral';
   if (tela === 'equipe' && f.id !== 'socio') tela = 'geral';
-  if (tela === 'quadro' && !f.veQuadro) tela = 'funcoes';
-  if ((tela === 'meudia' || tela === 'funcoes') && f.semMinhaSemana) tela = 'geral';
-  if (tela === 'meudia' && !f.editaProdutividade) tela = 'funcoes';   // quem não lança produtividade só tem as funções
-  if (tela === 'funcoes' && !paginaVisivel(f, 'meudia')) tela = 'geral';
-  if (['meudia', 'feed', 'estoque', 'escritorio', 'treinamentos', 'atas', 'marketing'].includes(tela) && !paginaVisivel(f, tela)) tela = 'geral';   // aba que a diretoria tirou desta função
-  if (soMinhasFuncoes(f)) tela = (tela === 'treinamentos' || (tela === 'estoque' && temEstoqueRestrito(f))) ? tela : 'funcoes';   // por enquanto: só Minhas funções e Treinamentos (o resto é da diretoria e do Administrativo)
+  if (tela === 'quadro' && !f.veQuadro) tela = 'agenda';
+  if (tela === 'meudia' && f.semMinhaSemana) tela = 'geral';
+  if (tela === 'meudia' && !f.editaProdutividade) tela = 'agenda';   // quem não lança produtividade só tem a agenda
+  if (tela === 'agenda' && !paginaVisivel(f, 'meudia') && f.id !== 'socio') tela = 'geral';
+  if (['meudia', 'feed', 'estoque', 'escritorio', 'treinamentos', 'atas', 'tarefas', 'marketing'].includes(tela) && !paginaVisivel(f, tela === 'tarefas' ? 'atas' : tela)) tela = 'geral';   // aba que a diretoria tirou desta função
+  if (soMinhasFuncoes(f)) tela = (tela === 'treinamentos' || (tela === 'estoque' && temEstoqueRestrito(f))) ? tela : 'agenda';   // por enquanto: só a Agenda e os Treinamentos (o resto é da diretoria e do Administrativo)
 
-  let area = CFG && CFG.areas.find((a) => a.id === tela);
-  if (area && !podeVerArea(area)) { area = null; tela = 'geral'; }   // setor fora do perfil: nem existe
+  // departamento do organograma (Painel no desenho do Marcos + Detalhes = a tela que já existia)
+  let dep = depPorId(tela);
+  if (dep && !podeVerDep(dep, f)) { dep = null; tela = 'geral'; }
+  let area = CFG && CFG.areas.find((a) => a.id === (dep ? dep.cfg : tela));
+  if (area && !dep && !podeVerArea(area)) { area = null; tela = 'geral'; }   // setor fora do perfil: nem existe
+  const temLegado = !!(dep && area) || tela === 'geral';
+  const ehPainel = (dep || tela === 'geral') && (!temLegado || ((!rota.sub || rota.sub === 'painel') && ![...rota.params.keys()].length));
+  if ((dep || tela === 'geral') && !ehPainel && rota.sub === 'detalhe') rota = { ...rota, sub: '' };
   const ehObraPlan = tela === 'planejamento' && rota.sub === 'obra';
-  const fixas = ['agentes', 'meudia', 'funcoes', 'quadro', 'estoque', 'escritorio', 'perfil', 'feed', 'treinamentos', 'acessos', 'atas', 'marketing', 'equipe'];
-  const sel = tela === 'funcionarios' ? 'rh' : (area || fixas.includes(tela)) ? tela : 'geral';
+  const fixas = ['agentes', 'meudia', 'agenda', 'quadro', 'estoque', 'escritorio', 'perfil', 'feed', 'treinamentos', 'acessos', 'atas', 'tarefas', 'marketing', 'equipe', 'obra', 'celular'];
+  const abaAtas = rota.params.get('aba');
+  const sel = tela === 'funcionarios' ? 'rh' : tela === 'tarefas' || (tela === 'atas' && !['atas', 'nova'].includes(abaAtas)) ? 'tarefas' : (dep || area || fixas.includes(tela)) ? tela : 'geral';
   desenharNav(sel);
   desenharPerfil();
   desenharVerComo();
@@ -460,8 +524,10 @@ function desenhar() {
   const d = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
   $('#data').textContent = d.charAt(0).toUpperCase() + d.slice(1);
   const titulo = ehObraPlan ? rota.arg
+    : dep ? (dep.titulo || dep.nome)
+    : tela === 'obra' ? rota.sub
     : area ? area.nome
-    : ({ agentes: 'Agentes', funcionarios: 'Funcionários por obra', meudia: 'Minha semana', funcoes: 'Minhas funções', quadro: 'Quadro de funções', estoque: 'Estoque', escritorio: 'Escritório virtual', perfil: 'Perfil', feed: 'Feed', treinamentos: 'Treinamentos', acessos: 'Cadastros', atas: 'Atas e pendências', marketing: 'Marketing', equipe: 'Equipe' }[tela] || 'Visão geral');
+    : ({ agentes: 'Agentes', funcionarios: 'Funcionários por obra', meudia: 'Minha semana', agenda: 'Agenda', quadro: 'Quadro de funções', estoque: 'Estoque', escritorio: 'Escritório virtual', perfil: 'Perfil', feed: 'Feed', treinamentos: 'Treinamentos', acessos: 'Cadastros', atas: ['atas', 'nova'].includes(abaAtas) ? 'Atas' : 'Tarefas', tarefas: 'Tarefas', marketing: 'Marketing', equipe: 'Ranking', celular: 'Celular da obra' }[tela] || (f.id === 'socio' ? 'Início · visão do CEO' : 'Início'));
   $('#titulo').textContent = titulo;
   document.title = `${titulo} · Sólida`;
 
@@ -483,7 +549,7 @@ function desenhar() {
     Promise.all([nuvem.listarPerfis(), nuvem.listarObras().catch(() => estado.obrasCad || [])]).then(([ps, oc]) => { estado.obrasCad = oc; if (rotaAtual().tela === 'acessos') $('#conteudo').innerHTML = `<div>${acessos.render({ perfis: ps, obras: obrasDeAcesso(), posObras: posObrasAtivas(), obrasCad: oc, meuId: nuvem.perfilAtual() && nuvem.perfilAtual().id, msg: estado.acessosMsg || '', aviso: estado.acessosAviso })}</div>`; estado.acessosMsg = ''; estado.acessosAviso = null; });
     return;
   }
-  if (tela === 'atas') {
+  if (tela === 'atas' || tela === 'tarefas') {
     $('#conteudo').innerHTML = `<div>${atas.render({ params: rota.params, obras: obrasDeAtas(), sugestoes: ((estado.terceiros && estado.terceiros.empresas) || []).map((e) => e.empresa), msg: estado.atasMsgHash === location.hash ? (estado.atasMsg || '') : '' })}</div>`;
     ordenar.aplicar();
     { const fm = document.getElementById('ata-form'); if (fm) atas.atualizarNomeDoForm(fm); }
@@ -506,8 +572,14 @@ function desenhar() {
     desenharAvatares();
     return;
   }
-  if (tela === 'meudia' || tela === 'funcoes') {
-    $('#conteudo').innerHTML = `<div>${meudia.render({ dia: estado.dia, CFG, pendAberta: estado.pendAberta, soFuncoes: tela === 'funcoes', aba: tela === 'funcoes' ? 'funcoes' : rota.sub, params: rota.params, semanaRef: estado.semanaRef })}</div>`;
+  if (tela === 'meudia') {
+    $('#conteudo').innerHTML = `<div>${meudia.render({ dia: estado.dia, CFG, pendAberta: estado.pendAberta, soFuncoes: false, aba: rota.sub, params: rota.params, semanaRef: estado.semanaRef })}</div>`;
+    return;
+  }
+  // Agenda: as funções da semana + as tarefas (pendências com prazo) no mesmo calendário
+  if (tela === 'agenda') {
+    garantirAtasCarregadas('#agenda');
+    $('#conteudo').innerHTML = `<div>${agendaSemana.render({ dia: estado.dia, CFG, pendAberta: estado.pendAberta, params: rota.params, semanaRef: estado.semanaRef, pendencias: atas.todasPendencias(), eu: nuvem.NA_NUVEM ? (nuvem.perfilAtual() || {}).id : idPessoa(), nomeDe: atas.nomePessoa })}</div>`;
     return;
   }
   // escritório virtual: tela com animação própria (não redesenha sozinha a cada 5 min)
@@ -536,7 +608,17 @@ function desenhar() {
   const T = criarTelas(CFG, veValores(), opcoesTelas());
   let out;
   try {
-    if (ehObraPlan) out = T.telaObra(rota.arg);
+    // ---- desenho do Marcos: Início, painéis dos departamentos, página da obra e celular da obra
+    const abasDe = (base, ativa) => pd.abas([{ id: '', nome: 'Painel', href: base }, { id: 'detalhe', nome: tela === 'geral' ? 'Visão geral (anterior)' : 'Detalhes', href: `${base}/detalhe` }], ativa);
+    if (tela === 'geral' && ehPainel) {
+      out = `<div class="pd">${pd.cabecalho({ rotulo: new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' }) })}${abasDe('#/geral', '')}${inicio.painel(ctxPainel(null, null))}</div>`;
+    } else if (dep && ehPainel) {
+      out = `<div class="pd">${pd.cabecalho({ resp: dep.resp })}${temLegado ? abasDe(`#/${dep.id}`, '') : ''}${painelDe(dep.id, ctxPainel(dep, area))}</div>`;
+    } else if (tela === 'obra') {
+      out = telaObraNova(rota);
+    } else if (tela === 'celular') {
+      out = String(celularObra.render(ctxPainel(depPorId('operacao'), CFG.areas.find((a) => a.id === 'operacao')), rota.sub, rota.params));
+    } else if (ehObraPlan) out = T.telaObra(rota.arg);
     else if (area && area.id === 'operacao') {
       // Operação: acompanhamento de todas as obras (quem é de obra vê só as suas e não vê o Resumo do setor)
       const visiveis = deObra ? obrasDaPessoa() : null;
@@ -612,6 +694,8 @@ function desenhar() {
       out = rota.sub ? `<div>${abas}${conteudo}</div>` : T.telaArea(area, `<div style="margin-bottom:34px">${abas}${resumo || ''}</div>`);
     } else if (area) out = T.telaArea(area);
     else out = T.telaGeral();
+    // tela antiga dentro do departamento: fica na aba "Detalhes"
+    if ((dep || tela === 'geral') && !ehPainel) out = `<div class="pd">${dep ? pd.cabecalho({ resp: dep.resp }) : ''}${abasDe(`#/${dep ? dep.id : 'geral'}`, 'detalhe')}<div class="pd-legado">${out}</div></div>`;
   } catch (e) {
     console.error(e);
     out = `<div class="erro">Erro ao montar esta tela: ${esc(e.message)}</div>`;
@@ -1340,6 +1424,16 @@ document.addEventListener('click', (e) => {
   abrirCalendario({ ancora: b, valor: p ? p.prazo : '', aoEscolher: async (novo) => {
     try { await atas.reprogramar(id, novo); desenhar(); } catch (err) { alert(`Não foi possível mudar o prazo (${err.message || err}).`); }
   } });
+});
+// "Criar tarefa" nos painéis (Quem precisa agir): o alerta vira pendência, já com o texto, a obra e o setor
+document.addEventListener('click', (e) => {
+  const b = e.target.closest && e.target.closest('[data-criar-tarefa]'); if (!b) return;
+  const antigo = document.getElementById('at-modal'); if (antigo) antigo.remove();
+  const m = document.createElement('div'); m.id = 'at-modal'; m.className = 'at-modal';
+  const texto = b.dataset.ctTexto || '';
+  const assunto = (texto.match(/^([^:—–-]{3,40})[:—–-]/) || [])[1] || (b.dataset.ctObra || '');
+  m.innerHTML = `<div class="at-modal-caixa">${String(atas.formAvulsa(obrasDeAtas(), b.dataset.ctPrazo || '', b.dataset.ctSetor || '', { obra: b.dataset.ctObra || '', desc: texto, assunto: assunto.trim() }))}</div>`;
+  document.body.appendChild(m); const campo = m.querySelector('[name="p_resp"]'); if (campo) campo.focus();
 });
 // nova pendência avulsa (sem ata), aberta pelo + de cada caixinha do quadro por prazo
 document.addEventListener('click', (e) => {

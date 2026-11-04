@@ -378,8 +378,8 @@ export function formAvulsa(obras, prazo, setorPadrao = '', preset = {}) {
       <label class="av-m">Obra<select name="av_obra"><option value="">Nenhuma</option>${listaObras.map((o) => html`<option value="${o}" ${o === preset.obra ? html.seguro('selected') : ''}>${o}</option>`)}</select></label>
       <label class="av-m">Departamento<select name="av_setor" required><option value="">— escolher —</option>${SETORES_ATA.map((s) => html`<option value="${s}" ${s === setorPadrao ? html.seguro('selected') : ''}>${s}</option>`)}</select></label>
       <div class="pf-linha av-linha" data-tipo="solida" data-kind="pendencia">
-        <label class="av-ass">Assunto<input name="p_assunto" class="pf-assunto" placeholder="ex.: ACM" autocomplete="off"></label>
-        <label class="av-desc">O que fazer<input name="p_desc" placeholder="ex.: Retirar da área gourmet" autocomplete="off"></label>
+        <label class="av-ass">Assunto<input name="p_assunto" class="pf-assunto" placeholder="ex.: ACM" autocomplete="off" value="${preset.assunto || ''}"></label>
+        <label class="av-desc">O que fazer<input name="p_desc" placeholder="ex.: Retirar da área gourmet" autocomplete="off" value="${preset.desc || ''}"></label>
         <label>Responsável<select name="p_tipo" data-pf-tipo><option value="solida">Sólida</option><option value="terceirizado">Terceirizado</option><option value="cliente">Cliente</option><option value="arquitetura">Arquitetura</option></select></label>
         <label class="av-quem">Nome da empresa ou pessoa
           <select name="p_resp" class="pf-sol"><option value="">Pessoa da Sólida…</option>${opcoesPessoas('')}</select>
@@ -535,3 +535,6 @@ export function render({ params, obras = [], msg = '', sugestoes = [] }) {
     ${NA_NUVEM ? '' : html`<p class="pequeno" style="margin-top:20px">Modo de teste (computador do escritório): as atas ficam só neste navegador. Na internet elas ficam no banco, compartilhadas.</p>`}
   </div>`;
 }
+
+// nome de uma pessoa pelo id (Agenda, painéis)
+export const nomePessoa = (id, reserva) => nomeDe(id, reserva);

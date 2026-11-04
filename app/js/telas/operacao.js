@@ -279,6 +279,21 @@ function abaAditivos(proj, params, base, obra, veValores) {
     })}</div>`;
 }
 
+// Para a página nova da obra (#/obra/<cod>, desenho do Marcos): o corpo de uma aba antiga e a leitura do cronograma
+export const cronogramaDa = (projetosDrive, cod) => lerCronograma(((projetosDrive && projetosDrive.obras) || []).find((p) => p.obra === cod));
+export function abaDaObra(CFG, projetosDrive, cod, abaId, params, base, { veValores = false } = {}) {
+  const p = ((projetosDrive && projetosDrive.obras) || []).find((x) => x.obra === cod);
+  const o = obrasAcompanhadas(CFG).find((x) => x.obra === cod) || { obra: cod };
+  const corpo = {
+    cronograma: () => abaCronograma(lerCronograma(p)),
+    programacao: () => abaProgramacaoObra(p),
+    medicoes: () => abaMedicoesObra(CFG, o),
+    escopo: () => html`${abaEscopo(p, veValores)}<h3 style="margin:30px 0 12px">Aditivos</h3>${abaAditivos(p, params, base, cod, veValores)}`,
+  }[abaId];
+  return corpo ? corpo() : '';
+}
+export const enderecoDa = (projetosDrive, cod) => { const p = ((projetosDrive && projetosDrive.obras) || []).find((x) => x.obra === cod); return p && p.endereco ? p.endereco.replace(/_/g, ' · ') : ''; };
+
 export function porObra(CFG, visiveis, projetosDrive, params, base, { veValores = false } = {}) {
   const obras = obrasAcompanhadas(CFG, visiveis);
   if (!obras.length) return { cards: '', painel: '' };
