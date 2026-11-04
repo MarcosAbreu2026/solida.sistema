@@ -1052,6 +1052,8 @@ function configurar() {
       estado.acessosAviso = { titulo: `Senha nova de ${nome}`, usuario, senha }; desenhar();
     } catch (err) { alert(`Não foi possível (${err.message || err}).`); }
   });
+  // o corpo da página nunca rola (quem rola é o menu e o conteúdo): se o foco de um campo escondido empurrar o corpo, volta ao topo
+  document.addEventListener('focusin', () => { requestAnimationFrame(() => { for (const el of [document.body, document.documentElement]) if (el.scrollTop || el.scrollLeft) { el.scrollTop = 0; el.scrollLeft = 0; } }); });
   // caixinhas de obras: "todas" / "nenhuma"
   document.addEventListener('click', (e) => {
     const t = e.target.closest('[data-obras-todas]'); if (!t) return;
