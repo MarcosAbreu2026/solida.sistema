@@ -59,7 +59,7 @@ const limitar = (v, a, b) => Math.max(a, Math.min(b, v));
 // Como a pessoa vê as tarefas: 'lista' (padrão, texto inteiro) ou 'quadro' (por horário). Guardado neste navegador.
 const CHAVE_VISTA = 'solida.funcoesVista';
 // Consulta (só o gestor de obra): ver, sem marcar nem mexer, o quadro do estagiário ou do encarregado. Não vale para os funcionários.
-const CONSULTAVEIS = ['estagiario', 'encarregado'];
+const CONSULTAVEIS = ['estagiario', 'encarregado', 'ajudante'];
 let consulta = null;
 let vista = 'lista';   // 21/10: a vista "Por horário" (quadro com horas) foi desligada: com várias tarefas no mesmo horário o texto ficava cortado e sobreposto
 function trocarVista() { vista = 'lista'; try { localStorage.removeItem(CHAVE_VISTA); } catch { /* sem armazenamento */ } }
@@ -215,9 +215,11 @@ function funcoesSemana(ref, CFG) {
     <button type="button" class="botao ${vista === 'lista' ? 'on' : ''}" data-vista-fn="lista">Lista por dia</button>
     <button type="button" class="botao ${vista === 'quadro' ? 'on' : ''}" data-vista-fn="quadro">Por horário</button></div>`;
 
-  const seletor = eu0.id === 'gestor_obra' ? html`<div class="fl-vista" role="group" aria-label="Qual quadro ver"><span class="pequeno">Ver:</span>
-    <button type="button" class="botao ${cons ? '' : 'on'}" data-consulta="">Minhas funções</button>
-    ${CONSULTAVEIS.map((id) => html`<button type="button" class="botao ${cons === id ? 'on' : ''}" data-consulta="${id}">${FUNCOES.find((x) => x.id === id).nome.replace(' de obra', '')} (consulta)</button>`)}</div>` : '';
+  // "Outras funções" (pedido do Felipe, 04/11): em vez de botões, uma caixa de seleção no canto direito do quadro (só o gestor de obra);
+  // escolher uma função mostra o quadro dela só para consulta; "Minhas funções" volta ao seu.
+  const seletor = eu0.id === 'gestor_obra' ? html`<label class="fn-outras">Outras funções
+    <select data-consulta-sel aria-label="Ver o quadro de outra função"><option value="" ${cons ? '' : html.seguro('selected')}>Minhas funções</option>
+    ${CONSULTAVEIS.map((id) => html`<option value="${id}" ${cons === id ? html.seguro('selected') : ''}>${FUNCOES.find((x) => x.id === id).nome}</option>`)}</select></label>` : '';
 
   let pop = '';
   if (cons) popup = null;
@@ -227,10 +229,9 @@ function funcoesSemana(ref, CFG) {
   }
 
   return html`${nav}
-    ${seletor}
     <section class="fn-painel ${cons ? 'fq-consulta' : ''}">
       <header class="fn-cab"><h3>${f.nome}</h3>
-        <span class="pequeno">${cons ? 'só para consultar' : previstas ? `${feitas} de ${previstas} feitas até hoje` : 'nenhuma tarefa até hoje'}</span></header>
+        <span class="fn-cab-dir"><span class="pequeno">${cons ? 'só para consultar' : previstas ? `${feitas} de ${previstas} feitas até hoje` : 'nenhuma tarefa até hoje'}</span>${seletor}</span></header>
       ${previstas && !cons ? html`<div class="pct" style="margin:6px 0 12px"><i style="width:${Math.round((feitas / previstas) * 100)}%"></i></div>` : ''}
       ${vista === 'lista' ? html`<div class="fh-larga">${vistaQuadro}</div><div class="fh-estreita">${vistaLista}</div>` : html`<div class="fq-quadro"><div class="fq-canto"></div>${cabecas}<div class="fq-horas" style="height:${altTotal}px">${horas}</div>${trilhos}</div>
       <p class="legenda-semana">Arraste um cartão para outro dia ou horário; puxe a borda de baixo para mudar a duração; clique para ver os detalhes. Cartões no mesmo horário ficam lado a lado. O ajuste fica guardado neste navegador.</p>`}
@@ -322,6 +323,7 @@ export function instalarQuadro(aoMudar) {
   });
   document.addEventListener('pointercancel', reset);
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && popup) { popup = null; aoMudar(); } });
+  document.addEventListener('change', (e) => { const sel = e.target.closest && e.target.closest('[data-consulta-sel]'); if (sel) { consulta = sel.value || null; popup = null; aoMudar(); } });
   document.addEventListener('click', (e) => {
     const q = e.target.closest && e.target.closest('[data-consulta]');
     if (q) { consulta = q.dataset.consulta || null; popup = null; aoMudar(); return; }

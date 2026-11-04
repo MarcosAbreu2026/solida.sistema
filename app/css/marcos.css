@@ -272,3 +272,8 @@ body.nav-recolhido nav::after { display: none; }
 .treinamentos .pl-lista { gap: 6px; }
 .treinamentos .tr-grupo { margin-bottom: 14px; }
 .treinamentos .tr-grupo-tit { margin-bottom: 6px; }
+
+/* ---- Agenda do gestor: caixa de seleção "Outras funções" no canto direito do quadro */
+.fn-cab-dir { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: flex-end; }
+.fn-outras { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.fn-outras select { font: inherit; font-size: 13px; font-weight: 600; padding: 5px 10px; border: 1px solid #B9CCE2; border-radius: 8px; background: #E6EEF7; color: #1F4A78; cursor: pointer; }
