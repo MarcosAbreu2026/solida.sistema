@@ -564,7 +564,7 @@ function desenhar() {
   }
   if (tela === 'acessos' && nuvem.NA_NUVEM && funcaoReal().id === 'socio') {
     $('#conteudo').innerHTML = '<div class="carregando">Carregando a equipe…</div>';
-    Promise.all([nuvem.listarPerfis(), nuvem.listarObras().catch(() => estado.obrasCad || [])]).then(([ps, oc]) => { estado.obrasCad = oc; if (rotaAtual().tela === 'acessos') $('#conteudo').innerHTML = `<div>${acessos.render({ perfis: ps, obras: obrasDeAcesso(), posObras: posObrasAtivas(), obrasCad: [...oc, ...obrasSemCadastro(oc)], meuId: nuvem.perfilAtual() && nuvem.perfilAtual().id, msg: estado.acessosMsg || '', aviso: estado.acessosAviso })}</div>`; estado.acessosMsg = ''; estado.acessosAviso = null; });
+    Promise.all([nuvem.listarPerfis(), nuvem.listarObras().catch(() => estado.obrasCad || [])]).then(([ps, oc]) => { estado.obrasCad = oc; if (rotaAtual().tela === 'acessos') $('#conteudo').innerHTML = `<div>${acessos.render({ perfis: ps, obras: obrasDeAcesso(), posObras: posObrasAtivas(), obrasCad: [...oc, ...obrasSemCadastro(oc)], listaAberta: !!estado.listaObrasAberta, meuId: nuvem.perfilAtual() && nuvem.perfilAtual().id, msg: estado.acessosMsg || '', aviso: estado.acessosAviso })}</div>`; estado.acessosMsg = ''; estado.acessosAviso = null; });
     return;
   }
   if (tela === 'atas' || tela === 'tarefas') {
@@ -1199,6 +1199,8 @@ function configurar() {
     try { await nuvem.salvarObra({ codigo, nome: String(fd.get('nome') || '').trim(), situacao: fd.get('situacao') || 'andamento' }); estado.acessosMsg = `Obra ${codigo} salva.`; desenhar(); }
     catch (err) { alert(`Não foi possível salvar a obra (${err.message || err}).`); }
   });
+  // a lista de obras do Cadastro lembra se estava aberta (para não fechar ao salvar uma obra)
+  document.addEventListener('toggle', (e) => { if (e.target.matches && e.target.matches('.ac-lista-obras')) estado.listaObrasAberta = e.target.open; }, true);
   document.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-excluir-obra]'); if (!b) return;
     const codigo = b.dataset.excluirObra;

@@ -243,3 +243,16 @@ body.nav-recolhido nav::after { display: none; }
 .at-p-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; font-size: 12px; color: var(--muted); }
 .at-p-atras .at-p-tit { color: #8E2A24; }
 .at-pauta-nota { margin: 4px 0 0; }
+
+/* ---- Cadastros: lista de obras que abre e fecha */
+.ac-faltam { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding: 10px 14px; margin: 10px 0; background: #FBEFC2; border-radius: 8px; font-size: 13px; }
+.ac-lista-obras { margin-top: 10px; }
+.ac-grupo-obra { margin: 14px 0 6px; font-family: var(--pd-cond, inherit); font-size: 18px; color: var(--pd-azul, #2B5C99); }
+.ac-obra-item { border: 1px solid var(--linha2); border-radius: 8px; margin-bottom: 6px; background: #fff; }
+.ac-obra-item > summary { display: flex; align-items: center; gap: 12px; padding: 8px 12px; cursor: pointer; list-style: none; flex-wrap: wrap; }
+.ac-obra-item > summary::-webkit-details-marker { display: none; }
+.ac-obra-item > summary b { font-family: var(--pd-cond, inherit); font-size: 17px; min-width: 70px; }
+.ac-obra-nome { flex: 1; min-width: 140px; color: var(--muted); font-size: 13px; }
+.ac-sit { font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px; background: #DCE8F6; color: #1F4677; }
+.ac-sit-pausada { background: #FBEFC2; color: #7A5608; } .ac-sit-finalizada { background: #EDF0F3; color: #5B6570; }
+.ac-obra-item .ac-linha { border: 0; border-top: 1px solid var(--linha2); border-radius: 0 0 8px 8px; margin: 0; }

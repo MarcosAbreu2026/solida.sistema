@@ -26,7 +26,7 @@ const ABAS = [...SETORES, ...PAGINAS];
 const SITUACOES = [['andamento', 'Em andamento'], ['pausada', 'Pausada'], ['finalizada', 'Finalizada']];
 const opcoesSituacao = (sel) => SITUACOES.map(([v, n]) => html`<option value="${v}" ${v === sel ? html.seguro('selected') : ''}>${n}</option>`);
 
-export function render({ perfis = [], obras = [], posObras = [], obrasCad = [], msg = '', aviso = null, meuId = null }) {
+export function render({ perfis = [], obras = [], posObras = [], obrasCad = [], msg = '', aviso = null, meuId = null, listaAberta = false }) {
   const linhaObra = (o) => html`<form class="ac-linha ${o.situacao === 'finalizada' ? 'ac-bloq' : ''}" data-obra-cad="${o.codigo}">
     <div class="ac-quem"><b>${o.codigo}</b>${o.semCadastro ? html`<span class="pequeno pendente">ainda não cadastrada (vem dos dados): clique em Salvar para cadastrar</span>` : ''}</div>
     <label>Nome<input name="nome" value="${o.nome || ''}" placeholder="ex.: Residencial X"></label>
@@ -62,14 +62,20 @@ export function render({ perfis = [], obras = [], posObras = [], obrasCad = [], 
       <p class="pequeno">Passe para a pessoa. No primeiro acesso ela cria a própria senha. Esta senha não aparece de novo.</p></div>` : ''}
     ${msg ? html`<p class="msg ok">${msg}</p>` : ''}
     <section class="secao"><h2>Obras <span class="pequeno">${obrasCad.length}</span></h2>
-      <p class="pequeno">Obra com código <b>Mo…</b> é obra (operação) e com <b>Po…</b> é pós-obra: o sistema entende sozinho. As que já existem nos dados mas ainda não foram cadastradas aparecem aqui com um aviso; é só clicar em Salvar. Cadastre as que faltam e mude a situação: <b>em andamento</b> e <b>pausada</b> aparecem para escolher nos logins e nas listas; <b>finalizada</b> sai das listas.</p>
+      <p class="pequeno">Obra com código <b>Mo…</b> é obra (operação) e com <b>Po…</b> é pós-obra: o sistema entende sozinho. Abra a lista abaixo para ver, renomear ou mudar a situação de qualquer uma: <b>em andamento</b> e <b>pausada</b> aparecem para escolher nos logins e nas listas; <b>finalizada</b> sai das listas.</p>
       <form class="ac-novo" id="ob-novo">
         <label>Código<input name="codigo" placeholder="ex.: Mo565" autocapitalize="none" spellcheck="false" required></label>
         <label>Nome <span class="pequeno">(opcional)</span><input name="nome" placeholder="ex.: Residencial X"></label>
         <label>Situação<select name="situacao">${opcoesSituacao('andamento')}</select></label>
         <button type="submit" class="botao on">Cadastrar obra</button>
       </form>
-      ${obrasCad.map(linhaObra)}</section>
+      <details class="caixa ac-lista-obras" ${listaAberta ? html.seguro('open') : ''}>
+        <summary><span class="caixa-tit">Todas as obras e pós-obras</span><span class="contador">${obrasCad.length}</span><span class="pequeno">${obrasCad.filter((o) => /^mo/i.test(o.codigo)).length} obras · ${obrasCad.filter((o) => !/^mo/i.test(o.codigo)).length} pós-obras · clique para abrir a lista</span></summary>
+        <div class="caixa-corpo">
+          ${[['Obras', obrasCad.filter((o) => /^mo/i.test(o.codigo))], ['Pós-obras', obrasCad.filter((o) => !/^mo/i.test(o.codigo))]].filter(([, l]) => l.length).map(([titulo, l]) => html`<h3 class="ac-grupo-obra">${titulo} <span class="pequeno">${l.length}</span></h3>
+            ${l.map((o) => html`<details class="ac-obra-item"><summary><b>${o.codigo}</b><span class="ac-obra-nome">${o.nome || 'sem nome'}</span><span class="ac-sit ac-sit-${o.situacao}">${({ andamento: 'em andamento', pausada: 'pausada', finalizada: 'finalizada' })[o.situacao] || o.situacao}</span>${o.semCadastro ? html`<span class="pequeno pendente">não cadastrada</span>` : ''}</summary>${linhaObra(o)}</details>`)}`)}
+        </div>
+      </details></section>
     <section class="secao"><h2>Criar login</h2>
       <form class="ac-novo" id="ac-novo">
         <label>Nome<input name="nome" placeholder="ex.: Mariana C." required></label>
