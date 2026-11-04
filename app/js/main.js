@@ -241,10 +241,21 @@ function fonteDoPosObra() {
 
 // obras que dá para vincular a uma pessoa: só as obras (Mo…), sem as encerradas no cadastro da planilha de ferramentas
 // obras nas atas: quem é de obra só as suas; os demais, todas as obras ativas
-function obrasDeAtas() { return funcaoAtual().porObra ? obrasDaPessoa() : [...obrasDeAcesso(), ...obrasDisponiveis().filter((o) => /^po/i.test(o)), ...((estado.base && estado.base.obras) || []).filter((o) => !['Concluído', 'Cancelado', 'Sem OS', 'Sem situação'].includes(o.situacao)).map((o) => o.obra)]; }
+// A caixinha de obra sai do CADASTRO (Cadastros): toda obra não finalizada, Mo… = obra e Po… = pós-obra. Obra nova cadastrada aparece sozinha.
+// Sem cadastro carregado (modo de teste), vale o que vem dos dados.
+const numerico = (a, b) => String(a).localeCompare(String(b), 'pt-BR', { numeric: true });
+const cadastroAtivo = () => (estado.obrasCad || []).filter((c) => c.situacao !== 'finalizada').map((c) => c.codigo);
+function obrasDeAtas() {
+  if (funcaoAtual().porObra) return obrasDaPessoa();
+  if ((estado.obrasCad || []).length) return [...cadastroAtivo().sort(numerico), ...atas.obrasForaDoCadastro(estado.obrasCad.map((c) => c.codigo)).sort(numerico)];
+  return [...obrasDeAcesso(), ...obrasDisponiveis().filter((o) => /^po/i.test(o)), ...((estado.base && estado.base.obras) || []).filter((o) => !['Concluído', 'Cancelado', 'Sem OS', 'Sem situação'].includes(o.situacao)).map((o) => o.obra)];
+}
 
 // pós-obras ativos (os mesmos que aparecem nas atas): também dá para vincular pessoas a eles em Acessos
-function posObrasAtivas() { return [...new Set(((estado.base && estado.base.obras) || []).filter((o) => !['Concluído', 'Cancelado', 'Sem OS', 'Sem situação'].includes(o.situacao)).map((o) => o.obra))].filter((o) => o && !/^Mod/i.test(o)).sort((a, b) => String(a).localeCompare(String(b), 'pt-BR')); }
+function posObrasAtivas() {
+  if ((estado.obrasCad || []).length) return cadastroAtivo().filter((o) => /^po/i.test(o)).sort(numerico);
+  return [...new Set(((estado.base && estado.base.obras) || []).filter((o) => !['Concluído', 'Cancelado', 'Sem OS', 'Sem situação'].includes(o.situacao)).map((o) => o.obra))].filter((o) => o && !/^Mo\d/i.test(o)).sort((a, b) => String(a).localeCompare(String(b), 'pt-BR'));
+}
 // obras que existem nos dados (planejamento, RH, pós-obra) mas ainda não estão no cadastro: aparecem em Cadastros para cadastrar com um clique
 function obrasSemCadastro(oc) {
   const tem = new Set(oc.map((c) => String(c.codigo).toLowerCase()));
@@ -252,6 +263,7 @@ function obrasSemCadastro(oc) {
   return [...new Set(dosDados)].filter((o) => !tem.has(String(o).toLowerCase())).sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true })).map((codigo) => ({ codigo, nome: '', situacao: 'andamento', semCadastro: true }));
 }
 function obrasDeAcesso() {
+  if ((estado.obrasCad || []).length) return cadastroAtivo().filter((o) => /^mo/i.test(o)).sort(numerico);
   const enc = new Set((((estado.drive || {}).estoque || {}).cadastroObras || []).filter((c) => /encerr|finaliz|conclu/i.test(c.status || '')).map((c) => c.obra));
   return obrasDisponiveis().filter((o) => /^Mo\d/i.test(o) && !enc.has(o));
 }

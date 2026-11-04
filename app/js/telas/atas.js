@@ -298,7 +298,7 @@ function filtrar(params, setorFixo = '') {
     const terc = params.get('terc') || '';
     if (terc && (p.responsavel || (terc.startsWith('cat:') ? p.responsavel_categoria !== terc.slice(4) : p.responsavel_nome !== terc.slice(5)))) return false;
     if (setor && p.setor !== setor) return false;
-    if (obra && String(p.obra || '').toLowerCase() !== obra.toLowerCase()) return false;
+    if (obra && codigoDaObra(p.obra) !== codigoDaObra(obra)) return false;
     if (q && !`${p.descricao} ${nomeDe(p.responsavel, p.responsavel_nome)} ${onde(p)} ${(ataDe(p) || {}).titulo || ''}`.toLocaleLowerCase('pt-BR').includes(q)) return false;
     return true;
   });
@@ -318,13 +318,21 @@ function seletorTerceirizado(atual) {
 // Na caixinha de obra, sempre dois grupos: Obras (Mo…) e Pós-obras (os pós-obras ativos, PO… e os de nome)
 // regra automática (pedido do Felipe): começa com Mo = obra (operação); começa com Po = pós-obra (maiúscula ou minúscula, tanto faz)
 export const ehObraNormal = (o) => /^mo/i.test(String(o).trim());
+// o código da obra (Mo531, Po577…) é o que vale para comparar: "PO531 - Aumento de carga" e "Po531" são a mesma obra
+export const codigoDaObra = (o) => { const s = String(o || '').trim(); const m = s.match(/^(mo|po)\d+[a-z]?/i); return (m ? m[0] : s).toLowerCase(); };
+// obras que aparecem nas pendências mas não têm código no cadastro (ex.: "PO - Alexandre"): entram na lista para dar para filtrar
+export function obrasForaDoCadastro(codigos) {
+  const tem = new Set(codigos.map(codigoDaObra)); const fora = new Map();
+  for (const p of dados.pendencias) { if (p.status === 'cancelada' || !p.obra) continue; const k = codigoDaObra(p.obra); if (!tem.has(k) && !fora.has(k)) fora.set(k, p.obra); }
+  return [...fora.values()];
+}
 const ehObraPura = ehObraNormal;
 export function gruposDeObras(obras, atual = '') {
-  // sem repetir a mesma obra escrita de dois jeitos (Po577 / PO577): vale a primeira
+  // sem repetir a mesma obra escrita de dois jeitos (Po577 / PO577 / PO577 - nome): vale a primeira
   const vistos = new Set(); const lista = [];
-  for (const o of obras.filter(Boolean)) { const k = String(o).trim().toLowerCase(); if (!vistos.has(k)) { vistos.add(k); lista.push(o); } }
-  if (atual && !vistos.has(String(atual).trim().toLowerCase())) lista.push(atual);
-  atual = lista.find((o) => String(o).trim().toLowerCase() === String(atual).trim().toLowerCase()) || atual;
+  for (const o of obras.filter(Boolean)) { const k = codigoDaObra(o); if (!vistos.has(k)) { vistos.add(k); lista.push(o); } }
+  if (atual && !vistos.has(codigoDaObra(atual))) lista.push(atual);
+  atual = lista.find((o) => codigoDaObra(o) === codigoDaObra(atual)) || atual;
   const opt = (o) => html`<option value="${o}" ${o === atual ? html.seguro('selected') : ''}>${o}</option>`;
   const ob = lista.filter(ehObraPura).sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true })); const po = lista.filter((o) => !ehObraPura(o)).sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }));
   return html`${ob.length ? html`<optgroup label="Obras">${ob.map(opt)}</optgroup>` : ''}${po.length ? html`<optgroup label="Pós-obras">${po.map(opt)}</optgroup>` : ''}`;
@@ -678,7 +686,7 @@ function montarPautas(params) {
   const alfa = params.get('ordem') === 'alfa';
   const q = chaveTxt(params.get('q'));
   const tipos = filtro ? TIPOS_DA_PAUTA[filtro] : null;
-  const abertas = dados.pendencias.filter((p) => naLista(p) && p.status === 'aberta' && (!tipos || tipos.includes(p.responsavel_tipo || 'solida')) && (!params.get('obra') || String(p.obra || '').toLowerCase() === params.get('obra').toLowerCase())
+  const abertas = dados.pendencias.filter((p) => naLista(p) && p.status === 'aberta' && (!tipos || tipos.includes(p.responsavel_tipo || 'solida')) && (!params.get('obra') || codigoDaObra(p.obra) === codigoDaObra(params.get('obra')))
     && (!params.get('setor') || p.setor === params.get('setor')) && (!q || chaveTxt(`${p.descricao} ${p.responsavel_nome} ${p.obra} ${p.setor}`).includes(q)));
   const grupos = new Map();
   for (const p of abertas) {
