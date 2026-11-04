@@ -177,3 +177,8 @@ a.pd-obra:hover { color: var(--pd-azul); }
 .ag-resumo { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 22px; margin: 0 0 12px; font-size: 13px; }
 .ag-resumo .legenda-semana { margin: 0; }
 .ag-cab-tarefas .ag-mini b { color: inherit; margin-right: 4px; }
+
+.ag-linha-venc { display: flex; align-items: center; gap: 3px; }
+.ag-linha-venc .ag-mini { flex: 1; min-width: 0; }
+.ag-repro { flex: none; width: 20px; height: 20px; border-radius: 4px; border: 1px solid #C94A43; background: #fff; color: #A8322C; font-size: 12px; line-height: 1; cursor: pointer; }
+.ag-repro:hover { background: #A8322C; color: #fff; }

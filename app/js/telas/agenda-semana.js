@@ -1,14 +1,13 @@
 // Agenda (desenho do Marcos: "Agenda" no topo do menu) = as funções da semana de cada pessoa (antes "Minhas funções")
 // com as tarefas da aba Tarefas no mesmo calendário, como no Google Agenda: em cada dia, cartõezinhos pequenos
 // (uma linha cada) com as pendências de prazo naquele dia. Pedido do Felipe (04/11/2026).
-//   cor: vencida = vermelho (aparece no dia de hoje) · de hoje = azul · futura = cinza-azulado · concluída = riscada
-//   entram as mesmas pendências da aba Tarefas (na lista, abertas ou feitas): a pessoa é responsável ou gestora;
-//   a diretoria vê todas as que ela enxerga. Mais de 3 num dia: mostra 3 e "+N" (clicar abre as outras).
+//   cor: vencida = vermelho · de hoje = azul · futura = cinza-azulado · concluída = riscada
+//   A tarefa fica no dia do prazo (vencida NÃO é puxada para hoje: a pessoa vê o vermelho no dia que passou e reprograma pelo ↻).
+//   Entram só as tarefas da própria pessoa (responsável ou gestora), inclusive para a diretoria. Mais de 3 num dia: mostra 3 e "+N".
 
 import { html } from '../formato.js';
 import { hojeISO, somarDias, inicioDaSemana } from '../datas.js';
 import { feriado } from '../feriados.js';
-import { funcaoAtual } from '../sessao.js';
 import * as meudia from './meudia.js';
 
 const DIA_CURTO = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -24,7 +23,10 @@ function cartaozinho(p, { eu, hoje, nomeDe }) {
   const quem = p.responsavel ? (nomeDe ? nomeDe(p.responsavel, p.responsavel_nome) : p.responsavel_nome) : p.responsavel_nome;
   const sup = eu && p.responsavel !== eu && (p.gestores || []).includes(eu);
   const titulo = [`${ass ? `${ass}: ` : ''}${resto}`, p.obra || p.setor, `prazo ${dm(p.prazo)}${p.prazo < hoje && !feita ? ' (vencida)' : ''}`, quem ? `responsável: ${quem}${sup ? ' · você é gestor' : ''}` : '', feita ? 'concluída' : ''].filter(Boolean).join(' · ');
-  return html`<a class="ag-mini ${cls}" href="#/atas?q=${encodeURIComponent(resto.slice(0, 40))}" title="${titulo}">${p.obra ? html`<b>${p.obra}</b>` : ''}${ass ? `${ass} · ` : ''}${resto}</a>`;
+  const venc = !feita && p.prazo < hoje;
+  const card = html`<a class="ag-mini ${cls}" href="#/atas?q=${encodeURIComponent(resto.slice(0, 40))}" title="${titulo}">${p.obra ? html`<b>${p.obra}</b>` : ''}${ass ? `${ass} · ` : ''}${resto}</a>`;
+  // vencida: botão ↻ para reprogramar o prazo (abre o calendário com feriados, o mesmo da aba Tarefas)
+  return venc ? html`<span class="ag-linha-venc">${card}<button type="button" class="ag-repro" data-cal-prazo="${p.id}" title="Reprogramar o prazo" aria-label="Reprogramar o prazo">↻</button></span>` : card;
 }
 
 // tarefas de cada dia da semana, já com as vencidas no dia de hoje
@@ -32,16 +34,12 @@ function tarefasPorDia({ pendencias = [], eu, ref }) {
   const hoje = hojeISO();
   const ini = inicioDaSemana(ref || hoje);
   const dias = [0, 1, 2, 3, 4, 5].map((i) => somarDias(ini, i));
-  const diretoria = funcaoAtual().id === 'socio';
   const lista = pendencias.filter((p) => p.prazo && p.na_lista !== false && ['aberta', 'feita'].includes(p.status)
-    && (diretoria || (eu && (p.responsavel === eu || (p.gestores || []).includes(eu)))));
-  const semanaTemHoje = hoje >= ini && hoje <= somarDias(ini, 6);
+    && (eu && (p.responsavel === eu || (p.gestores || []).includes(eu))));
   const mapa = {};
   for (const d of dias) {
-    const doDia = lista.filter((p) => p.prazo === d && !(semanaTemHoje && d < hoje && p.status === 'aberta'));   // vencidas abertas vão para hoje
-    const venc = d === hoje ? lista.filter((p) => p.status === 'aberta' && p.prazo < hoje).sort((a, b) => a.prazo.localeCompare(b.prazo)) : [];
     const ordem = (p) => (p.status === 'feita' ? 2 : 1);
-    mapa[d] = [...venc, ...doDia.sort((a, b) => ordem(a) - ordem(b))];
+    mapa[d] = lista.filter((p) => p.prazo === d).sort((a, b) => ordem(a) - ordem(b));
   }
   return { dias, mapa, hoje };
 }
@@ -50,7 +48,7 @@ function faixaTarefas(opts) {
   const { dias, mapa, hoje } = tarefasPorDia(opts);
   const cols = dias.filter((d, i) => i < 5 || mapa[d].length);
   const total = cols.reduce((s, d) => s + mapa[d].filter((p) => p.status === 'aberta').length, 0);
-  const venc = (mapa[hoje] || []).filter((p) => p.status === 'aberta' && p.prazo < hoje).length;
+  const venc = cols.reduce((n, d) => n + mapa[d].filter((p) => p.status === 'aberta' && p.prazo < hoje).length, 0);
   const cel = (d) => {
     const l = mapa[d]; const ctx = { eu: opts.eu, hoje, nomeDe: opts.nomeDe };
     return html`${l.slice(0, MAX_DIA).map((p) => cartaozinho(p, ctx))}
@@ -58,7 +56,7 @@ function faixaTarefas(opts) {
   };
   return html`<section class="ag-tarefas">
     <div class="ag-h"><h3>Tarefas do dia</h3>
-      <span class="pequeno">${total ? `${total} em aberto nesta semana${venc ? `, ${venc} ${venc === 1 ? 'vencida' : 'vencidas'} (no dia de hoje)` : ''}` : 'nenhuma tarefa com prazo nesta semana'}</span>
+      <span class="pequeno">${total ? `${total} em aberto nesta semana${venc ? `, ${venc} ${venc === 1 ? 'vencida' : 'vencidas'} (reprograme pelo ↻)` : ''}` : 'nenhuma tarefa com prazo nesta semana'}</span>
       <a class="link" href="#/atas">Abrir Tarefas →</a></div>
     <div class="ag-faixa" style="--nd:${cols.length}">
       ${cols.map((d) => html`<div class="ag-dia ${d === hoje ? 'hoje' : ''}">
@@ -87,8 +85,8 @@ export function render(opts) {
     const d = porRotulo.get(rot); if (!d) return m; n++; return `${ini}${chips(d)}`;
   });
   const total = t.dias.reduce((s, d) => s + (t.mapa[d] || []).filter((p) => p.status === 'aberta').length, 0);
-  const venc = (t.mapa[t.hoje] || []).filter((p) => p.status === 'aberta' && p.prazo < t.hoje).length;
-  const resumo = String(html`<div class="ag-resumo"><span><b>Tarefas</b> ${total ? `${total} em aberto nesta semana${venc ? `, ${venc} ${venc === 1 ? 'vencida' : 'vencidas'} (no dia de hoje)` : ''}` : 'nenhuma tarefa com prazo nesta semana'}</span>
+  const venc = t.dias.reduce((n, d) => n + (t.mapa[d] || []).filter((p) => p.status === 'aberta' && p.prazo < t.hoje).length, 0);
+  const resumo = String(html`<div class="ag-resumo"><span><b>Tarefas</b> ${total ? `${total} em aberto nesta semana${venc ? `, ${venc} ${venc === 1 ? 'vencida' : 'vencidas'} (reprograme pelo ↻)` : ''}` : 'nenhuma tarefa com prazo nesta semana'}</span>
     <span class="legenda-semana"><span class="lg ag-lg-venc"></span> vencida <span class="lg ag-lg-hoje"></span> de hoje <span class="lg ag-lg-futura"></span> próximos dias <span class="lg ag-lg-feita"></span> concluída</span>
     <a class="link" href="#/atas">Abrir Tarefas →</a></div>`);
   if (n) {
