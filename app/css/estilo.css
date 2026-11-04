@@ -1424,7 +1424,7 @@ table.ordenavel th.ord-desc::after { content: ' ▼'; font-size: 9px; }
 .at-p-sem { border-color: #D8DCE1; color: var(--muted); background: #FAFAFA; }
 .at-chip { font-size: 11px; padding: 1px 8px; border-radius: 999px; background: var(--calcario); color: var(--muted); }
 .at-quem { display: flex; justify-content: space-between; gap: 8px; align-items: center; font-size: 12px; }
-.at-pessoa { font-weight: 700; color: #2D4F86; } .at-ata { color: var(--muted); font-size: 11.5px; }
+.at-pessoa { font-weight: 700; color: #2D4F86; } .at-gestor { font-size: 11.5px; color: var(--muted); background: #EEF2F8; border-radius: 10px; padding: 1px 8px; } .at-ata { color: var(--muted); font-size: 11.5px; }
 .at-acoes { display: flex; gap: 6px; }
 .ac-mini.at-ok { color: #2F6B43; border-color: #A9D1B6; }
 .at-card.at-concluido { opacity: .75; }

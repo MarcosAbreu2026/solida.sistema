@@ -55,13 +55,13 @@ function visivelParaMim(x, ehAta, pendDaAta) {
   const f = funcaoAtual();
   if (['socio', 'administrativo'].includes(f.id)) return true;
   const eu = souEu();
-  if (x.criado_por === eu || (!ehAta && x.responsavel === eu)) return true;
+  if (x.criado_por === eu || (!ehAta && (x.responsavel === eu || x.gestor === eu))) return true;
   if (x.obra && (sessao().obras || []).includes(x.obra)) return true;
   if (!f.porObra && x.setor) {
     const nomes = SETORES.filter(([id]) => (f.areas || []).includes(id)).map(([, nome]) => nome);
     if (nomes.includes(x.setor)) return true;
   }
-  return ehAta && pendDaAta.some((p) => String(p.ata_id) === String(x.id) && p.responsavel === eu);
+  return ehAta && pendDaAta.some((p) => String(p.ata_id) === String(x.id) && (p.responsavel === eu || p.gestor === eu));
 }
 export async function carregar() {
   try {
@@ -293,6 +293,7 @@ function filtrar(params, setorFixo = '') {
     if (p.status === 'cancelada' || !naLista(p) || !doEscopo(p, setorFixo)) return false;
     if (pessoa.startsWith('cat:')) { if (p.responsavel_categoria !== pessoa.slice(4)) return false; }
     else if (pessoa.startsWith('tipo:')) { if ((p.responsavel_tipo || 'solida') !== pessoa.slice(5)) return false; }
+    else if (pessoa === 'sup') { if (p.gestor !== eu) return false; }
     else if (pessoa === 'eu' ? p.responsavel !== eu : pessoa && p.responsavel !== pessoa) return false;
     const terc = params.get('terc') || '';
     if (terc && (p.responsavel || (terc.startsWith('cat:') ? p.responsavel_categoria !== terc.slice(4) : p.responsavel_nome !== terc.slice(5)))) return false;
@@ -320,7 +321,7 @@ function barraFiltros(params, obras, aba, ctx = {}) {
   const vista = params.get('vista') === 'lista' ? 'lista' : 'prazo';
   return html`<div class="at-filtros">
     ${aba === 'atas' ? '' : html`<div class="subnav" role="tablist"><a role="tab" class="${vista === 'prazo' ? 'on' : ''}" href="${base}?vista=prazo">Prazo</a><a role="tab" class="${vista === 'lista' ? 'on' : ''}" href="${base}?vista=lista">Lista</a></div>`}
-    ${aba === 'atas' ? '' : sel('pessoa', 'Responsável', [['eu', 'Só as minhas'], ['tipo:solida', 'Equipe da Sólida'], ['tipo:terceirizado', 'Terceirizados (todos)'], ['tipo:cliente', 'Clientes'], ['tipo:arquitetura', 'Arquitetura'], ...pessoasComPendencia().map((p) => [p.id, p.nome])], params.get('pessoa') || '')}
+    ${aba === 'atas' ? '' : sel('pessoa', 'Responsável', [['eu', 'Só as minhas'], ['sup', 'Que eu supervisiono'], ['tipo:solida', 'Equipe da Sólida'], ['tipo:terceirizado', 'Terceirizados (todos)'], ['tipo:cliente', 'Clientes'], ['tipo:arquitetura', 'Arquitetura'], ...pessoasComPendencia().map((p) => [p.id, p.nome])], params.get('pessoa') || '')}
     ${aba !== 'atas' && params.get('pessoa') === 'tipo:terceirizado' ? seletorTerceirizado(params.get('terc') || '') : ''}
     ${ctx.setorFixo ? '' : sel('setor', 'Setor', SETORES_ATA.map((s) => [s, s]), params.get('setor') || '')}
     ${sel('obra', 'Obra', obras.map((o) => [o, o]), params.get('obra') || '')}
@@ -351,7 +352,7 @@ function cartao(p, hoje) {
   return html`<article class="at-card at-${col}">
     <div class="at-tit">${descRica(p.descricao)}</div>
     <div class="at-meta">${prazoBtn(p, rotuloPrazo, `at-prazo at-p-${col}`)}${reprogramada(p) ? html`<span class="at-repro-tag" title="${tituloRepro(p)}">↻ Reprogramada (era ${dm(p.prazo_original).slice(0, 5)})</span>` : ''}${onde(p) ? html`<span class="at-chip">${onde(p)}</span>` : ''}${p.os ? html`<a class="at-chip at-os" href="#/posobra/os/${encodeURIComponent(p.os)}" title="Abrir a OS desta pendência">${p.os}</a>` : ''}</div>
-    <div class="at-quem"><span class="at-pessoa">${nomeDe(p.responsavel, p.responsavel_nome)}</span>${p.responsavel_tipo && p.responsavel_tipo !== 'solida' ? html`<span class="at-tipo at-t-${p.responsavel_tipo}">${ROTULO_TIPO[p.responsavel_tipo] || 'Externo'}${p.responsavel_categoria ? ` · ${p.responsavel_categoria}` : ''}</span>` : ''}${a ? html`<a class="at-ata" href="#/atas?aba=atas&ata=${a.id}" title="Ata de origem">ata ${dm(a.data).slice(0, 5)}</a>` : ''}</div>
+    <div class="at-quem"><span class="at-pessoa">${nomeDe(p.responsavel, p.responsavel_nome)}</span>${p.responsavel_tipo && p.responsavel_tipo !== 'solida' ? html`<span class="at-tipo at-t-${p.responsavel_tipo}">${ROTULO_TIPO[p.responsavel_tipo] || 'Externo'}${p.responsavel_categoria ? ` · ${p.responsavel_categoria}` : ''}</span>` : ''}${p.gestor ? html`<span class="at-gestor" title="Gestor desta pendência: acompanha o responsável">gestor: ${nomeDe(p.gestor, p.gestor_nome)}</span>` : ''}${a ? html`<a class="at-ata" href="#/atas?aba=atas&ata=${a.id}" title="Ata de origem">ata ${dm(a.data).slice(0, 5)}</a>` : ''}</div>
     <div class="at-acoes">
       ${p.status === 'feita' ? html`<button type="button" class="ac-mini" data-pend="${p.id}|aberta">↺ reabrir</button>` : html`<button type="button" class="ac-mini at-ok" data-pend="${p.id}|feita">✓ concluir</button>`}
       <button type="button" class="ac-mini" data-pend-del="${p.id}" title="${p.ata_id ? 'Tirar da lista de pendências (o item continua na ata)' : 'Excluir esta pendência'}">${p.ata_id ? 'tirar da lista' : 'excluir'}</button>
@@ -402,8 +403,8 @@ function vistaLista(lista, hoje, params) {
   const st = params.get('status') || 'abertas';
   const itens = lista.filter((p) => (st === 'todas' ? true : st === 'feitas' ? p.status === 'feita' : p.status === 'aberta'));
   return html`<div class="at-lista-topo"><label>Mostrar<select data-atas-filtro="status"><option value="abertas" ${st === 'abertas' ? html.seguro('selected') : ''}>Abertas</option><option value="feitas" ${st === 'feitas' ? html.seguro('selected') : ''}>Concluídas</option><option value="todas" ${st === 'todas' ? html.seguro('selected') : ''}>Todas</option></select></label></div>
-    <div class="tabela-rolagem"><table class="tab ordenavel at-tab"><thead><tr><th>Pendência</th><th>Responsável</th><th>Prazo</th><th>Obra / setor</th><th>Ata</th><th>Situação</th><th></th></tr></thead><tbody>
-      ${itens.map((p) => { const col = coluna(p, hoje); const a = ataDe(p); return html`<tr><td>${descRica(p.descricao)}</td><td>${nomeDe(p.responsavel, p.responsavel_nome)}</td>
+    <div class="tabela-rolagem"><table class="tab ordenavel at-tab"><thead><tr><th>Pendência</th><th>Responsável</th><th>Gestor</th><th>Prazo</th><th>Obra / setor</th><th>Ata</th><th>Situação</th><th></th></tr></thead><tbody>
+      ${itens.map((p) => { const col = coluna(p, hoje); const a = ataDe(p); return html`<tr><td>${descRica(p.descricao)}</td><td>${nomeDe(p.responsavel, p.responsavel_nome)}</td><td>${p.gestor ? nomeDe(p.gestor, p.gestor_nome) : ''}</td>
         <td class="${col === 'vencido' ? 'pendente' : ''}">${prazoBtn(p, p.prazo ? dm(p.prazo) : html`<span class="muted">sem prazo</span>`)}${reprogramada(p) ? html` <span class="at-repro-tag" title="${tituloRepro(p)}">↻ era ${dm(p.prazo_original).slice(0, 5)}</span>` : ''}</td><td>${onde(p)}</td>
         <td>${a ? html`<a class="link" href="#/atas?aba=atas&ata=${a.id}">${dm(a.data).slice(0, 5)}</a>` : ''}</td>
         <td>${p.status === 'feita' ? 'Concluída' : col === 'vencido' ? 'Atrasada' : 'Aberta'}</td>
