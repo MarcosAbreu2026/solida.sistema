@@ -320,9 +320,7 @@ function barraFiltros(params, obras, aba, ctx = {}) {
   const sel = (nome, rotulo, opcoes, atual) => html`<label>${rotulo}<select data-atas-filtro="${nome}"><option value="">Todos</option>${opcoes.map(([v, t]) => html`<option value="${v}" ${atual === v ? html.seguro('selected') : ''}>${t}</option>`)}</select></label>`;
   const vista = params.get('vista') === 'lista' ? 'lista' : 'prazo';
   return html`<div class="at-filtros">
-    ${aba === 'atas' ? '' : html`<div class="subnav" role="tablist"><a role="tab" class="${vista === 'prazo' ? 'on' : ''}" href="${base}?vista=prazo">Prazo</a><a role="tab" class="${vista === 'lista' ? 'on' : ''}" href="${base}?vista=lista">Lista</a></div>`}
-    ${aba === 'atas' ? '' : sel('pessoa', 'Responsável', [['eu', 'Só as minhas'], ['sup', 'Que eu supervisiono'], ['tipo:solida', 'Equipe da Sólida'], ['tipo:terceirizado', 'Terceirizados (todos)'], ['tipo:cliente', 'Clientes'], ['tipo:arquitetura', 'Arquitetura'], ...pessoasComPendencia().map((p) => [p.id, p.nome])], params.get('pessoa') || '')}
-    ${aba !== 'atas' && params.get('pessoa') === 'tipo:terceirizado' ? seletorTerceirizado(params.get('terc') || '') : ''}
+    ${aba === 'atas' ? '' : sel('pessoa', 'Responsável', [['eu', 'Só as minhas'], ['tipo:solida', 'Equipe da Sólida'], ['tipo:terceirizado', 'Terceirizados (todos)'], ['tipo:cliente', 'Clientes'], ['tipo:arquitetura', 'Arquitetura']], params.get('pessoa') || '')}
     ${ctx.setorFixo ? '' : sel('setor', 'Setor', SETORES_ATA.map((s) => [s, s]), params.get('setor') || '')}
     ${sel('obra', 'Obra', obras.map((o) => [o, o]), params.get('obra') || '')}
     <label>Procurar<input type="search" data-atas-filtro="q" value="${params.get('q') || ''}" placeholder="texto…"></label>
@@ -515,7 +513,7 @@ export function renderPendencias({ params, obras = [], setorFixo = '', base = '#
       <div class="card"><div class="card-valor ${atrasadas ? 'tom-ruim' : ''}">${atrasadas}</div><div class="card-rotulo">Atrasadas</div></div>
       <div class="card"><div class="card-valor">${minhas}</div><div class="card-rotulo">Abertas comigo</div></div></div>
     ${barraFiltros(params, obras, 'pendencias', { base, setorFixo })}
-    ${params.get('vista') === 'lista' ? vistaLista(lista, hoje, params) : vistaPrazo(lista, hoje, setorFixo)}`;
+    ${vistaPrazo(lista, hoje, setorFixo)}`;
 }
 export function render({ params, obras = [], msg = '', sugestoes = [] }) {
   definirSugestoes(sugestoes);
@@ -587,8 +585,20 @@ export async function salvarTarefa(id, c) {
 
 // arrastar para uma coluna do quadro de Tarefas: muda o prazo (ou conclui). Vencido não é destino: ali só entra quem passou da data.
 export async function moverParaColuna(id, col) {
-  const p = pendenciaPorId(id); if (!p || col === 'vencido') return false;
+  const p = pendenciaPorId(id); if (!p) return false;
   const hoje = hojeISO();
+  // de volta para o Vencido: o prazo volta para o dia em que estava antes da última reprogramação (só se esse dia já passou)
+  if (col === 'vencido') {
+    const rs = [...(p.reprogramacoes || [])]; const ult = rs[rs.length - 1];
+    if (!ult || !ult.de || ult.de >= hoje) return false;
+    rs.pop();
+    if (p.status === 'feita') await mudarStatus(id, 'aberta');
+    const mud = { prazo: ult.de, reprogramacoes: rs };
+    if (NA_NUVEM) await atualizarPendenciaNuvem(id, mud);
+    else { const l = lerLocal(); const q = l.pendencias.find((x) => String(x.id) === String(id)); if (q) Object.assign(q, mud); gravarLocal(l); }
+    await carregar();
+    return true;
+  }
   if (col === 'concluido') { if (p.status !== 'feita') await mudarStatus(id, 'feita'); return true; }
   if (p.status === 'feita') await mudarStatus(id, 'aberta');
   await reprogramar(id, col === 'sem' ? '' : prazoDaColuna(col, hoje));

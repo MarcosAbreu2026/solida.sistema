@@ -281,7 +281,7 @@ function desenharNav(sel) {
       + `<div class="nav-perfil">${perfil.avatar(s.nome, 38)}<span><b>${esc(s.nome)}</b><small>${esc(f.nome)}</small></span></div>`
       // pedido do Felipe (04/11): Meu trabalho (Agenda, Tarefas, Atas) e Equipe (Treinamentos, Feed)
       + '<div class="nav-grupo">Meu trabalho</div>' + item('agenda', 'Agenda')
-      + (f.porObra ? obrasDaPessoa().map((o) => `<a class="nav-item${location.hash.startsWith(`#/celular/${o}`) ? ' sel' : ''}" href="#/celular/${encodeURIComponent(o)}"><span>Celular da obra ${esc(o)}</span></a>`).join('') : '')
+      + (f.porObra ? obrasDaPessoa().map((o) => `<a class="nav-item nav-celular${location.hash.startsWith(`#/celular/${o}`) ? ' sel' : ''}" href="#/celular/${encodeURIComponent(o)}"><span>Celular da obra ${esc(o)}</span></a>`).join('') : '')
       + (paginaVisivel(f, 'atas') ? itemTarefasRestrito(sel) + `<a class="nav-item${sel === 'atas' ? ' sel' : ''}" href="#/atas?aba=atas"><span>Atas</span></a>` : '')
       + '<div class="nav-grupo">Equipe</div>'
       + (temEstoqueRestrito(f) && paginaVisivel(f, 'estoque') ? item('estoque', 'Estoque') : '') + item('treinamentos', 'Treinamentos')
@@ -565,7 +565,6 @@ function desenhar() {
     $('#conteudo').innerHTML = `<div>${atas.render({ params: rota.params, obras: obrasDeAtas(), sugestoes: ((estado.terceiros && estado.terceiros.empresas) || []).map((e) => e.empresa), msg: estado.atasMsgHash === location.hash ? (estado.atasMsg || '') : '' })}</div>`;
     ordenar.aplicar();
     { const fm = document.getElementById('ata-form'); if (fm) atas.atualizarNomeDoForm(fm); }
-    gravAtualizar();
     if (estado.atasVisitada !== location.hash) {   // ao entrar na tela (ou mudar de aba), busca os dados mais novos
       estado.atasVisitada = location.hash;
       atas.carregar().then(() => { const a = document.activeElement; if (rotaAtual().tela === 'atas' && !(a && a.closest && a.closest('#ata-form, #pend-form'))) desenhar(); });
@@ -1540,7 +1539,7 @@ document.addEventListener('drop', async (e) => {
   e.preventDefault(); const id = arrastandoId; arrastandoId = null; a.classList.remove('tf-sobre');
   try {
     if (a.dataset.agDia) await atas.reprogramar(id, a.dataset.agDia);
-    else if (!(await atas.moverParaColuna(id, a.dataset.col))) { alert('Para a coluna "Vencido" a tarefa vai sozinha quando passa do prazo. Arraste para outra coluna.'); return; }
+    else if (!(await atas.moverParaColuna(id, a.dataset.col))) { alert('Esta tarefa não tem um prazo anterior vencido para voltar. Arraste para outra coluna.'); return; }
     await redesenharTarefas();
   } catch (err) { alert(`Não foi possível mudar o prazo (${err.message || err}).`); }
 });

@@ -217,3 +217,7 @@ a.pd-obra:hover { color: var(--pd-azul); }
 /* Reposição: filtro por categoria */
 .rp-cats { margin: 4px 0 6px; padding-bottom: 12px; align-items: center; }
 .rp-cats-rot { margin-right: 4px; font-weight: 700; }
+
+/* Celular da obra: só aparece no celular (encarregado, gestor… preenchem pela obra); no computador não é uma aba */
+.nav-celular, .pd-so-celular { display: none !important; }
+@media (max-width: 760px) { .nav-celular { display: flex !important; } .pd-so-celular { display: inline-block !important; } }

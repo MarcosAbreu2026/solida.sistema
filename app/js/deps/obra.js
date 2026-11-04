@@ -97,7 +97,7 @@ export function resumo(ctx, cod) {
     ...(ctx.veValores ? [{ rotulo: 'Aprovados', valor: aprov.length ? brl(aprov.reduce((s, a) => s + (typeof a.total === 'number' ? a.total : 0), 0)) : '—', sub: 'soma dos aditivos aprovados' }] : []),
   ], { colunas: 3 }) : html`<p class="pd-vazio">Nenhuma planilha de escopo na pasta da obra (GERENCIAMENTO › DOC › ESCOPO).</p>`;
 
-  return html`<div class="pd-sec-h"><h2>Meta do dia</h2><a class="pd-bt pd-bt-cheio" href="#/celular/${encodeURIComponent(cod)}">Abrir celular da obra</a></div>
+  return html`<div class="pd-sec-h"><h2>Meta do dia</h2><a class="pd-bt pd-bt-cheio pd-so-celular" href="#/celular/${encodeURIComponent(cod)}">Abrir celular da obra</a></div>
     <div class="pd-grade3">${resOntem}${metaHoje}${metaAm}</div>
     ${como}
     ${plan}
@@ -139,7 +139,7 @@ function abaDiario(ctx, cod) {
   return html`${pd.caixa('Diário de obra no Mais Controle', html`<div>${pd.selo(i.status === 'ok' ? 'ok' : i.status === 'nao' ? 'critico' : '', i.status === 'ok' ? 'Em dia' : i.status === 'nao' ? 'Pendente' : 'Sem informação')}</div><p class="pd-c-sub">${i.texto}</p>`, { direita: 'Agente de Operação · POP 1.8 · meta: diário em dia em ≥ 95% das obras' })}
     ${pd.secao('Diários lançados no celular da obra', '', pd.tabela(['Dia', 'Registro', 'Quem'], regs.map((r) => [html`<b class="pd-obra">${pd.dm(r.data)}</b>`, r.texto || (r.dados && r.dados.texto) || '', r.responsavel || '']),
       { vazio: 'Nenhum diário lançado pelo celular da obra ainda.' }))}
-    <a class="pd-bt" href="#/celular/${encodeURIComponent(cod)}">Registrar diário de hoje</a>`;
+    <a class="pd-bt pd-so-celular" href="#/celular/${encodeURIComponent(cod)}">Registrar diário de hoje</a>`;
 }
 
 // compras: alertas de suprimentos (Mais Controle) que citam a obra
