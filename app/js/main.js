@@ -241,10 +241,16 @@ function fonteDoPosObra() {
 
 // obras que dá para vincular a uma pessoa: só as obras (Mo…), sem as encerradas no cadastro da planilha de ferramentas
 // obras nas atas: quem é de obra só as suas; os demais, todas as obras ativas
-function obrasDeAtas() { return funcaoAtual().porObra ? obrasDaPessoa() : [...obrasDeAcesso(), ...((estado.base && estado.base.obras) || []).filter((o) => !['Concluído', 'Cancelado', 'Sem OS', 'Sem situação'].includes(o.situacao)).map((o) => o.obra)]; }
+function obrasDeAtas() { return funcaoAtual().porObra ? obrasDaPessoa() : [...obrasDeAcesso(), ...obrasDisponiveis().filter((o) => /^po/i.test(o)), ...((estado.base && estado.base.obras) || []).filter((o) => !['Concluído', 'Cancelado', 'Sem OS', 'Sem situação'].includes(o.situacao)).map((o) => o.obra)]; }
 
 // pós-obras ativos (os mesmos que aparecem nas atas): também dá para vincular pessoas a eles em Acessos
 function posObrasAtivas() { return [...new Set(((estado.base && estado.base.obras) || []).filter((o) => !['Concluído', 'Cancelado', 'Sem OS', 'Sem situação'].includes(o.situacao)).map((o) => o.obra))].filter((o) => o && !/^Mod/i.test(o)).sort((a, b) => String(a).localeCompare(String(b), 'pt-BR')); }
+// obras que existem nos dados (planejamento, RH, pós-obra) mas ainda não estão no cadastro: aparecem em Cadastros para cadastrar com um clique
+function obrasSemCadastro(oc) {
+  const tem = new Set(oc.map((c) => String(c.codigo).toLowerCase()));
+  const dosDados = [...obrasDisponiveis(), ...posObrasAtivas()].filter((o) => /^(mo|po)\d+[a-z]?$/i.test(String(o).trim()));
+  return [...new Set(dosDados)].filter((o) => !tem.has(String(o).toLowerCase())).sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true })).map((codigo) => ({ codigo, nome: '', situacao: 'andamento', semCadastro: true }));
+}
 function obrasDeAcesso() {
   const enc = new Set((((estado.drive || {}).estoque || {}).cadastroObras || []).filter((c) => /encerr|finaliz|conclu/i.test(c.status || '')).map((c) => c.obra));
   return obrasDisponiveis().filter((o) => /^Mo\d/i.test(o) && !enc.has(o));
@@ -558,7 +564,7 @@ function desenhar() {
   }
   if (tela === 'acessos' && nuvem.NA_NUVEM && funcaoReal().id === 'socio') {
     $('#conteudo').innerHTML = '<div class="carregando">Carregando a equipe…</div>';
-    Promise.all([nuvem.listarPerfis(), nuvem.listarObras().catch(() => estado.obrasCad || [])]).then(([ps, oc]) => { estado.obrasCad = oc; if (rotaAtual().tela === 'acessos') $('#conteudo').innerHTML = `<div>${acessos.render({ perfis: ps, obras: obrasDeAcesso(), posObras: posObrasAtivas(), obrasCad: oc, meuId: nuvem.perfilAtual() && nuvem.perfilAtual().id, msg: estado.acessosMsg || '', aviso: estado.acessosAviso })}</div>`; estado.acessosMsg = ''; estado.acessosAviso = null; });
+    Promise.all([nuvem.listarPerfis(), nuvem.listarObras().catch(() => estado.obrasCad || [])]).then(([ps, oc]) => { estado.obrasCad = oc; if (rotaAtual().tela === 'acessos') $('#conteudo').innerHTML = `<div>${acessos.render({ perfis: ps, obras: obrasDeAcesso(), posObras: posObrasAtivas(), obrasCad: [...oc, ...obrasSemCadastro(oc)], meuId: nuvem.perfilAtual() && nuvem.perfilAtual().id, msg: estado.acessosMsg || '', aviso: estado.acessosAviso })}</div>`; estado.acessosMsg = ''; estado.acessosAviso = null; });
     return;
   }
   if (tela === 'atas' || tela === 'tarefas') {
@@ -567,6 +573,7 @@ function desenhar() {
     { const fm = document.getElementById('ata-form'); if (fm) atas.atualizarNomeDoForm(fm); }
     if (estado.atasVisitada !== location.hash) {   // ao entrar na tela (ou mudar de aba), busca os dados mais novos
       estado.atasVisitada = location.hash;
+      if (nuvem.NA_NUVEM) nuvem.listarObras().then((oc) => { if (JSON.stringify(oc) !== JSON.stringify(estado.obrasCad || [])) { estado.obrasCad = oc; const a = document.activeElement; if (['atas', 'tarefas'].includes(rotaAtual().tela) && !(a && a.closest && a.closest('#ata-form, #pend-form, #at-modal'))) desenhar(); } }).catch(() => {});
       atas.carregar().then(() => { const a = document.activeElement; if (rotaAtual().tela === 'atas' && !(a && a.closest && a.closest('#ata-form, #pend-form'))) desenhar(); });
     }
     return;

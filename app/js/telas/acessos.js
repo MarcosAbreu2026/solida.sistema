@@ -28,7 +28,7 @@ const opcoesSituacao = (sel) => SITUACOES.map(([v, n]) => html`<option value="${
 
 export function render({ perfis = [], obras = [], posObras = [], obrasCad = [], msg = '', aviso = null, meuId = null }) {
   const linhaObra = (o) => html`<form class="ac-linha ${o.situacao === 'finalizada' ? 'ac-bloq' : ''}" data-obra-cad="${o.codigo}">
-    <div class="ac-quem"><b>${o.codigo}</b></div>
+    <div class="ac-quem"><b>${o.codigo}</b>${o.semCadastro ? html`<span class="pequeno pendente">ainda não cadastrada (vem dos dados): clique em Salvar para cadastrar</span>` : ''}</div>
     <label>Nome<input name="nome" value="${o.nome || ''}" placeholder="ex.: Residencial X"></label>
     <label>Situação<select name="situacao">${opcoesSituacao(o.situacao)}</select></label>
     <span class="ac-botoes"><button type="submit" class="botao on">Salvar</button>
@@ -62,7 +62,7 @@ export function render({ perfis = [], obras = [], posObras = [], obrasCad = [], 
       <p class="pequeno">Passe para a pessoa. No primeiro acesso ela cria a própria senha. Esta senha não aparece de novo.</p></div>` : ''}
     ${msg ? html`<p class="msg ok">${msg}</p>` : ''}
     <section class="secao"><h2>Obras <span class="pequeno">${obrasCad.length}</span></h2>
-      <p class="pequeno">Cadastre aqui as obras que faltam e mude a situação: <b>em andamento</b> e <b>pausada</b> aparecem para escolher nos logins e nas listas; <b>finalizada</b> sai das listas.</p>
+      <p class="pequeno">Obra com código <b>Mo…</b> é obra (operação) e com <b>Po…</b> é pós-obra: o sistema entende sozinho. As que já existem nos dados mas ainda não foram cadastradas aparecem aqui com um aviso; é só clicar em Salvar. Cadastre as que faltam e mude a situação: <b>em andamento</b> e <b>pausada</b> aparecem para escolher nos logins e nas listas; <b>finalizada</b> sai das listas.</p>
       <form class="ac-novo" id="ob-novo">
         <label>Código<input name="codigo" placeholder="ex.: Mo565" autocapitalize="none" spellcheck="false" required></label>
         <label>Nome <span class="pequeno">(opcional)</span><input name="nome" placeholder="ex.: Residencial X"></label>

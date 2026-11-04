@@ -298,7 +298,7 @@ function filtrar(params, setorFixo = '') {
     const terc = params.get('terc') || '';
     if (terc && (p.responsavel || (terc.startsWith('cat:') ? p.responsavel_categoria !== terc.slice(4) : p.responsavel_nome !== terc.slice(5)))) return false;
     if (setor && p.setor !== setor) return false;
-    if (obra && p.obra !== obra) return false;
+    if (obra && String(p.obra || '').toLowerCase() !== obra.toLowerCase()) return false;
     if (q && !`${p.descricao} ${nomeDe(p.responsavel, p.responsavel_nome)} ${onde(p)} ${(ataDe(p) || {}).titulo || ''}`.toLocaleLowerCase('pt-BR').includes(q)) return false;
     return true;
   });
@@ -316,9 +316,15 @@ function seletorTerceirizado(atual) {
 }
 // ---------------------------------------------------------------- telas
 // Na caixinha de obra, sempre dois grupos: Obras (Mo…) e Pós-obras (os pós-obras ativos, PO… e os de nome)
-const ehObraPura = (o) => /^Mo\d+[A-Za-z]?$/.test(String(o));
+// regra automática (pedido do Felipe): começa com Mo = obra (operação); começa com Po = pós-obra (maiúscula ou minúscula, tanto faz)
+export const ehObraNormal = (o) => /^mo/i.test(String(o).trim());
+const ehObraPura = ehObraNormal;
 export function gruposDeObras(obras, atual = '') {
-  const lista = [...new Set(obras.filter(Boolean))]; if (atual && !lista.includes(atual)) lista.push(atual);
+  // sem repetir a mesma obra escrita de dois jeitos (Po577 / PO577): vale a primeira
+  const vistos = new Set(); const lista = [];
+  for (const o of obras.filter(Boolean)) { const k = String(o).trim().toLowerCase(); if (!vistos.has(k)) { vistos.add(k); lista.push(o); } }
+  if (atual && !vistos.has(String(atual).trim().toLowerCase())) lista.push(atual);
+  atual = lista.find((o) => String(o).trim().toLowerCase() === String(atual).trim().toLowerCase()) || atual;
   const opt = (o) => html`<option value="${o}" ${o === atual ? html.seguro('selected') : ''}>${o}</option>`;
   const ob = lista.filter(ehObraPura).sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true })); const po = lista.filter((o) => !ehObraPura(o)).sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }));
   return html`${ob.length ? html`<optgroup label="Obras">${ob.map(opt)}</optgroup>` : ''}${po.length ? html`<optgroup label="Pós-obras">${po.map(opt)}</optgroup>` : ''}`;
@@ -672,7 +678,7 @@ function montarPautas(params) {
   const alfa = params.get('ordem') === 'alfa';
   const q = chaveTxt(params.get('q'));
   const tipos = filtro ? TIPOS_DA_PAUTA[filtro] : null;
-  const abertas = dados.pendencias.filter((p) => naLista(p) && p.status === 'aberta' && (!tipos || tipos.includes(p.responsavel_tipo || 'solida')) && (!params.get('obra') || p.obra === params.get('obra'))
+  const abertas = dados.pendencias.filter((p) => naLista(p) && p.status === 'aberta' && (!tipos || tipos.includes(p.responsavel_tipo || 'solida')) && (!params.get('obra') || String(p.obra || '').toLowerCase() === params.get('obra').toLowerCase())
     && (!params.get('setor') || p.setor === params.get('setor')) && (!q || chaveTxt(`${p.descricao} ${p.responsavel_nome} ${p.obra} ${p.setor}`).includes(q)));
   const grupos = new Map();
   for (const p of abertas) {
