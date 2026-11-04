@@ -315,6 +315,15 @@ function seletorTerceirizado(atual) {
     ${nomes.map((n) => html`<option value="nome:${n}" ${atual === `nome:${n}` ? html.seguro('selected') : ''}>${n}</option>`)}</select></label>`;
 }
 // ---------------------------------------------------------------- telas
+// Na caixinha de obra, sempre dois grupos: Obras (Mo…) e Pós-obras (os pós-obras ativos, PO… e os de nome)
+const ehObraPura = (o) => /^Mo\d+[A-Za-z]?$/.test(String(o));
+export function gruposDeObras(obras, atual = '') {
+  const lista = [...new Set(obras.filter(Boolean))]; if (atual && !lista.includes(atual)) lista.push(atual);
+  const opt = (o) => html`<option value="${o}" ${o === atual ? html.seguro('selected') : ''}>${o}</option>`;
+  const ob = lista.filter(ehObraPura).sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true })); const po = lista.filter((o) => !ehObraPura(o)).sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }));
+  return html`${ob.length ? html`<optgroup label="Obras">${ob.map(opt)}</optgroup>` : ''}${po.length ? html`<optgroup label="Pós-obras">${po.map(opt)}</optgroup>` : ''}`;
+}
+const selObra = (obras, atual, todos = 'Todos') => html`<label>Obra<select data-atas-filtro="obra"><option value="">${todos}</option>${gruposDeObras(obras, atual)}</select></label>`;
 function barraFiltros(params, obras, aba, ctx = {}) {
   const base = ctx.base || '#/atas';
   const sel = (nome, rotulo, opcoes, atual) => html`<label>${rotulo}<select data-atas-filtro="${nome}"><option value="">Todos</option>${opcoes.map(([v, t]) => html`<option value="${v}" ${atual === v ? html.seguro('selected') : ''}>${t}</option>`)}</select></label>`;
@@ -322,7 +331,7 @@ function barraFiltros(params, obras, aba, ctx = {}) {
   return html`<div class="at-filtros">
     ${aba === 'atas' ? '' : sel('pessoa', 'Responsável', [['eu', 'Só as minhas'], ['tipo:solida', 'Equipe da Sólida'], ['tipo:terceirizado', 'Terceirizados (todos)'], ['tipo:cliente', 'Clientes'], ['tipo:arquitetura', 'Arquitetura']], params.get('pessoa') || '')}
     ${ctx.setorFixo ? '' : sel('setor', 'Setor', SETORES_ATA.map((s) => [s, s]), params.get('setor') || '')}
-    ${sel('obra', 'Obra', obras.map((o) => [o, o]), params.get('obra') || '')}
+    ${selObra(obras, params.get('obra') || '')}
     <label>Procurar<input type="search" data-atas-filtro="q" value="${params.get('q') || ''}" placeholder="texto…"></label>
   </div>`;
 }
@@ -373,7 +382,7 @@ export function formAvulsa(obras, prazo, setorPadrao = '', preset = {}) {
     <h3>Nova pendência${preset.os ? html` da ${preset.os}` : ''}</h3>
     <p class="pequeno at-av-sub">Para o que não veio de uma ata. Tudo marcado em vermelho precisa ser preenchido.</p>
     <div class="at-av-grade">
-      <label class="av-m">Obra<select name="av_obra"><option value="">Nenhuma</option>${listaObras.map((o) => html`<option value="${o}" ${o === preset.obra ? html.seguro('selected') : ''}>${o}</option>`)}</select></label>
+      <label class="av-m">Obra<select name="av_obra"><option value="">Nenhuma</option>${gruposDeObras(listaObras, preset.obra || '')}</select></label>
       <label class="av-m">Departamento<select name="av_setor" required><option value="">— escolher —</option>${SETORES_ATA.map((s) => html`<option value="${s}" ${s === setorPadrao ? html.seguro('selected') : ''}>${s}</option>`)}</select></label>
       <div class="pf-linha av-linha" data-tipo="solida" data-kind="pendencia">
         <label class="av-ass">Assunto<input name="p_assunto" class="pf-assunto" placeholder="ex.: ACM" autocomplete="off" value="${preset.assunto || ''}"></label>
@@ -486,7 +495,7 @@ function formNova(obras, revisarId = '') {
       <label>Data<input type="date" name="data" value="${r ? r.data : hoje}" required></label>
       <label>Tipo da reunião<select name="tipo_reuniao">${TIPOS_REUNIAO.map((x) => html`<option ${(r && r.tipoReuniao ? r.tipoReuniao : 'REUNIÃO') === x ? html.seguro('selected') : ''}>${x}</option>`)}</select></label>
       <input name="revisao" type="hidden" value="${proxRev}">
-      <label>Obra<select name="obra" required><option value="">— escolher —</option><option value="-" ${ataRev && !ataRev.obra ? html.seguro('selected') : ''}>Nenhuma</option>${(r && r.obra && !obras.includes(r.obra) ? [...obras, r.obra] : obras).map((o) => html`<option value="${o}" ${r && r.obra === o ? html.seguro('selected') : ''}>${o}</option>`)}</select></label>
+      <label>Obra<select name="obra" required><option value="">— escolher —</option><option value="-" ${ataRev && !ataRev.obra ? html.seguro('selected') : ''}>Nenhuma</option>${gruposDeObras(obras, (r && r.obra) || '')}</select></label>
       <label>Departamento<select name="setor" required><option value="">— escolher —</option>${SETORES_ATA.map((s) => html`<option value="${s}" ${r && r.setor === s ? html.seguro('selected') : ''}>${s}</option>`)}</select></label>
     </div>
     <p class="at-nome-linha">Nome da ata: <b id="ata-nome">escolha a data</b> <span class="pequeno" id="ata-destino"></span></p>
@@ -698,7 +707,7 @@ function renderPautas(params, obras) {
       ${sel('pauta', 'Pauta para', FILTROS_PAUTA, filtro, 'Todas as pautas')}
       ${sel('ordem', 'Ordenar por', [['data', 'Data (prazo mais próximo)'], ['alfa', 'Ordem alfabética']], alfa ? 'alfa' : 'data', 'Data (prazo mais próximo)')}
       ${sel('setor', 'Departamento', SETORES_ATA.map((x) => [x, x]), params.get('setor') || '', 'Todos')}
-      ${sel('obra', 'Obra', obras.map((o) => [o, o]), params.get('obra') || '', 'Todas')}
+      ${selObra(obras, params.get('obra') || '', 'Todas')}
       <label>Procurar<input type="search" data-atas-filtro="q" value="${params.get('q') || ''}" placeholder="texto…"></label>
     </div>
     <p class="pequeno at-pauta-nota">A pauta de cada obra é o que ainda está em aberto: as pendências abertas das atas e das tarefas. ${filtro ? `Mostrando só o que é de ${FILTROS_PAUTA.find(([v]) => v === filtro)[1].toLocaleLowerCase('pt-BR')}.` : 'Escolha para quem é a reunião para ver só o que cabe a eles.'} ${total} ${total === 1 ? 'item' : 'itens'} em ${lista.length} ${lista.length === 1 ? 'pauta' : 'pautas'}.</p>
