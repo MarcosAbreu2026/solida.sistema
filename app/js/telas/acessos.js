@@ -7,17 +7,23 @@ import { FUNCOES, funcaoPorId, SETORES, PAGINAS, abasDa, abasPadrao } from '../f
 
 const opcoesFuncao = (sel = '') => FUNCOES.map((x) => html`<option value="${x.id}" ${x.id === sel ? html.seguro('selected') : ''}>${x.nome}</option>`);
 // obras como caixinhas de marcar (antes era uma lista de seleção múltipla, difícil de usar)
-const caixinhasObras = (obras, sel = []) => html`<div class="ac-chips">
-  ${obras.map((o) => html`<label class="ac-chip"><input type="checkbox" name="obras" value="${o}" ${sel.includes(o) ? html.seguro('checked') : ''}><span>${o}</span></label>`)}
+// pós-obras ativos vão numa segunda fileira, na mesma lista de obras da pessoa (um já marcado que encerrou continua aparecendo, para dar para tirar)
+const caixinhasObras = (obras, sel = [], pos = []) => {
+  const chip = (o) => html`<label class="ac-chip"><input type="checkbox" name="obras" value="${o}" ${sel.includes(o) ? html.seguro('checked') : ''}><span>${o}</span></label>`;
+  const posTodos = [...pos, ...sel.filter((o) => !obras.includes(o) && !pos.includes(o))];
+  return html`<div class="ac-chips">
+  ${obras.map(chip)}
   <button type="button" class="ac-mini" data-obras-todas="1">todas</button><button type="button" class="ac-mini" data-obras-todas="0">nenhuma</button>
+  ${posTodos.length ? html`<div class="ac-pos"><span class="ac-rot">Pós-obras ativos</span>${posTodos.map(chip)}</div>` : ''}
 </div>`;
+};
 
 const ABAS = [...SETORES, ...PAGINAS];
 
 const SITUACOES = [['andamento', 'Em andamento'], ['pausada', 'Pausada'], ['finalizada', 'Finalizada']];
 const opcoesSituacao = (sel) => SITUACOES.map(([v, n]) => html`<option value="${v}" ${v === sel ? html.seguro('selected') : ''}>${n}</option>`);
 
-export function render({ perfis = [], obras = [], obrasCad = [], msg = '', aviso = null, meuId = null }) {
+export function render({ perfis = [], obras = [], posObras = [], obrasCad = [], msg = '', aviso = null, meuId = null }) {
   const linhaObra = (o) => html`<form class="ac-linha ${o.situacao === 'finalizada' ? 'ac-bloq' : ''}" data-obra-cad="${o.codigo}">
     <div class="ac-quem"><b>${o.codigo}</b></div>
     <label>Nome<input name="nome" value="${o.nome || ''}" placeholder="ex.: Residencial X"></label>
@@ -30,7 +36,7 @@ export function render({ perfis = [], obras = [], obrasCad = [], msg = '', aviso
     return html`<form class="ac-linha ${p.ativo === false ? 'ac-bloq' : ''}" data-acesso="${p.id}">
     <div class="ac-quem"><b>${p.nome || p.usuario}</b><span class="pequeno">usuário: <b>${p.usuario || p.email}</b>${p.trocar_senha ? ' · ainda não criou a senha' : ''}${p.ativo === false ? ' · bloqueado' : ''}${p.id === meuId ? ' · você' : ''}</span></div>
     <label>Função<select name="funcao"><option value="">— escolher —</option>${opcoesFuncao(p.funcao)}</select></label>
-    <div class="ac-obras"><span class="ac-rot">Obras <span class="pequeno">(funções de obra)</span></span>${caixinhasObras(obras, p.obras || [])}</div>
+    <div class="ac-obras"><span class="ac-rot">Obras e pós-obras <span class="pequeno">(quem a pessoa acompanha)</span></span>${caixinhasObras(obras, p.obras || [], posObras)}</div>
    <span class="ac-botoes"><button type="submit" class="botao on">Salvar</button>
       <button type="button" class="botao" data-redefinir-senha="${p.id}|${p.nome || p.usuario}">Nova senha</button>
       ${protegido ? '' : html`<button type="button" class="botao ac-excluir" data-excluir-login="${p.id}|${p.nome || p.usuario}">Excluir</button>`}</span>
@@ -63,7 +69,7 @@ export function render({ perfis = [], obras = [], obrasCad = [], msg = '', aviso
         <label>Nome<input name="nome" placeholder="ex.: Mariana C." required></label>
         <label>Usuário<input name="usuario" placeholder="ex.: mariana" autocapitalize="none" spellcheck="false" required></label>
         <label>Função<select name="funcao" required><option value="">— escolher —</option>${opcoesFuncao()}</select></label>
-        <div class="ac-obras"><span class="ac-rot">Obras <span class="pequeno">(funções de obra)</span></span>${caixinhasObras(obras)}</div>
+        <div class="ac-obras"><span class="ac-rot">Obras <span class="pequeno">(funções de obra)</span></span>${caixinhasObras(obras, [], posObras)}</div>
         <button type="submit" class="botao on">Criar login</button>
       </form>
       <p class="pequeno">O sistema gera uma senha provisória e mostra aqui uma vez. Usuário: letras minúsculas, sem acento (pode ter ponto, ex.: pedro.novais).</p>

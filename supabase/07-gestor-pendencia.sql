@@ -17,7 +17,7 @@ begin
   select funcao, obras into f, o from public.perfis where id = resp;
   if f = 'estagiario' then
     select coalesce(array_agg(id order by nome), '{}') into r from public.perfis
-      where funcao = 'gestor_obra' and ativo and obras && (case when obra_p is not null then array[obra_p] else o end);
+      where funcao in ('gestor_obra', 'posobra') and ativo and obras && (case when obra_p is not null then array[obra_p] else o end);
   elsif f = 'estagiario_compras' then
     select coalesce(array_agg(id order by nome), '{}') into r from public.perfis where funcao = 'ferramentas' and ativo;
   elsif f = 'orc_terceirizado' then

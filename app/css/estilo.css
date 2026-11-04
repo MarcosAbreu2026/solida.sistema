@@ -1376,6 +1376,7 @@ a.card:hover .card-rotulo { color: var(--clique2); text-decoration: underline; }
 .tr-tab tr.tr-sem td { background: #FFFBFA; }
 /* Acessos: obras em caixinhas, excluir, abas por função */
 .ac-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ac-pos { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 4px; padding-top: 6px; border-top: 1px dashed var(--linha); }
 .ac-chip { position: relative; }   /* a caixinha escondida fica presa ao botão: solta, o navegador rolava o corpo da página (overflow: hidden) ao focar e a tela "quebrava" */
 .ac-chip input { position: absolute; left: 0; top: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .ac-chip span { display: inline-block; padding: 3px 11px; border: 1px solid var(--linha); border-radius: 999px; font-size: 12.5px; background: #fff; cursor: pointer; user-select: none; }

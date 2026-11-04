@@ -236,6 +236,8 @@ function fonteDoPosObra() {
 // obras nas atas: quem é de obra só as suas; os demais, todas as obras ativas
 function obrasDeAtas() { return funcaoAtual().porObra ? obrasDaPessoa() : [...obrasDeAcesso(), ...((estado.base && estado.base.obras) || []).filter((o) => !['Concluído', 'Cancelado', 'Sem OS', 'Sem situação'].includes(o.situacao)).map((o) => o.obra)]; }
 
+// pós-obras ativos (os mesmos que aparecem nas atas): também dá para vincular pessoas a eles em Acessos
+function posObrasAtivas() { return [...new Set(((estado.base && estado.base.obras) || []).filter((o) => !['Concluído', 'Cancelado', 'Sem OS', 'Sem situação'].includes(o.situacao)).map((o) => o.obra))].filter((o) => o && !/^Mod/i.test(o)).sort((a, b) => String(a).localeCompare(String(b), 'pt-BR')); }
 function obrasDeAcesso() {
   const enc = new Set((((estado.drive || {}).estoque || {}).cadastroObras || []).filter((c) => /encerr|finaliz|conclu/i.test(c.status || '')).map((c) => c.obra));
   return obrasDisponiveis().filter((o) => /^Mo\d/i.test(o) && !enc.has(o));
@@ -478,7 +480,7 @@ function desenhar() {
   }
   if (tela === 'acessos' && nuvem.NA_NUVEM && funcaoReal().id === 'socio') {
     $('#conteudo').innerHTML = '<div class="carregando">Carregando a equipe…</div>';
-    Promise.all([nuvem.listarPerfis(), nuvem.listarObras().catch(() => estado.obrasCad || [])]).then(([ps, oc]) => { estado.obrasCad = oc; if (rotaAtual().tela === 'acessos') $('#conteudo').innerHTML = `<div>${acessos.render({ perfis: ps, obras: obrasDeAcesso(), obrasCad: oc, meuId: nuvem.perfilAtual() && nuvem.perfilAtual().id, msg: estado.acessosMsg || '', aviso: estado.acessosAviso })}</div>`; estado.acessosMsg = ''; estado.acessosAviso = null; });
+    Promise.all([nuvem.listarPerfis(), nuvem.listarObras().catch(() => estado.obrasCad || [])]).then(([ps, oc]) => { estado.obrasCad = oc; if (rotaAtual().tela === 'acessos') $('#conteudo').innerHTML = `<div>${acessos.render({ perfis: ps, obras: obrasDeAcesso(), posObras: posObrasAtivas(), obrasCad: oc, meuId: nuvem.perfilAtual() && nuvem.perfilAtual().id, msg: estado.acessosMsg || '', aviso: estado.acessosAviso })}</div>`; estado.acessosMsg = ''; estado.acessosAviso = null; });
     return;
   }
   if (tela === 'atas') {
