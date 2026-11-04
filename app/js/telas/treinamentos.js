@@ -39,7 +39,7 @@ export function render() {
     <td>${vistosSet.has(s.id) ? html`<span class="tr-visto">✓ visto</span>` : html`<span class="muted">não visto</span>`}</td>
     <td class="n"><button type="button" class="ac-mini" data-trein-slides="${s.id}">${vistosSet.has(s.id) ? 'rever' : 'abrir'} ▶</button></td></tr>`;
   const bloco = (t) => html`<details class="pl-obra tr-topico" open>
-    <summary><span class="pl-tit"><span class="tr-ico">${t.icone}</span>${t.nome}</span></summary>
+    <summary><span class="pl-tit">${t.nome}</span></summary>
     <table class="pl-os tr-tab"><colgroup><col class="tr-c-tit"><col class="tr-c-pas"><col class="tr-c-sit"><col class="tr-c-acao"></colgroup>
       <tbody>${doTopico(t).map(linha)}</tbody></table></details>`;
   // cada tópico entra no grupo do menu a que pertence; o que não estiver na lista vai para "Outros"

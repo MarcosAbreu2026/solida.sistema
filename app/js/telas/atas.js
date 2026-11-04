@@ -710,6 +710,8 @@ export function textoDaPauta(g, filtro) {
 }
 function renderPautas(params, obras) {
   const { lista, filtro, alfa, total, hoje } = montarPautas(params);
+  // a pauta só aparece depois que a pessoa filtra (pedido do Felipe): senão a aba fica gigante
+  const filtrado = ['pauta', 'setor', 'obra', 'q'].some((k) => String(params.get(k) || '').trim());
   const sel = (nome, rotulo, opcoes, atual, todos = 'Todas') => html`<label>${rotulo}<select data-atas-filtro="${nome}"><option value="">${todos}</option>${opcoes.map(([v, t]) => html`<option value="${v}" ${atual === v ? html.seguro('selected') : ''}>${t}</option>`)}</select></label>`;
   const cartaoPauta = (g) => html`<article class="at-pauta">
     <header><div><h3>${g.nome}</h3><span class="pequeno">${g.itens.length} ${g.itens.length === 1 ? 'item em aberto' : 'itens em aberto'}${g.ultimaAta ? ` · última ata ${dm(g.ultimaAta).slice(0, 5)}` : ''}</span></div>
@@ -724,8 +726,8 @@ function renderPautas(params, obras) {
       ${selObra(obras, params.get('obra') || '', 'Todas')}
       <label>Procurar<input type="search" data-atas-filtro="q" value="${params.get('q') || ''}" placeholder="texto…"></label>
     </div>
-    <p class="pequeno at-pauta-nota">A pauta de cada obra é o que ainda está em aberto: as pendências abertas das atas e das tarefas. ${filtro ? `Mostrando só o que é de ${FILTROS_PAUTA.find(([v]) => v === filtro)[1].toLocaleLowerCase('pt-BR')}.` : 'Escolha para quem é a reunião para ver só o que cabe a eles.'} ${total} ${total === 1 ? 'item' : 'itens'} em ${lista.length} ${lista.length === 1 ? 'pauta' : 'pautas'}.</p>
-    ${lista.length ? html`<div class="at-pautas">${lista.map(cartaoPauta)}</div>` : html`<p class="vazio">Nenhum item em aberto com esses filtros.</p>`}`;
+    ${!filtrado ? html`<div class="at-pauta-vazia"><b>Nenhuma pauta aberta.</b><p>Escolha acima para quem é a pauta, o departamento ou a obra (ou procure por um texto) e a pauta aparece aqui.</p></div>` : html`<p class="pequeno at-pauta-nota">A pauta de cada obra é o que ainda está em aberto: as pendências abertas das atas e das tarefas. ${filtro ? `Mostrando só o que é de ${FILTROS_PAUTA.find(([v]) => v === filtro)[1].toLocaleLowerCase('pt-BR')}.` : 'Escolha para quem é a reunião para ver só o que cabe a eles.'} ${total} ${total === 1 ? 'item' : 'itens'} em ${lista.length} ${lista.length === 1 ? 'pauta' : 'pautas'}.</p>
+    ${lista.length ? html`<div class="at-pautas">${lista.map(cartaoPauta)}</div>` : html`<p class="vazio">Nenhum item em aberto com esses filtros.</p>`}`}`;
 }
 export const pautaPorNome = (nome, params) => montarPautas(params).lista.find((g) => g.nome === nome) || null;
 void ataDe;

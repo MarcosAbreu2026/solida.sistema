@@ -260,3 +260,15 @@ body.nav-recolhido nav::after { display: none; }
 /* ---- Treinamentos: blocos separados pelos mesmos grupos do menu */
 .tr-grupo { margin-bottom: 26px; }
 .tr-grupo-tit { margin: 0 0 10px; padding-left: 12px; border-left: 4px solid var(--pd-amarelo, #F2C230); font-family: var(--pd-cond, inherit); font-size: 15px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--pd-chumbo, #3B4450); white-space: normal; }
+
+/* ---- Treinamentos mais enxutos: tópico em negrito; os treinamentos em letra menor, sem negrito e com linha mais baixa */
+.treinamentos .tr-topico > summary { padding: 5px 12px; }
+.treinamentos .tr-topico > summary .pl-tit { font-size: 14.5px; font-weight: 700; }
+.treinamentos .tr-tab { font-size: 12.5px; }
+.treinamentos .tr-tab td { padding: 2px 10px; height: 26px; line-height: 1.2; font-weight: 400; }
+.treinamentos .tr-tab .tr-tit, .treinamentos .tr-abrir { font-weight: 400; font-size: 12.5px; }
+.treinamentos .tr-tab .tr-visto { font-weight: 400; }
+.treinamentos .tr-tab .ac-mini { font-size: 11.5px; padding: 1px 8px; font-weight: 400; }
+.treinamentos .pl-lista { gap: 6px; }
+.treinamentos .tr-grupo { margin-bottom: 14px; }
+.treinamentos .tr-grupo-tit { margin-bottom: 6px; }
