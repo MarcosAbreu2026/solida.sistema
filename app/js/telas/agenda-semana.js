@@ -9,6 +9,9 @@ import { html } from '../formato.js';
 import { hojeISO, somarDias, inicioDaSemana } from '../datas.js';
 import { feriado } from '../feriados.js';
 import * as meudia from './meudia.js';
+import * as quadro from './quadro.js';
+import { FUNCOES, TAREFAS, naGrade } from '../funcoes.js';
+import { funcaoAtual } from '../sessao.js';
 
 const DIA_CURTO = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const MAX_DIA = 3;
@@ -68,6 +71,24 @@ function faixaTarefas(opts) {
   </section>`;
 }
 
+// "Outras funções" (pedido do Felipe, 04/11): uma caixinha que abre ao lado das suas funções, com as outras funções da empresa
+// (Estagiário, Encarregado, Gestor de obra…); clicar numa mostra o quadro da semana dela, só para consulta.
+let outraSel = ''; let outraAberta = false;
+export const escolherOutra = (id) => { outraSel = outraSel === id ? '' : id; outraAberta = true; };
+export const lembrarOutras = (aberta) => { outraAberta = aberta; };
+function blocoOutras(ref) {
+  const minha = funcaoAtual().id;
+  const lista = FUNCOES.filter((x) => x.id !== 'socio' && x.id !== minha && TAREFAS.some((t) => t.funcao === x.id && naGrade(t)));
+  if (!lista.length) return '';
+  return String(html`<details class="ag-outras" id="ag-outras" ${outraAberta ? html.seguro('open') : ''}>
+    <summary><span class="caixa-tit">Outras funções</span><span class="pequeno">veja o quadro da semana de outra função da empresa (só consulta)</span></summary>
+    <div class="ag-outras-corpo">
+      <div class="ag-outras-chips">${lista.map((x) => html`<button type="button" class="ag-chip ${x.id === outraSel ? 'on' : ''}" data-ag-outra="${x.id}">${x.nome}</button>`)}</div>
+      ${outraSel ? html.seguro(String(quadro.renderCorpo({ funcaoId: outraSel, ref }))) : html`<p class="pequeno">Clique numa função para ver as tarefas dela na semana.</p>`}
+    </div>
+  </details>`);
+}
+
 // Como no Google Agenda (print do Felipe, 04/11): as tarefas ficam DENTRO da grade, na linha de cima de cada dia,
 // logo abaixo do nome do dia (como os eventos de dia inteiro). Acima da grade fica só uma linha de resumo.
 export function render(opts) {
@@ -89,9 +110,10 @@ export function render(opts) {
   const resumo = String(html`<div class="ag-resumo"><span><b>Tarefas</b> ${total ? `${total} em aberto nesta semana${venc ? `, ${venc} ${venc === 1 ? 'vencida' : 'vencidas'} (reprograme pelo ↻)` : ''}` : 'nenhuma tarefa com prazo nesta semana'}</span>
     <span class="legenda-semana"><span class="lg ag-lg-venc"></span> vencida <span class="lg ag-lg-hoje"></span> de hoje <span class="lg ag-lg-futura"></span> próximos dias <span class="lg ag-lg-feita"></span> concluída</span>
     <a class="link" href="#/atas">Abrir Tarefas →</a></div>`);
+  const outras = blocoOutras(opts.semanaRef || opts.dia);
   if (n) {
     const i = comChips.indexOf('<section class="fn-painel');
-    return html.seguro(i >= 0 ? `${comChips.slice(0, i)}${resumo}${comChips.slice(i)}` : `${resumo}${comChips}`);
+    return html.seguro(i >= 0 ? `${comChips.slice(0, i)}${resumo}${outras}${comChips.slice(i)}` : `${resumo}${outras}${comChips}`);
   }
   // grade não encontrada (ex.: sem funções): cai na faixa separada
   const faixa = String(faixaTarefas({ pendencias: opts.pendencias || [], eu: opts.eu, ref: opts.semanaRef || opts.dia, nomeDe: opts.nomeDe }));

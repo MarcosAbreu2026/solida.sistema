@@ -13,7 +13,9 @@ const MK = {
   sem: html.seguro('<span class="mk q" aria-label="Sem check">–</span>'),
 };
 
-export function render({ funcaoId, ref }) {
+// comBarra = false: só a tabela da função (usado na Agenda › Outras funções, sem o seletor de função nem a troca de semana)
+export const renderCorpo = (o) => render({ ...o, comBarra: false });
+export function render({ funcaoId, ref, comBarra = true }) {
   const funcao = FUNCOES.find((f) => f.id === funcaoId) || FUNCOES[1];
   const inicio = inicioDaSemana(ref);
   const dias = [0, 1, 2, 3, 4, 5].map((i) => somarDias(inicio, i));
@@ -46,12 +48,12 @@ export function render({ funcaoId, ref }) {
   </tr>`);
 
   return html`<div class="pagina">
-    <div class="periodo">
+    ${comBarra ? html`<div class="periodo">
       <label>Função<select id="quadro-funcao">${FUNCOES.map((f) => html`<option value="${f.id}" ${f.id === funcao.id ? html.seguro('selected') : ''}>${f.nome}</option>`)}</select></label>
       <button type="button" class="botao" data-semana="${somarDias(inicio, -7)}">← Semana anterior</button>
       <button type="button" class="botao" data-semana="${somarDias(inicio, 7)}">Próxima semana →</button>
       <div class="atual"><span>Semana</span><b>${diaMes(dias[0])} a ${diaMes(dias[5])}</b></div>
-    </div>
+    </div>` : ''}
     <p class="resumo" style="margin:0">${funcao.nome}${funcao.pop ? html` <span class="pequeno">(no POP: ${funcao.pop})</span>` : ''} · ${previstas ? `${feitas} de ${previstas} tarefas feitas até hoje` : 'nenhuma tarefa até hoje'}</p>
     ${tarefas.length ? html`<div class="tabela-rolagem"><table class="tab quadro">
       <thead><tr><th>Tarefa</th>${dias.map((d) => html`<th class="dia ${d === hoje ? 'hoje' : ''}">${['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'][dias.indexOf(d)]} ${diaMes(d)}</th>`)}</tr></thead>
