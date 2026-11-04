@@ -52,9 +52,9 @@ function abasCategorias(itens, cats) {
 // Pedidos de itens: ainda não funciona, só a estrutura para o futuro (pedido do Felipe, 15/10).
 // Ideia: a obra pede no sistema → o sistema confere o estoque → se tem, cria a retirada do estoque e a
 // requisição/nota para o cliente pagar o que saiu; se não tem, vira solicitação de compra.
-function pedidosFuturos() {
+export function pedidosFuturos({ abrir = false } = {}) {
   const campo = (rotulo, tipo = 'text') => html`<label>${rotulo}<input type="${tipo}" disabled placeholder="em breve"></label>`;
-  return html`<details class="caixa est-pedidos">
+  return html`<details class="caixa est-pedidos" ${abrir ? html.seguro('open') : ''}>
     <summary><span class="caixa-tit">Pedir itens do estoque</span><span class="selo-breve">em manutenção</span></summary>
     <div class="caixa-corpo">
       <ol class="est-fluxo">
@@ -94,7 +94,6 @@ function renderGalpao(dados, itens, cats, podeCompleto) {
     </div>`;
   };
   return html`<div class="pagina est-compacto">
-    ${pedidosFuturos()}
     <p class="est-resumo"><b>${tem.length}</b> itens no galpão (${numero(tem.reduce((s, i) => s + gal(i).atual, 0))} un.) · <b class="pendente">${abaixo.length}</b> abaixo do mínimo · <b>${numero(quebradas)}</b> quebradas
       <span class="pequeno"> · ${dados.arquivo}${conf.galpao ? `, conferido em ${dm(conf.galpao)}${dados.viaSite && dados.viaSite.galpao ? ` (contagem feita no site por ${dados.viaSite.galpao.por})` : ''}` : ''}</span>
       ${podeCompleto ? html` · <a class="link" href="#/estoque?ver=tudo">ver carros e obras →</a>` : ''}</p>
@@ -166,7 +165,6 @@ export function render(dados, { podeCompleto = false, verTudo = false, veConsumi
   }
 
   return html`<div class="pagina">
-    ${pedidosFuturos()}
     <p class="pequeno" style="margin:0">Galpão, carros e obras · planilha ${dados.arquivo} (Drive › PÓS OBRA › FERRAMENTAS › LISTAS), salva em ${fmtData((dados.modificado || '').slice(0, 10))}${conf.galpao ? `, galpão conferido em ${dm(conf.galpao)}` : ''} · <a class="link" href="#/estoque">← só o galpão</a></p>
     <div class="cards">${cards}</div>
     ${abasCategorias(itens, cats)}

@@ -160,6 +160,32 @@ function chaveArq(nome) {
     .replace(/[^a-z0-9&]+/g, ' ').trim();
 }
 
+// Arquiteturas das planilhas de orçamento (para o painel do Comercial): agrupadas, com "reatar contato"
+export function analisarArquiteturas(dados) {
+  if (!dados) return null;
+  const todos = (dados.orcamentos || []).filter((o) => o.arq && o.arq.trim() && o.arq.trim() !== '-');
+  const anos = [...new Set((dados.orcamentos || []).map((o) => o.ano))].sort();
+  const atual = anos[anos.length - 1];
+  const anteriores = anos.filter((a) => a < atual);
+  const grupos = new Map();
+  for (const o of todos) {
+    const k = chaveArq(o.arq); if (!k) continue;
+    if (!grupos.has(k)) grupos.set(k, { nomes: {}, itens: [] });
+    const g = grupos.get(k); g.nomes[o.arq.trim()] = (g.nomes[o.arq.trim()] || 0) + 1; g.itens.push(o);
+  }
+  const arqs = [...grupos.values()].map((g) => {
+    const nome = Object.entries(g.nomes).sort((a, b) => b[1] - a[1])[0][0];
+    const porAno = Object.fromEntries(anos.map((a) => [a, g.itens.filter((o) => o.ano === a).length]));
+    const fech = g.itens.filter((o) => o.situacao === 'fechado');
+    const antes = anteriores.reduce((s, a) => s + porAno[a], 0);
+    const ultimo = g.itens.reduce((m, o) => (o.ano > m.ano || (o.ano === m.ano && String(o.ref) > String(m.ref)) ? o : m), g.itens[0]);
+    return { nome, porAno, total: g.itens.length, fech: fech.length, atual: porAno[atual], antes, mediaAntes: anteriores.length ? antes / anteriores.length : 0, ultimo,
+      emAndamento: g.itens.filter((o) => o.ano === atual && ['em_orcamento', 'aguardando', 'enviado'].includes(o.situacao)).length };
+  });
+  const reatar = arqs.filter((a) => a.antes >= 2 && a.atual < Math.max(1, a.mediaAntes / 2 + 0.01)).sort((a, b) => b.fech - a.fech || b.antes - a.antes);
+  return { anos, atual, arqs, reatar };
+}
+
 export function abaArquiteturas(dados) {
   if (!dados) return semDados();
   const todos = (dados.orcamentos || []).filter((o) => o.arq && o.arq.trim() && o.arq.trim() !== '-');

@@ -90,3 +90,90 @@ a.pd-obra:hover { color: var(--pd-azul); }
 @media (max-width: 1100px) { .pd-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 1000px) { .pd-grade2, .pd-grade3 { grid-template-columns: 1fr; } .pd-pergunta { grid-template-columns: 1fr; } }
 @media (max-width: 760px) { .pd-cards { grid-template-columns: 1fr; } h1#titulo { font-size: 30px; } }
+
+/* ---- Agenda: faixa de tarefas no topo de cada dia (como os eventos de dia inteiro do Google Agenda) */
+.ag-tarefas { background: #fff; border: 1px solid #D5DCE4; border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+.ag-h { display: flex; align-items: baseline; gap: 6px 14px; flex-wrap: wrap; }
+.ag-h h3 { font-family: var(--pd-cond); font-size: 20px; font-weight: 700; color: var(--pd-azul); }
+.ag-h .link { margin-left: auto; font-size: 13px; }
+.ag-faixa { display: grid; grid-template-columns: repeat(var(--nd, 5), minmax(0, 1fr)); gap: 8px; }
+.ag-dia { display: flex; flex-direction: column; gap: 5px; min-width: 0; padding: 6px; border-radius: 8px; background: #F4F6F9; }
+.ag-dia.hoje { background: #E6EEF8; box-shadow: inset 0 0 0 1.5px var(--pd-azul); }
+.ag-dia-h { display: flex; justify-content: space-between; font-size: 12px; color: #4B5560; }
+.ag-dia-h small { color: var(--muted); }
+.ag-ev { display: flex; flex-direction: column; gap: 1px; padding: 5px 8px; border-radius: 6px; background: var(--pd-azul); color: #fff; text-decoration: none; font-size: 12px; line-height: 1.3; min-width: 0; }
+.ag-ev b { font-size: 12px; text-transform: uppercase; letter-spacing: .02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ag-ev span { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.ag-ev small, .ag-ev em { font-size: 11px; opacity: .85; font-style: normal; }
+.ag-ev:hover { filter: brightness(1.12); }
+.ag-ev.ag-sup { background: #DCE8F6; color: #1F4677; }
+.ag-ev.ag-venc { background: #B4372E; color: #fff; }
+.ag-livre { font-size: 12px; color: #9AA3AD; padding: 2px 4px; }
+.ag-semdata { display: flex; gap: 10px; align-items: flex-start; }
+.ag-rot { flex: none; font-size: 12px; font-weight: 700; color: #4B5560; padding-top: 6px; }
+.ag-semdata-l { display: flex; flex-wrap: wrap; gap: 6px; }
+.ag-semdata-l .ag-ev { max-width: 260px; }
+.lg.ag-lg-venc { background: #B4372E; } .lg.ag-lg-sup { background: #DCE8F6; border: 1px solid #9DB7D6; }
+@media (max-width: 760px) { .ag-faixa { grid-template-columns: 1fr; } }
+
+/* ---- Celular da obra (#/celular/<obra>): tela de celular, centralizada */
+.cel { max-width: 420px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+.cel-topo { background: var(--pd-chumbo); color: #fff; border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; }
+.cel-topo span { font-size: 12px; color: #C9D0D8; }
+.cel-topo b { font-family: var(--pd-cond); font-size: 30px; line-height: 1.05; }
+.cel-topo small { font-size: 12.5px; color: #DDE2E8; }
+.cel-papeis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.cel-papeis button { padding: 10px 6px; border: 1px solid #C9D3DF; border-radius: 8px; background: #fff; font-weight: 600; font-size: 14px; }
+.cel-papeis button.on { background: var(--pd-azul2); border-color: var(--pd-azul2); color: #fff; }
+.cel-nota { margin: 0; font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+.cel-caixa { background: #fff; border: 1px solid #D5DCE4; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.cel-caixa h3 { font-family: var(--pd-cond); font-size: 22px; font-weight: 700; color: var(--pd-azul); }
+.cel-meta { border: 2px solid var(--pd-azul); }
+.cel-sub { margin: -6px 0 0; font-size: 12.5px; color: var(--muted); text-transform: capitalize; }
+.cel-h { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.cel-prazo { font-size: 12px; font-weight: 700; color: #8E2A24; }
+.cel-atraso { font-size: 12px; font-weight: 700; color: #fff; background: #B4372E; padding: 2px 8px; border-radius: 6px; }
+.cel-selos { display: flex; flex-wrap: wrap; gap: 6px; }
+.cel-naofeito { border: 2px solid #C8473E; background: #FBE4E1; border-radius: 8px; padding: 10px 12px; color: #8E2A24; }
+.cel-naofeito b { font-family: var(--pd-cond); font-size: 18px; letter-spacing: .04em; }
+.cel-naofeito .pd-lista li::before { color: #8E2A24; }
+.cel-grupo span { font-size: 12px; font-weight: 700; color: #4B5560; }
+.cel-item { display: flex; flex-direction: column; gap: 6px; padding-bottom: 8px; border-bottom: 1px solid #EDF0F3; }
+.cel-item:last-of-type { border-bottom: 0; }
+.cel-item-h { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; font-weight: 600; }
+.cel-item-h b { white-space: nowrap; color: #4B5560; font-size: 13px; }
+.cel-caixa label { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: #4B5560; }
+.cel-caixa input[type=number], .cel-caixa textarea { font: inherit; font-size: 17px; padding: 10px 12px; border: 1px solid #C9D3DF; border-radius: 8px; width: 100%; box-sizing: border-box; background: #fff; }
+.cel-caixa textarea { font-size: 15px; resize: vertical; }
+.cel-cont { display: grid; grid-template-columns: 48px 1fr 48px; gap: 8px; }
+.cel-cont button { border: 1.5px solid var(--pd-azul); border-radius: 8px; color: var(--pd-azul); font-size: 22px; font-weight: 700; background: #fff; }
+.cel-cont input { text-align: center; }
+.cel-bt { display: block; width: 100%; padding: 13px; border: 0; border-radius: 8px; background: var(--pd-azul2); color: #fff; font-weight: 700; font-size: 15px; text-align: center; text-decoration: none; cursor: pointer; box-sizing: border-box; }
+.cel-bt:disabled { opacity: .6; }
+.cel-bt-claro { background: #fff; color: var(--pd-azul2); border: 1.5px solid var(--pd-azul2); }
+.cel-msg { font-size: 13px; font-weight: 700; color: #2F6B43; text-align: center; }
+/* Agenda: cartõezinhos de uma linha por tarefa (como as tarefinhas do Google Agenda) */
+.ag-mini { display: block; padding: 3px 7px; border-radius: 5px; font-size: 11.5px; line-height: 1.35; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.ag-mini b { margin-right: 4px; font-family: var(--pd-cond); font-size: 12px; }
+.ag-mini:hover { filter: brightness(1.1); }
+.ag-mini.ag-venc { background: #B4372E; color: #fff; }
+.ag-mini.ag-hoje { background: var(--pd-azul); color: #fff; }
+.ag-mini.ag-futura { background: #DCE5F0; color: #26405F; }
+.ag-mini.ag-feita { background: #EEF1F4; color: #8A939D; text-decoration: line-through; }
+.ag-mais summary { cursor: pointer; font-size: 11.5px; font-weight: 700; color: var(--pd-azul); padding: 1px 4px; list-style: none; }
+.ag-mais summary::-webkit-details-marker { display: none; }
+.ag-mais[open] summary { margin-bottom: 4px; }
+.ag-mais { display: flex; flex-direction: column; gap: 4px; }
+.ag-mais .ag-mini { margin-top: 4px; }
+.ag-dia { gap: 4px; }
+.lg.ag-lg-hoje { background: var(--pd-azul); } .lg.ag-lg-futura { background: #DCE5F0; } .lg.ag-lg-feita { background: #EEF1F4; border: 1px solid #C9D0D8; }
+
+/* blocos da obra (Obra no prazo, Mão de obra produtiva, Material e projeto na hora): linha rótulo | selo */
+.pd-bloco-l { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; padding: 8px 0; border-top: 1px solid #EDF0F3; }
+
+/* Agenda: tarefas na linha de cima de cada dia, dentro da grade (como o Google Agenda) */
+.fq-cab .ag-cab-tarefas { display: flex; flex-direction: column; gap: 3px; margin-top: 6px; text-align: left; font-weight: 400; }
+.fq-cab .ag-cab-tarefas .ag-mini { font-size: 11.5px; }
+.ag-resumo { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 22px; margin: 0 0 12px; font-size: 13px; }
+.ag-resumo .legenda-semana { margin: 0; }
+.ag-cab-tarefas .ag-mini b { color: inherit; margin-right: 4px; }

@@ -281,6 +281,7 @@ function desenharNav(sel) {
       + `<div class="nav-perfil">${perfil.avatar(s.nome, 38)}<span><b>${esc(s.nome)}</b><small>${esc(f.nome)}</small></span></div>`
       // pedido do Felipe (04/11): Meu trabalho (Agenda, Tarefas, Atas) e Equipe (Treinamentos, Feed)
       + '<div class="nav-grupo">Meu trabalho</div>' + item('agenda', 'Agenda')
+      + (f.porObra ? obrasDaPessoa().map((o) => `<a class="nav-item${location.hash.startsWith(`#/celular/${o}`) ? ' sel' : ''}" href="#/celular/${encodeURIComponent(o)}"><span>Celular da obra ${esc(o)}</span></a>`).join('') : '')
       + (paginaVisivel(f, 'atas') ? itemTarefasRestrito(sel) + `<a class="nav-item${sel === 'atas' ? ' sel' : ''}" href="#/atas?aba=atas"><span>Atas</span></a>` : '')
       + '<div class="nav-grupo">Equipe</div>'
       + (temEstoqueRestrito(f) && paginaVisivel(f, 'estoque') ? item('estoque', 'Estoque') : '') + item('treinamentos', 'Treinamentos')
@@ -297,7 +298,8 @@ function desenharNav(sel) {
   const statusDep = (d) => { const a = CFG && d.cfg && CFG.areas.find((x) => x.id === d.cfg); return a ? a.status : ''; };
   const obrasMenu = obrasDoMenu();
   const deps = DEPARTAMENTOS.filter((d) => podeVerDep(d, f)).map((d) => item(d.id, d.nome, statusDep(d))
-    + (d.comObras ? obrasMenu.map((o) => sub(`#/obra/${encodeURIComponent(o)}`, o, r.tela === 'obra' && r.sub === o)).join('') : '')).join('');
+    + (d.comObras ? obrasMenu.map((o) => sub(`#/obra/${encodeURIComponent(o)}`, o, r.tela === 'obra' && r.sub === o)).join('') : '')
+    + (d.id === 'transporte' && paginaVisivel(f, 'estoque') ? item('estoque', 'Estoque') : '')).join('');
   const verAtas = paginaVisivel(f, 'atas');
   const nTar = atas.minhasAbertas();
   const itemTar = `<a class="nav-item${sel === 'tarefas' ? ' sel' : ''}" href="#/atas"><span>Tarefas</span>${nTar ? `<span class="nav-n">${nTar}</span>` : ''}</a>`;
@@ -309,7 +311,6 @@ function desenharNav(sel) {
     + (f.id === 'socio' ? grupo('Resultados') + item('equipe', 'Ranking') : '')   // ranking, funcionário do mês e recompensas: só a diretoria
     + grupo('Equipe')
     + (!f.semMinhaSemana && paginaVisivel(f, 'meudia') && f.editaProdutividade ? item('meudia', 'Minha semana') : '') + (f.veQuadro ? item('quadro', 'Quadro de funções') : '')
-    + (paginaVisivel(f, 'estoque') ? item('estoque', 'Estoque') : '')
     + (paginaVisivel(f, 'feed') ? itemFeed() : '')
     + (paginaVisivel(f, 'escritorio') ? item('escritorio', 'Escritório virtual') : '')
     + (paginaVisivel(f, 'treinamentos') ? item('treinamentos', 'Treinamentos') : '')
@@ -513,7 +514,7 @@ function desenhar() {
   if (tela === 'agenda' && !paginaVisivel(f, 'meudia') && f.id !== 'socio') tela = 'geral';
   if (['meudia', 'feed', 'estoque', 'escritorio', 'treinamentos', 'atas', 'tarefas', 'marketing'].includes(tela) && !paginaVisivel(f, tela === 'tarefas' ? 'atas' : tela)) tela = 'geral';   // aba que a diretoria tirou desta função
   // acesso restrito (por enquanto, quase todo mundo): Agenda, Tarefas, Atas, Treinamentos e Feed (o resto é da diretoria e do Administrativo)
-  if (soMinhasFuncoes(f)) tela = (['treinamentos', 'atas', 'tarefas', 'feed'].includes(tela) || (tela === 'estoque' && temEstoqueRestrito(f))) ? tela : 'agenda';
+  if (soMinhasFuncoes(f)) tela = (['treinamentos', 'atas', 'tarefas', 'feed'].includes(tela) || (tela === 'celular' && f.porObra) || (tela === 'estoque' && temEstoqueRestrito(f))) ? tela : 'agenda';
 
   // departamento do organograma (Painel no desenho do Marcos + Detalhes = a tela que já existia)
   let dep = depPorId(tela);
@@ -604,9 +605,23 @@ function desenhar() {
     movimentacao.garantir(desenhar);
     contagem.garantir(desenhar);
     const dEst = contagem.aplicar(estado.drive.estoque);   // contagens feitas no site por cima da planilha
-    const caixaCont = contagem.PODE_CONTAR.includes(f.id) && dEst && dEst.itens ? contagem.caixa({ dados: dEst }) : '';
-    const caixaMov = movimentacao.PODE_MOVIMENTAR.includes(f.id) ? movimentacao.caixa({ itens: ((dEst && dEst.itens) || []).map((i) => ({ cod: i.cod, item: i.item })), obras: (dEst && dEst.obras) || [] }) : '';
-    $('#conteudo').innerHTML = `<div>${caixaCont}${caixaMov}${estoque.render(dEst, { podeCompleto: estoque.VE_ESTOQUE_COMPLETO.includes(f.id), veConsumiveis: estoque.VE_CONSUMIVEIS.includes(f.id), verTudo: rota.params.get('ver') === 'tudo' })}</div>`;
+    // abas embaixo do título (pedido do Felipe, 04/11): Estoque é só o estoque; contagem, guia, pedidos, checklists e reposição em abas
+    const podeCont = contagem.PODE_CONTAR.includes(f.id) && dEst && dEst.itens;
+    const podeMov = movimentacao.PODE_MOVIMENTAR.includes(f.id);
+    const veComp = estoque.VE_ESTOQUE_COMPLETO.includes(f.id);
+    const abasEst = [{ id: '', nome: 'Estoque' }, podeCont && { id: 'contagem', nome: 'Contagem do estoque' }, podeMov && { id: 'movimentacao', nome: 'Guia de movimentação' },
+      { id: 'pedir', nome: 'Pedir itens do estoque' }, { id: 'checklists', nome: 'Checklists de ferramentas' }, veComp && { id: 'reposicao', nome: 'Reposição' }].filter(Boolean)
+      .map((a) => ({ ...a, href: `#/estoque${a.id ? `/${a.id}` : ''}` }));
+    const abaEst = abasEst.some((a) => a.id === rota.sub) ? rota.sub : '';
+    const ctxEst = { ...ctxPainel(null, CFG && CFG.areas.find((a) => a.id === 'transporte')), drive: { ...(estado.drive || {}), estoque: dEst } };
+    const corpoEst = {
+      contagem: () => contagem.caixa({ dados: dEst, abrir: true }),
+      movimentacao: () => movimentacao.caixa({ itens: ((dEst && dEst.itens) || []).map((i) => ({ cod: i.cod, item: i.item })), obras: (dEst && dEst.obras) || [] }),
+      pedir: () => estoque.pedidosFuturos({ abrir: true }),
+      checklists: () => `${painelDe('ferramentas', { ...ctxEst, parte: 'checklists' })}<div style="margin-top:26px">${ferrChk.cartoes(CFG, estado.ferrChk, f.porObra ? obrasDaPessoa() : null, dEst)}</div>`,
+      reposicao: () => reposicao.render(dEst),
+    }[abaEst];
+    $('#conteudo').innerHTML = `<div class="pd">${pd.abas(abasEst, abaEst)}<div class="pd-corpo">${corpoEst ? corpoEst() : `${CFG ? painelDe('ferramentas', { ...ctxEst, parte: 'resumo' }) : ''}<div style="margin-top:22px">${estoque.render(dEst, { podeCompleto: veComp, veConsumiveis: estoque.VE_CONSUMIVEIS.includes(f.id), verTudo: rota.params.get('ver') === 'tudo' })}</div>`}</div></div>`;
     return;
   }
   if (tela === 'quadro') {
@@ -626,9 +641,12 @@ function desenhar() {
     } else if (dep && ehPainel) {
       out = `<div class="pd">${pd.cabecalho({ resp: dep.resp })}${temLegado ? abasDe(`#/${dep.id}`, '') : ''}${painelDe(dep.id, ctxPainel(dep, area))}</div>`;
     } else if (tela === 'obra') {
+      if (!estado.celCarregado) { estado.celCarregado = true; celularObra.carregar(() => desenhar()); }
       out = telaObraNova(rota);
     } else if (tela === 'celular') {
-      out = String(celularObra.render(ctxPainel(depPorId('operacao'), CFG.areas.find((a) => a.id === 'operacao')), rota.sub, rota.params));
+      if (!estado.celCarregado) { estado.celCarregado = true; celularObra.carregar(() => desenhar()); }
+      if (f.porObra && !obrasDaPessoa().includes(rota.sub)) out = `<div class="erro">A obra ${esc(rota.sub)} não está entre as suas obras.</div>`;
+      else out = String(celularObra.render(ctxPainel(depPorId('operacao'), CFG.areas.find((a) => a.id === 'operacao')), rota.sub, rota.params));
     } else if (ehObraPlan) out = T.telaObra(rota.arg);
     else if (area && area.id === 'operacao') {
       // Operação: acompanhamento de todas as obras (quem é de obra vê só as suas e não vê o Resumo do setor)
@@ -1284,6 +1302,7 @@ function configurar() {
 configurar();
 movimentacao.ligar(() => desenhar());
 contagem.ligar(() => desenhar());
+celularObra.ligar(() => desenhar());   // celular da obra: executado do dia, efetivo e diário
 if (nuvem.NA_NUVEM) {
   // link de 'esqueci a senha' volta com a sessão de recuperação: pede a senha nova
   await nuvem.carregarPerfil();

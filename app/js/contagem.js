@@ -161,12 +161,12 @@ function sessoes() {
   return [...m.values()].slice(0, 12);
 }
 
-export function caixa({ dados }) {
+export function caixa({ dados, abrir = false }) {
   dadosForm = dados;
   const nome = sessao().nome || '';
   const locais = [...(dados.locais || []).map((l) => [l.id, l.nome]), ...(dados.obras || []).map((o) => [o, `Obra ${o}`])];
   const ss = sessoes();
-  return html`<details class="caixa mov-caixa cont-caixa" id="cont-caixa" ${aberta ? html.seguro('open') : ''}>
+  return html`<details class="caixa mov-caixa cont-caixa" id="cont-caixa" ${aberta || abrir ? html.seguro('open') : ''}>
     <summary><span class="caixa-tit">Contagem do estoque</span><span class="pequeno">conte e digite a quantidade atual de cada item (no lugar da folha escrita à mão)</span></summary>
     <div class="caixa-corpo">
       <p class="pequeno">Escolha o local, digite só os itens que você contou e salve. Item deixado em branco não muda. Contar de novo no mesmo dia e local substitui a contagem anterior. O número fica gravado com data e seu nome e aparece no estoque do site; "comprar" e "consertar" continuam vindo da planilha.</p>

@@ -360,3 +360,17 @@ export async function presenca(meu) {
   return Object.values(canal.presenceState()).map((xs) => xs[xs.length - 1]);
 }
 export async function sairDaPresenca() { if (canal) { try { await canal.untrack(); await sb.removeChannel(canal); } catch { /* nada */ } canal = null; pronto = false; } }
+
+// ---------------------------------------------------------------- celular da obra (executado, efetivo e diário do dia)
+export async function listarRegistrosObra(de, ate) {
+  const { data, error } = await sb.from('registros_obra').select('*').gte('data', de).lte('data', ate).order('data', { ascending: false }).limit(5000);
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+// lançar de novo no mesmo dia substitui (obra + data + tipo + item); quem lança por último fica como autor
+export async function gravarRegistroObra(linha) {
+  const { data, error } = await sb.from('registros_obra')
+    .upsert({ ...linha, item: linha.item || '', criado_por: perfil.id }, { onConflict: 'obra,data,tipo,item' }).select().single();
+  if (error) throw new Error(error.message);
+  return data;
+}

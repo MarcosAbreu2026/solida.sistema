@@ -8,6 +8,8 @@
 // cfg    = área do dados.json (agentes) de onde vêm indicadores e alertas; a tela antiga também vem dela.
 // setor  = nome do setor (SETORES_ORGANOGRAMA) usado nas tarefas criadas a partir deste painel.
 // funcoes = quem vê o departamento no menu (além da diretoria e do administrativo, que veem tudo).
+// Pedido do Felipe (04/11): Materiais e Ferramentas e EPI não são departamentos à parte. Ficam Compras, Transporte e Logística
+// (rotas e venda de materiais) e Estoque (tela própria com abas: estoque, contagem, guia de movimentação, pedir itens, checklists, reposição).
 
 export const DEPARTAMENTOS = [
   { id: 'operacao', nome: 'Operações', cfg: 'operacao', setor: 'Operação', comObras: true,
@@ -47,18 +49,10 @@ export const DEPARTAMENTOS = [
     resp: 'Gestor: Marcos H. · Estagiário: Pedro M.',
     pergunta: 'Existe solicitação ou cotação parada que vai atrasar uma obra?',
     funcoes: ['compras', 'estagiario_compras', 'coord_operacoes', 'gestor_obra', 'administrativo', 'financeiro'] },
-  { id: 'materiais', nome: 'Materiais', cfg: 'suprimentos', setor: 'Suprimentos e compras',
-    resp: 'Gestor: Marcos H. · Executor: Flávio', titulo: 'Materiais e venda de materiais',
-    pergunta: 'O que saiu do galpão, o que foi vendido e o que está acabando?',
-    funcoes: ['compras', 'estagiario_compras', 'ferramentas', 'executor_ferramentas'] },
   { id: 'transporte', nome: 'Transporte e Logística', cfg: 'transporte', setor: 'Transporte e logística',
     resp: 'Gestor: Paiva · Executor: Anderson',
     pergunta: 'As rotas do dia e do dia seguinte foram feitas conforme o combinado e o que precisa de correção?',
     funcoes: ['ferramentas', 'executor_ferramentas', 'estagiario_compras', 'compras', 'posobra'] },
-  { id: 'ferramentas', nome: 'Ferramentas e EPI', cfg: 'transporte', setor: 'Ferramentas / EPI',
-    resp: 'Gestor: Paiva · Executor: Anderson',
-    pergunta: 'Cada obra tem as ferramentas e EPI obrigatórios no padrão de organização?',
-    funcoes: ['ferramentas', 'executor_ferramentas', 'estagiario_compras', 'compras', 'coord_operacoes', 'gestor_obra', 'encarregado'] },
   { id: 'financeiro', nome: 'Financeiro', cfg: 'financeiro', setor: 'Financeiro',
     resp: 'Gestora: Letícia · valores visíveis só para sócios',
     pergunta: 'Existe pagamento ou recebimento travando alguma obra?',

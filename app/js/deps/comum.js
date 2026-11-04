@@ -59,4 +59,20 @@ export function fontesDe(area) {
   return l.length ? `Fonte: ${[...new Set(l)].join(', ')}` : '';
 }
 
+// cartão a partir de um indicador do agente (kpis da área), separando a meta ("· meta 0") do resto.
+// Indicador restrito (R$) para quem não vê valores: traço com "visível só para sócios". Sem o indicador: traço.
+export function cartaoDoAgente(area, re, { rotulo = '', meta = '', veValores = true, nivel = null, semDado = 'sem leitura do agente' } = {}) {
+  const k = pd.kpiDoAgente(area, re);
+  if (!k) return { rotulo, valor: '—', sub: semDado, meta };
+  if (k.restrito && !veValores) return { rotulo: rotulo || k.rotulo, valor: '—', sub: 'visível só para sócios', meta };
+  const m = (k.sub.match(/(meta|prazo)[^·]*/i) || [])[0] || '';
+  const sub = k.sub.replace(/(meta|prazo)[^·]*/i, '').split('·').map((s) => s.trim()).filter(Boolean).join(' · ');
+  const metaTxt = meta || (m ? m.charAt(0).toUpperCase() + m.slice(1).trim() : '');
+  const n = Number(String(k.valor).replace(/[^\d,.-]/g, '').replace(',', '.'));
+  return { rotulo: rotulo || k.rotulo, valor: k.valor, sub, meta: metaTxt, nivel: nivel && String(k.valor).trim() !== '—' && !Number.isNaN(n) ? nivel(n, k.valor) : '' };
+}
+
+// semana (segunda a domingo) que contém a data; e a última sexta-feira até a data
+export const ultimaSexta = (iso) => { const d = new Date(`${iso}T12:00:00`); const back = (d.getDay() + 2) % 7; d.setDate(d.getDate() - back); return d.toISOString().slice(0, 10); };
+
 export const num = (v) => (typeof v === 'number' ? v.toLocaleString('pt-BR') : v);
