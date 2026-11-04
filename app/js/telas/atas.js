@@ -14,7 +14,7 @@ import { lerPessoasTarefas } from '../armazenamento.js';
 import { analisarAta, lerArquivoAta, acharResponsavel } from '../ata-leitor.js';
 import { analisarReuniao, analisarFala, pareceResumoEmTopicos } from '../fala-leitor.js';
 
-export const ABAS = [['pendencias', 'Pendências'], ['atas', 'Atas'], ['nova', 'Nova ata']];
+export const ABAS = [['pendencias', 'Pendências'], ['atas', 'Atas'], ['pautas', 'Pautas'], ['nova', 'Nova ata']];
 export const SETORES_ATA = [...SETORES_ORGANOGRAMA, 'Diretoria / geral'];
 
 let dados = { atas: [], pendencias: [], pessoas: [], erro: '' };
@@ -521,11 +521,14 @@ export function render({ params, obras = [], msg = '', sugestoes = [] }) {
   const aba = ABAS.some(([id]) => id === params.get('aba')) ? params.get('aba') : 'pendencias';
   const abertas = dados.pendencias.filter((p) => naLista(p) && p.status === 'aberta');
   // Tarefas e Atas já estão no menu da esquerda (desenho do Marcos): sem as abas aqui em cima; em Atas, o botão de nova ata
-  const topo = aba === 'atas' && !params.get('ata') ? html`<div class="at-topo-bt"><a class="pd-bt pd-bt-cheio" href="#/atas?aba=nova">+ Nova ata</a><span class="pequeno">${dados.atas.length} ${dados.atas.length === 1 ? 'ata' : 'atas'}</span></div>`
+  // Atas / Pautas (pedido do Felipe, 04/11): duas abas na tela de Atas
+  const abasAtas = html`<div class="subnav at-abas" role="tablist"><a role="tab" class="${aba === 'atas' ? 'on' : ''}" href="#/atas?aba=atas">Atas <span class="est-n">${dados.atas.length}</span></a><a role="tab" class="${aba === 'pautas' ? 'on' : ''}" href="#/atas?aba=pautas">Pautas <span class="est-n">${new Set(dados.pendencias.filter((p) => naLista(p) && p.status === 'aberta').map((p) => p.obra || p.setor || 'Escritório')).size}</span></a><a class="pd-bt pd-bt-cheio at-nova-bt" href="#/atas?aba=nova">+ Nova ata</a></div>`;
+  const topo = (aba === 'atas' && !params.get('ata')) || aba === 'pautas' ? abasAtas
     : aba === 'nova' ? html`<div class="at-topo-bt"><a class="link" href="#/atas?aba=atas">← Atas</a></div>` : '';
   void abertas;
   let corpo;
   if (aba === 'nova') corpo = formNova(obras, params.get('revisar') || '');
+  else if (aba === 'pautas') corpo = renderPautas(params, obras);
   else if (aba === 'atas') corpo = params.get('ata') ? detalheAta(params.get('ata'), hoje, obras) : html`${barraFiltros(params, obras, 'atas')}${listaAtas(params, obras)}`;
   else corpo = renderPendencias({ params, obras });
   return html`<div class="pagina atas">
@@ -641,3 +644,64 @@ export function detalheTarefa(id, { msg = '' } = {}) {
     </div>
   </div>`;
 }
+
+
+// ================================================================ Pautas (pedido do Felipe, 04/11/2026)
+// Atas / Pautas: a pauta da próxima reunião de cada obra (ou departamento) é o que ainda está aberto, e dá para filtrar
+// por quem vai estar na reunião: arquitetura · arquitetura e cliente · cliente · terceirizados da obra.
+// Ordenar por data (o prazo mais próximo primeiro) ou por ordem alfabética.
+export const FILTROS_PAUTA = [['arquitetura', 'Arquitetura'], ['arqcliente', 'Arquitetura e cliente'], ['cliente', 'Cliente'], ['terceiros', 'Terceirizados da obra']];
+const TIPOS_DA_PAUTA = { arquitetura: ['arquitetura'], arqcliente: ['arquitetura', 'cliente'], cliente: ['cliente'], terceiros: ['terceirizado'] };
+const chaveTxt = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLocaleLowerCase('pt-BR');
+const linhaPauta = (p, hoje) => {
+  const [ass, resto] = dividirDescricao(p.descricao); const quem = nomeDe(p.responsavel, p.responsavel_nome);
+  return { p, ass, resto, quem, atrasada: !!p.prazo && p.prazo < hoje };
+};
+function montarPautas(params) {
+  const hoje = hojeISO();
+  const filtro = FILTROS_PAUTA.some(([v]) => v === params.get('pauta')) ? params.get('pauta') : '';
+  const alfa = params.get('ordem') === 'alfa';
+  const q = chaveTxt(params.get('q'));
+  const tipos = filtro ? TIPOS_DA_PAUTA[filtro] : null;
+  const abertas = dados.pendencias.filter((p) => naLista(p) && p.status === 'aberta' && (!tipos || tipos.includes(p.responsavel_tipo || 'solida')) && (!params.get('obra') || p.obra === params.get('obra'))
+    && (!params.get('setor') || p.setor === params.get('setor')) && (!q || chaveTxt(`${p.descricao} ${p.responsavel_nome} ${p.obra} ${p.setor}`).includes(q)));
+  const grupos = new Map();
+  for (const p of abertas) {
+    const nome = p.obra || p.setor || 'Escritório';
+    const g = grupos.get(nome) || { nome, tipo: p.obra ? 'obra' : 'setor', itens: [], ultimaAta: '' };
+    g.itens.push(linhaPauta(p, hoje)); const a = ataDe(p); if (a && a.data > g.ultimaAta) g.ultimaAta = a.data; grupos.set(nome, g);
+  }
+  const porPrazo = (x, y) => String(x.p.prazo || '9999').localeCompare(String(y.p.prazo || '9999'));
+  const porNome = (x, y) => chaveTxt(`${x.ass} ${x.resto}`).localeCompare(chaveTxt(`${y.ass} ${y.resto}`), 'pt-BR');
+  const lista = [...grupos.values()];
+  for (const g of lista) { g.itens.sort(alfa ? porNome : porPrazo); g.proximo = g.itens.map((i) => i.p.prazo).filter(Boolean).sort()[0] || ''; }
+  lista.sort(alfa ? (x, y) => chaveTxt(x.nome).localeCompare(chaveTxt(y.nome), 'pt-BR', { numeric: true }) : (x, y) => String(x.proximo || '9999').localeCompare(String(y.proximo || '9999')) || chaveTxt(x.nome).localeCompare(chaveTxt(y.nome), 'pt-BR', { numeric: true }));
+  return { lista, filtro, alfa, total: abertas.length, hoje };
+}
+export function textoDaPauta(g, filtro) {
+  const rot = FILTROS_PAUTA.find(([v]) => v === filtro);
+  const out = [`PAUTA DA PRÓXIMA REUNIÃO — ${g.nome}${rot ? ` · ${rot[1]}` : ''}`, ''];
+  g.itens.forEach((i, n) => out.push(`${n + 1}. ${i.ass ? `${i.ass}, ${i.resto}` : i.p.descricao} — ${String(i.quem).toLocaleUpperCase('pt-BR')}${i.p.prazo ? ` — prazo ${dm(i.p.prazo).slice(0, 5)}` : ''}${i.atrasada ? ' [ATRASADA]' : ''}`));
+  out.push('', 'Assuntos novos:', '- ');
+  return out.join('\n');
+}
+function renderPautas(params, obras) {
+  const { lista, filtro, alfa, total, hoje } = montarPautas(params);
+  const sel = (nome, rotulo, opcoes, atual, todos = 'Todas') => html`<label>${rotulo}<select data-atas-filtro="${nome}"><option value="">${todos}</option>${opcoes.map(([v, t]) => html`<option value="${v}" ${atual === v ? html.seguro('selected') : ''}>${t}</option>`)}</select></label>`;
+  const cartaoPauta = (g) => html`<article class="at-pauta">
+    <header><div><h3>${g.nome}</h3><span class="pequeno">${g.itens.length} ${g.itens.length === 1 ? 'item em aberto' : 'itens em aberto'}${g.ultimaAta ? ` · última ata ${dm(g.ultimaAta).slice(0, 5)}` : ''}</span></div>
+      <button type="button" class="ac-mini" data-pauta-txt="${g.nome}" title="Copia a pauta em texto para colar no e-mail ou no WhatsApp">Copiar pauta</button></header>
+    <ol class="at-pauta-itens">${g.itens.map((i) => html`<li class="${i.atrasada ? 'at-p-atras' : ''}" data-tarefa="${i.p.id}" title="Clique para abrir a tarefa">
+      <span class="at-p-tit">${i.ass ? html`<b>${i.ass}</b>, ${i.resto}` : i.p.descricao}</span>
+      <span class="at-p-meta"><span class="at-pessoa">${i.quem}</span>${i.p.responsavel_tipo && i.p.responsavel_tipo !== 'solida' ? html`<span class="at-tipo at-t-${i.p.responsavel_tipo}">${ROTULO_TIPO[i.p.responsavel_tipo] || 'Externo'}</span>` : ''}${i.p.prazo ? html`<span class="${i.atrasada ? 'pendente' : ''}">${i.atrasada ? 'atrasada · ' : ''}${dm(i.p.prazo).slice(0, 5)}</span>` : html`<span class="muted">sem prazo</span>`}</span></li>`)}</ol></article>`;
+  return html`<div class="at-filtros at-filtros-pauta">
+      ${sel('pauta', 'Pauta para', FILTROS_PAUTA, filtro, 'Todas as pautas')}
+      ${sel('ordem', 'Ordenar por', [['data', 'Data (prazo mais próximo)'], ['alfa', 'Ordem alfabética']], alfa ? 'alfa' : 'data', 'Data (prazo mais próximo)')}
+      ${sel('obra', 'Obra', obras.map((o) => [o, o]), params.get('obra') || '', 'Todas')}
+      <label>Procurar<input type="search" data-atas-filtro="q" value="${params.get('q') || ''}" placeholder="texto…"></label>
+    </div>
+    <p class="pequeno at-pauta-nota">A pauta de cada obra é o que ainda está em aberto: as pendências abertas das atas e das tarefas. ${filtro ? `Mostrando só o que é de ${FILTROS_PAUTA.find(([v]) => v === filtro)[1].toLocaleLowerCase('pt-BR')}.` : 'Escolha para quem é a reunião para ver só o que cabe a eles.'} ${total} ${total === 1 ? 'item' : 'itens'} em ${lista.length} ${lista.length === 1 ? 'pauta' : 'pautas'}.</p>
+    ${lista.length ? html`<div class="at-pautas">${lista.map(cartaoPauta)}</div>` : html`<p class="vazio">Nenhum item em aberto com esses filtros.</p>`}`;
+}
+export const pautaPorNome = (nome, params) => montarPautas(params).lista.find((g) => g.nome === nome) || null;
+void ataDe;

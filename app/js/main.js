@@ -527,7 +527,7 @@ function desenhar() {
   const ehObraPlan = tela === 'planejamento' && rota.sub === 'obra';
   const fixas = ['agentes', 'meudia', 'agenda', 'quadro', 'estoque', 'escritorio', 'perfil', 'feed', 'treinamentos', 'acessos', 'atas', 'tarefas', 'marketing', 'equipe', 'obra', 'celular'];
   const abaAtas = rota.params.get('aba');
-  const sel = tela === 'funcionarios' ? 'rh' : tela === 'tarefas' || (tela === 'atas' && !['atas', 'nova'].includes(abaAtas)) ? 'tarefas' : (dep || area || fixas.includes(tela)) ? tela : 'geral';
+  const sel = tela === 'funcionarios' ? 'rh' : tela === 'tarefas' || (tela === 'atas' && !['atas', 'nova', 'pautas'].includes(abaAtas)) ? 'tarefas' : (dep || area || fixas.includes(tela)) ? tela : 'geral';
   desenharNav(sel);
   desenharPerfil();
   desenharVerComo();
@@ -539,7 +539,7 @@ function desenhar() {
     : dep ? (dep.titulo || dep.nome)
     : tela === 'obra' ? rota.sub
     : area ? area.nome
-    : ({ agentes: 'Agentes', funcionarios: 'Funcionários por obra', meudia: 'Minha semana', agenda: 'Agenda', quadro: 'Quadro de funções', estoque: 'Estoque', escritorio: 'Escritório virtual', perfil: 'Perfil', feed: 'Feed', treinamentos: 'Treinamentos', acessos: 'Cadastros', atas: ['atas', 'nova'].includes(abaAtas) ? 'Atas' : 'Tarefas', tarefas: 'Tarefas', marketing: 'Marketing', equipe: 'Ranking', celular: 'Celular da obra' }[tela] || (f.id === 'socio' ? 'Início · visão do CEO' : 'Início'));
+    : ({ agentes: 'Agentes', funcionarios: 'Funcionários por obra', meudia: 'Minha semana', agenda: 'Agenda', quadro: 'Quadro de funções', estoque: 'Estoque', escritorio: 'Escritório virtual', perfil: 'Perfil', feed: 'Feed', treinamentos: 'Treinamentos', acessos: 'Cadastros', atas: ['atas', 'nova', 'pautas'].includes(abaAtas) ? 'Atas' : 'Tarefas', tarefas: 'Tarefas', marketing: 'Marketing', equipe: 'Ranking', celular: 'Celular da obra' }[tela] || (f.id === 'socio' ? 'Início · visão do CEO' : 'Início'));
   $('#titulo').textContent = titulo;
   document.title = `${titulo} · Sólida`;
 
@@ -1544,6 +1544,14 @@ document.addEventListener('drop', async (e) => {
   } catch (err) { alert(`Não foi possível mudar o prazo (${err.message || err}).`); }
 });
 
+// Pautas: copiar a pauta de uma obra em texto
+document.addEventListener('click', async (e) => {
+  const b = e.target.closest && e.target.closest('[data-pauta-txt]'); if (!b) return;
+  const g = atas.pautaPorNome(b.dataset.pautaTxt, rotaAtual().params); if (!g) return;
+  const t = atas.textoDaPauta(g, rotaAtual().params.get('pauta') || '');
+  try { await navigator.clipboard.writeText(t); b.textContent = 'Copiada ✓'; } catch { alert(t); }
+  setTimeout(() => { b.textContent = 'Copiar pauta'; }, 2000);
+});
 // Reposição: filtro por categoria
 document.addEventListener('click', (e) => {
   const c = e.target.closest && e.target.closest('[data-rp-cat]'); if (!c) return;
