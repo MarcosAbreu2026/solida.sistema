@@ -464,7 +464,7 @@ function formNova(obras, revisarId = '') {
   const r = ataRev ? ataComoRascunho(ataRev) : rascunho;
   const proxRev = ataRev ? (Number(ataRev.revisao) || 0) + 1 : 0;
   const linhasIniciais = r && (r.pendencias.length || (r.informativosLista || []).length) ? [...r.pendencias, ...(r.informativosLista || [])].sort((x, y) => (Number(x.item) || 0) - (Number(y.item) || 0)).map((p) => linhaForm(p)).join('') : linhaForm();
-  const importador = html`<details class="caixa at-importar" ${r ? '' : html.seguro('open')}><summary><span class="caixa-tit">Importar uma ata pronta ou colar a transcrição</span><span class="pequeno">envie PDF/texto, ou cole a transcrição: eu leio e separo informativos e pendências</span></summary>
+  const importador = html`<details class="caixa at-importar"><summary><span class="caixa-tit">Importar uma ata pronta ou colar a transcrição</span><span class="pequeno">envie PDF/texto, ou cole a transcrição: eu leio e separo informativos e pendências</span></summary>
     <div class="caixa-corpo">
       <div class="at-gravar">
         <h4>Colar a transcrição da reunião</h4>
