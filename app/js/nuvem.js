@@ -374,3 +374,18 @@ export async function gravarRegistroObra(linha) {
   if (error) throw new Error(error.message);
   return data;
 }
+
+// ---------------------------------------------------------------- notas (chat) de cada tarefa/pendência
+export async function listarNotasPend(pendenciaId) {
+  const { data, error } = await sb.from('pendencias_notas').select('*').eq('pendencia_id', pendenciaId).order('criado_em', { ascending: true });
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+export async function criarNotaPend(pendenciaId, texto) {
+  const { error } = await sb.from('pendencias_notas').insert({ pendencia_id: pendenciaId, texto, autor: perfil.id, autor_nome: perfil.nome || '' });
+  if (error) throw new Error(error.message);
+}
+export async function apagarNotaPend(id) {
+  const { error } = await sb.from('pendencias_notas').delete().eq('id', id);
+  if (error) throw new Error(error.message);
+}

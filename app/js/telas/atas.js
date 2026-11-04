@@ -7,7 +7,7 @@
 
 import { html, data as fmtData } from '../formato.js';
 import { hojeISO, somarDias, inicioDaSemana, diasEntre, ehData } from '../datas.js';
-import { NA_NUVEM, perfilAtual, listarAtasPendencias, criarAtaNuvem, criarPendenciaNuvem, atualizarPendenciaNuvem, atualizarAtaNuvem, apagarPendenciaNuvem, apagarAtaNuvem } from '../nuvem.js';
+import { NA_NUVEM, perfilAtual, listarAtasPendencias, criarAtaNuvem, criarPendenciaNuvem, atualizarPendenciaNuvem, atualizarAtaNuvem, apagarPendenciaNuvem, apagarAtaNuvem, listarNotasPend, criarNotaPend, apagarNotaPend } from '../nuvem.js';
 import { SETORES, SETORES_ORGANOGRAMA } from '../funcoes.js';
 import { sessao, idPessoa, funcaoReal, funcaoAtual } from '../sessao.js';
 import { lerPessoasTarefas } from '../armazenamento.js';
@@ -337,9 +337,9 @@ const prazoBtn = (p, conteudo, cls = '') => (p.status === 'feita' ? html`<span c
 const naLista = (p) => p.na_lista !== false;   // false = tirada da lista de pendências (continua só na ata)
 export const pendenciaPorId = (id) => dados.pendencias.find((x) => String(x.id) === String(id));
 export async function reprogramar(id, novo) {
-  const p = dados.pendencias.find((x) => String(x.id) === String(id)); if (!p || !novo || novo === p.prazo) return;
-  const mud = { prazo: novo, prazo_original: p.prazo_original || p.prazo || null, reprogramacoes: [...(p.reprogramacoes || []), { de: p.prazo || null, para: novo, em: new Date().toISOString(), por: sessao().nome || '' }] };
-  if (!p.prazo) { mud.prazo_original = null; mud.reprogramacoes = p.reprogramacoes || []; }   // primeira data dada a uma pendência sem prazo não é reprogramação
+  const p = dados.pendencias.find((x) => String(x.id) === String(id)); if (!p || (novo || '') === (p.prazo || '')) return;
+  const mud = { prazo: novo || null, prazo_original: p.prazo_original || p.prazo || null, reprogramacoes: [...(p.reprogramacoes || []), { de: p.prazo || null, para: novo || null, em: new Date().toISOString(), por: sessao().nome || '' }] };
+  if (!p.prazo || !novo) { mud.prazo_original = p.prazo_original || null; mud.reprogramacoes = p.reprogramacoes || []; }   // dar a primeira data (ou tirar o prazo) não é reprogramação
   if (NA_NUVEM) await atualizarPendenciaNuvem(id, mud);
   else { const l = lerLocal(); const q = l.pendencias.find((x) => String(x.id) === String(id)); if (q) Object.assign(q, mud); gravarLocal(l); }
   await carregar();
@@ -349,7 +349,7 @@ function cartao(p, hoje) {
   const a = ataDe(p); const col = coluna(p, hoje);
   const dias = p.prazo ? diasEntre(hoje, p.prazo) : null;
   const rotuloPrazo = !p.prazo ? 'Sem prazo' : col === 'vencido' ? `${dm(p.prazo)} · ${Math.abs(dias)} ${Math.abs(dias) === 1 ? 'dia' : 'dias'} de atraso` : col === 'hoje' ? 'Hoje' : dm(p.prazo);
-  return html`<article class="at-card at-${col}">
+  return html`<article class="at-card at-${col}" data-tarefa="${p.id}" draggable="true" title="Clique para ver os detalhes · arraste para mudar o prazo">
     <div class="at-tit">${descRica(p.descricao)}</div>
     <div class="at-meta">${prazoBtn(p, rotuloPrazo, `at-prazo at-p-${col}`)}${reprogramada(p) ? html`<span class="at-repro-tag" title="${tituloRepro(p)}">↻ Reprogramada (era ${dm(p.prazo_original).slice(0, 5)})</span>` : ''}${onde(p) ? html`<span class="at-chip">${onde(p)}</span>` : ''}${p.os ? html`<a class="at-chip at-os" href="#/posobra/os/${encodeURIComponent(p.os)}" title="Abrir a OS desta pendência">${p.os}</a>` : ''}</div>
     <div class="at-quem"><span class="at-pessoa">${nomeDe(p.responsavel, p.responsavel_nome)}</span>${p.responsavel_tipo && p.responsavel_tipo !== 'solida' ? html`<span class="at-tipo at-t-${p.responsavel_tipo}">${ROTULO_TIPO[p.responsavel_tipo] || 'Externo'}${p.responsavel_categoria ? ` · ${p.responsavel_categoria}` : ''}</span>` : ''}${p.gestores_nome ? html`<span class="at-gestor" title="Gestor da pendência: acompanha o responsável (pelas obras dele)">gestor: ${p.gestores_nome}</span>` : ''}${a ? html`<a class="at-ata" href="#/atas?aba=atas&ata=${a.id}" title="Ata de origem">ata ${dm(a.data).slice(0, 5)}</a>` : ''}</div>
@@ -394,7 +394,7 @@ function vistaPrazo(lista, hoje, setorPadrao = '') {
     let itens = lista.filter((p) => coluna(p, hoje) === id);
     if (id === 'concluido') itens = itens.sort((a, b) => String(b.concluida_em).localeCompare(String(a.concluida_em))).slice(0, 30);
     const pz = prazoDaColuna(id, hoje);
-    return html`<section class="at-col at-c-${id}"><header><b>${nome}</b><span>${lista.filter((p) => coluna(p, hoje) === id).length}</span>${pz ? html`<button type="button" class="at-col-mais" data-av-nova="${pz}" data-av-setor="${setorPadrao}" title="Nova pendência com prazo ${dm(pz)}">+</button>` : ''}</header>
+    return html`<section class="at-col at-c-${id}" data-col="${id}"><header><b>${nome}</b><span>${lista.filter((p) => coluna(p, hoje) === id).length}</span>${pz ? html`<button type="button" class="at-col-mais" data-av-nova="${pz}" data-av-setor="${setorPadrao}" title="Nova pendência com prazo ${dm(pz)}">+</button>` : ''}</header>
       <div class="at-itens">${itens.map((p) => cartao(p, hoje))}</div></section>`;
   })}</div>`;
 }
@@ -541,3 +541,93 @@ export function render({ params, obras = [], msg = '', sugestoes = [] }) {
 
 // nome de uma pessoa pelo id (Agenda, painéis)
 export const nomePessoa = (id, reserva) => nomeDe(id, reserva);
+
+
+// ================================================================ detalhes da tarefa (pedido do Felipe, 04/11/2026)
+// Clicar no cartão (Tarefas ou Agenda) abre uma janela: título, responsável, gestor, prazo, concluir, excluir e um chat para anotar coisas.
+// Arrastar o cartão muda o prazo (entre as colunas do quadro de Tarefas ou entre os dias da Agenda).
+const notasCache = {};
+export const notasDe = (id) => notasCache[String(id)] || [];
+export async function carregarNotas(id) {
+  if (NA_NUVEM) notasCache[String(id)] = await listarNotasPend(id);
+  else { const l = lerLocal(); notasCache[String(id)] = (l.notas || []).filter((n) => String(n.pendencia_id) === String(id)); }
+  return notasDe(id);
+}
+export async function anotar(id, texto) {
+  const t = String(texto || '').trim(); if (!t) return;
+  if (NA_NUVEM) await criarNotaPend(id, t);
+  else { const l = lerLocal(); l.notas = l.notas || []; l.notas.push({ id: l.seq++, pendencia_id: id, texto: t, autor_nome: sessao().nome || '', autor: idPessoa(), criado_em: new Date().toISOString() }); gravarLocal(l); }
+  await carregarNotas(id);
+}
+export async function apagarNota(notaId, pendId) {
+  if (NA_NUVEM) await apagarNotaPend(notaId);
+  else { const l = lerLocal(); l.notas = (l.notas || []).filter((n) => String(n.id) !== String(notaId)); gravarLocal(l); }
+  await carregarNotas(pendId);
+}
+
+// c = { assunto, desc, resp ('ext' | id da pessoa), tipo, nome, gestor ('' = automático | id), prazo }
+export async function salvarTarefa(id, c) {
+  const p = pendenciaPorId(id); if (!p) throw new Error('Tarefa não encontrada.');
+  const desc = String(c.desc || '').trim(); const ass = String(c.assunto || '').trim();
+  if (!desc && !ass) throw new Error('Escreva o título da tarefa.');
+  const mud = { descricao: ass ? `${ass}, ${desc}` : desc };
+  if (c.resp === 'ext') {
+    const tipo = c.tipo || 'terceirizado';
+    Object.assign(mud, { responsavel: null, responsavel_nome: String(c.nome || '').trim() || (tipo === 'cliente' ? 'Cliente' : tipo === 'arquitetura' ? 'Arquitetura' : null), responsavel_tipo: tipo, responsavel_categoria: null });
+  } else if (c.resp) Object.assign(mud, { responsavel: c.resp, responsavel_nome: nomeDe(c.resp), responsavel_tipo: 'solida', responsavel_categoria: null });
+  else throw new Error('Escolha o responsável.');
+  // gestor: "automático" volta ao cálculo pelas obras e setores (o responsavel no pacote faz o banco recalcular)
+  if (c.gestor) { const g = dados.pessoas.find((x) => x.id === c.gestor); Object.assign(mud, { gestores: [c.gestor], gestores_nome: g ? g.nome : '', gestores_manual: true }); }
+  else if (p.gestores_manual) Object.assign(mud, { gestores_manual: false, responsavel: mud.responsavel === undefined ? p.responsavel : mud.responsavel });
+  if (NA_NUVEM) await atualizarPendenciaNuvem(id, mud);
+  else { const l = lerLocal(); const q = l.pendencias.find((x) => String(x.id) === String(id)); if (q) Object.assign(q, mud); gravarLocal(l); }
+  await carregar();
+  if ((c.prazo || '') !== (p.prazo || '')) await reprogramar(id, c.prazo || '');
+}
+
+// arrastar para uma coluna do quadro de Tarefas: muda o prazo (ou conclui). Vencido não é destino: ali só entra quem passou da data.
+export async function moverParaColuna(id, col) {
+  const p = pendenciaPorId(id); if (!p || col === 'vencido') return false;
+  const hoje = hojeISO();
+  if (col === 'concluido') { if (p.status !== 'feita') await mudarStatus(id, 'feita'); return true; }
+  if (p.status === 'feita') await mudarStatus(id, 'aberta');
+  await reprogramar(id, col === 'sem' ? '' : prazoDaColuna(col, hoje));
+  return true;
+}
+
+const quando = (iso) => { try { return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch { return ''; } };
+export function detalheTarefa(id, { msg = '' } = {}) {
+  const p = pendenciaPorId(id);
+  if (!p) return html`<div class="tf"><p class="erro">Não achei esta tarefa (talvez outra pessoa a tenha excluído).</p><div class="at-av-botoes"><button type="button" class="botao" data-av-fechar>Fechar</button></div></div>`;
+  const [ass, resto] = dividirDescricao(p.descricao);
+  const ext = !p.responsavel; const tipo = p.responsavel_tipo && p.responsavel_tipo !== 'solida' ? p.responsavel_tipo : 'terceirizado';
+  const gAtual = p.gestores_manual && (p.gestores || [])[0] ? p.gestores[0] : '';
+  const a = ataDe(p); const hoje = hojeISO(); const col = coluna(p, hoje);
+  const eu = souEu(); const notas = notasDe(id);
+  return html`<div class="tf" data-tf-raiz="${p.id}">
+    <div class="tf-cab"><h3>Tarefa</h3>${p.status === 'feita' ? html`<span class="at-chip">concluída</span>` : col === 'vencido' ? html`<span class="at-chip tf-venc">vencida</span>` : ''}${onde(p) ? html`<span class="at-chip">${onde(p)}</span>` : ''}${a ? html`<a class="at-ata" href="#/atas?aba=atas&ata=${a.id}" title="Ata de origem">ata ${dm(a.data).slice(0, 5)}</a>` : ''}${p.os ? html`<a class="at-chip at-os" href="#/posobra/os/${encodeURIComponent(p.os)}">${p.os}</a>` : ''}</div>
+    <form id="tf-form" data-tf="${p.id}" autocomplete="off">
+      <div class="tf-grade">
+        <label class="tf-ass">Assunto<input name="t_assunto" value="${ass}" placeholder="ex.: ACM"></label>
+        <label class="tf-desc">Título (o que fazer)<input name="t_desc" value="${resto}" placeholder="ex.: Retirar da área gourmet" required></label>
+        <label>Responsável<select name="t_resp" data-tf-resp><option value="ext" ${ext ? html.seguro('selected') : ''}>Outro: terceirizado, cliente, arquitetura…</option>${opcoesPessoas(p.responsavel || '')}</select></label>
+        <div class="tf-ext" ${ext ? '' : html.seguro('hidden')}><label>Quem é<select name="t_tipo"><option value="terceirizado" ${tipo === 'terceirizado' ? html.seguro('selected') : ''}>Terceirizado</option><option value="cliente" ${tipo === 'cliente' ? html.seguro('selected') : ''}>Cliente</option><option value="arquitetura" ${tipo === 'arquitetura' ? html.seguro('selected') : ''}>Arquitetura</option></select></label>
+          <label>Nome<input name="t_nome" value="${ext ? (p.responsavel_nome || '') : ''}" list="dl-terceiros" placeholder="empresa ou pessoa"></label></div>
+        <label>Gestor<select name="t_gestor"><option value="">Automático (pelas obras e setores)${!gAtual && p.gestores_nome ? ` · ${p.gestores_nome}` : ''}</option>${opcoesPessoas(gAtual)}</select></label>
+        <label>Prazo<input type="date" name="t_prazo" value="${p.prazo || ''}"></label>
+      </div>
+      ${reprogramada(p) ? html`<p class="pequeno">↻ ${tituloRepro(p)}</p>` : ''}
+      <div class="tf-botoes">
+        <button type="submit" class="botao on">Salvar alterações</button>
+        ${p.status === 'feita' ? html`<button type="button" class="botao" data-tf-status="${p.id}|aberta">↺ Reabrir</button>` : html`<button type="button" class="botao at-ok" data-tf-status="${p.id}|feita">✓ Concluir</button>`}
+        <button type="button" class="botao ac-excluir" data-tf-del="${p.id}" title="${p.ata_id ? 'Tira da lista de tarefas (o item continua na ata)' : 'Exclui a tarefa'}">${p.ata_id ? 'Tirar da lista' : 'Excluir'}</button>
+        <button type="button" class="botao" data-av-fechar>Fechar</button>
+        ${msg ? html`<span class="tf-msg">${msg}</span>` : ''}
+      </div>
+    </form>
+    <div class="tf-chat"><h4>Anotações <span class="pequeno">${notas.length}</span></h4>
+      <div class="tf-notas">${notas.length ? notas.map((n) => html`<div class="tf-nota ${n.autor === eu ? 'tf-minha' : ''}"><div class="tf-nota-h"><b>${n.autor_nome || 'Alguém'}</b><span>${quando(n.criado_em)}</span>${n.autor === eu ? html`<button type="button" class="tf-x" data-tf-nota-del="${n.id}|${p.id}" title="Apagar esta anotação">×</button>` : ''}</div><div class="tf-nota-t">${textoRico(n.texto)}</div></div>`) : html`<p class="pequeno">Nenhuma anotação ainda. Use para registrar o que foi combinado, cobrado ou resolvido.</p>`}</div>
+      <form id="tf-nota" data-tf-nota="${p.id}"><textarea name="t_nota" rows="2" placeholder="Escreva uma anotação… (Ctrl+Enter envia)"></textarea><button type="submit" class="botao on">Enviar</button></form>
+    </div>
+  </div>`;
+}

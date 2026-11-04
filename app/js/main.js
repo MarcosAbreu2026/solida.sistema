@@ -1465,6 +1465,91 @@ document.addEventListener('click', (e) => {
   m.innerHTML = `<div class="at-modal-caixa">${String(atas.formAvulsa(obrasDeAtas(), b.dataset.ctPrazo || '', b.dataset.ctSetor || '', { obra: b.dataset.ctObra || '', desc: texto, assunto: assunto.trim() }))}</div>`;
   document.body.appendChild(m); const campo = m.querySelector('[name="p_resp"]'); if (campo) campo.focus();
 });
+// ---------------------------------------------------------------- detalhes da tarefa (cartão clicado, em Tarefas ou na Agenda) e arrastar para mudar o prazo
+async function abrirTarefa(id, msg = '') {
+  let m = document.getElementById('at-modal');
+  if (!m) { m = document.createElement('div'); m.id = 'at-modal'; m.className = 'at-modal'; document.body.appendChild(m); }
+  const antes = m.querySelector('.tf-notas'); const rolagem = antes ? antes.scrollTop : 0;
+  m.innerHTML = `<div class="at-modal-caixa tf-caixa">${String(atas.detalheTarefa(id, { msg }))}</div>`;
+  const notas = m.querySelector('.tf-notas'); if (notas) notas.scrollTop = rolagem || notas.scrollHeight;
+}
+async function abrirTarefaComNotas(id) {
+  await abrirTarefa(id);
+  try { await atas.carregarNotas(id); await abrirTarefa(id); const n = document.querySelector('.tf-notas'); if (n) n.scrollTop = n.scrollHeight; } catch (e) { /* sem a tabela de notas: abre sem o chat */ }
+}
+const redesenharTarefas = async (id, msg) => { await atas.carregar(); desenhar(); if (id && document.getElementById('at-modal')) await abrirTarefa(id, msg); };
+
+document.addEventListener('click', (e) => {
+  const card = e.target.closest && e.target.closest('[data-tarefa]'); if (!card) return;
+  const dentro = e.target.closest('button, a, input, select, textarea, summary');
+  if (dentro && dentro !== card) return;   // botões e links do próprio cartão (concluir, reprogramar, ata…) continuam funcionando
+  if (card.dataset.arrastou) { delete card.dataset.arrastou; return; }
+  e.preventDefault();
+  abrirTarefaComNotas(card.dataset.tarefa);
+});
+document.addEventListener('change', (e) => {
+  const sel = e.target.closest && e.target.closest('[data-tf-resp]'); if (!sel) return;
+  const ext = sel.closest('#tf-form').querySelector('.tf-ext'); if (ext) ext.hidden = sel.value !== 'ext';
+});
+document.addEventListener('submit', async (e) => {
+  const f = e.target.closest && e.target.closest('#tf-form'); if (!f) return;
+  e.preventDefault(); const fd = new FormData(f); const id = f.dataset.tf;
+  try {
+    await atas.salvarTarefa(id, { assunto: fd.get('t_assunto'), desc: fd.get('t_desc'), resp: fd.get('t_resp'), tipo: fd.get('t_tipo'), nome: fd.get('t_nome'), gestor: fd.get('t_gestor'), prazo: fd.get('t_prazo') });
+    await redesenharTarefas(id, 'Salvo ✓');
+  } catch (err) { alert(`Não foi possível salvar (${err.message || err}).`); }
+});
+document.addEventListener('submit', async (e) => {
+  const f = e.target.closest && e.target.closest('#tf-nota'); if (!f) return;
+  e.preventDefault(); const t = String(new FormData(f).get('t_nota') || '').trim(); if (!t) return;
+  try { await atas.anotar(f.dataset.tfNota, t); await abrirTarefa(f.dataset.tfNota); const n = document.querySelector('.tf-notas'); if (n) n.scrollTop = n.scrollHeight; }
+  catch (err) { alert(`Não foi possível anotar (${err.message || err}).`); }
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && e.target.matches && e.target.matches('#tf-nota textarea')) { e.preventDefault(); e.target.form.requestSubmit(); }
+});
+document.addEventListener('click', async (e) => {
+  const st = e.target.closest && e.target.closest('[data-tf-status]');
+  if (st) { const [id, status] = st.dataset.tfStatus.split('|'); try { await atas.mudarStatus(id, status); await redesenharTarefas(id, status === 'feita' ? 'Concluída ✓' : 'Reaberta'); } catch (err) { alert(`Não foi possível mudar (${err.message || err}).`); } return; }
+  const del = e.target.closest && e.target.closest('[data-tf-del]');
+  if (del) {
+    const p = atas.pendenciaPorId(del.dataset.tfDel);
+    if (!confirm(p && p.ata_id ? 'Tirar esta tarefa da lista? O item continua na ata.' : 'Excluir esta tarefa? Não dá para desfazer.')) return;
+    try { await atas.apagarPendencia(del.dataset.tfDel); const m = document.getElementById('at-modal'); if (m) m.remove(); await redesenharTarefas(); } catch (err) { alert(`Não foi possível excluir (${err.message || err}).`); }
+    return;
+  }
+  const nd = e.target.closest && e.target.closest('[data-tf-nota-del]');
+  if (nd) { const [nid, pid] = nd.dataset.tfNotaDel.split('|'); if (!confirm('Apagar esta anotação?')) return; try { await atas.apagarNota(nid, pid); await abrirTarefa(pid); } catch (err) { alert(`Não foi possível apagar (${err.message || err}).`); } }
+});
+
+// arrastar: o cartão vai para outra coluna do quadro de Tarefas ou para outro dia da Agenda e o prazo muda
+let arrastandoId = null;
+document.addEventListener('dragstart', (e) => {
+  const c = e.target.closest && e.target.closest('[data-tarefa]'); if (!c) return;
+  arrastandoId = c.dataset.tarefa; c.classList.add('tf-arrastando'); c.dataset.arrastou = '1';
+  try { e.dataTransfer.setData('text/plain', arrastandoId); e.dataTransfer.effectAllowed = 'move'; } catch { /* navegador sem dataTransfer */ }
+});
+document.addEventListener('dragend', (e) => {
+  const c = e.target.closest && e.target.closest('[data-tarefa]'); if (c) { c.classList.remove('tf-arrastando'); setTimeout(() => { delete c.dataset.arrastou; }, 50); }
+  document.querySelectorAll('.tf-sobre').forEach((x) => x.classList.remove('tf-sobre')); arrastandoId = null;
+});
+const alvoDoArraste = (e) => e.target.closest && e.target.closest('.at-col[data-col], [data-ag-dia]');
+document.addEventListener('dragover', (e) => { const a = alvoDoArraste(e); if (!a || !arrastandoId) return; e.preventDefault(); document.querySelectorAll('.tf-sobre').forEach((x) => { if (x !== a) x.classList.remove('tf-sobre'); }); a.classList.add('tf-sobre'); });
+document.addEventListener('drop', async (e) => {
+  const a = alvoDoArraste(e); if (!a || !arrastandoId) return;
+  e.preventDefault(); const id = arrastandoId; arrastandoId = null; a.classList.remove('tf-sobre');
+  try {
+    if (a.dataset.agDia) await atas.reprogramar(id, a.dataset.agDia);
+    else if (!(await atas.moverParaColuna(id, a.dataset.col))) { alert('Para a coluna "Vencido" a tarefa vai sozinha quando passa do prazo. Arraste para outra coluna.'); return; }
+    await redesenharTarefas();
+  } catch (err) { alert(`Não foi possível mudar o prazo (${err.message || err}).`); }
+});
+
+// Reposição: filtro por categoria
+document.addEventListener('click', (e) => {
+  const c = e.target.closest && e.target.closest('[data-rp-cat]'); if (!c) return;
+  e.preventDefault(); reposicao.alternarCategoria(c.dataset.rpCat); desenhar();
+});
 // nova pendência avulsa (sem ata), aberta pelo + de cada caixinha do quadro por prazo
 document.addEventListener('click', (e) => {
   const nova = e.target.closest && e.target.closest('[data-av-nova]');

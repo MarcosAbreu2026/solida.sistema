@@ -18,6 +18,7 @@
 import { html, numero, data as fmtData } from '../formato.js';
 import { hojeISO, diasEntre, somarDias } from '../datas.js';
 import { tempoEntre, enderecoDe } from '../geografia.js';
+import { CATEGORIAS, ORDEM } from './estoque.js';
 
 export const ABAS_TRANSPORTE = [
   { id: '', nome: 'Resumo' },
@@ -315,7 +316,13 @@ function guiaHtml(linhas, dataIso, n, titulo) {
     </div>
   </section>`;
 }
-export function render(est) {
+// filtro por categoria (pedido do Felipe, 04/11): marca uma ou mais categorias e a tela toda (compras, rotas, detalhe) só considera elas
+const filtroCat = new Set();
+export function alternarCategoria(c) { if (!c) filtroCat.clear(); else if (filtroCat.has(c)) filtroCat.delete(c); else filtroCat.add(c); }
+
+export function render(est0) {
+  let est = est0;
+  if (est0 && !est0.erro && Array.isArray(est0.itens) && filtroCat.size) est = { ...est0, itens: est0.itens.filter((i) => filtroCat.has(i.categoria)) };
   if (!est || est.erro || !Array.isArray(est.itens)) {
     return html`<p class="vazio">Não consegui ler a planilha de ferramentas${est && est.erro ? `: ${est.erro}` : ''}. Quando o coletor ler a planilha (pasta Pós-obra › Ferramentas › Listas), esta tela se monta sozinha.</p>`;
   }
@@ -334,6 +341,12 @@ export function render(est) {
   const rota2 = rotaDaCompra([...r.compras, ...r.fabricar], por);
   const obrasComFalta = obras.filter((o) => o.faltas.length).length;
   const velhas = r.locais.filter((l) => l.velha && !l.finalizada);
+  // chips de categoria (contam os itens obrigatórios de obra de cada uma, sem o filtro)
+  const cont = new Map(); for (const i of est0.itens) if (num(i.minObra) > 0 && !consumivelItem(i)) cont.set(i.categoria, (cont.get(i.categoria) || 0) + 1);
+  const cats = [...ORDEM, ...[...cont.keys()].filter((c) => !ORDEM.includes(c))].filter((c) => cont.has(c));
+  const chips = html`<div class="subnav rp-cats" role="tablist" aria-label="Filtrar por categoria"><span class="pequeno rp-cats-rot">Categoria</span>
+    <a href="#/estoque/reposicao" role="tab" data-rp-cat="" class="${filtroCat.size ? '' : 'on'}">Todas <span class="est-n">${[...cont.values()].reduce((s, n) => s + n, 0)}</span></a>
+    ${cats.map((c) => html`<a href="#/estoque/reposicao" role="tab" data-rp-cat="${c}" class="${filtroCat.has(c) ? 'on' : ''}">${(CATEGORIAS[c] || c).replace(/ (.*)$/, '')} <span class="est-n">${cont.get(c)}</span></a>`)}</div>`;
   const resumo = (v, r1, r2 = '') => html`<div class="rp-kpi"><b>${v}</b><span>${r1}</span>${r2 ? html`<em>${r2}</em>` : ''}</div>`;
 
   const dataRota = dataDaRota();
@@ -346,7 +359,9 @@ export function render(est) {
 
   return html`<div class="rp">
     <div class="rp-cab-imp"><h1>Reposição de ferramentas obrigatórias</h1><p>Impresso em ${fmtData(hojeISO())} · planilha ${est.arquivo || ''} · Sólida Construção</p></div>
-    <div class="rp-barra"><p class="pequeno">Só itens <b>obrigatórios de obra</b> (${est.itens.filter((i) => num(i.minObra) > 0 && !consumivelItem(i)).length} itens, sem consumíveis; bucha, parafuso e prego entram). Planilha ${est.arquivo || ''}, lida do Drive.</p><button type="button" class="botao" data-imprimir>🖨 Imprimir</button></div>
+    ${chips}
+    ${filtroCat.size ? html`<p class="pequeno rp-nota">Mostrando só: <b>${[...filtroCat].map((c) => (CATEGORIAS[c] || c).replace(/ (.*)$/, '')).join(', ')}</b>. Compras, rotas e o detalhe de cada lugar consideram só essas categorias. Clique em "Todas" para ver tudo.</p>` : ''}
+    <div class="rp-barra"><p class="pequeno">Só itens <b>obrigatórios de obra</b> (${est.itens.filter((i) => num(i.minObra) > 0 && !consumivelItem(i)).length} ${filtroCat.size ? 'itens destas categorias' : 'itens'}, sem consumíveis; bucha, parafuso e prego entram). Planilha ${est.arquivo || ''}, lida do Drive.</p><button type="button" class="botao" data-imprimir>🖨 Imprimir</button></div>
 
     <section class="ob-sec rp-resumo">
       ${resumo(comprarJa.length, comprarJa.length === 1 ? 'item para comprar' : 'itens para comprar', `${un(comprarJa.reduce((s, c) => s + c.total, 0))} unidades`)}

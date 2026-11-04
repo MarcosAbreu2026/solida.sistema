@@ -24,7 +24,7 @@ function cartaozinho(p, { eu, hoje, nomeDe }) {
   const sup = eu && p.responsavel !== eu && (p.gestores || []).includes(eu);
   const titulo = [`${ass ? `${ass}: ` : ''}${resto}`, p.obra || p.setor, `prazo ${dm(p.prazo)}${p.prazo < hoje && !feita ? ' (vencida)' : ''}`, quem ? `responsável: ${quem}${sup ? ' · você é gestor' : ''}` : '', feita ? 'concluída' : ''].filter(Boolean).join(' · ');
   const venc = !feita && p.prazo < hoje;
-  const card = html`<a class="ag-mini ${cls}" href="#/atas?q=${encodeURIComponent(resto.slice(0, 40))}" title="${titulo}">${p.obra ? html`<b>${p.obra}</b>` : ''}${ass ? `${ass} · ` : ''}${resto}</a>`;
+  const card = html`<a class="ag-mini ${cls}" href="#/atas" data-tarefa="${p.id}" draggable="true" title="${titulo} · clique para abrir · arraste para outro dia">${p.obra ? html`<b>${p.obra}</b>` : ''}${ass ? `${ass} · ` : ''}${resto}</a>`;
   // vencida: botão ↻ para reprogramar o prazo (abre o calendário com feriados, o mesmo da aba Tarefas)
   return venc ? html`<span class="ag-linha-venc">${card}<button type="button" class="ag-repro" data-cal-prazo="${p.id}" title="Reprogramar o prazo" aria-label="Reprogramar o prazo">↻</button></span>` : card;
 }
@@ -82,7 +82,7 @@ export function render(opts) {
   };
   let n = 0;
   const comChips = base.replace(/(<div class="fq-cab[^"]*">\s*<b>((?:Seg|Ter|Qua|Qui|Sex|Sáb) \d\d\/\d\d)<\/b>(?:\s*<small>[^<]*<\/small>)?)/g, (m, ini, rot) => {
-    const d = porRotulo.get(rot); if (!d) return m; n++; return `${ini}${chips(d)}`;
+    const d = porRotulo.get(rot); if (!d) return m; n++; return `${ini.replace('<div class="fq-cab', `<div data-ag-dia="${d}" class="fq-cab`)}${chips(d)}`;
   });
   const total = t.dias.reduce((s, d) => s + (t.mapa[d] || []).filter((p) => p.status === 'aberta').length, 0);
   const venc = t.dias.reduce((n, d) => n + (t.mapa[d] || []).filter((p) => p.status === 'aberta' && p.prazo < t.hoje).length, 0);
