@@ -279,7 +279,12 @@ function desenharNav(sel) {
   if (soMinhasFuncoes(f)) {
     $('#nav').innerHTML = botaoRecolher() + `<div class="marca"><img src="img/logo.png" alt="Sólida"><span>Painel da empresa</span></div>`
       + `<div class="nav-perfil">${perfil.avatar(s.nome, 38)}<span><b>${esc(s.nome)}</b><small>${esc(f.nome)}</small></span></div>`
-      + item('agenda', 'Agenda') + (temEstoqueRestrito(f) && paginaVisivel(f, 'estoque') ? item('estoque', 'Estoque') : '') + item('treinamentos', 'Treinamentos')
+      // pedido do Felipe (04/11): Meu trabalho (Agenda, Tarefas, Atas) e Equipe (Treinamentos, Feed)
+      + '<div class="nav-grupo">Meu trabalho</div>' + item('agenda', 'Agenda')
+      + (paginaVisivel(f, 'atas') ? itemTarefasRestrito(sel) + `<a class="nav-item${sel === 'atas' ? ' sel' : ''}" href="#/atas?aba=atas"><span>Atas</span></a>` : '')
+      + '<div class="nav-grupo">Equipe</div>'
+      + (temEstoqueRestrito(f) && paginaVisivel(f, 'estoque') ? item('estoque', 'Estoque') : '') + item('treinamentos', 'Treinamentos')
+      + (paginaVisivel(f, 'feed') ? itemFeed() : '')
       + `<div class="navfoot">${estado.sync.origem === 'link' ? 'Atualiza sozinho a cada 5 minutos.' : 'Mostrando os últimos dados baixados.'}</div>`;
     desenharAvatares($('#nav'));
     return;
@@ -312,6 +317,11 @@ function desenharNav(sel) {
     + (f.veAgentes ? `${grupo('Diretoria')}${item('agentes', 'Agentes')}${nuvem.NA_NUVEM && funcaoReal().id === 'socio' ? item('acessos', 'Cadastros') : ''}` : '')
     + `<div class="navfoot">${estado.sync.origem === 'link' ? 'Atualiza sozinho a cada 5 minutos.' : 'Mostrando os últimos dados baixados.'}</div>`;
   desenharAvatares($('#nav'));
+}
+
+function itemTarefasRestrito(sel) {
+  const n = atas.minhasAbertas();
+  return `<a class="nav-item${sel === 'tarefas' ? ' sel' : ''}" href="#/atas"><span>Tarefas</span>${n ? `<span class="nav-n">${n}</span>` : ''}</a>`;
 }
 
 // obras em curso no submenu de Operações (as do planejamento + as em andamento do cadastro); quem é de obra vê só as suas
@@ -502,7 +512,8 @@ function desenhar() {
   if (tela === 'meudia' && !f.editaProdutividade) tela = 'agenda';   // quem não lança produtividade só tem a agenda
   if (tela === 'agenda' && !paginaVisivel(f, 'meudia') && f.id !== 'socio') tela = 'geral';
   if (['meudia', 'feed', 'estoque', 'escritorio', 'treinamentos', 'atas', 'tarefas', 'marketing'].includes(tela) && !paginaVisivel(f, tela === 'tarefas' ? 'atas' : tela)) tela = 'geral';   // aba que a diretoria tirou desta função
-  if (soMinhasFuncoes(f)) tela = (tela === 'treinamentos' || (tela === 'estoque' && temEstoqueRestrito(f))) ? tela : 'agenda';   // por enquanto: só a Agenda e os Treinamentos (o resto é da diretoria e do Administrativo)
+  // acesso restrito (por enquanto, quase todo mundo): Agenda, Tarefas, Atas, Treinamentos e Feed (o resto é da diretoria e do Administrativo)
+  if (soMinhasFuncoes(f)) tela = (['treinamentos', 'atas', 'tarefas', 'feed'].includes(tela) || (tela === 'estoque' && temEstoqueRestrito(f))) ? tela : 'agenda';
 
   // departamento do organograma (Painel no desenho do Marcos + Detalhes = a tela que já existia)
   let dep = depPorId(tela);

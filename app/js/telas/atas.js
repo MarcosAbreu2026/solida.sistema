@@ -522,7 +522,10 @@ export function render({ params, obras = [], msg = '', sugestoes = [] }) {
   const hoje = hojeISO();
   const aba = ABAS.some(([id]) => id === params.get('aba')) ? params.get('aba') : 'pendencias';
   const abertas = dados.pendencias.filter((p) => naLista(p) && p.status === 'aberta');
-  const topo = html`<div class="subnav at-abas" role="tablist">${ABAS.map(([id, nome]) => html`<a role="tab" class="${id === aba ? 'on' : ''}" href="#/atas${id === 'pendencias' ? '' : `?aba=${id}`}">${nome}${id === 'pendencias' ? html` <span class="est-n">${abertas.length}</span>` : id === 'atas' ? html` <span class="est-n">${dados.atas.length}</span>` : ''}</a>`)}</div>`;
+  // Tarefas e Atas já estão no menu da esquerda (desenho do Marcos): sem as abas aqui em cima; em Atas, o botão de nova ata
+  const topo = aba === 'atas' && !params.get('ata') ? html`<div class="at-topo-bt"><span class="pequeno">${dados.atas.length} ${dados.atas.length === 1 ? 'ata' : 'atas'}</span><a class="pd-bt pd-bt-cheio" href="#/atas?aba=nova">+ Nova ata</a></div>`
+    : aba === 'nova' ? html`<div class="at-topo-bt"><a class="link" href="#/atas?aba=atas">← Atas</a></div>` : '';
+  void abertas;
   let corpo;
   if (aba === 'nova') corpo = formNova(obras, params.get('revisar') || '');
   else if (aba === 'atas') corpo = params.get('ata') ? detalheAta(params.get('ata'), hoje, obras) : html`${barraFiltros(params, obras, 'atas')}${listaAtas(params, obras)}`;
@@ -531,7 +534,7 @@ export function render({ params, obras = [], msg = '', sugestoes = [] }) {
     ${datalistTerceiros()}
     ${dados.erro ? html`<p class="erro">Não consegui carregar: ${dados.erro}</p>` : ''}
     ${msg ? html`<p class="msg ok">${msg}</p>` : ''}
-    ${topo}<div style="margin-top:16px">${corpo}</div>
+    ${topo}<div style="margin-top:${topo ? 12 : 0}px">${corpo}</div>
     ${NA_NUVEM ? '' : html`<p class="pequeno" style="margin-top:20px">Modo de teste (computador do escritório): as atas ficam só neste navegador. Na internet elas ficam no banco, compartilhadas.</p>`}
   </div>`;
 }
