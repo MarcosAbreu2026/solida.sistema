@@ -488,6 +488,45 @@ function situacaoObra(CFG, p, ini, hoje) {
 
 const NIVEL_TXT = { ok: 'Em dia', atencao: 'Atenção', critico: 'Crítico' };
 
+// Meta × executado da semana, por obra (painel do CEO, Início): dos itens programados com meta nos dias úteis já
+// passados, quantos bateram a meta, ficaram abaixo ou ficaram sem registro; e, em cada dia útil, se a obra mandou a
+// produtividade no grupo do WhatsApp. Estados do dia: enviada · nao (o agente leu o grupo e não havia) ·
+// naolido (ainda não verificado no grupo) · hoje (dentro do prazo) · futuro · feriado.
+export function resumoMetasSemana(CFG, obrasVisiveis = null, ref = hojeISO()) {
+  const hoje = hojeISO();
+  const ini = inicioDaSemana(ref);
+  const dias = [0, 1, 2, 3, 4].map((i) => somarDias(ini, i));
+  const progs = programacoes(CFG).filter((p) => !obrasVisiveis || obrasVisiveis.includes(p.obra));
+  const linhas = progs.map((p) => {
+    let atingiu = 0; let abaixo = 0; let sem = 0;
+    const porDia = dias.map((data) => {
+      if (feriado(data)) return { data, estado: 'feriado', titulo: feriado(data) };
+      if (data > hoje) return { data, estado: 'futuro' };
+      const reg = registroDoDia(p, data);
+      const itens = ((p.dias.find((x) => x.data === data) || {}).itens) || [];
+      let algum = false;
+      for (const it of itens) {
+        const r = realizado(CFG, p.obra, data, it.item);
+        if (r) {
+          algum = true;
+          const cls = situacao(it.meta, r.feito).cls;
+          if (cls === 'ok') atingiu++; else if (cls === 'abaixo') abaixo++; else sem++;
+        } else if (data < hoje) sem++;   // hoje ainda está no prazo: não conta como sem registro
+      }
+      if ((reg && reg.relatorio) || algum) return { data, estado: 'enviada' };
+      if (data === hoje) return { data, estado: 'hoje' };
+      return { data, estado: reg && reg.semRelatorio ? 'nao' : 'naolido' };
+    });
+    const total = atingiu + abaixo + sem;
+    return { obra: p.obra, info: p.info, atingiu, abaixo, sem, total, pct: total ? atingiu / total : null, dias: porDia };
+  });
+  const soma = (k) => linhas.reduce((t, l) => t + l[k], 0);
+  const contaDias = (estado) => linhas.reduce((t, l) => t + l.dias.filter((d) => d.estado === estado).length, 0);
+  const total = soma('total');
+  // diasSem = falta confirmada (o agente leu o grupo e não havia); diasNaoLidos = ainda sem leitura do grupo
+  return { ini, hoje, dias, linhas, totais: { atingiu: soma('atingiu'), abaixo: soma('abaixo'), sem: soma('sem'), total, pct: total ? soma('atingiu') / total : null, diasSem: contaDias('nao'), diasNaoLidos: contaDias('naolido') } };
+}
+
 // Último dia útil antes de hoje (pula fim de semana e feriado)
 export function ultimoDiaUtil(hoje = hojeISO()) {
   let d = somarDias(hoje, -1);

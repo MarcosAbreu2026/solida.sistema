@@ -5,6 +5,50 @@ import { html } from '../formato.js';
 import * as pd from '../telas/painel-dep.js';
 import { avisoLeitura } from './comum.js';
 import * as oc from './obras-comum.js';
+import { resumoMetasSemana } from '../telas/produtividade.js';
+import { barrasEmpilhadas } from '../graficos.js';
+import { somarDias } from '../datas.js';
+
+// ---- Meta × executado da semana: metas da programação que bateram, ficaram abaixo ou sem registro + dias em que a
+// obra não mandou a produtividade no grupo do WhatsApp. Dia não lido no grupo nunca aparece como "enviada".
+const DIA_CEL = {
+  enviada: ['enviada', '✓ Enviada'], nao: ['nao', '✕ Não enviou'], naolido: ['naolido', '? Não lido'],
+  hoje: ['hoje', '… Aguardando'], futuro: ['futuro', '·'], feriado: ['feriado', 'Feriado'],
+};
+function metaExecutado(ctx, CFG) {
+  const m = resumoMetasSemana(CFG, ctx.visiveis || null);
+  const t = m.totais;
+  const fim = somarDias(m.ini, 4);
+  const cartoes = pd.cartoes([
+    { rotulo: 'Metas conferidas', valor: t.total, sub: `${m.linhas.length} ${m.linhas.length === 1 ? 'obra' : 'obras'} · semana de ${pd.dm(m.ini)} a ${pd.dm(fim)}` },
+    { rotulo: 'Bateram a meta', valor: t.atingiu, sub: `${pd.pct(t.pct)} das metas conferidas`, nivel: t.total ? (t.pct >= 0.95 ? 'ok' : t.pct >= 0.7 ? 'atencao' : 'critico') : '' },
+    { rotulo: 'Abaixo da meta', valor: t.abaixo, sub: 'feito, mas menos que a meta do dia', nivel: t.abaixo ? 'atencao' : '' },
+    { rotulo: 'Sem registro', valor: t.sem, sub: 'meta do dia sem produtividade enviada', nivel: t.sem ? 'critico' : '' },
+    { rotulo: 'Dias sem produtividade', valor: t.diasSem, sub: t.diasNaoLidos ? `não enviou (confirmado) · mais ${t.diasNaoLidos} ainda sem leitura do grupo` : 'obra × dia útil em que não enviou (confirmado)', nivel: t.diasSem ? 'critico' : t.diasNaoLidos ? 'atencao' : '' },
+  ], { colunas: 5 });
+
+  const grafico = m.linhas.length ? barrasEmpilhadas(m.linhas.map((l) => ({
+    rotulo: l.obra,
+    sub: `${l.total} ${l.total === 1 ? 'meta' : 'metas'}`,
+    segs: [{ valor: l.atingiu, cls: 'ok' }, { valor: l.abaixo, cls: 'abaixo' }, { valor: l.sem, cls: 'sem' }],
+    fim: l.pct == null ? '—' : pd.pct(l.pct),
+    dica: `${l.obra}: ${l.atingiu} bateram a meta · ${l.abaixo} abaixo · ${l.sem} sem registro`,
+  })), { vazio: 'sem metas conferidas ainda' }) : '';
+  const caixaGrafico = m.linhas.length ? html`<div class="pd-caixa"><div class="pd-caixa-h"><h3>Metas da semana por obra</h3><span class="pd-fonte">% à direita = metas que bateram</span></div>
+    <div class="pd-emp">${html.seguro(grafico)}</div>
+    <p class="pd-legenda"><span class="pd-lg pd-lg-ok"></span> bateu a meta <span class="pd-lg pd-lg-abaixo"></span> abaixo da meta <span class="pd-lg pd-lg-sem"></span> sem registro</p></div>` : '';
+
+  const nomes = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex'];
+  const linhas = m.linhas.map((l) => [
+    pd.obraCel(l.obra, '', `#/obra/${encodeURIComponent(l.obra)}`),
+    ...l.dias.map((d) => { const c = DIA_CEL[d.estado] || DIA_CEL.futuro; return html`<span class="pd-dia pd-dia-${c[0]}" title="${d.titulo || ''}">${c[1]}</span>`; }),
+  ]);
+  const tabela = pd.tabela(['Obra', ...m.dias.map((d, i) => `${nomes[i]} ${pd.dm(d)}`)], linhas, { vazio: 'Nenhuma obra com programação na semana.' });
+  const naoLidos = t.diasNaoLidos;
+  const aviso = naoLidos ? pd.aviso(`${naoLidos} ${naoLidos === 1 ? 'dia ainda não foi verificado' : 'dias ainda não foram verificados'} nos grupos de WhatsApp: a produtividade só aparece depois que o agente lê o grupo. "Não lido" não quer dizer que a obra deixou de enviar.`, 'atencao') : '';
+  const legenda = html`<p class="pd-legenda"><span class="pd-dia pd-dia-enviada">✓ Enviada</span> a obra postou a produtividade do dia no grupo <span class="pd-dia pd-dia-nao">✕ Não enviou</span> o agente leu o grupo e não havia <span class="pd-dia pd-dia-naolido">? Não lido</span> ainda sem leitura do grupo <span class="pd-dia pd-dia-hoje">… Aguardando</span> hoje, prazo 12h</p>`;
+  return html`${cartoes}${caixaGrafico}${aviso}<h3 class="pd-sub-h">Envio da produtividade nos grupos</h3>${tabela}${legenda}`;
+}
 
 const st = (ok) => (ok === true ? 'ok' : ok === false ? 'critico' : '');
 const MED = { ok: ['ok', 'Em dia'], nao: ['critico', 'Pendente'], q: ['', 'Sem informação'] };
@@ -82,6 +126,7 @@ export function painel(ctx) {
     ${avisoLeitura(ctx)}
     ${pd.secao('1 · Cumprimento da semana', `Fonte: Drive (cronograma), WhatsApp (efetivo e diário) · leitura ${leitura}`, cumprimento)}
     ${pd.secao('2 · Planejado × executado, por obra', 'Fonte: Drive (GERENCIAMENTO de cada obra) e agentes', pd.tabela(['Obra', 'Avanço', 'Ativ. atrasadas', 'Cronograma', 'Programação semanal', 'Metas diárias', 'Medições', ''], linhas, { vazio: 'Nenhuma obra em curso no planejamento.' }))}
+    ${pd.secao('Meta × executado da semana', 'Fonte: programação semanal e metas (Drive/WhatsApp) · produtividade enviada nos grupos', metaExecutado(ctx, CFG))}
     ${pd.secao('3 · Quem precisa agir', 'Cada alerta vira tarefa com responsável e data-limite', pd.quemAgir(agir))}
     <div class="${finCaixa ? 'pd-grade2' : ''}">${orc}${finCaixa}</div>`;
 }
