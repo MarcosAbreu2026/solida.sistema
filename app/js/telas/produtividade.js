@@ -30,6 +30,7 @@ const numeroQtd = (v) => (v === null || v === undefined || v === '' ? '—' : nu
 
 function situacao(meta, feito) {
   if (feito === null || feito === undefined || feito === '') return { cls: 'sem', txt: 'Sem registro' };
+  if (feito === true) return { cls: 'ok', txt: 'Feito' };   // feito, mas o relatório não traz a quantidade
   if (meta === null) return feito ? { cls: 'ok', txt: 'Feito' } : { cls: 'abaixo', txt: 'Não feito' };
   if (Number(feito) >= meta) return { cls: 'ok', txt: 'Atingiu' };
   return { cls: 'abaixo', txt: `Abaixo (${Math.round((Number(feito) / meta) * 100)}%)` };
@@ -492,6 +493,9 @@ const NIVEL_TXT = { ok: 'Em dia', atencao: 'Atenção', critico: 'Crítico' };
 // passados, quantos bateram a meta, ficaram abaixo ou ficaram sem registro; e, em cada dia útil, se a obra mandou a
 // produtividade no grupo do WhatsApp. Estados do dia: enviada · nao (o agente leu o grupo e não havia) ·
 // naolido (ainda não verificado no grupo) · hoje (dentro do prazo) · futuro · feriado.
+// Obra em fase de pendências (sem meta por dia): vem do cronograma/programação ou do tipo da meta semanal
+const ehPendencia = (CFG, p) => !!p.faseFinal || (((CFG.metasSemanais || {}).semanas || []).some((s) => (s.obras || []).some((o) => o.obra === p.obra && o.tipo === 'pendencias')));
+
 // Obras fora do acompanhamento de metas (parada, finalizada): CFG.metasSemanais.ignorar
 // CFG.metasSemanais.encerradas = { Mo465: 'Pausada', Mo565D: 'Finalizada' }: aparecem com essa situação, sem cobrar meta nem produtividade
 export const obrasEncerradas = (CFG) => ((CFG && CFG.metasSemanais && CFG.metasSemanais.encerradas) || {});
@@ -510,14 +514,16 @@ export function resumoMetasSemana(CFG, obrasVisiveis = null, ref = hojeISO()) {
       if (feriado(data)) return { data, estado: 'feriado', titulo: feriado(data) };
       if (data > hoje) return { data, estado: 'futuro' };
       const reg = registroDoDia(p, data);
-      const itens = ((p.dias.find((x) => x.data === data) || {}).itens) || [];
+      const itens = ehPendencia(CFG, p) ? [] : ((p.dias.find((x) => x.data === data) || {}).itens) || [];
       let algum = false;
       for (const it of itens) {
         const r = realizado(CFG, p.obra, data, it.item);
         if (r) {
           algum = true;
           const cls = situacao(it.meta, r.feito).cls;
-          if (cls === 'ok') atingiu++; else if (cls === 'abaixo') abaixo++; else sem++;
+          // nada feito (0 ou "não feito") conta como não feito, não como "abaixo da meta"
+          const nada = r.feito === 0 || r.feito === false;
+          if (cls === 'ok') atingiu++; else if (cls === 'abaixo' && !nada) abaixo++; else sem++;
         } else if (data < hoje) sem++;   // hoje ainda está no prazo: não conta como sem registro
       }
       if ((reg && reg.relatorio) || algum) return { data, estado: 'enviada' };
@@ -543,7 +549,8 @@ export function resumoMetasItens(CFG, obrasVisiveis = null, ref = hojeISO()) {
   const sem = semanas.find((s) => s.ini <= ref && ref <= somarDias(s.fim, 2)) || semanas[semanas.length - 1];
   if (!sem) return null;
   const linhas = (sem.obras || []).filter((o) => (!obrasVisiveis || obrasVisiveis.includes(o.obra)) && !obrasIgnoradas(CFG).includes(o.obra)).map((o) => {
-    const itens = o.itens || [];
+    // só os itens sem dia fixo contam pela semana; os que estão na programação de um dia contam no dia
+    const itens = (o.itens || []).filter((i) => o.tipo === 'pendencias' || i.noDia === true);
     const cont = (e) => itens.filter((i) => i.estado === e).length;
     const parte = (i) => (i.estado === 'ok' ? 1 : i.estado === 'parcial' && i.meta ? Math.min(1, i.feito / i.meta) : 0);
     // pendências (obra sem cronograma): o total é o das pendências previstas na semana; as que nenhum relatório traz contam como sem execução
