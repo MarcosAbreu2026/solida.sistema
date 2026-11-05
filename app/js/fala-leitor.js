@@ -127,10 +127,10 @@ const tokens = (s) => new Set(norm(s).split(/[^a-z0-9]+/).filter((w) => w.length
 function parecidas(a, b) {
   const A = tokens(a); const B = tokens(b); if (A.size < 2 || B.size < 2) return false;
   let c = 0; for (const w of A) if (B.has(w)) c++;
-  return c / Math.min(A.size, B.size) >= 0.5;
+  return c >= 2 && c / Math.min(A.size, B.size) >= 0.5;
 }
 // frase que é uma ação: começa com verbo ("Montar aditivo") ou "Fulano deve/vai/precisa <verbo>"
-const RE_NOME_DEVE = /^\p{Lu}[\p{L}]+\s+(?:deve|devem|vai|vão|precisa|precisam|tem que|fica de)\s+\p{L}+r\b/u;
+const RE_NOME_DEVE = /^\p{Lu}[\p{L}]+\s+(?:deve|devem|vai|vão|precisa|precisam|tem que|fica de|ficou de|ficaram de)\s+\p{L}+r(?![\p{L}])/u;
 const ehAcao = (t) => RE_INICIA_VERBO.test(t) || RE_NOME_DEVE.test(t);
 
 export function analisarResumo(texto, { pessoas = [], obras = [], hoje } = {}) {

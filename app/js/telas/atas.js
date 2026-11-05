@@ -276,12 +276,77 @@ export function linhaForm(v = {}) {
   const falta = !!v.descricao && tipo === 'solida' && !v.responsavel;
   const dica = v.responsavelAmbiguo ? `Há mais de um ${v.responsavelAmbiguo}: escolha quem` : v.externoNome && v.externoTipo === 'solida' ? `${v.externoNome} não tem login no sistema: escolha outra pessoa` : 'Escolha o responsável';
   const info = v.kind === 'informativo';
+  const selQuem = v.responsavel ? `s|${v.responsavel}` : (tipo !== 'solida' && nome ? `x|${tipo}|${nome}` : (tipo === 'solida' && v.externoNome ? `x|solida|${v.externoNome}` : ''));
   const [ass, resto] = dividirDescricao(v.descricao);
   return String(html`<div class="pf-linha" data-tipo="${tipo}" data-kind="${info ? 'informativo' : 'pendencia'}" data-pid="${v.pid || ''}"><select name="p_kind" data-pf-kind ${v.semKind ? html.seguro('hidden') : ''} title="Pendência vai para as pendências das pessoas; informativo só fica registrado na ata"><option value="pendencia" ${info ? '' : html.seguro('selected')}>Pendência</option><option value="informativo" ${info ? html.seguro('selected') : ''}>Informativo</option></select><input name="p_assunto" class="pf-assunto" placeholder="Assunto (ex.: ACM)" autocomplete="off" value="${ass}" title="Assunto: aparece em negrito"><input name="p_desc" placeholder="${info ? 'Informação (ex.: Fachada liberada)' : 'O que fazer (ex.: Retirar da área gourmet)'}" autocomplete="off" value="${resto}" title="${resto}">
+    <select name="p_quem" class="pf-quem" data-pf-quem data-sel="${selQuem}" title="Quem: são as pessoas que você pôs nos participantes da ata" hidden><option value="">Quem…</option></select>
     <select name="p_tipo" data-pf-tipo title="Quem é o responsável"><option value="solida" ${tipo === 'solida' ? html.seguro('selected') : ''}>Sólida</option><option value="terceirizado" ${tipo === 'terceirizado' ? html.seguro('selected') : ''}>Terceirizado</option><option value="cliente" ${tipo === 'cliente' ? html.seguro('selected') : ''}>Cliente</option><option value="arquitetura" ${tipo === 'arquitetura' ? html.seguro('selected') : ''}>Arquitetura</option></select>
     <select name="p_resp" class="pf-sol ${falta ? 'pf-falta' : ''}" title="${falta ? dica : ''}" ${tipo === 'solida' ? '' : html.seguro('hidden')}><option value="">Pessoa da Sólida…</option>${opcoesPessoas(v.responsavel || '')}</select>
     <input name="p_nome" class="pf-ext" list="dl-terceiros" placeholder="${tipo === 'cliente' ? 'Nome do cliente' : tipo === 'arquitetura' ? 'Nome da arquitetura ou arquiteto' : 'Nome da empresa ou pessoa'}" autocomplete="off" value="${nome}" ${tipo === 'solida' ? html.seguro('hidden') : ''}>
     <input type="date" name="p_prazo" title="Prazo" value="${v.prazo || ''}"><button type="button" class="pf-x" data-pf-del title="Tirar esta linha">×</button></div>`);
+}
+// ---- Quem aparece em cada pendência e informativo: as MESMAS pessoas dos participantes da ata (Sólida, arquitetura, cliente,
+// terceirizado). Ao preencher ou mudar os participantes, as opções de todas as linhas mudam junto.
+const semAc = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const nomeLimpo = (s) => semAc(String(s || '').replace(/\(.*?\)/g, '')).replace(/[.]/g, '').trim();
+function pessoaPorNome(nome) {
+  const n = nomeLimpo(nome); if (!n) return null;
+  const lista = dados.pessoas || [];
+  const exato = lista.filter((p) => nomeLimpo(p.nome) === n);
+  if (exato.length) return exato[0];
+  const pn = n.split(/\s+/)[0]; if (pn.length < 3) return null;
+  const mesmo = lista.filter((p) => nomeLimpo(p.nome).split(/\s+/)[0] === pn);
+  return mesmo.length === 1 ? mesmo[0] : null;
+}
+// "Marcos (Sólida), Fernanda (Arquitetura), Julio (Cliente), Yuri (Aetheos)" → opções { valor, rotulo }
+// valor: "s|<id da pessoa>" (Sólida com login) ou "x|<tipo>|<nome>" (cliente, arquitetura, terceirizado)
+export function opcoesDeParticipantes(texto) {
+  const out = []; const vistos = new Set();
+  for (const parte of String(texto || '').split(/,|;/).map((s) => s.trim()).filter(Boolean)) {
+    const m = parte.match(/^(.*?)\s*\(([^)]*)\)\s*$/);
+    const nome = (m ? m[1] : parte).trim(); const papel = semAc(m ? m[2] : '');
+    if (!nome || vistos.has(nomeLimpo(nome))) continue; vistos.add(nomeLimpo(nome));
+    const pessoa = (!m || /solida/.test(papel)) ? pessoaPorNome(nome) : null;
+    const tipo = /solida/.test(papel) || (!m && pessoa) ? 'solida' : /cliente/.test(papel) ? 'cliente' : /arq/.test(papel) ? 'arquitetura' : 'terceirizado';
+    out.push({ valor: pessoa ? `s|${pessoa.id}` : `x|${tipo}|${nome}`, rotulo: m ? `${nome} (${m[2].trim()})` : nome });
+  }
+  return out;
+}
+const chaveDaLinha = (l) => {
+  const get = (s) => (l.querySelector(s) ? String(l.querySelector(s).value || '').trim() : '');
+  const tipo = get('[name="p_tipo"]');
+  if (tipo === 'solida') return get('[name="p_resp"]') ? `s|${get('[name="p_resp"]')}` : '';
+  return get('[name="p_nome"]') ? `x|${tipo}|${get('[name="p_nome"]')}` : '';
+};
+// passa a escolha de "Quem" para os campos que o salvamento já lê (tipo, pessoa da Sólida, nome de fora)
+export function aplicarQuem(l, valor) {
+  const t = l.querySelector('[name="p_tipo"]'); const r = l.querySelector('[name="p_resp"]'); const n = l.querySelector('[name="p_nome"]');
+  if (!t || !r || !n) return;
+  if (String(valor).startsWith('s|')) { t.value = 'solida'; r.value = valor.slice(2); n.value = ''; }
+  else if (String(valor).startsWith('x|')) { const [, tipo, ...nome] = valor.split('|'); t.value = tipo; r.value = ''; n.value = nome.join('|'); }
+  else { t.value = 'solida'; r.value = ''; n.value = ''; }
+  l.dataset.tipo = t.value;
+}
+export function atualizarQuem(form) {
+  if (!form || !form.elements) return;
+  const campo = form.elements.participantes; const ops = opcoesDeParticipantes(campo ? campo.value : '');
+  for (const l of form.querySelectorAll('.pf-linha')) {
+    const sel = l.querySelector('[data-pf-quem]'); if (!sel) continue;
+    if (!ops.length) { sel.hidden = true; l.classList.remove('pf-quem-on'); continue; }   // sem participantes: continua o jeito antigo
+    let atual = sel.value || sel.dataset.sel || chaveDaLinha(l);
+    if (atual.startsWith('x|solida|')) {   // nome da Sólida sem login lido da ata: casa com o participante de mesmo nome
+      const nm = nomeLimpo(atual.split('|').slice(2).join('|'));
+      const achou = ops.find((o) => nomeLimpo(o.rotulo) === nm || nomeLimpo(o.rotulo).split(/\s+/)[0] === nm);
+      if (achou) atual = achou.valor;
+    }
+    const lista = [...ops];
+    if (atual && !lista.some((o) => o.valor === atual)) lista.push({ valor: atual, rotulo: `${atual.startsWith('s|') ? nomeDe(atual.slice(2)) : atual.split('|').pop()} (fora dos participantes)` });
+    sel.textContent = '';
+    const nova = (valor, rotulo) => { const o = document.createElement('option'); o.value = valor; o.textContent = rotulo; sel.appendChild(o); };
+    nova('', 'Quem…'); for (const o of lista) nova(o.valor, o.rotulo); nova('+', '+ Adicionar participante…');
+    sel.value = atual; if (sel.value !== atual) sel.value = '';
+    delete sel.dataset.sel; sel.hidden = false; l.classList.add('pf-quem-on'); aplicarQuem(l, sel.value);
+  }
 }
 export const datalistTerceiros = () => html`<datalist id="dl-terceiros">${nomesConhecidos().map((n) => html`<option value="${n}">`)}</datalist>`;
 const doEscopo = (p, setorFixo) => !setorFixo || p.setor === setorFixo || /^po/i.test(p.obra || '');   // escopo fixo (ex.: tela do Pós-obra): o setor, ou obras Po…

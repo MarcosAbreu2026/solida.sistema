@@ -2226,3 +2226,8 @@ body.nav-recolhido .fq-card.fq-estreito { font-size: 11.5px; line-height: 14px; 
 
 /* atas: botão Nova ata no lugar das abas (as abas foram para o menu) */
 .at-topo-bt { display: flex; justify-content: flex-start; align-items: center; gap: 12px; }
+
+/* Pendências e informativos: quem é escolhido entre os participantes da ata (esconde tipo, pessoa e nome do jeito antigo) */
+.pf-linha .pf-quem { grid-column: span 3; }
+.pf-linha.pf-quem-on [data-pf-tipo], .pf-linha.pf-quem-on .pf-sol, .pf-linha.pf-quem-on .pf-ext { display: none !important; }
+@media (max-width: 900px) { .pf-linha .pf-quem { grid-column: 1 / -1; } }

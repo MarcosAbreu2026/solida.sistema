@@ -583,7 +583,7 @@ function desenhar() {
   if (tela === 'atas' || tela === 'tarefas') {
     $('#conteudo').innerHTML = `<div>${atas.render({ params: rota.params, obras: obrasDeAtas(), sugestoes: ((estado.terceiros && estado.terceiros.empresas) || []).map((e) => e.empresa), msg: estado.atasMsgHash === location.hash ? (estado.atasMsg || '') : '' })}</div>`;
     ordenar.aplicar();
-    { const fm = document.getElementById('ata-form'); if (fm) atas.atualizarNomeDoForm(fm); }
+    { const fm = document.getElementById('ata-form'); if (fm) { atas.atualizarNomeDoForm(fm); atas.atualizarQuem(fm); } }
     if (estado.atasVisitada !== location.hash) {   // ao entrar na tela (ou mudar de aba), busca os dados mais novos
       estado.atasVisitada = location.hash;
       if (nuvem.NA_NUVEM) nuvem.listarObras().then((oc) => { if (JSON.stringify(oc) !== JSON.stringify(estado.obrasCad || [])) { estado.obrasCad = oc; const a = document.activeElement; if (['atas', 'tarefas'].includes(rotaAtual().tela) && !(a && a.closest && a.closest('#ata-form, #pend-form, #at-modal'))) desenhar(); } }).catch(() => {});
@@ -1623,7 +1623,7 @@ document.addEventListener('click', async (e) => {
 });
 document.addEventListener('click', async (e) => {
   const add = e.target.closest('[data-pf-add]');
-  if (add) { document.getElementById('pend-linhas').insertAdjacentHTML('beforeend', atas.linhaForm()); return; }
+  if (add) { document.getElementById('pend-linhas').insertAdjacentHTML('beforeend', atas.linhaForm()); atas.atualizarQuem(document.getElementById('ata-form')); return; }
   const del = e.target.closest('[data-pf-del]');
   if (del) { const l = del.closest('.pf-linha'); const box = l.parentElement; if (box.id === 'pend-linhas' && box.children.length === 1) { l.querySelectorAll('input,select').forEach((c) => { c.value = ''; }); } else if (box.id === 'pend-linhas') l.remove(); return; }
   const st = e.target.closest('[data-pend]');
@@ -1720,6 +1720,25 @@ function lerLinhaPendencia(l) {
     prazo: l.querySelector('[name="p_prazo"]').value,
   };
 }
+// As pessoas de cada pendência e informativo são as dos participantes da ata: mudou o campo, mudam as opções de todas as linhas
+document.addEventListener('input', (e) => {
+  const c = e.target; if (c && c.name === 'participantes' && c.closest && c.closest('#ata-form')) atas.atualizarQuem(c.form);
+});
+document.addEventListener('change', (e) => {
+  const q = e.target.closest && e.target.closest('[data-pf-quem]'); if (!q) return;
+  const l = q.closest('.pf-linha'); const form = q.closest('#ata-form');
+  if (q.value === '+') {   // pessoa que ainda não está nos participantes: entra nos participantes e já fica escolhida
+    const txt = prompt('Quem é? Escreva o nome e, entre parênteses, a empresa ou o papel. Ex.: Rafael (Cliente), Fernanda (Arquitetura), Júlio (Sólida).');
+    q.value = '';
+    if (txt && txt.trim() && form && form.elements.participantes) {
+      const c = form.elements.participantes; c.value = c.value.trim() ? `${c.value.trim().replace(/[,;\s]+$/, '')}, ${txt.trim()}` : txt.trim();
+      atas.atualizarQuem(form); const novo = atas.opcoesDeParticipantes(txt.trim())[0];
+      if (novo) { q.value = novo.valor; atas.aplicarQuem(l, q.value); }
+    } else atas.aplicarQuem(l, '');
+    return;
+  }
+  atas.aplicarQuem(l, q.value);
+});
 // trocar Sólida / Terceirizado / Cliente mostra os campos certos da mesma linha
 document.addEventListener('change', (e) => {
   const kind = e.target.closest && e.target.closest('[data-pf-kind]');
@@ -1748,6 +1767,7 @@ function marcarFaltas(f) {
     marca(q('[name="p_desc"]'), ativa && !v('[name="p_desc"]'));
     marca(q('[name="p_prazo"]'), ativa && !info && !v('[name="p_prazo"]'));
     marca(q('[name="p_resp"]'), ativa && tipo === 'solida' && !v('[name="p_resp"]'));
+    if (q('[name="p_quem"]') && !q('[name="p_quem"]').hidden) marca(q('[name="p_quem"]'), ativa && !info && !v('[name="p_quem"]'));
     const semTerc = ativa && tipo === 'terceirizado' && !v('[name="p_nome"]');
     marca(q('[name="p_nome"]'), semTerc);
     if (tipo !== 'terceirizado') marca(q('[name="p_nome"]'), false);
