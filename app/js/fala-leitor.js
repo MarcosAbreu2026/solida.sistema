@@ -15,18 +15,44 @@ const EQUIPE = ['júlia', 'julia', 'simone', 'márcio', 'marcio', 'pedro', 'lari
 const CLIENTES = ['agatha', 'cliente'];
 const ARQUITETURA = ['fernanda', 'bárbara', 'barbara', 'arquitetura', 'arquiteta', 'arquiteto'];
 
-// assunto de cada frase pela palavra-chave (a primeira da lista que aparecer)
+// O assunto de cada item é o TEMA GERAL, não o objeto (pedido do Marcos): "reforço da escada" → ESTRUTURA. A primeira regra que casar vale;
+// o que é ação administrativa (pagamento, aditivo, contratação) vem antes dos temas de obra. Sem tema: GERAL.
 const ASSUNTOS = [
-  [/marcenaria/i, 'MARCENARIA'], [/m[áa]rmore|granito|bancadas?|pedras?/i, 'MÁRMORE'], [/ar[- ]condicionado|climatiza/i, 'AR-CONDICIONADO'],
-  [/luminárias?|luminarias?|ilumina[çc][ãa]o|light design/i, 'ILUMINAÇÃO'], [/esquadrias?/i, 'ESQUADRIAS'], [/blindex|blinx|cortina de vidro|vidro/i, 'VIDROS'],
-  [/piscina/i, 'PISCINA'], [/vazamentos?/i, 'VAZAMENTOS'], [/dps|queda de luz|surto/i, 'DPS'], [/acabamento el[ée]trico|el[ée]trica|eletricista/i, 'ELÉTRICA'],
-  [/textura|grafiato|grafiata/i, 'TEXTURA'], [/ralos?/i, 'RALOS'], [/lou[çc]as?|metais/i, 'LOUÇAS E METAIS'], [/espelhos?/i, 'ESPELHOS'], [/coifa/i, 'COIFA'],
-  [/forro/i, 'FORRO'], [/rodap[ée]/i, 'RODAPÉ'], [/c[âa]meras?/i, 'CÂMERAS'], [/fachada|rufos?/i, 'FACHADA'], [/exaust[ãa]o/i, 'EXAUSTÃO'], [/inc[êe]ndio/i, 'INCÊNDIO'],
-  [/divis[óo]rias?/i, 'DIVISÓRIAS'], [/paisagismo|vetor garden/i, 'PAISAGISMO'], [/aditivos?/i, 'ADITIVO'], [/cronograma/i, 'CRONOGRAMA'], [/planilha|lista de pend[êe]ncias/i, 'PENDÊNCIAS'],
-  [/p[óo]s[- ]obra/i, 'PÓS-OBRA'], [/or[çc]amento/i, 'ORÇAMENTO'], [/projeto/i, 'PROJETO'], [/compras?|comprad/i, 'COMPRAS'], [/entrega/i, 'ENTREGA'], [/medi[çc][ãa]o/i, 'MEDIÇÃO'],
-  [/prazos?/i, 'PRAZOS'], [/contrata[çc][ãa]o|contratad/i, 'CONTRATAÇÃO'], [/remax/i, 'REMAX'], [/acústic/i, 'ACÚSTICA'], [/proposta|consultoria/i, 'PROPOSTA'], [/pontinho|alinhamento/i, 'ALINHAMENTO'],
+  [/sistema novo|software|extens[ãa]o de navegador|supabase|dashboard|plataforma|bitrix|mais controle|conta azul|banco de dados/i, 'SISTEMAS'],
+  [/pagamento|sinal de|estorno|nota fiscal|rejeito de nota|reembolso|boleto|fatura/i, 'FINANCEIRO'],
+  [/aditivo|or[çc]amento|or[çc]ar|proposta(?!:)|desconto|consultoria|subtrativo/i, 'ORÇAMENTO E ADITIVOS'],
+  [/contrata[çc][ãa]o|contratad|terceirizad|empreiteir|m[ãa]o de obra/i, 'CONTRATAÇÃO'],
+  [/refor[çc]o|estrutur|laje|viga|pilar|funda[çc][ãa]o|concreto|alvenaria|demoli|enchimento|desn[íi]vel|calculista|engenheiro/i, 'ESTRUTURA'],
+  [/impermeabil|vazament|infiltra|manta asf|goteira|umidade/i, 'IMPERMEABILIZAÇÃO'],
+  [/el[ée]tric|eletricista|tomada|interruptor|disjuntor|fia[çc][ãa]o|dps|surto|queda de luz|lumin[áa]ria|ilumina[çc][ãa]o|light design|spots?|fitas? de led/i, 'ELÉTRICA E ILUMINAÇÃO'],
+  [/hidr[áa]ulic|esgoto|ralos?|registros?|tubula[çc][ãa]o|sif[ãa]o|aquecedor|(?:^|[^\p{L}])g[áa]s(?![\p{L}])/iu, 'HIDRÁULICA E ESGOTO'],
+  [/ar[- ]condicionado|climatiza|exaust[ãa]o|dutos?|ventokit|ventila/i, 'AR-CONDICIONADO E VENTILAÇÃO'],
+  [/marcenaria|arm[áa]rios?|roupeiro|painel de madeira|madeira/i, 'MARCENARIA'],
+  [/m[áa]rmore|granito|travertino|bancadas?|pedras?|marmoraria|soleira|peitoril/i, 'MÁRMORES E PEDRAS'],
+  [/esquadrias?|vidros?|blindex|persianas?|janelas?|espelhos?|guarda[- ]corpo|cortina de vidro|porta de correr/i, 'ESQUADRIAS E VIDROS'],
+  [/gesso|forro|drywall|sanca|tabica|teto|divis[óo]rias?/i, 'GESSO E FORRO'],
+  [/pintura|textura|grafiato|massa corrida|selar|lixar|emass|ep[óo]xi/i, 'PINTURA E TEXTURA'],
+  [/porcelanato|cer[âa]mica|piso|revestimento|rodap[ée]|rejunte|azulejo|assentamento/i, 'REVESTIMENTOS'],
+  [/lou[çc]as?|metais|vaso sanit|torneira|cubas?|chuveiro/i, 'LOUÇAS E METAIS'],
+  [/fachada|cobertura|telhado|rufos?|pingadeiro|calha|jardineira/i, 'FACHADA E COBERTURA'],
+  [/piscina|paisagismo|jardim|deck|churrasqueira/i, 'ÁREA EXTERNA'],
+  [/coifa|cooktop|forno|eletrodom[ée]stico|equipamentos?/i, 'EQUIPAMENTOS'],
+  [/automa[çc][ãa]o|c[âa]meras?|fechadura|interfone|alarme|inc[êe]ndio|reconhecimento facial|seguran[çc]a/i, 'AUTOMAÇÃO E SEGURANÇA'],
+  [/limpeza|dedetiza|descupiniza/i, 'LIMPEZA'],
+  [/compras?|pedido|entrega|fornecedor|cota[çc][ãa]o|material|estoque|umber/i, 'COMPRAS E ENTREGAS'],
+  [/medi[çc][ãa]o/i, 'MEDIÇÃO'],
+  [/projeto|arquitet|dwg|detalh|planta|layout|compatibiliza/i, 'PROJETO'],
+  [/cronograma|prazos?|atraso|programa[çc][ãa]o|planejamento|planilhas?|lista de pend/i, 'PLANEJAMENTO'],
+  [/p[óo]s[- ]obra|garantia|manuten[çc][ãa]o|chamado/i, 'PÓS-OBRA'],
+  [/e-?mail|formalizar|mensagem|relat[óo]rio|grupo/i, 'COMUNICAÇÃO'],
+  [/reuni[ãa]o|pontinho|alinhamento|agendar/i, 'REUNIÃO'],
 ];
-const topico = (t) => { for (const [re, nome] of ASSUNTOS) if (re.test(t)) return nome; return ''; };
+// o tema é o que aparece PRIMEIRO na frase ("reforço da escada" → ESTRUTURA; "sinal de pagamento dos espelhos" → FINANCEIRO)
+const topico = (t) => {
+  let melhor = ''; let pos = Infinity;
+  for (const [re, nome] of ASSUNTOS) { const m = re.exec(t); if (m && m.index < pos) { pos = m.index; melhor = nome; } }
+  return melhor;
+};
 
 const codigoObra = (digitos, obras) => (obras.find((o) => o.replace(/\D/g, '') === digitos) || '');
 
@@ -172,7 +198,7 @@ export function analisarResumo(texto, { pessoas = [], obras = [], hoje } = {}) {
       const obra = obraDe(t) || paiObra || secaoObra;
       const prefixoObra = obra ? obra.toUpperCase() : '';
       const top = topico(t) || (trechos.length > 1 ? topico(t0) : '');   // frase dividida em duas ações: o assunto vem da frase inteira
-      const assunto = [prefixoObra, top || (proximos ? palavraPrincipal(t) : '') || (nivel === 0 && paiTitulo ? paiTitulo : '') || (nivel === 1 ? paiAssunto : '') || (!prefixoObra && !proximos ? secao : '')].filter(Boolean).join(' ') || secao;
+      const assunto = [prefixoObra, top || (nivel === 1 ? paiAssunto : '') || 'GERAL'].filter(Boolean).join(' ');
       if (nivel === 0) paiAssunto = top;
       if (ehPend) {
         let limpo = t.replace(/\s*\((\d{3})\)\s*$/u, '').replace(/^enviar\b/i, 'Enviar');
@@ -238,7 +264,7 @@ export function analisarFala(texto, { pessoas = [], obras = [], hoje } = {}) {
     vistos.add(chave);
     const acao = RE_ACAO.test(f) && !RE_PASSADO.test(f);
     const prazo = prazoDe(f, hoje);
-    const t = topico(f) || palavraPrincipal(f);
+    const t = topico(f) || 'GERAL';
     const assunto = [ctx ? ctx.toUpperCase() : '', t].filter(Boolean).join(' ') || 'GERAL';
     const texto2 = f.length > 230 ? `${f.slice(0, 230).replace(/\s+\S*$/, '')}…` : f;
     if (acao) pends.push(montaItem({ kind: 'pendencia', assunto, texto: texto2, item: ++n, quem: quemFaz(f, pessoas), prazo }));

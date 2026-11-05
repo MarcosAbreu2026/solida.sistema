@@ -1720,6 +1720,32 @@ function lerLinhaPendencia(l) {
     prazo: l.querySelector('[name="p_prazo"]').value,
   };
 }
+// Bolinha à esquerda de cada linha da ata: arrastar muda a posição da pendência ou do informativo (a ordem da lista é a ordem salva)
+let linhaArrastada = null;
+document.addEventListener('dragstart', (e) => {
+  const h = e.target.closest && e.target.closest('[data-pf-mover]'); if (!h) return;
+  linhaArrastada = h.closest('.pf-linha'); if (!linhaArrastada) return;
+  e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', 'linha-da-ata');
+  try { e.dataTransfer.setDragImage(linhaArrastada, 12, 12); } catch { /* sem imagem de arraste */ }
+  setTimeout(() => linhaArrastada && linhaArrastada.classList.add('pf-arrastando'), 0);
+});
+document.addEventListener('dragover', (e) => {
+  if (!linhaArrastada) return;
+  const alvo = e.target.closest && e.target.closest('.pf-linha');
+  if (!alvo || alvo === linhaArrastada || alvo.parentElement !== linhaArrastada.parentElement) return;
+  e.preventDefault();
+  const r = alvo.getBoundingClientRect();
+  alvo.parentElement.insertBefore(linhaArrastada, e.clientY < r.top + r.height / 2 ? alvo : alvo.nextSibling);
+});
+document.addEventListener('dragend', () => { if (linhaArrastada) linhaArrastada.classList.remove('pf-arrastando'); linhaArrastada = null; });
+document.addEventListener('keydown', (e) => {   // sem mouse: seta para cima/baixo na bolinha
+  const h = e.target.closest && e.target.closest('[data-pf-mover]'); if (!h || !['ArrowUp', 'ArrowDown'].includes(e.key)) return;
+  e.preventDefault(); const l = h.closest('.pf-linha'); if (!l) return;
+  if (e.key === 'ArrowUp' && l.previousElementSibling) l.parentElement.insertBefore(l, l.previousElementSibling);
+  if (e.key === 'ArrowDown' && l.nextElementSibling) l.parentElement.insertBefore(l.nextElementSibling, l);
+  h.focus();
+});
+
 // trocar Sólida / Terceirizado / Cliente mostra os campos certos da mesma linha
 document.addEventListener('change', (e) => {
   const kind = e.target.closest && e.target.closest('[data-pf-kind]');

@@ -88,7 +88,8 @@ function lerParticipantes(texto) {
 function participantesEmTabela(linhas) {
   const lista = [];
   for (const l of linhas) {
-    const m = l.trim().match(/^([\p{L}]+(?:\s[\p{L}]+)?)\s+(Construtora S[óo]lida|S[óo]lida|Cliente|Arquitetura)\b/iu);
+    // nome: palavras com inicial maiúscula (e "de", "da", "do"…); uma frase como "Reunião online entre a Construtora Sólida…" não é participante
+    const m = l.trim().match(/^(\p{Lu}[\p{L}]+(?:\s(?:de|da|do|dos|das|\p{Lu}[\p{L}]+)){0,5}?)\s+(Construtora S[óo]lida|S[óo]lida|Cliente|Arquitetura)(?![\p{L}])/u);
     if (m) lista.push({ nome: m[1], papel: papelDe(m[2]), texto: `${m[1]} (${m[2]})` });
   }
   return lista;
@@ -100,6 +101,11 @@ function resolverResponsavel(texto, participantes, pessoas) {
   if (!partes.length) return { responsavel: '', externoNome: '', externoTipo: '', extras: [] };
   const un = (nome) => pessoas.filter((p) => primeiroNome(p.nome) === primeiroNome(nome));
   const um = (parte) => {
+    const nt = norm(parte).replace(/[.]/g, '').trim();
+    if (/^a definir|^sem responsavel|^-+$/.test(nt)) return {};   // "A definir" não é uma pessoa
+    if (nt === 'arquitetura' || nt === 'arquiteta' || nt === 'arquiteto') return { externoNome: 'Arquitetura', externoTipo: 'arquitetura' };
+    if (nt === 'cliente') return { externoNome: 'Cliente', externoTipo: 'cliente' };
+    if (nt === 'solida') return { externoNome: 'Sólida', externoTipo: 'solida' };   // a empresa, sem pessoa: quem confere escolhe
     const pn = primeiroNome(parte);
     const part = participantes.find((p) => primeiroNome(p.nome) === pn && pn.length >= 3);
     if (part && part.papel && part.papel !== 'solida') return part.papel === 'arquitetura' ? { externoNome: part.nome, externoTipo: 'terceirizado', externoCategoria: 'Arquitetura' } : { externoNome: part.nome, externoTipo: part.papel };
@@ -115,6 +121,19 @@ function resolverResponsavel(texto, participantes, pessoas) {
 
 // ---------------------------------------------------------------- tabela do PDF (padrão de ata da Sólida)
 const RE_TIPO = /^(PEND[ÊE]NCIAS?|INFORMATIVOS?|DECIS[ÃA]O|DECIS[ÕO]ES|A[ÇC][ÃA]O|PROVID[ÊE]NCIAS?)$/iu;
+// cada item do padrão da Sólida abre com o assunto em maiúsculas e dois-pontos: "ESCADA:", "DESNÍVEL / ENCHIMENTO:"
+const RE_ASSUNTO_ABRE = /^[A-ZÀ-ÚÇ0-9][A-ZÀ-ÚÇ0-9 ,/.\-–()]*:$/u;
+
+// junta pedaços da mesma linha: o PDF parte palavras e números ("Pé" "-" "direito", "0" "9" "/11"); pedaço que encosta no anterior não leva espaço
+function juntarFragmentos(itens) {
+  let s = '';
+  itens.forEach((it, k) => {
+    if (!k) { s = it.str; return; }
+    const prev = itens[k - 1]; const gap = it.x - (prev.x + (prev.w || 0));
+    s += (prev.w != null && gap < 1.2 ? '' : ' ') + it.str;
+  });
+  return s;
+}
 
 function agruparLinhas(itens) {
   const ord = [...itens].sort((a, b) => b.y - a.y || a.x - b.x); const linhas = [];
@@ -122,29 +141,36 @@ function agruparLinhas(itens) {
   linhas.forEach((l) => l.itens.sort((a, b) => a.x - b.x));
   return linhas.sort((a, b) => b.y - a.y);
 }
+const textoDaLinha = (l) => juntarFragmentos(l.itens);
 
 function lerTabela(paginas) {
   const todas = paginas.map((p) => agruparLinhas(p));
-  let xTipo = null; let xResp = null; let xData = null; let achouCab = false;
+  let xItem = null; let xTipo = null; let xDesc = null; let xResp = null; let xData = null; let achouCab = false;
   for (const ls of todas) {
     for (const l of ls) {
-      const t = l.itens.map((i) => i.str).join(' ');
+      const t = textoDaLinha(l);
       if (/\bITEM\b/i.test(t) && /\bTIPO\b/i.test(t) && /RESPONS/i.test(t)) {
         const it = (re) => l.itens.find((i) => re.test(i.str));
         const separados = l.itens.length >= 4;
-        if (separados) { xTipo = (it(/^TIPO/i) || {}).x; xResp = (it(/RESPONS/i) || {}).x; xData = (it(/^DATA/i) || {}).x; }
+        if (separados) { xItem = (it(/^ITEM/i) || {}).x; xTipo = (it(/^TIPO/i) || {}).x; xDesc = (it(/^DESCRI/i) || {}).x; xResp = (it(/RESPONS/i) || {}).x; xData = (it(/^DATA/i) || {}).x; }
         achouCab = true; break;
       }
     }
     if (achouCab) break;
   }
   if (!achouCab || xResp == null || xTipo == null) return null;
-  const marcadores = []; const soltas = [];
+  const fimTipo = xDesc != null ? xTipo + 0.3 * (xDesc - xTipo) : xTipo + 40;   // onde acaba a coluna ITEM/TIPO
+  const marcadores = []; const soltas = []; const descSeq = [];
+  let terminou = false;
   todas.forEach((ls, pi) => {
-    let comecou = false; const temCab = ls.some((l) => /\bITEM\b/i.test(l.itens.map((i) => i.str).join(' ')) && /RESPONS/i.test(l.itens.map((i) => i.str).join(' ')));
+    if (terminou) return;
+    let comecou = false; const temCab = ls.some((l) => { const t = textoDaLinha(l); return /\bITEM\b/i.test(t) && /RESPONS/i.test(t); });
     for (const l of ls) {
-      const t = l.itens.map((i) => i.str).join(' ');
+      const t = textoDaLinha(l);
       if (!comecou) { if (temCab) { if (/\bITEM\b/i.test(t) && /RESPONS/i.test(t)) comecou = true; continue; } comecou = true; }
+      // a tabela acaba no próximo título de seção, na margem esquerda ("ESCOPO DE SERVIÇOS"): o que vem depois não é item
+      const primeiro = l.itens[0];
+      if (xItem != null && primeiro && primeiro.x < xItem - 3 && /^[A-ZÀ-ÚÇ][A-ZÀ-ÚÇ0-9 /.,\-–]{5,}$/u.test(t.trim())) { terminou = true; break; }
       const [a, b] = l.itens;
       let n = null; let resto = l.itens;
       const junto = a && a.str.trim().match(/^(\d{1,3})\s+(\S+)$/u);
@@ -152,21 +178,49 @@ function lerTabela(paginas) {
       else if (junto && RE_TIPO.test(junto[2]) && a.x < xTipo + 4) { n = { n: Number(junto[1]), tipo: junto[2] }; resto = l.itens.slice(1); }
       const col = (i) => (xData != null && i.x >= xData - 6 ? 'prazo' : i.x >= xResp - 6 ? 'resp' : 'desc');
       const m = { pagina: pi, y: l.y, desc: [], resp: [], prazo: [] };
-      for (const i of resto) { if (i.x < xTipo - 2 && !n) continue; m[col(i)].push({ y: l.y, x: i.x, s: i.str.trim() }); }
+      for (const i of resto) { if (i.x < fimTipo) continue; m[col(i)].push({ y: l.y, x: i.x, w: i.w, s: i.str.trim() }); }
+      if (m.desc.length) descSeq.push({ pagina: pi, y: l.y, frags: m.desc });
       if (n) marcadores.push({ ...m, ...n }); else soltas.push(m);
     }
   });
   if (!marcadores.length) return null;
+  // 1) padrão da Sólida: cada descrição abre com "ASSUNTO:"; o k-ésimo bloco é do k-ésimo item (a coluna da esquerda fica no meio
+  //    da linha e a descrição no alto, então a posição vertical não serve para casar os dois)
+  const blocos = [];
+  for (const dl of descSeq) {
+    const abre = RE_ASSUNTO_ABRE.test((dl.frags[0] || {}).s || '');
+    if (abre || !blocos.length) blocos.push([dl]); else blocos[blocos.length - 1].push(dl);
+  }
+  const porBloco = blocos.length === marcadores.length && blocos.every((b) => RE_ASSUNTO_ABRE.test((b[0].frags[0] || {}).s || ''));
+  const junta = (xs) => {
+    const ord = [...xs].sort((p, q) => (p.pagina ?? 0) - (q.pagina ?? 0) || q.y - p.y || p.x - q.x);
+    let s = ''; let prev = null;
+    for (const x of ord) {
+      if (prev) {
+        const mesmaLinha = prev.pagina === x.pagina && Math.abs(prev.y - x.y) <= 2.5;
+        const encosta = mesmaLinha && prev.w != null && (x.x - (prev.x + prev.w)) < 1.2;
+        const hifenNoFim = !mesmaLinha && /[\p{L}]-$/u.test(s);   // "guarda-" no fim da linha e "corpo" na seguinte: uma palavra só
+        s += encosta || hifenNoFim ? '' : ' ';
+      }
+      s += x.s; prev = x;
+    }
+    return s.replace(/\s+/g, ' ').trim();
+  };
+  if (porBloco) {
+    marcadores.forEach((mk, k) => { mk.descFinal = junta(blocos[k].flatMap((dl) => dl.frags.map((f) => ({ ...f, pagina: dl.pagina })))); });
+  }
+  // resp e data limite ficam centralizados na linha do item: vão para o item mais perto, na mesma página
   for (const s of soltas) {
     let melhor = null; let dist = Infinity;
     for (const mk of marcadores.filter((x) => x.pagina === s.pagina)) { const d = Math.abs(mk.y - s.y); if (d < dist) { dist = d; melhor = mk; } }
+    if (porBloco) { if (melhor && dist <= 48) { melhor.resp.push(...s.resp); melhor.prazo.push(...s.prazo); } continue; }
     const doAnterior = !melhor || (marcadores.filter((x) => x.pagina === s.pagina).every((x) => x.y < s.y) && s.pagina > 0);
     if (doAnterior) { const ant = [...marcadores].reverse().find((x) => x.pagina < s.pagina); if (ant) melhor = ant; }
     if (!melhor || (dist > 48 && !doAnterior)) continue;
     melhor.desc.push(...s.desc); melhor.resp.push(...s.resp); melhor.prazo.push(...s.prazo);
   }
-  const junta = (xs) => xs.sort((p, q) => q.y - p.y || p.x - q.x).map((x) => x.s).join(' ').replace(/\s+/g, ' ').trim();
-  return marcadores.map((m) => ({ n: m.n, tipo: m.tipo, descricao: junta(m.desc), responsavel: junta(m.resp), prazo: junta(m.prazo) }));
+  const comPagina = (mk, campo) => mk[campo].map((f) => ({ ...f, pagina: mk.pagina }));
+  return marcadores.map((m) => ({ n: m.n, tipo: m.tipo, descricao: porBloco ? m.descFinal : junta(comPagina(m, 'desc')), responsavel: junta(comPagina(m, 'resp')), prazo: junta(comPagina(m, 'prazo')) }));
 }
 
 // ---------------------------------------------------------------- análise
@@ -185,6 +239,8 @@ export function analisarAta(texto, { pessoas = [], obras = [], setores = [], hoj
   // título
   let titulo = (naoVazias.find((l) => !RE_MARCADOR.test(l) && l.trim().length >= 4 && l.trim().length <= 110) || nomeArquivo || 'Ata importada').trim().replace(/^ata\s*[:\-–]\s*/i, '').replace(/\s+R\d{2}\s*$/, '');
   if (!titulo) titulo = nomeArquivo || 'Ata importada';
+  const iAta = naoVazias.findIndex((l) => /^ata de reuni[ãa]o$/i.test(l.trim()));   // padrão da Sólida: o subtítulo vem logo depois de "ATA DE REUNIÃO"
+  if (iAta >= 0 && naoVazias[iAta + 1]) titulo = naoVazias[iAta + 1].trim();
   // obra mais citada (as que estão na lista; senão a primeira citada, mesmo encerrada)
   const cont = new Map();
   for (const m of String(texto).matchAll(/\bMo\s?(\d{3}[A-Za-z]?)\b/gi)) { const o = `Mo${m[1]}`; cont.set(o, (cont.get(o) || 0) + 1); }
@@ -193,6 +249,13 @@ export function analisarAta(texto, { pessoas = [], obras = [], setores = [], hoj
   const obra = daLista || ordenadas[0] || '';
   let setor = '';
   if (!obra) { const cab = norm(naoVazias.slice(0, 15).join(' ')); setor = setores.find((s) => cab.includes(norm(s))) || ''; }
+  if (!setor) {   // "Construtora Sólida – Setor de Projetos e Orçamento": o primeiro setor citado depois de "setor de"
+    const mset = norm(naoVazias.slice(0, 30).join(' ')).match(/setor de ([a-z ]{3,60})/);
+    if (mset) {
+      const achados = setores.map((s) => { const raiz = norm(s).split(/[ /]/)[0].replace(/s$/, ''); return { s, i: raiz.length >= 5 ? mset[1].indexOf(raiz) : -1 }; }).filter((x) => x.i >= 0).sort((p, q) => p.i - q.i);
+      if (achados.length) setor = achados[0].s;
+    }
+  }
   // participantes
   let parts = [];
   const iPart = linhas.findIndex((l) => /^\s*participantes\s*:?/iu.test(l));
@@ -273,9 +336,9 @@ async function lerPdf(buffer) {
   const paginas = [];
   for (let n = 1; n <= pdf.numPages; n++) {
     const tc = await (await pdf.getPage(n)).getTextContent();
-    paginas.push(tc.items.filter((it) => it.str && it.str.trim()).map((it) => ({ str: it.str, x: it.transform[4], y: it.transform[5] })));
+    paginas.push(tc.items.filter((it) => it.str && it.str.trim()).map((it) => ({ str: it.str, x: it.transform[4], y: it.transform[5], w: it.width })));
   }
-  const texto = paginas.map((p) => agruparLinhas(p).map((l) => l.itens.map((i) => i.str).join(' ')).join('\n')).join('\n\n');
+  const texto = paginas.map((p) => agruparLinhas(p).map((l) => textoDaLinha(l)).join('\n')).join('\n\n');
   return { texto, paginas };
 }
 

@@ -2226,3 +2226,11 @@ body.nav-recolhido .fq-card.fq-estreito { font-size: 11.5px; line-height: 14px; 
 
 /* atas: botão Nova ata no lugar das abas (as abas foram para o menu) */
 .at-topo-bt { display: flex; justify-content: flex-start; align-items: center; gap: 12px; }
+
+/* Bolinha de ordem à esquerda de cada pendência ou informativo da ata: arrastar muda a posição */
+.pf-arrastar { display: none; }
+#ata-form .pf-linha { position: relative; padding-left: 26px; }
+#ata-form .pf-arrastar { display: flex; align-items: center; justify-content: center; position: absolute; left: 0; top: 8px; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 50%; background: #C9D0D8; color: #fff; font-size: 12px; line-height: 1; cursor: grab; user-select: none; }
+#ata-form .pf-arrastar:hover, #ata-form .pf-arrastar:focus-visible { background: #6A7480; }
+#ata-form .pf-arrastar:active { cursor: grabbing; }
+.pf-linha.pf-arrastando { opacity: .45; }
