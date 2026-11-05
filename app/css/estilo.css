@@ -2234,3 +2234,10 @@ body.nav-recolhido .fq-card.fq-estreito { font-size: 11.5px; line-height: 14px; 
 #ata-form .pf-arrastar:hover, #ata-form .pf-arrastar:focus-visible { background: #6A7480; }
 #ata-form .pf-arrastar:active { cursor: grabbing; }
 .pf-linha.pf-arrastando { opacity: .45; }
+
+/* nome da pessoa ainda travado (sem o "de onde é"): ocupa o mesmo espaço do campo liberado e da lista de pessoas da Sólida */
+.pf-linha[data-tipo=""] .pf-ext { grid-column: span 2; }
+/* formulário estreito: a lista de pessoas da Sólida e o campo do nome ocupam o mesmo espaço */
+@container (max-width: 1000px) {
+  .pf-linha .pf-sol, .pf-linha .pf-ext { grid-column: span 2; }
+}
