@@ -101,7 +101,7 @@ function metaExecutado(ctx, CFG) {
 }
 
 const st = (ok) => (ok === true ? 'ok' : ok === false ? 'critico' : '');
-const MED = { ok: ['ok', 'Em dia'], nao: ['critico', 'Pendente'], q: ['', 'Sem informação'] };
+const MED = { ok: ['ok', 'Feito'], nao: ['critico', 'Não feito'], q: ['critico', 'Não feito'] };
 const pctN = (n, d) => (d ? n / d : null);
 
 export function painel(ctx) {
@@ -142,14 +142,14 @@ export function painel(ctx) {
     const metasFeitas = semana.some((d) => d.fonte === 'whatsapp') || oc.lista(ctx.celular).some((r) => r.tipo === 'executado' && oc.mesmaObra(r.obra, o.obra) && r.data >= oc.diaUtil(ini, -5));
     const med = MED[oc.medicao(ctx, o.obra).status] || MED.q;
     const situ = enc[o.obra];
-    if (situ) return [pd.obraCel(o.obra, oc.endereco(ctx, o.obra), `#/obra/${encodeURIComponent(o.obra)}`), cr.erro ? pd.traco() : pd.barraCel(cr.exe), pd.traco(), pd.selo('', situ), pd.selo('', situ), pd.selo('', situ), pd.selo('', situ), pd.selo('', situ), pd.selo(med[0], med[1]), html`<a class="pd-bt" href="#/obra/${encodeURIComponent(o.obra)}">Abrir obra</a>`];
+    if (situ) return [pd.obraCel(o.obra, oc.endereco(ctx, o.obra), `#/obra/${encodeURIComponent(o.obra)}`), cr.erro ? pd.traco() : pd.barraCel(cr.exe), pd.traco(), pd.selo('', situ), pd.selo('', situ), pd.selo('', situ), pd.selo('', situ), pd.selo('', situ), pd.selo('', situ), html`<a class="pd-bt" href="#/obra/${encodeURIComponent(o.obra)}">Abrir obra</a>`];
     const atrasadas = cr.erro ? null : cr.ativ.filter((a) => a.atrasada).length;
     return [
       pd.obraCel(o.obra, oc.endereco(ctx, o.obra), `#/obra/${encodeURIComponent(o.obra)}`),
       cr.erro ? pd.traco() : pd.barraCel(cr.exe),
       atrasadas == null ? pd.traco() : html`<b class="pd-obra">${atrasadas}</b>`,
-      html`${pd.selo(st(cron.ok), cron.ok === true ? 'Em dia' : cron.ok === false ? 'Pendências' : 'Sem informação')}${oc.revisao(cr.arquivo) ? html`<span class="pd-obra-sub">${oc.revisao(cr.arquivo)}</span>` : ''}`,
-      pd.selo(st(prog.ok), prog.ok === true ? 'Em dia' : prog.ok === false ? 'Pendências' : 'Sem informação'),
+      html`${pd.selo(cron.ok == null ? 'critico' : st(cron.ok), cron.ok === true ? 'Feito' : cron.ok === false ? 'Pendências' : 'Não feito')}${oc.revisao(cr.arquivo) ? html`<span class="pd-obra-sub">${oc.revisao(cr.arquivo)}</span>` : ''}`,
+      pd.selo(prog.ok == null ? 'critico' : st(prog.ok), prog.ok === true ? 'Feito' : prog.ok === false ? 'Pendências' : 'Não feito'),
       pd.selo(metasPdf.has(o.obra) ? 'ok' : 'critico', metasPdf.has(o.obra) ? 'Feito' : 'Não feito'),
       p && p.faseFinal ? pd.selo('atencao', 'Pendências') : pd.selo(metasFeitas ? 'ok' : 'critico', metasFeitas ? 'Feito' : 'Não feito'),
       bolsDe(o.obra),
