@@ -583,7 +583,7 @@ function desenhar() {
   if (tela === 'atas' || tela === 'tarefas') {
     $('#conteudo').innerHTML = `<div>${atas.render({ params: rota.params, obras: obrasDeAtas(), sugestoes: ((estado.terceiros && estado.terceiros.empresas) || []).map((e) => e.empresa), msg: estado.atasMsgHash === location.hash ? (estado.atasMsg || '') : '' })}</div>`;
     ordenar.aplicar();
-    { const fm = document.getElementById('ata-form'); if (fm) { atas.atualizarNomeDoForm(fm); atas.atualizarQuem(fm); } }
+    { const fm = document.getElementById('ata-form'); if (fm) atas.atualizarNomeDoForm(fm); }
     if (estado.atasVisitada !== location.hash) {   // ao entrar na tela (ou mudar de aba), busca os dados mais novos
       estado.atasVisitada = location.hash;
       if (nuvem.NA_NUVEM) nuvem.listarObras().then((oc) => { if (JSON.stringify(oc) !== JSON.stringify(estado.obrasCad || [])) { estado.obrasCad = oc; const a = document.activeElement; if (['atas', 'tarefas'].includes(rotaAtual().tela) && !(a && a.closest && a.closest('#ata-form, #pend-form, #at-modal'))) desenhar(); } }).catch(() => {});
@@ -1623,7 +1623,7 @@ document.addEventListener('click', async (e) => {
 });
 document.addEventListener('click', async (e) => {
   const add = e.target.closest('[data-pf-add]');
-  if (add) { document.getElementById('pend-linhas').insertAdjacentHTML('beforeend', atas.linhaForm()); atas.atualizarQuem(document.getElementById('ata-form')); return; }
+  if (add) { document.getElementById('pend-linhas').insertAdjacentHTML('beforeend', atas.linhaForm()); return; }
   const del = e.target.closest('[data-pf-del]');
   if (del) { const l = del.closest('.pf-linha'); const box = l.parentElement; if (box.id === 'pend-linhas' && box.children.length === 1) { l.querySelectorAll('input,select').forEach((c) => { c.value = ''; }); } else if (box.id === 'pend-linhas') l.remove(); return; }
   const st = e.target.closest('[data-pend]');
@@ -1720,10 +1720,6 @@ function lerLinhaPendencia(l) {
     prazo: l.querySelector('[name="p_prazo"]').value,
   };
 }
-// As pessoas de cada pendência e informativo são as dos participantes da ata: mudou o campo, mudam as opções de todas as linhas
-document.addEventListener('input', (e) => {
-  const c = e.target; if (c && c.name === 'participantes' && c.closest && c.closest('#ata-form')) atas.atualizarQuem(c.form);
-});
 // trocar Sólida / Terceirizado / Cliente mostra os campos certos da mesma linha
 document.addEventListener('change', (e) => {
   const kind = e.target.closest && e.target.closest('[data-pf-kind]');
@@ -1734,7 +1730,6 @@ document.addEventListener('change', (e) => {
   l.querySelector('.pf-sol').hidden = tipo !== 'solida';
   const nome = l.querySelector('.pf-ext'); nome.hidden = tipo === 'solida';
   nome.placeholder = tipo === 'cliente' ? 'Nome do cliente' : tipo === 'arquitetura' ? 'Nome da arquitetura ou arquiteto' : 'Nome da empresa ou pessoa';
-  atas.ajustarLinhaDoForm(l);   // sugestões e nome dos participantes daquele tipo
 });
 
 // círculo vermelho em tudo que ainda falta para conseguir salvar (formulário da ata e "acrescentar pendência")

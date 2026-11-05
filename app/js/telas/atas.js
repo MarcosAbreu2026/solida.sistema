@@ -283,67 +283,6 @@ export function linhaForm(v = {}) {
     <input name="p_nome" class="pf-ext" list="dl-terceiros" placeholder="${tipo === 'cliente' ? 'Nome do cliente' : tipo === 'arquitetura' ? 'Nome da arquitetura ou arquiteto' : 'Nome da empresa ou pessoa'}" autocomplete="off" value="${nome}" ${tipo === 'solida' ? html.seguro('hidden') : ''}>
     <input type="date" name="p_prazo" title="Prazo" value="${v.prazo || ''}"><button type="button" class="pf-x" data-pf-del title="Tirar esta linha">×</button></div>`);
 }
-// ---- Participantes da ata → nomes nas pendências e informativos. O tipo (Sólida, Terceirizado, Cliente, Arquitetura) continua
-// sendo escolhido em cada linha, como sempre. Os nomes vêm dos participantes: "Pessoa da Sólida" lista os participantes da
-// Sólida; os de fora (terceirizado, cliente, arquitetura) viram sugestões do campo de nome, e se só há um participante daquele
-// tipo o nome já vem preenchido.
-const semAc = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-const nomeLimpo = (s) => semAc(String(s || '').replace(/\(.*?\)/g, '')).replace(/[.]/g, '').trim();
-function pessoaPorNome(nome) {
-  const n = nomeLimpo(nome); if (!n) return null;
-  const lista = dados.pessoas || [];
-  const exato = lista.filter((p) => nomeLimpo(p.nome) === n);
-  if (exato.length) return exato[0];
-  const pn = n.split(/\s+/)[0]; if (pn.length < 3) return null;
-  const mesmo = lista.filter((p) => nomeLimpo(p.nome).split(/\s+/)[0] === pn);
-  return mesmo.length === 1 ? mesmo[0] : null;
-}
-// "Marcos (Sólida), Fernanda (Arquitetura), Julio (Cliente), Yuri (Aetheos)" → [{ nome, tipo, id }]
-// id: a pessoa da Sólida com login no sistema (vazio para quem é de fora ou não tem login)
-export function opcoesDeParticipantes(texto) {
-  const out = []; const vistos = new Set();
-  for (const parte of String(texto || '').split(/,|;/).map((s) => s.trim()).filter(Boolean)) {
-    const m = parte.match(/^(.*?)\s*\(([^)]*)\)\s*$/);
-    const nome = (m ? m[1] : parte).trim(); const papel = semAc(m ? m[2] : '');
-    if (!nome || vistos.has(nomeLimpo(nome))) continue; vistos.add(nomeLimpo(nome));
-    const pessoa = (!m || /solida/.test(papel)) ? pessoaPorNome(nome) : null;
-    const tipo = /solida/.test(papel) || (!m && pessoa) ? 'solida' : /cliente/.test(papel) ? 'cliente' : /arq/.test(papel) ? 'arquitetura' : 'terceirizado';
-    out.push({ nome: pessoa ? pessoa.nome : nome, tipo, id: pessoa ? pessoa.id : '' });
-  }
-  return out;
-}
-// ajusta uma linha: pessoas da Sólida = participantes da Sólida; nome de fora = sugestões dos participantes do tipo escolhido
-export function ajustarLinha(l, ops) {
-  const tipoEl = l.querySelector('[name="p_tipo"]'); const resp = l.querySelector('[name="p_resp"]'); const nome = l.querySelector('[name="p_nome"]');
-  if (!tipoEl || !resp || !nome) return;
-  const tipo = tipoEl.value; const atualId = resp.value;
-  const solida = ops.filter((o) => o.id).map((o) => ({ id: o.id, nome: o.nome }));
-  const lista = solida.length ? solida : (dados.pessoas || []).map((p) => ({ id: p.id, nome: p.nome }));   // sem participantes da Sólida: a lista toda, como antes
-  if (atualId && !lista.some((p) => p.id === atualId)) lista.push({ id: atualId, nome: nomeDe(atualId) });
-  resp.textContent = '';
-  resp.appendChild(new Option('Pessoa da Sólida…', ''));
-  for (const p of lista) resp.appendChild(new Option(p.nome, p.id));
-  resp.value = atualId;
-  nome.setAttribute('list', tipo === 'solida' ? 'dl-terceiros' : `dl-part-${tipo}`);
-  if (tipo !== 'solida' && !nome.value.trim()) { const so = ops.filter((o) => !o.id && o.tipo === tipo); if (so.length === 1) nome.value = so[0].nome; }
-}
-export function atualizarQuem(form) {
-  if (!form || !form.elements) return;
-  const campo = form.elements.participantes; if (!campo) return;
-  const ops = opcoesDeParticipantes(campo.value);
-  for (const tipo of ['terceirizado', 'cliente', 'arquitetura']) {   // sugestões de nome por tipo
-    let dl = form.querySelector(`#dl-part-${tipo}`);
-    if (!dl) { dl = document.createElement('datalist'); dl.id = `dl-part-${tipo}`; form.appendChild(dl); }
-    dl.textContent = '';
-    for (const o of ops.filter((x) => !x.id && x.tipo === tipo)) { const op = document.createElement('option'); op.value = o.nome; dl.appendChild(op); }
-  }
-  for (const l of form.querySelectorAll('.pf-linha')) ajustarLinha(l, ops);
-}
-// o tipo da linha mudou (Sólida ↔ Terceirizado…): refaz as sugestões só dessa linha
-export function ajustarLinhaDoForm(l) {
-  const form = l.closest('#ata-form'); if (!form || !form.elements.participantes) return;
-  ajustarLinha(l, opcoesDeParticipantes(form.elements.participantes.value));
-}
 export const datalistTerceiros = () => html`<datalist id="dl-terceiros">${nomesConhecidos().map((n) => html`<option value="${n}">`)}</datalist>`;
 const doEscopo = (p, setorFixo) => !setorFixo || p.setor === setorFixo || /^po/i.test(p.obra || '');   // escopo fixo (ex.: tela do Pós-obra): o setor, ou obras Po…
 function filtrar(params, setorFixo = '') {
