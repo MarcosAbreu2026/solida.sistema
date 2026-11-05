@@ -1652,6 +1652,7 @@ document.addEventListener('submit', async (e) => {
       if (!setorA) { alert('Escolha o departamento da ata.'); f.setor.focus(); return; }
       const itens = [...f.querySelectorAll('.pf-linha')].map((l) => lerLinhaPendencia(l)).filter((p) => p.descricao);
       if (itens.some((p) => p.semAssunto || p.semDescritivo)) { alert('Cada item precisa do assunto e do descritivo (as duas caixinhas).'); return; }
+      if (itens.some((p) => p.semTipo)) { alert('Escolha, em cada linha, de onde é a pessoa: Sólida, Terceirizado, Cliente ou Arquitetura. Depois escreva o nome.'); return; }
       itens.forEach((p, i) => { p.item = i + 1; });
       const informativos = itens.filter((p) => p.kind === 'informativo');
       if (informativos.some((p) => (p.externoTipo === '' && !p.responsavel) || (p.externoTipo === 'terceirizado' && !p.externoCategoria && !p.externoNome))) { alert('Todo informativo precisa de quem informou: escolha a pessoa da Sólida, o terceirizado ou o cliente.'); return; }
@@ -1711,6 +1712,7 @@ function lerLinhaPendencia(l) {
     kind: (l.querySelector('[name="p_kind"]') || {}).value || 'pendencia',
     pid: l.dataset.pid || '',
     descricao: [l.querySelector('[name="p_assunto"]').value.trim().replace(/,/g, ' /').toLocaleUpperCase('pt-BR'), l.querySelector('[name="p_desc"]').value.trim()].filter(Boolean).join(', '),
+    semTipo: !tipo,
     semAssunto: !!l.querySelector('[name="p_desc"]').value.trim() && !l.querySelector('[name="p_assunto"]').value.trim(),
     semDescritivo: !!l.querySelector('[name="p_assunto"]').value.trim() && !l.querySelector('[name="p_desc"]').value.trim(),
     responsavel: tipo === 'solida' ? l.querySelector('[name="p_resp"]').value : '',
@@ -1755,7 +1757,7 @@ document.addEventListener('change', (e) => {
   const l = sel.closest('.pf-linha'); const tipo = sel.value; l.dataset.tipo = tipo;
   l.querySelector('.pf-sol').hidden = tipo !== 'solida';
   const nome = l.querySelector('.pf-ext'); nome.hidden = tipo === 'solida';
-  nome.placeholder = tipo === 'cliente' ? 'Nome do cliente' : tipo === 'arquitetura' ? 'Nome da arquitetura ou arquiteto' : 'Nome da empresa ou pessoa';
+  nome.placeholder = 'Nome da pessoa'; nome.disabled = tipo === '';   // o nome só é liberado depois de escolher de onde é
 });
 
 // círculo vermelho em tudo que ainda falta para conseguir salvar (formulário da ata e "acrescentar pendência")
@@ -1774,9 +1776,10 @@ function marcarFaltas(f) {
     marca(q('[name="p_desc"]'), ativa && !v('[name="p_desc"]'));
     marca(q('[name="p_prazo"]'), ativa && !info && !v('[name="p_prazo"]'));
     marca(q('[name="p_resp"]'), ativa && tipo === 'solida' && !v('[name="p_resp"]'));
-    const semTerc = ativa && tipo === 'terceirizado' && !v('[name="p_nome"]');
-    marca(q('[name="p_nome"]'), semTerc);
-    if (tipo !== 'terceirizado') marca(q('[name="p_nome"]'), false);
+    marca(q('[name="p_tipo"]'), ativa && !tipo);   // de onde é a pessoa ainda não foi escolhido
+    const semNome = ativa && !!tipo && tipo !== 'solida' && !v('[name="p_nome"]');   // de fora (terceirizado, cliente, arquitetura) sem o nome da pessoa
+    marca(q('[name="p_nome"]'), semNome);
+    if (tipo === 'solida' || !tipo) marca(q('[name="p_nome"]'), false);
   }
 }
 const marcarTudo = () => { marcarFaltas(document.getElementById('ata-form')); marcarFaltas(document.getElementById('pend-form')); };

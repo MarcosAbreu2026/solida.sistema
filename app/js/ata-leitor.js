@@ -111,16 +111,19 @@ function resolverResponsavel(texto, participantes, pessoas) {
   const um = (parte) => {
     const nt = norm(parte).replace(/[.]/g, '').trim();
     if (/^a definir|^sem responsavel|^-+$/.test(nt)) return {};   // "A definir" não é uma pessoa
-    if (nt === 'arquitetura' || nt === 'arquiteta' || nt === 'arquiteto') return { externoNome: 'Arquitetura', externoTipo: 'arquitetura' };
-    if (nt === 'cliente') return { externoNome: 'Cliente', externoTipo: 'cliente' };
-    if (nt === 'solida') return { externoNome: 'Sólida', externoTipo: 'solida' };   // a empresa, sem pessoa: quem confere escolhe
+    // só o lado ("Arquitetura", "Cliente", "Sólida"), sem o nome da pessoa: o tipo vem preenchido; o nome só se houver UM participante daquele lado
+    // (ex.: Ana Clara, a única da arquitetura); senão fica em branco para quem confere escrever
+    const doLado = (lado) => { const ps = participantes.filter((p) => p.papel === lado); return { externoNome: lado !== 'solida' && ps.length === 1 ? nomeCurto(ps[0].nome) : '', externoTipo: lado }; };
+    if (nt === 'arquitetura' || nt === 'arquiteta' || nt === 'arquiteto') return doLado('arquitetura');
+    if (nt === 'cliente') return doLado('cliente');
+    if (nt === 'solida') return doLado('solida');
     const pn = primeiroNome(parte);
     const part = participantes.find((p) => primeiroNome(p.nome) === pn && pn.length >= 3);
     if (part && part.papel && part.papel !== 'solida') return part.papel === 'arquitetura' ? { externoNome: part.nome, externoTipo: 'terceirizado', externoCategoria: 'Arquitetura' } : { externoNome: part.nome, externoTipo: part.papel };
     const achados = un(parte);
     if (achados.length === 1) return { responsavel: achados[0].id };
     if (achados.length > 1) return { ambiguo: pn };
-    if (part) return { externoNome: part.nome, externoTipo: 'solida' };      // da Sólida, mas sem login no sistema
+    if (part) return { externoNome: nomeCurto(part.nome), externoTipo: 'solida' };      // da Sólida, mas sem login no sistema
     return { externoNome: capitalizar(parte), externoTipo: 'terceirizado' };
   };
   const r = um(partes[0]);
