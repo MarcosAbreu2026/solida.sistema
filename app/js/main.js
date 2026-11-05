@@ -1724,21 +1724,6 @@ function lerLinhaPendencia(l) {
 document.addEventListener('input', (e) => {
   const c = e.target; if (c && c.name === 'participantes' && c.closest && c.closest('#ata-form')) atas.atualizarQuem(c.form);
 });
-document.addEventListener('change', (e) => {
-  const q = e.target.closest && e.target.closest('[data-pf-quem]'); if (!q) return;
-  const l = q.closest('.pf-linha'); const form = q.closest('#ata-form');
-  if (q.value === '+') {   // pessoa que ainda não está nos participantes: entra nos participantes e já fica escolhida
-    const txt = prompt('Quem é? Escreva o nome e, entre parênteses, a empresa ou o papel. Ex.: Rafael (Cliente), Fernanda (Arquitetura), Júlio (Sólida).');
-    q.value = '';
-    if (txt && txt.trim() && form && form.elements.participantes) {
-      const c = form.elements.participantes; c.value = c.value.trim() ? `${c.value.trim().replace(/[,;\s]+$/, '')}, ${txt.trim()}` : txt.trim();
-      atas.atualizarQuem(form); const novo = atas.opcoesDeParticipantes(txt.trim())[0];
-      if (novo) { q.value = novo.valor; atas.aplicarQuem(l, q.value); }
-    } else atas.aplicarQuem(l, '');
-    return;
-  }
-  atas.aplicarQuem(l, q.value);
-});
 // trocar Sólida / Terceirizado / Cliente mostra os campos certos da mesma linha
 document.addEventListener('change', (e) => {
   const kind = e.target.closest && e.target.closest('[data-pf-kind]');
@@ -1749,6 +1734,7 @@ document.addEventListener('change', (e) => {
   l.querySelector('.pf-sol').hidden = tipo !== 'solida';
   const nome = l.querySelector('.pf-ext'); nome.hidden = tipo === 'solida';
   nome.placeholder = tipo === 'cliente' ? 'Nome do cliente' : tipo === 'arquitetura' ? 'Nome da arquitetura ou arquiteto' : 'Nome da empresa ou pessoa';
+  atas.ajustarLinhaDoForm(l);   // sugestões e nome dos participantes daquele tipo
 });
 
 // círculo vermelho em tudo que ainda falta para conseguir salvar (formulário da ata e "acrescentar pendência")
@@ -1767,7 +1753,6 @@ function marcarFaltas(f) {
     marca(q('[name="p_desc"]'), ativa && !v('[name="p_desc"]'));
     marca(q('[name="p_prazo"]'), ativa && !info && !v('[name="p_prazo"]'));
     marca(q('[name="p_resp"]'), ativa && tipo === 'solida' && !v('[name="p_resp"]'));
-    if (q('[name="p_quem"]') && !q('[name="p_quem"]').hidden) marca(q('[name="p_quem"]'), ativa && !info && !v('[name="p_quem"]'));
     const semTerc = ativa && tipo === 'terceirizado' && !v('[name="p_nome"]');
     marca(q('[name="p_nome"]'), semTerc);
     if (tipo !== 'terceirizado') marca(q('[name="p_nome"]'), false);
