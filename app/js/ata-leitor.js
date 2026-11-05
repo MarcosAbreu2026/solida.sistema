@@ -248,12 +248,18 @@ export function analisarAta(texto, { pessoas = [], obras = [], setores = [], hoj
   const daLista = ordenadas.map((o) => obras.find((x) => x.toLowerCase() === o.toLowerCase())).filter(Boolean)[0];
   const obra = daLista || ordenadas[0] || '';
   let setor = '';
-  if (!obra) { const cab = norm(naoVazias.slice(0, 15).join(' ')); setor = setores.find((s) => cab.includes(norm(s))) || ''; }
-  if (!setor) {   // "Construtora Sólida – Setor de Projetos e Orçamento": o primeiro setor citado depois de "setor de"
+  // setor: só quando o texto cita UM setor; se cita mais de um ("Setor de Projetos e Orçamento"), fica em branco para quem confere escolher
+  let setorAmbiguo = false;
+  if (!obra) {
+    const cab = norm(naoVazias.slice(0, 15).join(' '));
+    const achadosCab = setores.filter((s) => cab.includes(norm(s)));
+    if (achadosCab.length === 1) setor = achadosCab[0]; else if (achadosCab.length > 1) setorAmbiguo = true;
+  }
+  if (!setor && !setorAmbiguo) {   // "Construtora Sólida – Setor de Projetos": o setor citado depois de "setor de"
     const mset = norm(naoVazias.slice(0, 30).join(' ')).match(/setor de ([a-z ]{3,60})/);
     if (mset) {
-      const achados = setores.map((s) => { const raiz = norm(s).split(/[ /]/)[0].replace(/s$/, ''); return { s, i: raiz.length >= 5 ? mset[1].indexOf(raiz) : -1 }; }).filter((x) => x.i >= 0).sort((p, q) => p.i - q.i);
-      if (achados.length) setor = achados[0].s;
+      const achados = setores.filter((s) => { const raiz = norm(s).split(/[ /]/)[0].replace(/s$/, ''); return raiz.length >= 5 && mset[1].includes(raiz); });
+      if (achados.length === 1) setor = achados[0];
     }
   }
   // participantes
