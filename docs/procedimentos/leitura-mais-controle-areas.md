@@ -1,0 +1,20 @@
+---
+name: leitura-mais-controle-areas
+description: 4 vezes ao dia lê o Mais Controle (só leitura) e grava os fatos de Operação, Suprimentos e Financeiro em dados/json/leituras-fontes.json para o montador do painel.
+---
+
+NAVEGADOR (regra fixa deste computador): use SÓ o Chrome deste computador. Em list_connected_browsers ele é o que traz onThisComputer: true; chame select_browser com o deviceId dele antes de qualquer ação. Ignore os outros navegadores listados (são de outros computadores) e nunca abra aba neles; se nenhum for deste computador, escreva "Chrome deste computador não conectado" no resumo e encerre a parte que dependia dele. Não pergunte ao usuário qual navegador usar. (Detalhes em .claude/CLAUDE.md.)
+Leia o Mais Controle (https://acessar.maiscontroleerp.com.br, Chrome já logado, Claude in Chrome) e grave os fatos de OPERAÇÃO, SUPRIMENTOS e FINANCEIRO em dados\json\leituras-mais-controle.json (arquivo SÓ desta rotina). Pasta do sistema: C:\sistema-solida.
+Leia antes (rápido): CLAUDE.md, docs/contrato-agentes.md, docs/contexto-empresa.md, docs/modulo-pos-obra.md. Use dados\painel-cache.json só como referência de como cada área é descrita (processos com cod e resp, formato de kpis e alertas); NÃO o altere.
+REGRAS: somente leitura no Mais Controle (não criar, editar, aprovar, excluir nem enviar nada). Se aparecer tela de login, PARE, não grave nada e diga qual fonte não foi lida; nunca digite senha. Nunca invente número, obra, data ou nome: se não conseguir ler, diga "não foi possível ler X" e NÃO grave essa área. Não grave telefone, CPF nem dados pessoais. Sem valores em R$ de contratos; use contagens, obras e prazos. Sem API paga de IA. Português do Brasil. Feche as abas que abriu ao terminar. Não use o WhatsApp Web.
+O QUE LER (por obra em andamento, cinza e laranja):
+- operacao: diário de obras (data do último diário de cada obra), medições de contratos e medição semanal, painel de custos (só o que indicar atraso/pendência, sem valores). Alertas no formato do painel: "1.8 · LARISSA — Mo358 sem diário de obra no Mais Controle desde 24/09".
+- suprimentos: solicitações e cotações: quantas paradas há mais de 3 dias, e em quais obras e desde quando (A atender / Em aprovação). Indicador "Solicitações paradas há mais de 3 dias" com meta 0.
+- financeiro (RESTRITA): solicitações BeeVale paradas há mais de 7 dias (contagem, obra, desde quando) e pendências do painel de custos. kpis e alertas com "restrito": true.
+Se um menu não abrir (ex.: Medição de Contratos), tente uma vez por outro caminho; se continuar, marque o KPI como "não lido" e diga no resumo.
+GRAVAR: dados\json\leituras-mais-controle.json. Se o arquivo existir, leia, faça cópia em dados\backup-painel\leituras-mc-AAAAMMDD-HHmm.json e MESCLE: troque só as áreas que você leu agora, preservando as outras áreas deste mesmo arquivo. Escreva em arquivo temporário e renomeie ao final (gravação atômica). Formato:
+{ "atualizadoEm": "ISO UTC com Z", "areas": { "<id>": { "lidoEm": "ISO com -03:00", "fontes": [ { "nome": "Mais Controle", "via": "o que foi lido", "ultima": "dd/MM, HH:mm" } ], "status": "ok|atencao|critico", "resumo": "2 a 3 frases factuais", "kpis": [ { "label": "…", "valor": "…", "restrito": false } ], "alertas": [ { "nivel": "critico|atencao|info", "texto": "cód. do processo · RESPONSÁVEL — fato com obra e data", "restrito": false } ] } } }
+Ids: operacao, suprimentos, financeiro (financeiro com restrito:true). Use cod e resp reais dos processos da área em painel-cache.json. UTF-8 sem BOM; releia e valide como JSON.
+NÃO rode envio à nuvem (o montador do dados.json faz isso). Resposta final em até 6 linhas: o que foi lido por área, alertas novos, o que não deu para ler e por quê.
+
+PEDIDO DO MARCOS (05/11/2026): no Diário de obra, além da data do último diário de cada obra, registre QUEM criou o último diário (nome como aparece no Mais Controle) no kpi "Último diário por obra" (ex.: "Mo533 04/11 (Rose) · Mo531 28/10 (Rose)") e não escreva "Larissa" como responsável geral. Só obras em andamento (não Mo465 pausada, Mo565D finalizada, nem Mo557/Mo415/Mo491). Não crie alertas sobre solicitações BeeVale/Bivale.

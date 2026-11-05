@@ -1,0 +1,10 @@
+---
+name: medicoes-mais-controle-semanal
+description: Lê no Mais Controle as medições da semana anterior de cada obra e grava dados/json/medicoes-mc.json.
+---
+
+NAVEGADOR (regra fixa deste computador): use SÓ o Chrome deste computador. Em list_connected_browsers ele é o que traz onThisComputer: true; chame select_browser com o deviceId dele antes de qualquer ação. Ignore os outros navegadores listados (são de outros computadores) e nunca abra aba neles; se nenhum for deste computador, escreva "Chrome deste computador não conectado" no resumo e encerre a parte que dependia dele. Não pergunte ao usuário qual navegador usar. (Detalhes em .claude/CLAUDE.md.)
+Leia no Mais Controle (https://acessar.maiscontroleerp.com.br, Chrome já logado, Claude in Chrome) as medições da SEMANA ANTERIOR (segunda a domingo) de cada obra em andamento, cinza e laranja, e grave dados/json/medicoes-mc.json.
+Pasta do sistema: C:\sistema-solida. Leia ANTES: CLAUDE.md, docs/contexto-empresa.md, docs/modulo-pos-obra.md e, à risca, a seção "Agente de Operação: análise das medições de obra" de docs/contrato-agentes.md (formato do arquivo, semana.inicio = segunda-feira, item como está no Mais Controle, quantidade medida na semana e não o acumulado, tipo cinza/laranja).
+Regras: somente leitura. Não gravar valores em R$ nem dados pessoais. Se aparecer tela de login, PARE e avise; nunca digite senha. Nunca inventar número; obra que não conseguiu ler não entra no arquivo e deve ser dita no resumo. Obra sem medição na semana entra com itens: []. Sem API paga de IA. Português do Brasil.
+Valide o JSON. Depois rode, na pasta do sistema: node scripts/enviar-nuvem.mjs medicoes-mc   e confirme o envio. O sistema compara sozinho, item a item, com a produtividade (Operação › Análise das medições). Feche a aba ao terminar e responda em poucas linhas, por obra.

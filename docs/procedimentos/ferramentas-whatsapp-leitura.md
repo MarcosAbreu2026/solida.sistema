@@ -1,0 +1,12 @@
+---
+name: ferramentas-whatsapp-leitura
+description: Lê no WhatsApp as folhas de ferramentas enviadas pelo Anderson e atualiza dados/json/ferramentas-checklist.json e a nuvem.
+---
+
+NAVEGADOR (regra fixa deste computador): use SÓ o Chrome deste computador. Em list_connected_browsers ele é o que traz onThisComputer: true; chame select_browser com o deviceId dele antes de qualquer ação. Ignore os outros navegadores listados (são de outros computadores) e nunca abra aba neles; se nenhum for deste computador, escreva "Chrome deste computador não conectado" no resumo e encerre a parte que dependia dele. Não pergunte ao usuário qual navegador usar. (Detalhes em .claude/CLAUDE.md.)
+Leia no WhatsApp Web (Chrome já logado, Claude in Chrome) o que o Anderson enviou de folhas de ferramentas e atualize dados/json/ferramentas-checklist.json.
+Pasta do sistema: C:\sistema-solida. Leia ANTES: CLAUDE.md, docs/contrato-agentes.md (seção das ferramentas obrigatórias), docs/contexto-empresa.md e docs/modulo-pos-obra.md.
+Regras: somente leitura (não enviar, reagir, responder, apagar nem baixar). Se aparecer QR code ou login, PARE e avise; nunca digite senha. Nunca inventar dado; o que não der para ler, dizer no resumo. Não apagar registros antigos. Sem API paga de IA. Português do Brasil.
+REGRA DO WHATSAPP WEB (evita "aberto em outra janela"): só UMA rotina por vez pode usar o WhatsApp Web neste Chrome. Antes de abrir web.whatsapp.com, olhe dados\whatsapp-web.lock: se existir com menos de 10 minutos, espere (verifique a cada 30 s, até 5 min); se continuar em uso, NÃO abra o WhatsApp, escreva "WhatsApp em uso por outra rotina" no resumo e encerre. Se não existir ou tiver mais de 10 minutos, crie-o com a hora e o nome desta rotina e APAGUE-O ao terminar (inclusive se falhar ou se aparecer QR code/login). Se a tela disser "aberto em outra janela", espere 60 s e clique em "Usar nesta janela" UMA vez; se não resolver, pare, apague o lock e informe. Nunca insista em loop.
+Grupos: "GESTAO ferramentas", "Sólida FERRAMENTAS" e a conversa "Anderson Bandeira". Registre cada folha por local (obras ativas, Estoque, Carro do Anderson, do Nascimento, do Enio), atualize verificadoEm (yyyy-MM-ddTHH:mm) e a nota da semana em "semanas" (ini = segunda-feira; prazo quarta; sem envio até o dia da leitura = "não enviada"). Formato em docs/contrato-agentes.md. Valide o JSON.
+Depois rode, na pasta do sistema: node scripts/enviar-nuvem.mjs ferramentas-checklist   e confirme o envio. Apague o lock, feche a aba ao terminar e responda em poucas linhas.
