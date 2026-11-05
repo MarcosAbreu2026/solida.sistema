@@ -117,6 +117,10 @@ function semanaDerivada(inicio, itensTexto) {
   return { inicio, dias, naSemana };
 }
 
+// Ordem das obras: primeiro as obras (Mo), depois as pós-obras (Po); do menor número para o maior (565C vem antes de 581)
+export const chaveObra = (cod) => { const c = String(cod || ''); return [/^p/i.test(c) ? 1 : 0, parseInt(c.replace(/\D/g, ''), 10) || 0, c.replace(/[0-9\s]/g, '').toLowerCase()]; };
+export const ordenarObras = (lista, qual = (x) => x.obra) => [...lista].sort((a, b) => { const x = chaveObra(qual(a)); const y = chaveObra(qual(b)); return x[0] - y[0] || x[1] - y[1] || x[2].localeCompare(y[2]); });
+
 // Item da programação pode vir como texto ("Serviço: 8 pt") ou como objeto { tipo, texto, quem }: o app trabalha com texto
 const emTexto = (x) => (x && typeof x === 'object' ? `${x.texto || x.item || ''}${x.quem ? ` (${x.quem})` : ''}` : String(x));
 const emLista = (v) => (Array.isArray(v) ? v : []).map(emTexto);
@@ -129,7 +133,7 @@ export function programacoes(CFG) {
   const proxima = inicioSemana(sem.proxima) || (atual && somarDias(atual, 7));
   // obra já concluída (ex.: demolição de uma semana) não entra em metas e produtividade
   const concluida = (o) => /conclu[ií]da|100% executada/i.test(`${(o.cronograma || {}).info || ''} ${(o.cronograma || {}).obs || ''}`);
-  return (plan.porObra || []).filter((o) => !concluida(o)).map((o) => {
+  return ordenarObras((plan.porObra || []).filter((o) => !concluida(o))).map((o) => {
     const prog = o.programacao || {};
     const cron = { ...(o.cronograma || {}), estaSemana: emLista((o.cronograma || {}).estaSemana), proximaSemana: emLista((o.cronograma || {}).proximaSemana) };
     const diarios = (prog.dias || []).map((d) => {

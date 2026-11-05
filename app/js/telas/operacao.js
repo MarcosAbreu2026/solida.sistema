@@ -4,7 +4,7 @@
 
 import { html, data as fmtData } from '../formato.js';
 import { hojeISO, somarDias, inicioDaSemana } from '../datas.js';
-import { programacoes, registroDoDia, feriado, classificar } from '../programacao.js';
+import { programacoes, registroDoDia, feriado, classificar, ordenarObras } from '../programacao.js';
 
 // Divisão pedida em 15/10: metas e medições são da Operação; produtividade e diário de obra são do
 // Planejamento; a programação semanal aparece nos dois.
@@ -26,8 +26,8 @@ const MK = {
 // Obras acompanhadas (as do planejamento, sem as concluídas)
 export function obrasAcompanhadas(CFG, visiveis = null) {
   const plan = (CFG.areas.find((a) => a.id === 'planejamento') || {}).porObra || [];
-  return plan.filter((o) => !/conclu[ií]da|100% executada/i.test(`${(o.cronograma || {}).info || ''} ${(o.cronograma || {}).obs || ''}`))
-    .filter((o) => !visiveis || visiveis.includes(o.obra));
+  return ordenarObras(plan.filter((o) => !/conclu[ií]da|100% executada/i.test(`${(o.cronograma || {}).info || ''} ${(o.cronograma || {}).obs || ''}`))
+    .filter((o) => !visiveis || visiveis.includes(o.obra)));
 }
 
 // Trecho do que o agente escreveu sobre uma obra num assunto (ex.: medições, diário), com um status estimado

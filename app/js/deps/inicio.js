@@ -8,6 +8,7 @@ import * as oc from './obras-comum.js';
 import { resumoMetasSemana, resumoMetasItens, obrasEncerradas, obrasFinalizadas } from '../telas/produtividade.js';
 import { barrasEmpilhadas } from '../graficos.js';
 import { somarDias, hojeISO } from '../datas.js';
+import { ordenarObras } from '../programacao.js';
 
 // ---- Meta × executado da semana: metas da programação que bateram, ficaram abaixo ou sem registro + dias em que a
 // obra não mandou a produtividade no grupo do WhatsApp. Dia não lido no grupo nunca aparece como "enviada".
@@ -94,7 +95,7 @@ function metaExecutado(ctx, CFG) {
     if (/finaliz|conclu/i.test(sit) || (ctx.visiveis && !ctx.visiveis.includes(cod))) continue;
     linhas.push({ rotulo: cod, sub: sit, segs: [], fim: '—', vazio: `obra ${sit.toLowerCase()}`, extra: html.seguro('<span></span>') });
   }
-  const grafico = barrasEmpilhadas(linhas, { vazio: 'sem meta por dia' });
+  const grafico = barrasEmpilhadas(ordenarObras(linhas, (x) => x.rotulo), { vazio: 'sem meta por dia' });
   const caixaGrafico = html`<div class="pd-caixa"><div class="pd-caixa-h"><h3>Meta do dia × produtividade, por obra</h3><span class="pd-fonte">% = metas do dia batidas · à direita, a meta da semana</span></div>
     <div class="pd-emp">${html.seguro(grafico)}</div>
     <p class="pd-legenda"><span class="pd-lg pd-lg-ok"></span> bateu a meta do dia <span class="pd-lg pd-lg-abaixo"></span> abaixo da meta <span class="pd-lg pd-lg-sem"></span> sem registro</p></div>`;
@@ -161,11 +162,35 @@ export function painel(ctx) {
 
   const legendaProd = html`<p class="pd-legenda">Produtividade enviada no grupo, por dia útil (S T Q Q S): <span class="pd-bol pd-bol-enviada">S</span> enviou <span class="pd-bol pd-bol-nao">S</span> não enviou <span class="pd-bol pd-bol-hoje">S</span> aguardando (hoje) <span class="pd-bol pd-bol-futuro">S</span> ainda não chegou <span class="pd-bol pd-bol-feriado">S</span> feriado</p>`;
 
-  // ---- 3 · quem precisa agir: geral + áreas, críticos primeiro
-  const alertas = [pd.alertasDoAgente(CFG.geral, { veValores: ctx.veValores, obras: ctx.visiveis, limite: 20 }),
-    ...CFG.areas.map((a) => pd.alertasDoAgente(a, { veValores: ctx.veValores, obras: ctx.visiveis, limite: 20 }).map((x) => ({ ...x, setor: setorDaArea(a.id) })))].flat();
+  // ---- 4 · quem precisa agir: geral + áreas. Fora daqui: obra que não está em andamento (parada, finalizada ou sem execução),
+  // solicitações BeeVale (ficam no Mais Controle/financeiro) e o diário de obra em bloco (vira um alerta por obra, com o responsável da obra).
+  const ativas = obras.map((o) => o.obra).filter((c) => !enc[c]);
+  const ehAtiva = (c) => ativas.some((x) => oc.mesmaObra(x, c));
+  const codigosDe = (t) => [...new Set((String(t).match(/\bM[oO]\s?\d{3}[A-Za-z]?\b/g) || []).map((c) => c.replace(/\s/g, '').replace(/^m/, 'M')))];
+  const alertas = [pd.alertasDoAgente(CFG.geral, { veValores: ctx.veValores, obras: ctx.visiveis, limite: 40 }),
+    ...CFG.areas.map((a) => pd.alertasDoAgente(a, { veValores: ctx.veValores, obras: ctx.visiveis, limite: 40 }).map((x) => ({ ...x, setor: setorDaArea(a.id) })))].flat()
+    .filter((x) => x.setor !== 'Pós-obra')
+    .filter((x) => !/bee\s?vale|bi\s?vale/i.test(x.texto))
+    .filter((x) => !(/di[áa]rio/i.test(x.texto) && /(mais controle|rascunho|sem (nenhum )?di[áa]rio)/i.test(x.texto)))
+    .filter((x) => { const c = codigosDe(x.texto); return !c.length || c.some(ehAtiva); });
+  // diário de obra: um alerta por obra em andamento, com o responsável daquela obra (gestor/estagiário da equipe)
+  const op = CFG.areas.find((a) => a.id === 'operacao');
+  const kpiOp = (re) => ((op && op.kpis) || []).find((x) => re.test(x.label)) || {};
+  const ano = String(ctx.hoje).slice(0, 4); const ultimos = {}; const rasc = {};
+  String(kpiOp(/[úu]ltimo di[áa]rio/i).valor || '').split('·').forEach((p) => { const m = p.trim().match(/^(M[oO]\d{3}[A-Za-z]?)\s+(\d{2})\/(\d{2})/); if (m) ultimos[m[1].replace(/^m/, 'M')] = `${ano}-${m[3]}-${m[2]}`; });
+  String(kpiOp(/rascunho/i).valor || '').replace(/(M[oO]\d{3}[A-Za-z]?):\s*(\d+)/g, (_, c, n) => { rasc[c.replace(/^m/, 'M')] = Number(n); });
+  const respDiario = (cod) => { const e = oc.equipeDa(ctx, cod); return [...new Set([...e.estagiario, ...e.gestor])].join(', '); };
+  const diarios = [];
+  for (const cod of ativas) {
+    const ult = ultimos[cod]; const dias = ult ? Math.round((Date.parse(`${ctx.hoje}T12:00:00Z`) - Date.parse(`${ult}T12:00:00Z`)) / 86400000) : null;
+    if (ult == null || dias > 3) diarios.push({ nivel: ult == null || dias > 7 ? 'critico' : 'atencao', obra: cod, setor: 'Operação', resp: respDiario(cod), texto: ult ? `${cod}: último diário de obra no Mais Controle em ${pd.dm(ult)} (${dias} dias)` : `${cod}: nenhum diário de obra no Mais Controle` });
+    if (rasc[cod]) diarios.push({ nivel: 'atencao', obra: cod, setor: 'Operação', resp: respDiario(cod), texto: `${cod}: ${rasc[cod]} diários parados em rascunho no Mais Controle` });
+  }
   const vistos = new Set();
-  const agir = alertas.filter((a) => (vistos.has(a.texto) ? false : vistos.add(a.texto))).sort((x, y) => (x.nivel === y.nivel ? 0 : x.nivel === 'critico' ? -1 : 1)).slice(0, 8);
+  const primeiraObra = (x) => x.obra || codigosDe(x.texto)[0] || 'Zz999';
+  const agir = [...alertas, ...diarios].filter((a) => (vistos.has(a.texto) ? false : vistos.add(a.texto)))
+    .sort((x, y) => (x.nivel === y.nivel ? 0 : x.nivel === 'critico' ? -1 : 1) || (ordenarObras([x, y], primeiraObra)[0] === x ? -1 : 1))
+    .slice(0, 12);
 
   // ---- caixas Orçamento e Financeiro
   const com = CFG.areas.find((a) => a.id === 'comercial');
