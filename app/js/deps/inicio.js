@@ -5,7 +5,7 @@ import { html } from '../formato.js';
 import * as pd from '../telas/painel-dep.js';
 import { avisoLeitura } from './comum.js';
 import * as oc from './obras-comum.js';
-import { resumoMetasSemana } from '../telas/produtividade.js';
+import { resumoMetasSemana, resumoMetasItens, fmtQtd } from '../telas/produtividade.js';
 import { barrasEmpilhadas } from '../graficos.js';
 import { somarDias } from '../datas.js';
 
@@ -15,7 +15,7 @@ const DIA_CEL = {
   enviada: ['enviada', '✓ Enviada'], nao: ['nao', '✕ Não enviou'], naolido: ['naolido', '? Não lido'],
   hoje: ['hoje', '… Aguardando'], futuro: ['futuro', '·'], feriado: ['feriado', 'Feriado'],
 };
-function metaExecutado(ctx, CFG) {
+function metaExecutadoDia(ctx, CFG) {
   const m = resumoMetasSemana(CFG, ctx.visiveis || null);
   const t = m.totais;
   const fim = somarDias(m.ini, 4);
@@ -47,7 +47,44 @@ function metaExecutado(ctx, CFG) {
   const naoLidos = t.diasNaoLidos;
   const aviso = naoLidos ? pd.aviso(`${naoLidos} ${naoLidos === 1 ? 'dia ainda não foi verificado' : 'dias ainda não foram verificados'} nos grupos de WhatsApp: a produtividade só aparece depois que o agente lê o grupo. "Não lido" não quer dizer que a obra deixou de enviar.`, 'atencao') : '';
   const legenda = html`<p class="pd-legenda"><span class="pd-dia pd-dia-enviada">✓ Enviada</span> a obra postou a produtividade do dia no grupo <span class="pd-dia pd-dia-nao">✕ Não enviou</span> o agente leu o grupo e não havia <span class="pd-dia pd-dia-naolido">? Não lido</span> ainda sem leitura do grupo <span class="pd-dia pd-dia-hoje">… Aguardando</span> hoje, prazo 12h</p>`;
-  return html`${cartoes}${caixaGrafico}${aviso}<h3 class="pd-sub-h">Envio da produtividade nos grupos</h3>${tabela}${legenda}`;
+  const completo = html`${cartoes}${caixaGrafico}${aviso}<h3 class="pd-sub-h">Envio da produtividade nos grupos</h3>${tabela}${legenda}`;
+  completo.tabelaEnvio = tabela; completo.legenda = legenda;
+  return completo;
+}
+
+
+// ---- Meta SEMANAL × executado, por item: a meta vem do PDF de metas semanais (Drive, postado na semana anterior) e o executado dos
+// relatórios diários dos grupos. Embaixo, o envio da produtividade dia a dia (como antes).
+const SIT_ITEM = { ok: ['ok', 'Concluído'], parcial: ['atencao', 'Em andamento'], nao: ['critico', 'Sem execução'] };
+function metaExecutado(ctx, CFG) {
+  const mi = resumoMetasItens(CFG, ctx.visiveis || null);
+  if (!mi || !mi.totais.total) return metaExecutadoDia(ctx, CFG);
+  const t = mi.totais; const dia = metaExecutadoDia(ctx, CFG);
+  const lidoAte = mi.linhas.map((l) => l.lidoAte).filter(Boolean).sort().pop();
+  const cartoes = pd.cartoes([
+    { rotulo: 'Itens com meta na semana', valor: t.total, sub: `${mi.linhas.filter((l) => l.total).length} obras · semana de ${pd.dm(mi.ini)} a ${pd.dm(mi.fim)}${lidoAte ? ` · executado lido até ${pd.dm(lidoAte)}` : ''}` },
+    { rotulo: 'Cumprimento da meta', valor: pd.pct(t.pct), sub: 'média dos itens (parcial conta a fração feita)', nivel: t.pct == null ? '' : t.pct >= 0.95 ? 'ok' : t.pct >= 0.7 ? 'atencao' : 'critico' },
+    { rotulo: 'Concluídos', valor: t.ok, sub: 'feito ≥ meta da semana', nivel: t.ok ? 'ok' : '' },
+    { rotulo: 'Em andamento', valor: t.parcial, sub: 'parte da meta feita', nivel: t.parcial ? 'atencao' : '' },
+    { rotulo: 'Sem execução registrada', valor: t.nao, sub: 'nenhum relatório traz o item', nivel: t.nao ? 'critico' : '' },
+  ], { colunas: 5 });
+  const grafico = barrasEmpilhadas(mi.linhas.map((l) => ({
+    rotulo: l.obra,
+    sub: l.tipo === 'pendencias' ? `${l.previstos} pendências previstas` : l.total ? `${l.total} ${l.total === 1 ? 'item' : 'itens'}` : 'sem meta',
+    segs: [{ valor: l.ok, cls: 'ok' }, { valor: l.parcial, cls: 'abaixo' }, { valor: l.nao, cls: 'sem' }],
+    fim: l.pct == null ? '—' : pd.pct(l.pct),
+    dica: `${l.obra}: ${l.ok} concluídos · ${l.parcial} em andamento · ${l.nao} sem execução`,
+  })), { vazio: 'sem meta semanal conferida' });
+  const caixaGrafico = html`<div class="pd-caixa"><div class="pd-caixa-h"><h3>Meta da semana × executado, por obra</h3><span class="pd-fonte">% à direita = cumprimento da meta até agora</span></div>
+    <div class="pd-emp">${html.seguro(grafico)}</div>
+    <p class="pd-legenda"><span class="pd-lg pd-lg-ok"></span> concluído <span class="pd-lg pd-lg-abaixo"></span> em andamento <span class="pd-lg pd-lg-sem"></span> sem execução registrada</p></div>`;
+  const avisos = mi.linhas.flatMap((l) => l.lacunas.map((x) => `${l.obra}: ${x}`));
+  const aviso = avisos.length ? pd.aviso(avisos.join(' · '), 'atencao') : '';
+  const blocos = mi.linhas.filter((l) => l.total).map((l) => html`<details class="pd-detalhe"><summary><b class="pd-obra">${l.obra}</b> · ${l.ok} concluídos, ${l.parcial} em andamento, ${l.nao} sem execução <span class="pd-fonte">${l.fonte || ''}</span></summary>
+    ${pd.tabela(['Item da meta', 'Meta', 'Feito até agora', 'Situação', 'Observação'], l.itens.map((i) => [
+      html`<span>${i.item}</span>`, i.meta == null ? '—' : fmtQtd(i.meta, i.un), i.meta == null ? (i.estado === 'ok' ? 'Feito' : '—') : fmtQtd(i.feito, i.un),
+      pd.selo(...SIT_ITEM[i.estado] || ['', '—']), html`<span class="pequeno">${i.obs || ''}</span>`]))}</details>`);
+  return html`${cartoes}${caixaGrafico}${aviso}<h3 class="pd-sub-h">Itens da meta de cada obra</h3>${blocos}<h3 class="pd-sub-h">Envio da produtividade nos grupos</h3>${dia.tabelaEnvio}${dia.legenda}`;
 }
 
 const st = (ok) => (ok === true ? 'ok' : ok === false ? 'critico' : '');

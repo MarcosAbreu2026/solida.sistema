@@ -834,6 +834,7 @@ async function atualizar() {
   }
   // produtividade do WhatsApp vai junto com o painel: as telas leem tudo do mesmo lugar (CFG)
   if (estado.cfg) estado.cfg.whats = (estado.whats && estado.whats.registros) || [];
+  if (estado.cfg) estado.cfg.metasSemanais = (estado.whats && estado.whats.metasSemanais) || null;
   // Projetos: o status também sai da verificação das pastas (projeto faltando, as-built parado)
   const areaProj = estado.cfg && estado.cfg.areas.find((a) => a.id === 'projetos');
   const stProj = areaProj && projetos.statusProjetos(estado.cfg, estado.drive.projetos);

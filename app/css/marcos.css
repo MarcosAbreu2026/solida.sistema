@@ -299,3 +299,10 @@ body.nav-recolhido nav::after { display: none; }
 .pd-dia-hoje { background: #E3E8EE; color: #3B4450; }
 .pd-dia-futuro { color: #9AA5B1; font-weight: 400; padding-left: 2px; }
 .pd-dia-feriado { background: #EDF0F3; color: #6A7480; font-weight: 600; }
+
+/* Meta semanal × executado: um bloco recolhível por obra, com a tabela dos itens */
+.pd-detalhe { margin: 0 0 10px; }
+.pd-detalhe > summary { cursor: pointer; padding: 10px 14px; font-size: 13px; background: var(--pd-card, #fff); border: 1px solid #E3E5E8; border-radius: 8px; list-style-position: inside; }
+.pd-detalhe > summary .pd-obra { font-size: 18px; }
+.pd-detalhe > summary .pd-fonte { margin-left: 8px; }
+.pd-detalhe[open] > summary { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }

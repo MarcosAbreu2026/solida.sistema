@@ -527,6 +527,32 @@ export function resumoMetasSemana(CFG, obrasVisiveis = null, ref = hojeISO()) {
   return { ini, hoje, dias, linhas, totais: { atingiu: soma('atingiu'), abaixo: soma('abaixo'), sem: soma('sem'), total, pct: total ? soma('atingiu') / total : null, diasSem: contaDias('nao'), diasNaoLidos: contaDias('naolido') } };
 }
 
+// Meta SEMANAL × executado, por item (painel do CEO, Início). A meta vem dos PDFs de metas semanais (Drive), postados na
+// semana anterior; o executado vem dos relatórios diários dos grupos. Fica em CFG.metasSemanais (produtividade.json).
+// Item: concluído (feito ≥ meta) · em andamento (parte) · sem execução registrada. Cumprimento = média de min(1, feito/meta) por item.
+export function resumoMetasItens(CFG, obrasVisiveis = null, ref = hojeISO()) {
+  const ms = CFG && CFG.metasSemanais;
+  const semanas = (ms && ms.semanas) || [];
+  const sem = semanas.find((s) => s.ini <= ref && ref <= somarDias(s.fim, 2)) || semanas[semanas.length - 1];
+  if (!sem) return null;
+  const linhas = (sem.obras || []).filter((o) => !obrasVisiveis || obrasVisiveis.includes(o.obra)).map((o) => {
+    const itens = o.itens || [];
+    const cont = (e) => itens.filter((i) => i.estado === e).length;
+    const parte = (i) => (i.estado === 'ok' ? 1 : i.estado === 'parcial' && i.meta ? Math.min(1, i.feito / i.meta) : 0);
+    // pendências (obra sem cronograma): o total é o das pendências previstas na semana; as que nenhum relatório traz contam como sem execução
+    const total = Math.max(o.total || 0, itens.length);
+    const ok = cont('ok'); const parcial = cont('parcial');
+    const nao = total - ok - parcial;
+    return { obra: o.obra, tipo: o.tipo, fonte: o.fonte, lidoAte: o.lidoAte, lacunas: o.lacunas || [], previstos: total, itens,
+      ok, parcial, nao, total, pct: total ? itens.reduce((t, i) => t + parte(i), 0) / total : null };
+  });
+  const soma = (k) => linhas.reduce((t, l) => t + l[k], 0);
+  const total = soma('total');
+  return { ini: sem.ini, fim: sem.fim, linhas, totais: { total, ok: soma('ok'), parcial: soma('parcial'), nao: soma('nao'),
+    pct: total ? linhas.reduce((t, l) => t + (l.pct == null ? 0 : l.pct * l.total), 0) / total : null,
+    obrasSemMeta: linhas.filter((l) => !l.total).length } };
+}
+
 // Último dia útil antes de hoje (pula fim de semana e feriado)
 export function ultimoDiaUtil(hoje = hojeISO()) {
   let d = somarDias(hoje, -1);
