@@ -97,9 +97,8 @@ export function resumo(ctx, cod) {
     ...(ctx.veValores ? [{ rotulo: 'Aprovados', valor: aprov.length ? brl(aprov.reduce((s, a) => s + (typeof a.total === 'number' ? a.total : 0), 0)) : '—', sub: 'soma dos aditivos aprovados' }] : []),
   ], { colunas: 3 }) : html`<p class="pd-vazio">Nenhuma planilha de escopo na pasta da obra (GERENCIAMENTO › DOC › ESCOPO).</p>`;
 
-  return html`<div class="pd-sec-h"><h2>Meta do dia</h2><a class="pd-bt pd-bt-cheio pd-so-celular" href="#/celular/${encodeURIComponent(cod)}">Abrir celular da obra</a></div>
-    <div class="pd-grade3">${resOntem}${metaHoje}${metaAm}</div>
-    ${como}
+  // Meta do dia (resultado de ontem, meta de hoje e de amanhã) e "Como a meta chega ao canteiro": tirados por enquanto, a ser repensados
+  return html`<div class="pd-sec-h"><h2>Visão da obra</h2><a class="pd-bt pd-bt-cheio pd-so-celular" href="#/celular/${encodeURIComponent(cod)}">Abrir celular da obra</a></div>
     ${plan}
     ${blocos}
     ${pd.secao('Quem precisa agir nesta obra', 'Alertas dos agentes que citam a obra · alerta vira tarefa com data-limite', pd.quemAgir(agir, { obra: cod, setor: 'Operação' }))}
