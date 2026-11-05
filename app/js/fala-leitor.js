@@ -24,7 +24,7 @@ const ASSUNTOS = [
   [/forro/i, 'FORRO'], [/rodap[ée]/i, 'RODAPÉ'], [/c[âa]meras?/i, 'CÂMERAS'], [/fachada|rufos?/i, 'FACHADA'], [/exaust[ãa]o/i, 'EXAUSTÃO'], [/inc[êe]ndio/i, 'INCÊNDIO'],
   [/divis[óo]rias?/i, 'DIVISÓRIAS'], [/paisagismo|vetor garden/i, 'PAISAGISMO'], [/aditivos?/i, 'ADITIVO'], [/cronograma/i, 'CRONOGRAMA'], [/planilha|lista de pend[êe]ncias/i, 'PENDÊNCIAS'],
   [/p[óo]s[- ]obra/i, 'PÓS-OBRA'], [/or[çc]amento/i, 'ORÇAMENTO'], [/projeto/i, 'PROJETO'], [/compras?|comprad/i, 'COMPRAS'], [/entrega/i, 'ENTREGA'], [/medi[çc][ãa]o/i, 'MEDIÇÃO'],
-  [/prazos?/i, 'PRAZOS'], [/contrata[çc][ãa]o|contratad/i, 'CONTRATAÇÃO'], [/remax/i, 'REMAX'], [/acústic/i, 'ACÚSTICA'],
+  [/prazos?/i, 'PRAZOS'], [/contrata[çc][ãa]o|contratad/i, 'CONTRATAÇÃO'], [/remax/i, 'REMAX'], [/acústic/i, 'ACÚSTICA'], [/proposta|consultoria/i, 'PROPOSTA'], [/pontinho|alinhamento/i, 'ALINHAMENTO'],
 ];
 const topico = (t) => { for (const [re, nome] of ASSUNTOS) if (re.test(t)) return nome; return ''; };
 
@@ -32,7 +32,7 @@ const codigoObra = (digitos, obras) => (obras.find((o) => o.replace(/\D/g, '') =
 
 // quem faz: "Márcio deve fornecer…", "pedir pra Júlia botar…"; quem é só alvo ("cobrar Rafael") não é responsável
 function quemFaz(frase, pessoas) {
-  const re1 = frase.match(/(\p{Lu}[\p{L}]+)\s+(?:vai|vão|deve|devem|precisa|fica|tem que|tá|está)\b/u);
+  const re1 = frase.match(/(\p{Lu}[\p{L}]+)\s+(?:vai|vão|deve|devem|precisa|precisam|fica|tem que|tá|está|ficou de|ficam de)(?![\p{L}])/u);
   const re2 = frase.match(/(?:pedir|pedi|pra|para)\s+(?:a\s+|à\s+)?(\p{Lu}[\p{L}]+)\s+(?:[\p{L}]+r)\b/u);
   const nome = (re1 && re1[1]) || (re2 && re2[1]);
   if (!nome) return {};
@@ -71,49 +71,136 @@ function envelope(pends, infos, obras, hoje, tipoReuniao = 'PLANEJAMENTO') {
 // ---------------------------------------------------------------- resumo em tópicos
 export const pareceResumoEmTopicos = (texto) => (String(texto).match(/^\s*(?:#{1,6}\s|[-*•]\s)/gm) || []).length >= 5;
 
+// nomes de projeto que as pessoas usam no lugar do código da obra ("Remax" = Mo565)
+const ALIAS_OBRA = [[/\bremax\b/i, '565'], [/maracuxi/i, '344'], [/\bpipa\b/i, '533'], [/l[úu]cio costa/i, '531'], [/cosme velho/i, '358'], [/bras[íi]lia/i, '566']];
+const MESES = { jan: 1, feb: 2, fev: 2, mar: 3, apr: 4, abr: 4, may: 5, mai: 5, jun: 6, jul: 7, aug: 8, ago: 8, sep: 9, set: 9, oct: 10, out: 10, nov: 11, dec: 12, dez: 12 };
+const dd = (n) => String(n).padStart(2, '0');
+
+// data da reunião no cabeçalho do resumo: "Tue, 03 Nov 26" ou "03/11/2026"
+function dataDoCabecalho(linhas) {
+  for (const l of linhas.slice(0, 8)) {
+    let m = l.match(/\b(\d{1,2})\s+([A-Za-z]{3})[A-Za-z]*\.?\s+(\d{2,4})\b/);
+    if (m && MESES[m[2].toLowerCase()]) { let a = Number(m[3]); if (a < 100) a += 2000; return `${a}-${dd(MESES[m[2].toLowerCase()])}-${dd(m[1])}`; }
+    m = l.match(/\b(\d{1,2})\/(\d{1,2})\/(\d{2,4})\b/);
+    if (m) { let a = Number(m[3]); if (a < 100) a += 2000; return `${a}-${dd(m[2])}-${dd(m[1])}`; }
+  }
+  return '';
+}
+
+// participantes pelos e-mails do cabeçalho: "solida.felipepaiva@gmail.com" → Felipe Paiva (Sólida); "yuri@aetheostech.com" → Yuri (Aetheostech)
+function participantesDoCabecalho(linhas, pessoas) {
+  const emails = linhas.slice(0, 8).join(' ').match(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g) || [];
+  const primeiroDe = (nome) => norm(nome).replace(/\(.*?\)/g, ' ').split(/[\s.]+/).filter((t) => t.length >= 2)[0] || '';
+  const vistos = new Set(); const lista = [];
+  for (const e of emails) {
+    const [user, dom] = e.toLowerCase().split('@');
+    const interno = /solida/.test(dom) || /^solida\./.test(user);
+    const limpo = user.replace(/^solida\./, '').replace(/[._-]+/g, '');
+    if (interno) {
+      const p = pessoas.find((x) => { const pn = primeiroDe(x.nome); return pn.length >= 3 && limpo.startsWith(pn); });
+      const nome = p ? p.nome : cap1(limpo);
+      if (!vistos.has(norm(nome))) { vistos.add(norm(nome)); lista.push({ nome, papel: 'Sólida' }); }
+    } else {
+      const nome = cap1(user.split(/[._-]/)[0]); const empresa = cap1(dom.split('.')[0]);
+      if (!vistos.has(norm(nome))) { vistos.add(norm(nome)); lista.push({ nome, papel: empresa }); }
+    }
+  }
+  return lista;
+}
+
+// "(Yuri)", "(Marcos)" no fim do próximo passo: quem faz. Pessoa da Sólida pelo nome inteiro primeiro; senão participante de fora
+function donoDe(nome, pessoas, externos) {
+  const n = norm(nome).replace(/[.]/g, '');
+  const exato = pessoas.find((p) => norm(p.nome).replace(/[.]/g, '') === n);
+  if (exato) return { responsavel: exato.id };
+  const p = acharResponsavel(nome, pessoas);
+  if (p && p.id) return { responsavel: p.id };
+  if (p && p.ambiguo) return { externoNome: nome, externoTipo: 'solida' };
+  if (EQUIPE.map(norm).includes(n)) return { externoNome: nome, externoTipo: 'solida' };
+  if (CLIENTES.includes(n)) return { externoNome: nome, externoTipo: 'cliente' };
+  if (ARQUITETURA.map(norm).includes(n)) return { externoNome: nome, externoTipo: 'arquitetura' };
+  return { externoNome: nome, externoTipo: externos.includes(n) ? 'terceirizado' : 'terceirizado' };
+}
+
+// duas frases falam da mesma tarefa? (palavras de 5+ letras em comum, metade da menor frase)
+const tokens = (s) => new Set(norm(s).split(/[^a-z0-9]+/).filter((w) => w.length >= 5));
+function parecidas(a, b) {
+  const A = tokens(a); const B = tokens(b); if (A.size < 2 || B.size < 2) return false;
+  let c = 0; for (const w of A) if (B.has(w)) c++;
+  return c / Math.min(A.size, B.size) >= 0.5;
+}
+// frase que é uma ação: começa com verbo ("Montar aditivo") ou "Fulano deve/vai/precisa <verbo>"
+const RE_NOME_DEVE = /^\p{Lu}[\p{L}]+\s+(?:deve|devem|vai|vão|precisa|precisam|tem que|fica de)\s+\p{L}+r\b/u;
+const ehAcao = (t) => RE_INICIA_VERBO.test(t) || RE_NOME_DEVE.test(t);
+
 export function analisarResumo(texto, { pessoas = [], obras = [], hoje } = {}) {
   const linhas = String(texto || '').split(/\r?\n/);
+  const dataAta = dataDoCabecalho(linhas); const base = dataAta || hoje;   // "hoje", "amanhã" e "sexta" contam a partir do dia da reunião
+  const h1 = (linhas.find((l) => /^\s*#\s+\S/.test(l)) || '').replace(/^\s*#\s+/, '').trim();
+  const partic = participantesDoCabecalho(linhas, pessoas);
+  const externos = partic.filter((p) => p.papel !== 'Sólida').map((p) => norm(p.nome));
   const pends = []; const infos = []; let n = 0; let secao = ''; let proximos = false; let ultimaPend = null; let paiObra = ''; let paiTitulo = ''; let paiAssunto = ''; let secaoObra = '';
-  const obraDe = (t) => { const m = t.match(/\b(\d{3})\b/); return m ? codigoObra(m[1], obras) : ''; };
+  const obraDe = (t) => {
+    const m = t.match(/\b(\d{3})\b/); const porNumero = m ? codigoObra(m[1], obras) : ''; if (porNumero) return porNumero;
+    for (const [re, num] of ALIAS_OBRA) if (re.test(t)) return codigoObra(num, obras);
+    return '';
+  };
   for (const bruta of linhas) {
     const l = bruta.replace(/\t/g, '    ');
     const cab = l.match(/^\s*#{1,6}\s*(.+)$/);
-    if (cab) { secao = limpaMd(cab[1]); proximos = /pr[óo]ximos passos|a[çc][õo]es|encaminhamentos|pend[êe]ncias a|tarefas/i.test(secao) && !/lista de pend/i.test(secao); paiObra = ''; paiTitulo = ''; paiAssunto = ''; secaoObra = (secao.match(/\b(\d{3})\b/) ? codigoObra(secao.match(/\b(\d{3})\b/)[1], obras) : ''); ultimaPend = null; continue; }
+    if (cab) {
+      secao = limpaMd(cab[1]);
+      // só é a lista de tarefas quando o título COMEÇA assim ("Próximos Passos"); "Pontos Técnicos e Próximos Passos" é conteúdo
+      proximos = /^(?:pr[óo]ximos passos|a[çc][õo]es\b|encaminhamentos|tarefas|pend[êe]ncias a)/i.test(secao) && !/lista de pend/i.test(secao);
+      paiObra = ''; paiTitulo = ''; paiAssunto = ''; secaoObra = obraDe(secao); ultimaPend = null; continue;
+    }
     const b = l.match(/^(\s*)(?:[-*•]|\d+[.)])\s+(.*)$/); if (!b) continue;
-    const nivel = b[1].length >= 2 ? 1 : 0; const t = limpaMd(b[2]); if (t.length < 4) continue;
-    const aposDoisPontos = t.includes(':') && t.indexOf(':') <= 30 ? t.slice(t.indexOf(':') + 1).trim() : '';
-    const ehPend = proximos ? nivel === 0 : (RE_INICIA_VERBO.test(t) || (aposDoisPontos && RE_INICIA_VERBO.test(aposDoisPontos)));
-    if (nivel === 0) {
-      paiObra = obraDe(t.split(':')[0]) || (t.split(':')[0].length < 40 ? obraDe(t.split(':')[0]) : '');
-      paiTitulo = '';
-      const antesDoisPontos = t.includes(':') ? t.split(':')[0] : '';
-      if (!proximos && antesDoisPontos && antesDoisPontos.length < 45 && !ehPend) paiTitulo = antesDoisPontos.replace(/\(.*?\)/g, '').replace(/^\d{3}\s*/, '').trim();
-    }
-    if (proximos && nivel === 1) {   // detalhe da pendência de cima: entra no descritivo e ajuda a achar prazo/responsável
-      if (ultimaPend) { ultimaPend._extra.push(t); }
-      continue;
-    }
-    const obra = obraDe(t) || paiObra || secaoObra;
-    const prefixoObra = obra ? obra.toUpperCase() : '';
-    const top = topico(t);
-    const assunto = [prefixoObra, top || (nivel === 0 && paiTitulo ? paiTitulo : '') || (nivel === 1 ? paiAssunto : '') || (!prefixoObra ? secao : '')].filter(Boolean).join(' ') || secao;
-    if (nivel === 0) paiAssunto = top;
-    if (ehPend) {
-      const limpo = t.replace(/\s*\((\d{3})\)\s*$/u, '').replace(/^enviar\b/i, 'Enviar');
-      const p = { _extra: [], base: limpo, item: ++n, assunto, obra };
-      pends.push(p); ultimaPend = p;
-    } else {
-      ultimaPend = null;
-      const corpo = nivel === 0 && t.includes(':') ? t.slice(t.indexOf(':') + 1).trim() : t;
-      if (corpo.length >= 8) infos.push(montaItem({ kind: 'informativo', assunto, texto: corpo, item: ++n }));
+    const nivel = b[1].length >= 2 ? 1 : 0; const t0 = limpaMd(b[2]); if (t0.length < 4) continue;
+    if (proximos && nivel === 1) { if (ultimaPend) ultimaPend._extra.push(t0); continue; }   // detalhe do próximo passo de cima
+    // uma linha com duas ações ("Montar aditivo; Márcio deve fornecer a explicação") vira duas
+    const partes = !proximos ? t0.split(/;\s+/) : [t0];
+    const trechos = partes.length > 1 && partes.slice(1).some(ehAcao) ? partes : [t0];
+    for (const t of trechos) {
+      const aposDoisPontos = t.includes(':') && t.indexOf(':') <= 30 ? t.slice(t.indexOf(':') + 1).trim() : '';
+      const ehPend = proximos ? nivel === 0 : (ehAcao(t) || (aposDoisPontos && ehAcao(aposDoisPontos)));
+      if (nivel === 0) {
+        paiObra = obraDe(t.split(':')[0]);
+        paiTitulo = '';
+        const antesDoisPontos = t.includes(':') ? t.split(':')[0] : '';
+        if (!proximos && antesDoisPontos && antesDoisPontos.length < 45 && !ehPend) paiTitulo = antesDoisPontos.replace(/\(.*?\)/g, '').replace(/^\d{3}\s*/, '').trim();
+      }
+      const obra = obraDe(t) || paiObra || secaoObra;
+      const prefixoObra = obra ? obra.toUpperCase() : '';
+      const top = topico(t) || (trechos.length > 1 ? topico(t0) : '');   // frase dividida em duas ações: o assunto vem da frase inteira
+      const assunto = [prefixoObra, top || (proximos ? palavraPrincipal(t) : '') || (nivel === 0 && paiTitulo ? paiTitulo : '') || (nivel === 1 ? paiAssunto : '') || (!prefixoObra && !proximos ? secao : '')].filter(Boolean).join(' ') || secao;
+      if (nivel === 0) paiAssunto = top;
+      if (ehPend) {
+        let limpo = t.replace(/\s*\((\d{3})\)\s*$/u, '').replace(/^enviar\b/i, 'Enviar');
+        let dono = '';
+        const md = limpo.match(/\s*\(([^()]{2,40})\)\s*$/u);   // "(Yuri)": quem faz; "(Remax)": a obra
+        if (md) { if (ALIAS_OBRA.some(([re]) => re.test(md[1]))) limpo = limpo.slice(0, md.index).trim(); else if (/^\p{Lu}/u.test(md[1])) { dono = md[1].trim(); limpo = limpo.slice(0, md.index).trim(); } }
+        const p = { _extra: [], base: limpo, item: ++n, assunto, obra, dono, proximo: proximos };
+        pends.push(p); ultimaPend = p;
+      } else {
+        ultimaPend = null;
+        const corpo = nivel === 0 && t.includes(':') ? t.slice(t.indexOf(':') + 1).trim() : t;
+        if (corpo.length >= 8) infos.push(montaItem({ kind: 'informativo', assunto, texto: corpo, item: ++n }));
+      }
     }
   }
-  const pendencias = pends.map((p) => {
+  // quando há "Próximos passos", ele manda: a ação do corpo que repete um próximo passo não vira outra pendência
+  const lista = pends.filter((p) => p.proximo || !pends.some((q) => q.proximo && parecidas(p.base, [q.base, ...q._extra].join(' '))));
+  const pendencias = lista.map((p) => {
     const todo = [p.base, ...p._extra].join('; ');
-    const quem = quemFaz(todo, pessoas);
-    return montaItem({ kind: 'pendencia', assunto: p.assunto, texto: p._extra.length ? `${p.base} — ${p._extra.map(semPontoFinal).join('; ')}` : p.base, item: p.item, quem, prazo: prazoDe(todo, hoje) });
+    const quem = p.dono ? donoDe(p.dono, pessoas, externos) : quemFaz(todo, pessoas);
+    return montaItem({ kind: 'pendencia', assunto: p.assunto, texto: p._extra.length ? `${p.base} — ${p._extra.map(semPontoFinal).join('; ')}` : p.base, item: p.item, quem, prazo: prazoDe(todo, base) });
   });
-  return envelope(pendencias, infos, obras, hoje);
+  const r = envelope(pendencias, infos, obras, base);
+  r.data = base; r.titulo = h1;
+  r.participantes = partic.map((p) => `${p.nome} (${p.papel})`);
+  // tipo da reunião só com evidência: alguém de fora da Sólida participou → terceirizado; fala de cronograma/obras → planejamento
+  r.tipoReuniao = externos.length ? 'TERCEIRIZADO' : /cronograma|planejamento|programa[çc][ãa]o|obras em andamento/i.test(texto) ? 'PLANEJAMENTO' : 'REUNIÃO';
+  return r;
 }
 
 // ---------------------------------------------------------------- fala corrida (transcrição)
