@@ -132,5 +132,11 @@ if (ef && ef.dias) {
     } catch (e) { erros.push(`efetivo_diario: ${e.message}`); tarefas.push(['efetivo_diario', linhas]); }
   }
 }
+// Situação das obras (andamento · pausada · finalizada), que sócios e coordenação mudam no topo da página da obra: vem do banco
+// para dados/json/obras-situacao.json, que os agentes lêem (só obras em andamento geram meta, produtividade e alerta)
+try {
+  const r = await fetch(`${supabaseUrl}/rest/v1/obras_cadastro?select=codigo,nome,situacao&order=codigo`, { headers: { Authorization: `Bearer ${token}`, apikey: chave } });
+  if (r.ok) { const obras = await r.json(); if (Array.isArray(obras) && obras.length) (await import('node:fs')).writeFileSync(join(pasta, 'obras-situacao.json'), JSON.stringify({ atualizadoEm: new Date().toISOString(), obras }, null, 2)); }
+} catch { /* sem a situação das obras: os agentes usam a última gravada */ }
 console.log(`Nuvem: ${ok} de ${tarefas.length} arquivos enviados${erros.length ? ` · erros: ${erros.join(' | ')}` : ''}`);
 process.exit(erros.length ? 1 : 0);

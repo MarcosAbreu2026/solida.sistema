@@ -323,3 +323,9 @@ body.nav-recolhido nav::after { display: none; }
 
 .pd-emp-sem-txt { font-size: 12px; color: var(--grafite); white-space: nowrap; }
 .pd-emp-sem-txt b { font-family: var(--pd-cond); font-size: 15px; }
+
+/* Situação da obra no topo da página da obra */
+.pd-sit { font: inherit; font-weight: 700; font-size: 15px; padding: 6px 10px; border-radius: 8px; border: 1px solid #C9D0D8; background: #fff; color: var(--grafite); cursor: pointer; }
+.pd-sit-andamento { border-color: #10935F; color: #0B6E47; }
+.pd-sit-pausada { border-color: #E0A63B; color: #8A6410; }
+.pd-sit-finalizada { border-color: #8B95A1; color: #4A5560; }

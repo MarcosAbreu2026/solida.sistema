@@ -20,7 +20,15 @@ export function cabecalho(ctx, cod) {
   const eq = oc.equipeDa(ctx, cod); const cr = oc.cronograma(ctx, cod);
   const partes = ['Coordenadora: Simone', eq.gestor.length ? `Gestor: ${eq.gestor.join(', ')}` : '', eq.estagiario.length ? `Estagiário: ${eq.estagiario.join(', ')}` : '', eq.encarregado.length ? `Encarregado: ${eq.encarregado.join(', ')}` : ''].filter(Boolean);
   const end = oc.endereco(ctx, cod);
-  const direita = cr.erro ? '' : html`<div><span>Início</span><b>${pd.dma(cr.inicioObra)}</b></div><div><span>Previsão atual</span><b>${pd.dma(cr.fimObra)}</b></div>`;
+  // situação da obra (cadastro): sócios e coordenação de operações mudam aqui; os outros só veem
+  const cad = oc.lista(ctx.obrasCad); const linhaCad = cad.find((r) => r.codigo === cod) || cad.find((r) => cod.startsWith(r.codigo) || r.codigo.startsWith(cod));
+  const encLocal = ((ctx.CFG && ctx.CFG.metasSemanais && ctx.CFG.metasSemanais.encerradas) || {})[cod];   // sem o cadastro (modo local)
+  const sit = (linhaCad && linhaCad.situacao) || (!cad.length && { Pausada: 'pausada', Finalizada: 'finalizada' }[encLocal]) || 'andamento';
+  const ROT = { andamento: 'Em andamento', pausada: 'Pausada', finalizada: 'Finalizada' };
+  const situacao = ctx.podeMudarObra
+    ? html`<div><span>Situação</span><select class="pd-sit pd-sit-${sit}" data-situacao-obra="${cod}" title="Só sócios e coordenação de operações mudam">${Object.keys(ROT).map((k) => html`<option value="${k}" ${k === sit ? html.seguro('selected') : ''}>${ROT[k]}</option>`)}</select></div>`
+    : html`<div><span>Situação</span><b>${ROT[sit]}</b></div>`;
+  const direita = html`${cr.erro ? '' : html`<div><span>Início</span><b>${pd.dma(cr.inicioObra)}</b></div><div><span>Previsão atual</span><b>${pd.dma(cr.fimObra)}</b></div>`}${situacao}`;
   return pd.cabecalho({ rotulo: 'Operações · obras em andamento', resp: html`${end ? html`<b>${end}</b><br>` : ''}${partes.join(' · ')}`, direita });
 }
 

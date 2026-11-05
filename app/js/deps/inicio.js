@@ -5,7 +5,7 @@ import { html } from '../formato.js';
 import * as pd from '../telas/painel-dep.js';
 import { avisoLeitura } from './comum.js';
 import * as oc from './obras-comum.js';
-import { resumoMetasSemana, resumoMetasItens, obrasEncerradas, obrasFinalizadas } from '../telas/produtividade.js';
+import { resumoMetasSemana, resumoMetasItens, obrasEncerradas, situacaoDeObra } from '../telas/produtividade.js';
 import { barrasEmpilhadas } from '../graficos.js';
 import { somarDias, hojeISO } from '../datas.js';
 import { ordenarObras } from '../programacao.js';
@@ -110,8 +110,8 @@ const pctN = (n, d) => (d ? n / d : null);
 
 export function painel(ctx) {
   const CFG = ctx.CFG || { areas: [], geral: {} };
-  const obras = oc.obrasDoPainel(ctx).filter((o) => !obrasFinalizadas(CFG).includes(o.obra));
-  const enc = obrasEncerradas(CFG);
+  const obras = oc.obrasDoPainel(ctx).filter((o) => !/finaliz/i.test(situacaoDeObra(CFG, o.obra)));
+  const situDe = (cod) => situacaoDeObra(CFG, cod);
   const prodDia = resumoMetasSemana(CFG, ctx.visiveis || null);
   const bolsDe = (cod) => bolinhas(prodDia.linhas.find((x) => x.obra === cod));
   const metasPdf = new Set((((CFG.metasSemanais || {}).semanas || []).slice(-1)[0] || { obras: [] }).obras.filter((o) => o.tipo !== 'sem-meta' && (o.itens || []).length).map((o) => o.obra));
@@ -144,7 +144,7 @@ export function painel(ctx) {
     const ini = ctx.hoje; const semana = p ? (p.dias || []).filter((d) => d.data >= oc.diaUtil(ini, -5) && d.data <= ini) : [];
     const metasFeitas = semana.some((d) => d.fonte === 'whatsapp') || oc.lista(ctx.celular).some((r) => r.tipo === 'executado' && oc.mesmaObra(r.obra, o.obra) && r.data >= oc.diaUtil(ini, -5));
     const med = MED[oc.medicao(ctx, o.obra).status] || MED.q;
-    const situ = enc[o.obra];
+    const situ = situDe(o.obra);
     if (situ) return [pd.obraCel(o.obra, oc.endereco(ctx, o.obra), `#/obra/${encodeURIComponent(o.obra)}`), cr.erro ? pd.traco() : pd.barraCel(cr.exe), pd.traco(), pd.selo('', situ), pd.selo('', situ), pd.selo('', situ), pd.selo('', situ), pd.selo('', situ), html`<a class="pd-bt" href="#/obra/${encodeURIComponent(o.obra)}">Abrir obra</a>`];
     const atrasadas = cr.erro ? null : cr.ativ.filter((a) => a.atrasada).length;
     return [
@@ -164,7 +164,7 @@ export function painel(ctx) {
 
   // ---- 4 · quem precisa agir: geral + áreas. Fora daqui: obra que não está em andamento (parada, finalizada ou sem execução),
   // solicitações BeeVale (ficam no Mais Controle/financeiro) e o diário de obra em bloco (vira um alerta por obra, com o responsável da obra).
-  const ativas = obras.map((o) => o.obra).filter((c) => !enc[c]);
+  const ativas = obras.map((o) => o.obra).filter((c) => !situDe(c));
   const ehAtiva = (c) => ativas.some((x) => oc.mesmaObra(x, c));
   const codigosDe = (t) => [...new Set((String(t).match(/\bM[oO]\s?\d{3}[A-Za-z]?\b/g) || []).map((c) => c.replace(/\s/g, '').replace(/^m/, 'M')))];
   const alertas = [pd.alertasDoAgente(CFG.geral, { veValores: ctx.veValores, obras: ctx.visiveis, limite: 40 }),

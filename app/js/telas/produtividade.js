@@ -497,10 +497,31 @@ const NIVEL_TXT = { ok: 'Em dia', atencao: 'Atenção', critico: 'Crítico' };
 const ehPendencia = (CFG, p) => !!p.faseFinal || (((CFG.metasSemanais || {}).semanas || []).some((s) => (s.obras || []).some((o) => o.obra === p.obra && o.tipo === 'pendencias')));
 
 // Obras fora do acompanhamento de metas (parada, finalizada): CFG.metasSemanais.ignorar
-// CFG.metasSemanais.encerradas = { Mo465: 'Pausada', Mo565D: 'Finalizada' }: aparecem com essa situação, sem cobrar meta nem produtividade
-export const obrasEncerradas = (CFG) => ((CFG && CFG.metasSemanais && CFG.metasSemanais.encerradas) || {});
+// Situação das obras vem do cadastro de obras (andamento · pausada · finalizada), que sócios e coordenação mudam no topo da página da obra.
+// Sem o cadastro (modo local), vale metasSemanais.encerradas. Pausada aparece com a situação; finalizada some do painel.
+export const obrasEncerradas = (CFG) => {
+  const cad = CFG && CFG.obrasCad;
+  if (Array.isArray(cad)) {
+    const o = {};
+    for (const r of cad) if (/^mo/i.test(r.codigo) && (r.situacao === 'pausada' || r.situacao === 'finalizada')) o[r.codigo] = r.situacao === 'pausada' ? 'Pausada' : 'Finalizada';
+    return o;
+  }
+  return (CFG && CFG.metasSemanais && CFG.metasSemanais.encerradas) || {};
+};
+// situação de uma obra do painel (ex.: Mo565C): o código exato do cadastro vale mais; senão vale o cadastro da obra-mãe (Mo565)
+export const situacaoDeObra = (CFG, cod) => {
+  const cad = (CFG && CFG.obrasCad) || null;
+  const rotulo = { andamento: '', pausada: 'Pausada', finalizada: 'Finalizada' };
+  if (cad) {
+    const exato = cad.find((r) => r.codigo === cod);
+    if (exato) return rotulo[exato.situacao] || '';
+    const mae = cad.find((r) => cod.startsWith(r.codigo) || r.codigo.startsWith(cod));
+    return mae ? (rotulo[mae.situacao] || '') : '';
+  }
+  return obrasEncerradas(CFG)[cod] || '';
+};
 // Finalizada some do painel; pausada continua aparecendo, com a situação
-export const obrasFinalizadas = (CFG) => Object.entries(obrasEncerradas(CFG)).filter(([, s]) => /finaliz|conclu/i.test(s)).map(([c]) => c);
+export const obrasFinalizadas = (CFG) => Object.entries(obrasEncerradas(CFG)).filter(([, st]) => /finaliz|conclu/i.test(st)).map(([c]) => c);
 export const obrasIgnoradas = (CFG) => Object.keys(obrasEncerradas(CFG));
 
 export function resumoMetasSemana(CFG, obrasVisiveis = null, ref = hojeISO()) {

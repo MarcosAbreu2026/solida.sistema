@@ -46,8 +46,12 @@ Os horários do WhatsApp são escalonados (nunca dois agentes ao mesmo tempo). M
    Para ler o grupo da obra certo, confira o nome do cabeçalho do chat antes de ler (a lista de conversas muda de
    ordem). O histórico volta mais se você rolar para cima e esperar carregar; use "Ler mais" nas mensagens longas.
 5. **Obras em andamento**: só elas geram meta, produtividade e alerta. Obra parada, finalizada ou sem execução
-   não gera alerta (hoje: Mo465 pausada, Mo565D finalizada; Mo557, Mo415 e Mo491 não estão em execução). A lista
-   oficial é `metasSemanais.encerradas` em `dados\json\produtividade.json` e as obras de `planejamento.porObra`.
+   não gera alerta. A situação de cada obra (andamento · pausada · finalizada) é o cadastro de obras do sistema, que
+   sócios (Marcos, Márcio, Felipe) e a coordenação (Simone) mudam no topo da página da obra; ele chega a você em
+   `dadosjsonobras-situacao.json` (atualizado a cada envio à nuvem). Pausada aparece no painel só como "Pausada",
+   sem metas nem pendências; finalizada some. Sem esse arquivo, valem `metasSemanais.encerradas` em
+   `dadosjsonprodutividade.json` e as obras de `planejamento.porObra` (hoje: Mo465 pausada, Mo565D finalizada;
+   Mo557, Mo415 e Mo491 não estão em execução).
    Obras sempre em ordem numérica (menor para maior; 565C antes de 581), primeiro Mo e depois Po.
 6. **Alertas**: um fato por alerta, com obra, data e o responsável ESPECÍFICO daquela obra (nunca um responsável
    geral para todas). Sem alertas sobre solicitações BeeVale/Bivale do Mais Controle (são documentadas lá e

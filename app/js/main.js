@@ -16,7 +16,7 @@ import { periodo, hojeISO, ehData, somarDias, inicioDaSemana } from './datas.js'
 import { html, esc, descreverPeriodo } from './formato.js';
 import { definirPerfil } from './componentes.js';
 import { normalizar, criarTelas, pt } from './painel-empresa.js';
-import { sessao, funcaoAtual, veValores, entrar, sair, logado, idPessoa, podeVerArea, obrasDaPessoa,
+import { sessao, funcaoAtual, veValores, podeMudarSituacaoObra, entrar, sair, logado, idPessoa, podeVerArea, obrasDaPessoa,
   podeVerComo, simulando, verComo, funcaoReal } from './sessao.js';
 import { FUNCOES, funcaoPorId, veBlocoGeral, INDICADORES_SO_GESTAO, paginaVisivel, aplicarAbas, abasPadrao, soMinhasFuncoes, temEstoqueRestrito } from './funcoes.js';
 import * as marketing from './telas/marketing.js';
@@ -374,7 +374,8 @@ function telaObraNova(rota) {
 // tudo o que um painel de departamento pode precisar (contrato em app/js/deps/comum.js)
 function ctxPainel(dep, area) {
   const f = funcaoAtual();
-  return { dep, CFG: estado.cfg, area: area || null, f, veValores: veValores(), drive: estado.drive || {}, base: estado.base, efetivo: estado.efetivo || { dias: {} },
+  if (estado.cfg) estado.cfg.obrasCad = estado.obrasCad || null;   // situação das obras (cadastro): as telas escondem finalizada e mostram pausada
+  return { dep, CFG: estado.cfg, obrasCad: estado.obrasCad || null, podeMudarObra: podeMudarSituacaoObra(), area: area || null, f, veValores: veValores(), drive: estado.drive || {}, base: estado.base, efetivo: estado.efetivo || { dias: {} },
     terceiros: estado.terceiros || { empresas: [] }, ferrChk: estado.ferrChk || { registros: [] }, mc: estado.mc || { obras: [] }, celular: celularObra.registros(),
     pendencias: atas.todasPendencias(), hoje: hojeISO(), visiveis: f.porObra ? obrasDaPessoa() : null, sync: estado.sync, obrasMenu: obrasDoMenu() };
 }
@@ -1203,6 +1204,17 @@ function configurar() {
   });
   // Cadastro de obras: incluir, mudar a situação (andamento · pausada · finalizada) e excluir
   const codigoObra = (txt) => { const s = String(txt || '').trim().replace(/\s+/g, ''); const m = s.match(/^(mo|po)(\d+.*)$/i); return m ? `${m[1][0].toUpperCase()}${m[1][1].toLowerCase()}${m[2]}` : s; };
+  // Situação da obra no topo da página da obra (sócios e coordenação de operações)
+  document.addEventListener('change', async (e) => {
+    const sel = e.target.closest && e.target.closest('[data-situacao-obra]'); if (!sel) return;
+    const codigo = sel.dataset.situacaoObra; const situacao = sel.value;
+    if (!nuvem.NA_NUVEM) { alert('Mudar a situação da obra só funciona no sistema na nuvem (com login).'); desenhar(); return; }
+    try {
+      const cad = (estado.obrasCad || []).find((o) => o.codigo === codigo);
+      await nuvem.salvarObra({ codigo, nome: (cad && cad.nome) || '', situacao });
+      estado.obrasCad = await nuvem.listarObras(); desenhar();
+    } catch (err) { alert(`Não foi possível mudar a situação da obra (${err.message || err}).`); desenhar(); }
+  });
   document.addEventListener('submit', async (e) => {
     const f = e.target.closest('#ob-novo, [data-obra-cad]'); if (!f) return;
     e.preventDefault();

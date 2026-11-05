@@ -29,6 +29,8 @@ const real = () => (NA_NUVEM ? daNuvem() : atual) || { nome: '', usuario: '', fu
 export const sessao = () => (sim && podeVerComo() ? { ...real(), funcao: sim.funcao, obras: sim.obras || [] } : real());
 export const funcaoAtual = () => funcaoPorId(sessao().funcao);
 export const veValores = () => !!funcaoAtual().veValores;
+// Situação da obra (andamento, pausada, finalizada): só sócios (Marcos, Márcio, Felipe) e a coordenação de operações (Simone) mudam
+export const podeMudarSituacaoObra = () => ['socio', 'coord_operacoes'].includes(real().funcao);
 
 // Fase de teste: a faixa "Ver como" aparece para todo mundo, para trocar de perfil com um clique.
 // Quando o login de verdade entrar, mudar para false: aí só o sócio vê a faixa.
