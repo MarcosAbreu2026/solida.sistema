@@ -492,11 +492,14 @@ const NIVEL_TXT = { ok: 'Em dia', atencao: 'Atenção', critico: 'Crítico' };
 // passados, quantos bateram a meta, ficaram abaixo ou ficaram sem registro; e, em cada dia útil, se a obra mandou a
 // produtividade no grupo do WhatsApp. Estados do dia: enviada · nao (o agente leu o grupo e não havia) ·
 // naolido (ainda não verificado no grupo) · hoje (dentro do prazo) · futuro · feriado.
+// Obras fora do acompanhamento de metas (parada, finalizada): CFG.metasSemanais.ignorar
+export const obrasIgnoradas = (CFG) => ((CFG && CFG.metasSemanais && CFG.metasSemanais.ignorar) || []);
+
 export function resumoMetasSemana(CFG, obrasVisiveis = null, ref = hojeISO()) {
   const hoje = hojeISO();
   const ini = inicioDaSemana(ref);
   const dias = [0, 1, 2, 3, 4].map((i) => somarDias(ini, i));
-  const progs = programacoes(CFG).filter((p) => !obrasVisiveis || obrasVisiveis.includes(p.obra));
+  const progs = programacoes(CFG).filter((p) => (!obrasVisiveis || obrasVisiveis.includes(p.obra)) && !obrasIgnoradas(CFG).includes(p.obra));
   const linhas = progs.map((p) => {
     let atingiu = 0; let abaixo = 0; let sem = 0;
     const porDia = dias.map((data) => {
@@ -535,21 +538,22 @@ export function resumoMetasItens(CFG, obrasVisiveis = null, ref = hojeISO()) {
   const semanas = (ms && ms.semanas) || [];
   const sem = semanas.find((s) => s.ini <= ref && ref <= somarDias(s.fim, 2)) || semanas[semanas.length - 1];
   if (!sem) return null;
-  const linhas = (sem.obras || []).filter((o) => !obrasVisiveis || obrasVisiveis.includes(o.obra)).map((o) => {
+  const linhas = (sem.obras || []).filter((o) => (!obrasVisiveis || obrasVisiveis.includes(o.obra)) && !obrasIgnoradas(CFG).includes(o.obra)).map((o) => {
     const itens = o.itens || [];
     const cont = (e) => itens.filter((i) => i.estado === e).length;
     const parte = (i) => (i.estado === 'ok' ? 1 : i.estado === 'parcial' && i.meta ? Math.min(1, i.feito / i.meta) : 0);
     // pendências (obra sem cronograma): o total é o das pendências previstas na semana; as que nenhum relatório traz contam como sem execução
     const total = Math.max(o.total || 0, itens.length);
     const ok = cont('ok'); const parcial = cont('parcial');
-    const nao = total - ok - parcial;
-    return { obra: o.obra, tipo: o.tipo, fonte: o.fonte, lidoAte: o.lidoAte, lacunas: o.lacunas || [], previstos: total, itens,
-      ok, parcial, nao, total, pct: total ? itens.reduce((t, i) => t + parte(i), 0) / total : null };
+    const nao = o.semLeitura ? 0 : total - ok - parcial;
+    return { obra: o.obra, semLeitura: !!o.semLeitura, ini: o.ini, fim: o.fim, tipo: o.tipo, fonte: o.fonte, lidoAte: o.lidoAte, lacunas: o.lacunas || [], previstos: total, itens,
+      ok, parcial, nao, total, pct: total && !o.semLeitura ? itens.reduce((t, i) => t + parte(i), 0) / total : null };
   });
-  const soma = (k) => linhas.reduce((t, l) => t + l[k], 0);
+  const contadas = linhas.filter((l) => !l.semLeitura);
+  const soma = (k) => contadas.reduce((t, l) => t + l[k], 0);
   const total = soma('total');
   return { ini: sem.ini, fim: sem.fim, linhas, totais: { total, ok: soma('ok'), parcial: soma('parcial'), nao: soma('nao'),
-    pct: total ? linhas.reduce((t, l) => t + (l.pct == null ? 0 : l.pct * l.total), 0) / total : null,
+    pct: total ? contadas.reduce((t, l) => t + (l.pct == null ? 0 : l.pct * l.total), 0) / total : null,
     obrasSemMeta: linhas.filter((l) => !l.total).length } };
 }
 

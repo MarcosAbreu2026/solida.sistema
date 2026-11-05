@@ -50,17 +50,18 @@ export function barrasHorizontais(itens, { largura = 520 } = {}) {
 }
 
 // Barras empilhadas, uma por linha, em HTML: o texto usa o tamanho de letra padrão do painel (um SVG ampliaria as letras com a tela).
-// linhas: [{ rotulo, sub, segs: [{ valor, cls }], fim, dica }]; cls: ok · abaixo · sem (cores no CSS); o número fica dentro de cada trecho e `fim` (ex.: "71%") à direita.
+// linhas: [{ rotulo, sub, segs: [{ valor, cls }], fim, dica, vazio?, extra? (HTML já pronto, última coluna) }]; cls: ok · abaixo · sem (cores no CSS); o número fica dentro de cada trecho e `fim` (ex.: "71%") à direita.
 export function barrasEmpilhadas(linhas, { vazio = 'sem metas conferidas' } = {}) {
   const linha = (l) => {
     const total = l.segs.reduce((t, s) => t + s.valor, 0);
     const barra = total
       ? l.segs.filter((s) => s.valor > 0).map((s) => `<span class="pd-emp-seg pd-emp-${s.cls}" style="flex:${s.valor} 1 0">${numero(s.valor)}</span>`).join('')
-      : `<span class="pd-emp-vazio">${esc(vazio)}</span>`;
+      : `<span class="pd-emp-vazio">${esc(l.vazio || vazio)}</span>`;
     return `<div class="pd-emp-linha" title="${esc(l.dica || '')}">
       <div class="pd-emp-rot"><span class="pd-obra">${esc(l.rotulo)}</span>${l.sub ? `<span class="pd-obra-sub">${esc(l.sub)}</span>` : ''}</div>
       <div class="pd-emp-barra" role="img" aria-label="${esc(l.dica || l.rotulo)}">${barra}</div>
       <b class="pd-emp-fim">${esc(l.fim || '')}</b>
+      ${l.extra || ''}
     </div>`;
   };
   return `<div class="pd-emp-linhas">${linhas.map(linha).join('')}</div>`;
