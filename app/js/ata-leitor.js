@@ -98,7 +98,7 @@ function participantesEmTabela(linhas) {
   for (const l of linhas) {
     // nome: palavras com inicial maiúscula (e "de", "da", "do"…); uma frase como "Reunião online entre a Construtora Sólida…" não é participante
     const m = l.trim().match(/^(\p{Lu}[\p{L}]+(?:\s(?:de|da|do|dos|das|\p{Lu}[\p{L}]+)){0,5}?)\s+(Construtora S[óo]lida|S[óo]lida|Cliente|Arquitetura)(?![\p{L}])/u);
-    if (m) lista.push({ nome: m[1], papel: papelDe(m[2]), texto: `${nomeCurto(m[1])} (${papelCurto(m[2])})` });
+    if (m && !/^nome$/i.test(m[1].trim())) lista.push({ nome: m[1], papel: papelDe(m[2]), texto: `${nomeCurto(m[1])} (${papelCurto(m[2])})` });
   }
   return lista;
 }
