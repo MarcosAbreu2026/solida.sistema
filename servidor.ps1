@@ -45,6 +45,25 @@ function Link-Direto([string]$link) {
 $script:ultimaBusca = [datetime]::MinValue
 $script:estadoPainel = @{ origem = 'nenhum'; atualizado = $null; erro = $null }
 
+# dados\painel-montado.json: dados.json remontado pela rotina "montador" a partir dos dados locais (coletor, leitor, planilhas).
+# Vale no lugar do arquivo do Drive só enquanto o atualizadoEm dele for mais novo; se o Drive passar a ter um mais novo, o do Drive volta a valer.
+function Aplicar-Montado([string]$montado, [string]$cacheArq) {
+  if (-not (Test-Path $montado)) { return }
+  try {
+    $rx = '"atualizadoEm"\s*:\s*"([^"]+)"'
+    $tm = [IO.File]::ReadAllText($montado, [Text.Encoding]::UTF8).TrimStart([char]0xFEFF)
+    $mm = [regex]::Match($tm, $rx)
+    if (-not $mm.Success -or $tm -notmatch '"areas"' -or $tm -notmatch '"geral"') { return }
+    $dm = [datetimeoffset]::Parse($mm.Groups[1].Value, [Globalization.CultureInfo]::InvariantCulture)
+    $dc = [datetimeoffset]::MinValue
+    if (Test-Path $cacheArq) {
+      $mc = [regex]::Match([IO.File]::ReadAllText($cacheArq, [Text.Encoding]::UTF8), $rx)
+      if ($mc.Success) { $dc = [datetimeoffset]::Parse($mc.Groups[1].Value, [Globalization.CultureInfo]::InvariantCulture) }
+    }
+    if ($dm -gt $dc) { [IO.File]::WriteAllText($cacheArq, $tm, $utf8) }
+  } catch { }
+}
+
 function Buscar-Painel {
   # no máximo uma ida ao Drive por minuto; entre uma e outra, usa a cópia
   if (((Get-Date) - $script:ultimaBusca).TotalSeconds -lt 60 -and (Test-Path $cache)) { return }
@@ -60,8 +79,10 @@ function Buscar-Painel {
     $json = $texto | ConvertFrom-Json
     if (-not $json.areas -or -not $json.geral) { throw 'O link não devolveu o dados.json do painel (faltam "geral" e "areas").' }
     [IO.File]::WriteAllText($cache, $texto, $utf8)
+    Aplicar-Montado (Join-Path $raiz 'dados\painel-montado.json') $cache
     $script:estadoPainel = @{ origem = 'link'; atualizado = (Get-Date).ToString('o'); erro = $null }
   } catch {
+    Aplicar-Montado (Join-Path $raiz 'dados\painel-montado.json') $cache
     $script:estadoPainel = @{ origem = 'cache'; atualizado = $script:estadoPainel.atualizado; erro = "Sem conexão com o Drive. Mostrando os últimos dados baixados. ($($_.Exception.Message))" }
   }
 }
