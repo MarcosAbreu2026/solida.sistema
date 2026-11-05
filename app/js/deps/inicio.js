@@ -1,6 +1,6 @@
 // Início · visão do CEO (desenho do Marcos, página 3). Contrato e ctx: ver comum.js.
 //   1 · Cumprimento da semana (cronogramas, efetivo, diário, setores) · 2 · Planejado × executado por obra
-//   3 · Quem precisa agir (geral + todas as áreas) · Orçamento e Financeiro (valores só para sócios)
+//   3 · Meta × executado da semana · 4 · Quem precisa agir (geral + todas as áreas) · Orçamento e Financeiro (valores só para sócios)
 import { html } from '../formato.js';
 import * as pd from '../telas/painel-dep.js';
 import { avisoLeitura } from './comum.js';
@@ -126,8 +126,8 @@ export function painel(ctx) {
     ${avisoLeitura(ctx)}
     ${pd.secao('1 · Cumprimento da semana', `Fonte: Drive (cronograma), WhatsApp (efetivo e diário) · leitura ${leitura}`, cumprimento)}
     ${pd.secao('2 · Planejado × executado, por obra', 'Fonte: Drive (GERENCIAMENTO de cada obra) e agentes', pd.tabela(['Obra', 'Avanço', 'Ativ. atrasadas', 'Cronograma', 'Programação semanal', 'Metas diárias', 'Medições', ''], linhas, { vazio: 'Nenhuma obra em curso no planejamento.' }))}
-    ${pd.secao('Meta × executado da semana', 'Fonte: programação semanal e metas (Drive/WhatsApp) · produtividade enviada nos grupos', metaExecutado(ctx, CFG))}
-    ${pd.secao('3 · Quem precisa agir', 'Cada alerta vira tarefa com responsável e data-limite', pd.quemAgir(agir))}
+    ${pd.secao('3 · Meta × executado da semana', 'Fonte: programação semanal e metas (Drive/WhatsApp) · produtividade enviada nos grupos', metaExecutado(ctx, CFG))}
+    ${pd.secao('4 · Quem precisa agir', 'Cada alerta vira tarefa com responsável e data-limite', pd.quemAgir(agir))}
     <div class="${finCaixa ? 'pd-grade2' : ''}">${orc}${finCaixa}</div>`;
 }
 

@@ -49,33 +49,21 @@ export function barrasHorizontais(itens, { largura = 520 } = {}) {
   </svg>`;
 }
 
-// Barras empilhadas, uma por linha. linhas: [{ rotulo, sub, segs: [{ valor, cls, nome }], fim, dica }]
-// cls: ok · abaixo · sem (cores no CSS); o número fica dentro de cada trecho e `fim` (ex.: "71%") à direita.
-export function barrasEmpilhadas(linhas, { largura = 760, vazio = 'sem metas conferidas' } = {}) {
-  const alt = 46, esq = 150, dir = 60, espessura = 24;
-  const util = largura - esq - dir;
-  const partes = linhas.map((l, i) => {
-    const y = i * alt;
-    const yb = y + (alt - espessura) / 2;
+// Barras empilhadas, uma por linha, em HTML: o texto usa o tamanho de letra padrão do painel (um SVG ampliaria as letras com a tela).
+// linhas: [{ rotulo, sub, segs: [{ valor, cls }], fim, dica }]; cls: ok · abaixo · sem (cores no CSS); o número fica dentro de cada trecho e `fim` (ex.: "71%") à direita.
+export function barrasEmpilhadas(linhas, { vazio = 'sem metas conferidas' } = {}) {
+  const linha = (l) => {
     const total = l.segs.reduce((t, s) => t + s.valor, 0);
-    let x = esq;
-    const blocos = total
-      ? l.segs.filter((s) => s.valor > 0).map((s) => {
-        const w = (s.valor / total) * util;
-        const r = `<rect class="seg seg-${s.cls}" x="${x.toFixed(1)}" y="${yb}" width="${w.toFixed(1)}" height="${espessura}"></rect>${w >= 20 ? `<text class="seg-n" x="${(x + w / 2).toFixed(1)}" y="${yb + espessura / 2}" text-anchor="middle" dominant-baseline="central">${numero(s.valor)}</text>` : ''}`;
-        x += w;
-        return r;
-      }).join('')
-      : `<rect class="seg seg-vazio" x="${esq}" y="${yb}" width="${util}" height="${espessura}"></rect><text class="seg-n seg-n-vazio" x="${esq + util / 2}" y="${yb + espessura / 2}" text-anchor="middle" dominant-baseline="central">${esc(vazio)}</text>`;
-    return `<g class="item">
-      <rect class="alvo" x="0" y="${y}" width="${largura}" height="${alt}" data-dica="${esc(l.dica || '')}"></rect>
-      <text class="rotulo seg-obra" x="${esq - 12}" y="${y + alt / 2 - (l.sub ? 6 : 0)}" text-anchor="end" dominant-baseline="central">${esc(l.rotulo)}</text>
-      ${l.sub ? `<text class="rotulo seg-sub" x="${esq - 12}" y="${y + alt / 2 + 9}" text-anchor="end" dominant-baseline="central">${esc(l.sub)}</text>` : ''}
-      ${blocos}
-      <text class="valor seg-fim" x="${largura - dir + 10}" y="${y + alt / 2}" dominant-baseline="central">${esc(l.fim || '')}</text>
-    </g>`;
-  });
-  return `<svg class="grafico empilhado" viewBox="0 0 ${largura} ${linhas.length * alt}" role="img" aria-label="Metas da semana por obra: bateram, abaixo e sem registro">${partes.join('')}</svg>`;
+    const barra = total
+      ? l.segs.filter((s) => s.valor > 0).map((s) => `<span class="pd-emp-seg pd-emp-${s.cls}" style="flex:${s.valor} 1 0">${numero(s.valor)}</span>`).join('')
+      : `<span class="pd-emp-vazio">${esc(vazio)}</span>`;
+    return `<div class="pd-emp-linha" title="${esc(l.dica || '')}">
+      <div class="pd-emp-rot"><span class="pd-obra">${esc(l.rotulo)}</span>${l.sub ? `<span class="pd-obra-sub">${esc(l.sub)}</span>` : ''}</div>
+      <div class="pd-emp-barra" role="img" aria-label="${esc(l.dica || l.rotulo)}">${barra}</div>
+      <b class="pd-emp-fim">${esc(l.fim || '')}</b>
+    </div>`;
+  };
+  return `<div class="pd-emp-linhas">${linhas.map(linha).join('')}</div>`;
 }
 
 // itens: [{ rotulo, valor, dica, destaque }]
