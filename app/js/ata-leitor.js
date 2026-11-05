@@ -73,14 +73,22 @@ function limpar(linha, resp) {
 }
 
 // ---------------------------------------------------------------- participantes e papéis
+// participante sem o nome inteiro: só o primeiro nome (Ana Clara, Maria Eduarda… ficam com os dois) e o papel curto (Sólida, Cliente, Arquitetura)
+const PRIMEIROS_COMPOSTOS = new Set(['ana', 'maria', 'joao', 'jose', 'luiz', 'luis']);
+export function nomeCurto(nome) {
+  const t = String(nome || '').trim().split(/\s+/).filter(Boolean); if (t.length <= 1) return t[0] || '';
+  const composto = t.length > 2 && PRIMEIROS_COMPOSTOS.has(norm(t[0])) && !/^(de|da|do|dos|das|e)$/i.test(t[1]);
+  return composto ? t[0] + ' ' + t[1] : t[0];
+}
+export const papelCurto = (txt) => { const t = norm(txt); return /solida/.test(t) ? 'Sólida' : /cliente/.test(t) ? 'Cliente' : /arquitet/.test(t) ? 'Arquitetura' : String(txt || '').trim(); };
 const papelDe = (txt) => { const t = norm(txt); return /solida/.test(t) ? 'solida' : /cliente/.test(t) ? 'cliente' : /arq/.test(t) ? 'arquitetura' : 'terceirizado'; };
 // "Fernanda (Arquitetura), Marcos (Sólida) e Julio (Cliente)" → [{ nome, papel, texto }]
 function lerParticipantes(texto) {
   const lista = [];
   for (const pedaco of texto.split(/,|;|\se\s(?=[\p{Lu}])/u).map((s) => s.trim()).filter(Boolean)) {
     const m = pedaco.replace(/[.\s]+$/u, '').match(/^(.+?)\s*\(([^)]*)\)\s*$/u);
-    if (m) lista.push({ nome: m[1].trim(), papel: papelDe(m[2]), texto: `${m[1].trim()} (${m[2].trim()})` });
-    else lista.push({ nome: pedaco, papel: '', texto: pedaco });
+    if (m) lista.push({ nome: m[1].trim(), papel: papelDe(m[2]), texto: `${nomeCurto(m[1].trim())} (${papelCurto(m[2])})` });
+    else lista.push({ nome: pedaco, papel: '', texto: nomeCurto(pedaco) });
   }
   return lista;
 }
@@ -90,7 +98,7 @@ function participantesEmTabela(linhas) {
   for (const l of linhas) {
     // nome: palavras com inicial maiúscula (e "de", "da", "do"…); uma frase como "Reunião online entre a Construtora Sólida…" não é participante
     const m = l.trim().match(/^(\p{Lu}[\p{L}]+(?:\s(?:de|da|do|dos|das|\p{Lu}[\p{L}]+)){0,5}?)\s+(Construtora S[óo]lida|S[óo]lida|Cliente|Arquitetura)(?![\p{L}])/u);
-    if (m) lista.push({ nome: m[1], papel: papelDe(m[2]), texto: `${m[1]} (${m[2]})` });
+    if (m) lista.push({ nome: m[1], papel: papelDe(m[2]), texto: `${nomeCurto(m[1])} (${papelCurto(m[2])})` });
   }
   return lista;
 }
@@ -223,6 +231,15 @@ function lerTabela(paginas) {
   return marcadores.map((m) => ({ n: m.n, tipo: m.tipo, descricao: porBloco ? m.descFinal : junta(comPagina(m, 'desc')), responsavel: junta(comPagina(m, 'resp')), prazo: junta(comPagina(m, 'prazo')) }));
 }
 
+// "ESCADA: Definir o tipo" → "ESCADA, Definir o tipo" (a primeira caixinha do formulário é o assunto, a segunda o descritivo); vírgula dentro do assunto vira " /"
+function assuntoEDescritivo(desc) {
+  const t = String(desc || '').trim();
+  const m = t.match(/^([A-ZÀ-ÚÇ0-9][A-ZÀ-ÚÇ0-9 ,/.\-–()]*?):\s+(\S[\s\S]*)$/u);
+  if (!m) return t.charAt(0).toUpperCase() + t.slice(1);
+  const assunto = m[1].replace(/\s*,\s*/g, ' / ').replace(/\s+/g, ' ').trim(); const resto = m[2].trim();
+  return assunto + ', ' + resto.charAt(0).toUpperCase() + resto.slice(1);
+}
+
 // ---------------------------------------------------------------- análise
 export function analisarAta(texto, { pessoas = [], obras = [], setores = [], hoje, nomeArquivo = '', paginas = null } = {}) {
   const linhas = String(texto || '').replace(/\r/g, '').split('\n').map((l) => l.replace(/\s+$/, ''));
@@ -289,13 +306,13 @@ export function analisarAta(texto, { pessoas = [], obras = [], setores = [], hoj
     const pend = tabela.filter((x) => /^PEND|^A[ÇC]|^PROVID/iu.test(x.tipo) && x.descricao);
     const pendencias = pend.map((x) => {
       const r = resolverResponsavel(x.responsavel, parts, pessoas);
-      let descricao = x.descricao.charAt(0).toUpperCase() + x.descricao.slice(1);
+      let descricao = assuntoEDescritivo(x.descricao);
       if (r.extras.length) descricao += ` (também: ${r.extras.map(capitalizar).join(', ')})`;
       return { descricao, responsavel: r.responsavel, responsavelAmbiguo: r.ambiguo, externoNome: r.externoNome, externoTipo: r.externoTipo, externoCategoria: r.externoCategoria, prazo: x.prazo ? acharPrazo(x.prazo, hoje, data) : '', item: x.n };
     });
     const informativosLista = infos.filter((x) => x.descricao).map((x) => {
       const r = x.responsavel ? resolverResponsavel(x.responsavel, parts, pessoas) : null;
-      return { kind: 'informativo', descricao: x.descricao.charAt(0).toUpperCase() + x.descricao.slice(1), item: x.n, ...(r ? { responsavel: r.responsavel, responsavelAmbiguo: r.ambiguo, externoNome: r.externoNome, externoTipo: r.externoTipo, externoCategoria: r.externoCategoria } : {}) };
+      return { kind: 'informativo', descricao: assuntoEDescritivo(x.descricao), item: x.n, ...(r ? { responsavel: r.responsavel, responsavelAmbiguo: r.ambiguo, externoNome: r.externoNome, externoTipo: r.externoTipo, externoCategoria: r.externoCategoria } : {}) };
     });
     pendencias.forEach((p) => { p.kind = 'pendencia'; });
     return { titulo, data, obra, obraForaDaLista: !!obra && !obras.some((o) => o.toLowerCase() === obra.toLowerCase()), setor, participantes, resumo: '', pendencias, informativosLista, lidoDaTabela: true, informativos: infos.length, local, horario, tipoReuniao };
@@ -320,7 +337,7 @@ export function analisarAta(texto, { pessoas = [], obras = [], setores = [], hoj
     const chave = norm(descricao);
     if (descricao.length < 6 || vistas.has(chave)) continue;
     vistas.add(chave);
-    pendencias.push({ descricao: descricao.charAt(0).toUpperCase() + descricao.slice(1), responsavel: resp && !resp.ambiguo ? resp.id : '', responsavelAmbiguo: resp && resp.ambiguo ? resp.nome : '', externoNome: '', externoTipo: '', externoCategoria: '', prazo });
+    pendencias.push({ descricao: assuntoEDescritivo(descricao), responsavel: resp && !resp.ambiguo ? resp.id : '', responsavelAmbiguo: resp && resp.ambiguo ? resp.nome : '', externoNome: '', externoTipo: '', externoCategoria: '', prazo });
   }
   return { titulo, data, obra, obraForaDaLista: !!obra && !obras.some((o) => o.toLowerCase() === obra.toLowerCase()), setor, participantes, resumo: String(texto || '').trim(), pendencias, lidoDaTabela: false, informativos: 0, local, horario, tipoReuniao };
 }

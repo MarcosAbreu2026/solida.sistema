@@ -3,7 +3,7 @@
 // cada item é "ASSUNTO, descritivo". Sem IA paga (regra do projeto): são regras de leitura; o rascunho sempre passa por conferência.
 //  - Resumo em tópicos (títulos com #, itens com "-", seção "Próximos passos"): lê a estrutura; é o caso mais exato.
 //  - Fala corrida (transcrição): acha as frases de ação e as informações relevantes, acompanhando a obra de que se está falando.
-import { acharPrazo, acharResponsavel } from './ata-leitor.js';
+import { acharPrazo, acharResponsavel, nomeCurto, papelCurto } from './ata-leitor.js';
 
 const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const cap1 = (s) => { const t = String(s || '').trim(); return t ? t.charAt(0).toUpperCase() + t.slice(1) : t; };
@@ -223,7 +223,7 @@ export function analisarResumo(texto, { pessoas = [], obras = [], hoje } = {}) {
   });
   const r = envelope(pendencias, infos, obras, base);
   r.data = base; r.titulo = h1;
-  r.participantes = partic.map((p) => `${p.nome} (${p.papel})`);
+  r.participantes = partic.map((p) => `${nomeCurto(p.nome)} (${papelCurto(p.papel)})`);
   // tipo da reunião só com evidência: alguém de fora da Sólida participou → terceirizado; fala de cronograma/obras → planejamento
   r.tipoReuniao = externos.length ? 'TERCEIRIZADO' : /cronograma|planejamento|programa[çc][ãa]o|obras em andamento/i.test(texto) ? 'PLANEJAMENTO' : 'REUNIÃO';
   return r;
