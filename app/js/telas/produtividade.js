@@ -493,7 +493,9 @@ const NIVEL_TXT = { ok: 'Em dia', atencao: 'Atenção', critico: 'Crítico' };
 // produtividade no grupo do WhatsApp. Estados do dia: enviada · nao (o agente leu o grupo e não havia) ·
 // naolido (ainda não verificado no grupo) · hoje (dentro do prazo) · futuro · feriado.
 // Obras fora do acompanhamento de metas (parada, finalizada): CFG.metasSemanais.ignorar
-export const obrasIgnoradas = (CFG) => ((CFG && CFG.metasSemanais && CFG.metasSemanais.ignorar) || []);
+// CFG.metasSemanais.encerradas = { Mo465: 'Pausada', Mo565D: 'Finalizada' }: aparecem com essa situação, sem cobrar meta nem produtividade
+export const obrasEncerradas = (CFG) => ((CFG && CFG.metasSemanais && CFG.metasSemanais.encerradas) || {});
+export const obrasIgnoradas = (CFG) => Object.keys(obrasEncerradas(CFG));
 
 export function resumoMetasSemana(CFG, obrasVisiveis = null, ref = hojeISO()) {
   const hoje = hojeISO();
@@ -549,7 +551,10 @@ export function resumoMetasItens(CFG, obrasVisiveis = null, ref = hojeISO()) {
     return { obra: o.obra, semLeitura: !!o.semLeitura, ini: o.ini, fim: o.fim, tipo: o.tipo, fonte: o.fonte, lidoAte: o.lidoAte, lacunas: o.lacunas || [], previstos: total, itens,
       ok, parcial, nao, total, pct: total && !o.semLeitura ? itens.reduce((t, i) => t + parte(i), 0) / total : null };
   });
-  const contadas = linhas.filter((l) => !l.semLeitura);
+  for (const [cod, sit] of Object.entries(obrasEncerradas(CFG))) {
+    if (!obrasVisiveis || obrasVisiveis.includes(cod)) linhas.push({ obra: cod, encerrada: sit, lacunas: [], itens: [], ok: 0, parcial: 0, nao: 0, total: 0, previstos: 0, pct: null });
+  }
+  const contadas = linhas.filter((l) => !l.semLeitura && !l.encerrada);
   const soma = (k) => contadas.reduce((t, l) => t + l[k], 0);
   const total = soma('total');
   return { ini: sem.ini, fim: sem.fim, linhas, totais: { total, ok: soma('ok'), parcial: soma('parcial'), nao: soma('nao'),

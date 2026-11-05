@@ -316,3 +316,7 @@ body.nav-recolhido nav::after { display: none; }
 .pd-bol-futuro { background: #E3E8EE; color: #8B95A1; }
 .pd-bol-feriado { background: #F1F3F6; color: #A0A8B3; border: 1px dashed #C4CAD2; }
 .pd-legenda .pd-bol { width: 20px; height: 20px; font-size: 11px; margin: 0 4px 0 12px; vertical-align: middle; }
+
+/* bolinhas pequenas na coluna Produtividade da tabela Planejado × executado */
+.pd-tab .pd-bols { gap: 4px; }
+.pd-tab .pd-bol { width: 20px; height: 20px; font-size: 11px; }

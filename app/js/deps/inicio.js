@@ -5,9 +5,9 @@ import { html } from '../formato.js';
 import * as pd from '../telas/painel-dep.js';
 import { avisoLeitura } from './comum.js';
 import * as oc from './obras-comum.js';
-import { resumoMetasSemana, resumoMetasItens, obrasIgnoradas } from '../telas/produtividade.js';
+import { resumoMetasSemana, resumoMetasItens, obrasEncerradas } from '../telas/produtividade.js';
 import { barrasEmpilhadas } from '../graficos.js';
-import { somarDias } from '../datas.js';
+import { somarDias, hojeISO } from '../datas.js';
 
 // ---- Meta × executado da semana: metas da programação que bateram, ficaram abaixo ou sem registro + dias em que a
 // obra não mandou a produtividade no grupo do WhatsApp. Dia não lido no grupo nunca aparece como "enviada".
@@ -64,14 +64,19 @@ function bolinhas(l, dias) {
   const bs = l.dias.map((d, i) => { const c = BOLA[d.estado] || BOLA.futuro; const t = `${['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta'][i]} ${pd.dm(d.data)}: ${d.titulo || c[1]}`; return `<span class="pd-bol pd-bol-${c[0]}" title="${t}">${INICIAL[i]}</span>`; }).join('');
   return html.seguro(`<span class="pd-bols">${bs}</span>`);
 }
+function bolinhasProprias(l) {
+  const hoje = hojeISO(); const ds = [];
+  for (let d = l.ini, i = 0; ds.length < 5 && i < 12; d = somarDias(d, 1), i++) { const w = new Date(`${d}T12:00:00Z`).getUTCDay(); if (w !== 0 && w !== 6) ds.push({ data: d, w }); }
+  const nomes = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+  const bs = ds.map((x) => { const c = BOLA[x.data === hoje ? 'hoje' : x.data > hoje ? 'futuro' : 'naolido']; return `<span class="pd-bol pd-bol-${c[0]}" title="${nomes[x.w]} ${pd.dm(x.data)}: ${c[1]}">${INICIAL[x.w - 1] || 'S'}</span>`; }).join('');
+  return html.seguro(`<span class="pd-bols">${bs}</span>`);
+}
 function metaExecutado(ctx, CFG) {
   const mi = resumoMetasItens(CFG, ctx.visiveis || null);
   if (!mi || !mi.linhas.length) return metaExecutadoDia(ctx, CFG);
   const t = mi.totais;
-  const dia = resumoMetasSemana(CFG, ctx.visiveis || null);
-  const doDia = (cod) => dia.linhas.find((x) => x.obra === cod);
   const lidoAte = mi.linhas.map((l) => l.lidoAte).filter(Boolean).sort().pop();
-  const nObras = mi.linhas.filter((l) => l.total && !l.semLeitura).length;
+  const nObras = mi.linhas.filter((l) => l.total && !l.semLeitura && !l.encerrada).length;
   const cartoes = pd.cartoes([
     { rotulo: 'Itens com meta na semana', valor: t.total, sub: `${nObras} obras · semana de ${pd.dm(mi.ini)} a ${pd.dm(mi.fim)}${lidoAte ? ` · executado lido até ${pd.dm(lidoAte)}` : ''}` },
     { rotulo: 'Cumprimento da meta', valor: pd.pct(t.pct), sub: 'média dos itens (parcial conta a fração feita)', nivel: t.pct == null ? '' : t.pct >= 0.95 ? 'ok' : t.pct >= 0.7 ? 'atencao' : 'critico' },
@@ -81,17 +86,15 @@ function metaExecutado(ctx, CFG) {
   ], { colunas: 5 });
   const grafico = barrasEmpilhadas(mi.linhas.map((l) => ({
     rotulo: l.obra,
-    sub: l.semLeitura ? `${l.total} itens · ${pd.dm(l.ini)} a ${pd.dm(l.fim)}` : l.tipo === 'pendencias' ? `${l.previstos} pendências previstas` : l.total ? `${l.total} ${l.total === 1 ? 'item' : 'itens'}` : 'sem meta',
+    sub: l.encerrada ? l.encerrada : l.semLeitura ? `${l.total} itens · ${pd.dm(l.ini)} a ${pd.dm(l.fim)}` : l.tipo === 'pendencias' ? `${l.previstos} pendências previstas` : l.total ? `${l.total} ${l.total === 1 ? 'item' : 'itens'}` : 'sem meta',
     segs: [{ valor: l.ok, cls: 'ok' }, { valor: l.parcial, cls: 'abaixo' }, { valor: l.nao, cls: 'sem' }],
     fim: l.pct == null ? '—' : pd.pct(l.pct),
-    vazio: l.semLeitura ? 'aguardando os relatórios da semana' : '',
+    vazio: l.encerrada ? `obra ${l.encerrada.toLowerCase()}` : l.semLeitura ? 'aguardando os relatórios da semana' : '',
     dica: `${l.obra}: ${l.ok} concluídos · ${l.parcial} em andamento · ${l.nao} sem execução`,
-    extra: bolinhas(doDia(l.obra)),
   })), { vazio: 'sem meta semanal conferida' });
-  const caixaGrafico = html`<div class="pd-caixa"><div class="pd-caixa-h"><h3>Meta da semana × executado, por obra</h3><span class="pd-fonte">% = cumprimento da meta até agora · bolinhas = produtividade enviada no grupo (S T Q Q S)</span></div>
+  const caixaGrafico = html`<div class="pd-caixa"><div class="pd-caixa-h"><h3>Meta da semana × executado, por obra</h3><span class="pd-fonte">% à direita = cumprimento da meta até agora</span></div>
     <div class="pd-emp">${html.seguro(grafico)}</div>
-    <p class="pd-legenda"><span class="pd-lg pd-lg-ok"></span> concluído <span class="pd-lg pd-lg-abaixo"></span> em andamento <span class="pd-lg pd-lg-sem"></span> sem execução registrada
-      <span class="pd-bol pd-bol-enviada">S</span> enviou <span class="pd-bol pd-bol-nao">S</span> não enviou <span class="pd-bol pd-bol-hoje">S</span> aguardando <span class="pd-bol pd-bol-futuro">S</span> ainda não chegou</p></div>`;
+    <p class="pd-legenda"><span class="pd-lg pd-lg-ok"></span> concluído <span class="pd-lg pd-lg-abaixo"></span> em andamento <span class="pd-lg pd-lg-sem"></span> sem execução registrada</p></div>`;
   const avisos = mi.linhas.flatMap((l) => l.lacunas.map((x) => `${l.obra}: ${x}`));
   const aviso = avisos.length ? pd.aviso(avisos.join(' · '), 'atencao') : '';
   return html`${cartoes}${caixaGrafico}${aviso}`;
@@ -103,7 +106,11 @@ const pctN = (n, d) => (d ? n / d : null);
 
 export function painel(ctx) {
   const CFG = ctx.CFG || { areas: [], geral: {} };
-  const obras = oc.obrasDoPainel(ctx).filter((o) => !obrasIgnoradas(CFG).includes(o.obra));
+  const obras = oc.obrasDoPainel(ctx);
+  const enc = obrasEncerradas(CFG);
+  const prodDia = resumoMetasSemana(CFG, ctx.visiveis || null);
+  const miProd = resumoMetasItens(CFG, ctx.visiveis || null);
+  const bolsDe = (cod) => { const l = miProd && miProd.linhas.find((x) => x.obra === cod); return l && l.semLeitura && l.ini ? bolinhasProprias(l) : bolinhas(prodDia.linhas.find((x) => x.obra === cod)); };
   const metasPdf = new Set((((CFG.metasSemanais || {}).semanas || []).slice(-1)[0] || { obras: [] }).obras.filter((o) => o.tipo !== 'sem-meta' && (o.itens || []).length).map((o) => o.obra));
   const leitura = CFG.atualizadoEm ? pd.dm(String(CFG.atualizadoEm).slice(0, 10)) : '—';
 
@@ -134,6 +141,8 @@ export function painel(ctx) {
     const ini = ctx.hoje; const semana = p ? (p.dias || []).filter((d) => d.data >= oc.diaUtil(ini, -5) && d.data <= ini) : [];
     const metasFeitas = semana.some((d) => d.fonte === 'whatsapp') || oc.lista(ctx.celular).some((r) => r.tipo === 'executado' && oc.mesmaObra(r.obra, o.obra) && r.data >= oc.diaUtil(ini, -5));
     const med = MED[oc.medicao(ctx, o.obra).status] || MED.q;
+    const situ = enc[o.obra];
+    if (situ) return [pd.obraCel(o.obra, oc.endereco(ctx, o.obra), `#/obra/${encodeURIComponent(o.obra)}`), cr.erro ? pd.traco() : pd.barraCel(cr.exe), pd.traco(), pd.selo('', situ), pd.selo('', situ), pd.selo('', situ), pd.selo('', situ), pd.selo('', situ), pd.selo(med[0], med[1]), html`<a class="pd-bt" href="#/obra/${encodeURIComponent(o.obra)}">Abrir obra</a>`];
     const atrasadas = cr.erro ? null : cr.ativ.filter((a) => a.atrasada).length;
     return [
       pd.obraCel(o.obra, oc.endereco(ctx, o.obra), `#/obra/${encodeURIComponent(o.obra)}`),
@@ -143,10 +152,13 @@ export function painel(ctx) {
       pd.selo(st(prog.ok), prog.ok === true ? 'Em dia' : prog.ok === false ? 'Pendências' : 'Sem informação'),
       pd.selo(metasPdf.has(o.obra) ? 'ok' : 'critico', metasPdf.has(o.obra) ? 'Feito' : 'Não feito'),
       p && p.faseFinal ? pd.selo('atencao', 'Pendências') : pd.selo(metasFeitas ? 'ok' : 'critico', metasFeitas ? 'Feito' : 'Não feito'),
+      bolsDe(o.obra),
       pd.selo(med[0], med[1]),
       html`<a class="pd-bt" href="#/obra/${encodeURIComponent(o.obra)}">Abrir obra</a>`,
     ];
   });
+
+  const legendaProd = html`<p class="pd-legenda">Produtividade enviada no grupo, por dia útil (S T Q Q S): <span class="pd-bol pd-bol-enviada">S</span> enviou <span class="pd-bol pd-bol-nao">S</span> não enviou <span class="pd-bol pd-bol-hoje">S</span> aguardando (hoje) <span class="pd-bol pd-bol-futuro">S</span> ainda não chegou <span class="pd-bol pd-bol-feriado">S</span> feriado</p>`;
 
   // ---- 3 · quem precisa agir: geral + áreas, críticos primeiro
   const alertas = [pd.alertasDoAgente(CFG.geral, { veValores: ctx.veValores, obras: ctx.visiveis, limite: 20 }),
@@ -174,7 +186,7 @@ export function painel(ctx) {
   return html`${pd.pergunta('O que está acontecendo hoje no canteiro? Está de acordo com o planejado? Se não, quem precisa agir?', 'Pergunta do dia')}
     ${avisoLeitura(ctx)}
     ${pd.secao('1 · Cumprimento da semana', `Fonte: Drive (cronograma), WhatsApp (efetivo e diário) · leitura ${leitura}`, cumprimento)}
-    ${pd.secao('2 · Planejado × executado, por obra', 'Fonte: Drive (GERENCIAMENTO de cada obra) e agentes', pd.tabela(['Obra', 'Avanço', 'Ativ. atrasadas', 'Cronograma', 'Programação semanal', 'Metas semanais', 'Metas diárias', 'Medições', ''], linhas, { vazio: 'Nenhuma obra em curso no planejamento.' }))}
+    ${pd.secao('2 · Planejado × executado, por obra', 'Fonte: Drive (GERENCIAMENTO de cada obra) e agentes', html`${pd.tabela(['Obra', 'Avanço', 'Ativ. atrasadas', 'Cronograma', 'Programação semanal', 'Metas semanais', 'Metas diárias', 'Produtividade', 'Medições', ''], linhas, { vazio: 'Nenhuma obra em curso no planejamento.' })}${legendaProd}`)}
     ${pd.secao('3 · Meta × executado da semana', 'Fonte: programação semanal e metas (Drive/WhatsApp) · produtividade enviada nos grupos', metaExecutado(ctx, CFG))}
     ${pd.secao('4 · Quem precisa agir', 'Cada alerta vira tarefa com responsável e data-limite', pd.quemAgir(agir))}
     <div class="${finCaixa ? 'pd-grade2' : ''}">${orc}${finCaixa}</div>`;
