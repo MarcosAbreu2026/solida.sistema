@@ -495,6 +495,8 @@ const NIVEL_TXT = { ok: 'Em dia', atencao: 'Atenção', critico: 'Crítico' };
 // Obras fora do acompanhamento de metas (parada, finalizada): CFG.metasSemanais.ignorar
 // CFG.metasSemanais.encerradas = { Mo465: 'Pausada', Mo565D: 'Finalizada' }: aparecem com essa situação, sem cobrar meta nem produtividade
 export const obrasEncerradas = (CFG) => ((CFG && CFG.metasSemanais && CFG.metasSemanais.encerradas) || {});
+// Finalizada some do painel; pausada continua aparecendo, com a situação
+export const obrasFinalizadas = (CFG) => Object.entries(obrasEncerradas(CFG)).filter(([, s]) => /finaliz|conclu/i.test(s)).map(([c]) => c);
 export const obrasIgnoradas = (CFG) => Object.keys(obrasEncerradas(CFG));
 
 export function resumoMetasSemana(CFG, obrasVisiveis = null, ref = hojeISO()) {
@@ -552,6 +554,7 @@ export function resumoMetasItens(CFG, obrasVisiveis = null, ref = hojeISO()) {
       ok, parcial, nao, total, pct: total && !o.semLeitura ? itens.reduce((t, i) => t + parte(i), 0) / total : null };
   });
   for (const [cod, sit] of Object.entries(obrasEncerradas(CFG))) {
+    if (obrasFinalizadas(CFG).includes(cod)) continue;
     if (!obrasVisiveis || obrasVisiveis.includes(cod)) linhas.push({ obra: cod, encerrada: sit, lacunas: [], itens: [], ok: 0, parcial: 0, nao: 0, total: 0, previstos: 0, pct: null });
   }
   const contadas = linhas.filter((l) => !l.semLeitura && !l.encerrada);

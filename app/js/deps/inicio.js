@@ -5,7 +5,7 @@ import { html } from '../formato.js';
 import * as pd from '../telas/painel-dep.js';
 import { avisoLeitura } from './comum.js';
 import * as oc from './obras-comum.js';
-import { resumoMetasSemana, resumoMetasItens, obrasEncerradas } from '../telas/produtividade.js';
+import { resumoMetasSemana, resumoMetasItens, obrasEncerradas, obrasFinalizadas } from '../telas/produtividade.js';
 import { barrasEmpilhadas } from '../graficos.js';
 import { somarDias, hojeISO } from '../datas.js';
 
@@ -106,7 +106,7 @@ const pctN = (n, d) => (d ? n / d : null);
 
 export function painel(ctx) {
   const CFG = ctx.CFG || { areas: [], geral: {} };
-  const obras = oc.obrasDoPainel(ctx);
+  const obras = oc.obrasDoPainel(ctx).filter((o) => !obrasFinalizadas(CFG).includes(o.obra));
   const enc = obrasEncerradas(CFG);
   const prodDia = resumoMetasSemana(CFG, ctx.visiveis || null);
   const miProd = resumoMetasItens(CFG, ctx.visiveis || null);
