@@ -64,13 +64,6 @@ function bolinhas(l, dias) {
   const bs = l.dias.map((d, i) => { const c = BOLA[d.estado] || BOLA.futuro; const t = `${['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta'][i]} ${pd.dm(d.data)}: ${d.titulo || c[1]}`; return `<span class="pd-bol pd-bol-${c[0]}" title="${t}">${INICIAL[i]}</span>`; }).join('');
   return html.seguro(`<span class="pd-bols">${bs}</span>`);
 }
-function bolinhasProprias(l) {
-  const hoje = hojeISO(); const ds = [];
-  for (let d = l.ini, i = 0; ds.length < 5 && i < 12; d = somarDias(d, 1), i++) { const w = new Date(`${d}T12:00:00Z`).getUTCDay(); if (w !== 0 && w !== 6) ds.push({ data: d, w }); }
-  const nomes = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-  const bs = ds.map((x) => { const c = BOLA[x.data === hoje ? 'hoje' : x.data > hoje ? 'futuro' : 'naolido']; return `<span class="pd-bol pd-bol-${c[0]}" title="${nomes[x.w]} ${pd.dm(x.data)}: ${c[1]}">${INICIAL[x.w - 1] || 'S'}</span>`; }).join('');
-  return html.seguro(`<span class="pd-bols">${bs}</span>`);
-}
 function metaExecutado(ctx, CFG) {
   const mi = resumoMetasItens(CFG, ctx.visiveis || null);
   if (!mi || !mi.linhas.length) return metaExecutadoDia(ctx, CFG);
@@ -109,8 +102,7 @@ export function painel(ctx) {
   const obras = oc.obrasDoPainel(ctx).filter((o) => !obrasFinalizadas(CFG).includes(o.obra));
   const enc = obrasEncerradas(CFG);
   const prodDia = resumoMetasSemana(CFG, ctx.visiveis || null);
-  const miProd = resumoMetasItens(CFG, ctx.visiveis || null);
-  const bolsDe = (cod) => { const l = miProd && miProd.linhas.find((x) => x.obra === cod); return l && l.semLeitura && l.ini ? bolinhasProprias(l) : bolinhas(prodDia.linhas.find((x) => x.obra === cod)); };
+  const bolsDe = (cod) => bolinhas(prodDia.linhas.find((x) => x.obra === cod));
   const metasPdf = new Set((((CFG.metasSemanais || {}).semanas || []).slice(-1)[0] || { obras: [] }).obras.filter((o) => o.tipo !== 'sem-meta' && (o.itens || []).length).map((o) => o.obra));
   const leitura = CFG.atualizadoEm ? pd.dm(String(CFG.atualizadoEm).slice(0, 10)) : '—';
 

@@ -117,6 +117,10 @@ function semanaDerivada(inicio, itensTexto) {
   return { inicio, dias, naSemana };
 }
 
+// Item da programação pode vir como texto ("Serviço: 8 pt") ou como objeto { tipo, texto, quem }: o app trabalha com texto
+const emTexto = (x) => (x && typeof x === 'object' ? `${x.texto || x.item || ''}${x.quem ? ` (${x.quem})` : ''}` : String(x));
+const emLista = (v) => (Array.isArray(v) ? v : []).map(emTexto);
+
 // Programação de todas as obras do planejamento, dia a dia
 export function programacoes(CFG) {
   const plan = (CFG && CFG.areas.find((a) => a.id === 'planejamento')) || {};
@@ -127,11 +131,11 @@ export function programacoes(CFG) {
   const concluida = (o) => /conclu[ií]da|100% executada/i.test(`${(o.cronograma || {}).info || ''} ${(o.cronograma || {}).obs || ''}`);
   return (plan.porObra || []).filter((o) => !concluida(o)).map((o) => {
     const prog = o.programacao || {};
-    const cron = o.cronograma || {};
+    const cron = { ...(o.cronograma || {}), estaSemana: emLista((o.cronograma || {}).estaSemana), proximaSemana: emLista((o.cronograma || {}).proximaSemana) };
     const diarios = (prog.dias || []).map((d) => {
       const m = String(d.dia).match(/(\d{2})\/(\d{2})/);
       const data = m ? `${ano()}-${m[2]}-${m[1]}` : null;
-      return { rotulo: d.dia, data, itens: (d.itens || []).map((x) => ({ ...lerItem(x), tipo: 'cinza' })), calculada: false };
+      return { rotulo: d.dia, data, itens: (d.itens || []).map((x) => ({ ...lerItem(emTexto(x)), tipo: (x && x.tipo) || 'cinza' })), calculada: false };
     }).filter((d) => d.data);
 
     const faseFinal = /pend[êe]ncias/i.test(`${prog.info || ''} ${cron.info || ''}`);
