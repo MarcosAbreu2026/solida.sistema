@@ -12,7 +12,7 @@ Os processos de cada setor estão no **POP Sólida (R14, out/2026)**.
 
 ## Fontes de dados que existem hoje
 - Planilhas no Google Drive (pasta SOLIDA GERAL): PÓS OBRA (esta planilha), ORÇAMENTOS, OPERACOES (cronograma e programação semanal por obra).
-- ERP **Mais Controle** (medições, financeiro, centro de custo), **Bitrix** (comercial), **Sólides** (RH), grupos de WhatsApp das obras (efetivo diário), e-mail.
+- ERP **Mais Controle** (medições, financeiro, centro de custo), **Bitrix** (comercial), **Sólides** (RH, ponto; fica em https://app.tangerino.com.br/Tangerino/, Chrome do escritório logado, só leitura), grupos de WhatsApp das obras (efetivo diário), e-mail.
 
 ## Já existe um "Painel da Empresa"
 Há um app de painel (executável Windows) que lê um `dados.json` no Google Drive e mostra uma coluna por setor. Requisitos que o Felipe já definiu para ele e que valem para este sistema:
