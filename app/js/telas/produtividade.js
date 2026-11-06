@@ -529,11 +529,14 @@ export function resumoMetasSemana(CFG, obrasVisiveis = null, ref = hojeISO()) {
   const ini = inicioDaSemana(ref);
   const dias = [0, 1, 2, 3, 4].map((i) => somarDias(ini, i));
   const progs = programacoes(CFG).filter((p) => (!obrasVisiveis || obrasVisiveis.includes(p.obra)) && !obrasIgnoradas(CFG).includes(p.obra));
+  // dias em que alguém leu os grupos (há registro de alguma obra): num dia que ninguém leu ainda, não dá para dizer que a obra não enviou
+  const diasLidos = new Set((CFG.whats || []).map((r) => r.data));
   const linhas = progs.map((p) => {
     let atingiu = 0; let abaixo = 0; let sem = 0;
     const porDia = dias.map((data) => {
       if (feriado(data)) return { data, estado: 'feriado', titulo: feriado(data) };
       if (data > hoje) return { data, estado: 'futuro' };
+      const semLeitura = data < hoje && !diasLidos.has(data);
       const reg = registroDoDia(p, data);
       const itens = ehPendencia(CFG, p) ? [] : ((p.dias.find((x) => x.data === data) || {}).itens) || [];
       let algum = false;
@@ -545,10 +548,11 @@ export function resumoMetasSemana(CFG, obrasVisiveis = null, ref = hojeISO()) {
           // nada feito (0 ou "não feito") conta como não feito, não como "abaixo da meta"
           const nada = r.feito === 0 || r.feito === false;
           if (cls === 'ok') atingiu++; else if (cls === 'abaixo' && !nada) abaixo++; else sem++;
-        } else if (data < hoje) sem++;   // hoje ainda está no prazo: não conta como sem registro
+        } else if (data < hoje && !semLeitura) sem++;   // hoje ainda está no prazo, e dia sem leitura dos grupos não conta como "sem registro"
       }
       if ((reg && reg.relatorio) || algum) return { data, estado: 'enviada' };
       if (data === hoje) return { data, estado: 'hoje' };
+      if (semLeitura) return { data, estado: 'aguardando' };
       return { data, estado: reg && reg.semRelatorio ? 'nao' : 'naolido' };
     });
     const total = atingiu + abaixo + sem;

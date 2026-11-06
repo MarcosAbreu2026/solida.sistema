@@ -58,7 +58,7 @@ function metaExecutadoDia(ctx, CFG) {
 // relatórios diários dos grupos. Na última coluna do gráfico, uma bolinha por dia útil (S T Q Q S): enviou ou não a produtividade no grupo.
 // "Não lido" não existe: dia passado sem relatório no grupo conta como "não enviou".
 const BOLA = { enviada: ['enviada', 'enviou a produtividade no grupo'], nao: ['nao', 'não enviou a produtividade no grupo'], naolido: ['nao', 'não enviou: nenhum relatório encontrado no grupo'],
-  hoje: ['hoje', 'aguardando (prazo até o fim do dia)'], futuro: ['futuro', 'dia ainda não chegou'], feriado: ['feriado', 'feriado'] };
+  hoje: ['hoje', 'aguardando (prazo até o fim do dia)'], aguardando: ['hoje', 'aguardando a leitura do grupo (o agente ainda não leu esse dia)'], futuro: ['futuro', 'dia ainda não chegou'], feriado: ['feriado', 'feriado'] };
 const INICIAL = ['S', 'T', 'Q', 'Q', 'S'];
 function bolinhas(l, dias) {
   if (!l) return html.seguro('<span class="pd-bols"></span>');
@@ -169,7 +169,7 @@ export function painel(ctx) {
     ];
   });
 
-  const legendaProd = html`<p class="pd-legenda">Produtividade enviada no grupo, por dia útil (S T Q Q S): <span class="pd-bol pd-bol-enviada">S</span> enviou <span class="pd-bol pd-bol-nao">S</span> não enviou <span class="pd-bol pd-bol-hoje">S</span> aguardando (hoje) <span class="pd-bol pd-bol-futuro">S</span> ainda não chegou <span class="pd-bol pd-bol-feriado">S</span> feriado</p>`;
+  const legendaProd = html`<p class="pd-legenda">Produtividade enviada no grupo, por dia útil (S T Q Q S): <span class="pd-bol pd-bol-enviada">S</span> enviou <span class="pd-bol pd-bol-nao">S</span> não enviou <span class="pd-bol pd-bol-hoje">S</span> aguardando (hoje, ou o grupo ainda não foi lido)<span class="pd-bol pd-bol-futuro">S</span> ainda não chegou <span class="pd-bol pd-bol-feriado">S</span> feriado</p>`;
 
   // ---- 4 · quem precisa agir: geral + áreas. Fora daqui: obra que não está em andamento (parada, finalizada ou sem execução),
   // solicitações BeeVale (ficam no Mais Controle/financeiro) e o diário de obra em bloco (vira um alerta por obra, com o responsável da obra).
