@@ -533,10 +533,11 @@ export function resumoMetasSemana(CFG, obrasVisiveis = null, ref = hojeISO()) {
   const diasLidos = new Set((CFG.whats || []).map((r) => r.data));
   const linhas = progs.map((p) => {
     let atingiu = 0; let abaixo = 0; let sem = 0;
+    const obraJaLida = (CFG.whats || []).some((r) => r.obra === p.obra);
     const porDia = dias.map((data) => {
       if (feriado(data)) return { data, estado: 'feriado', titulo: feriado(data) };
       if (data > hoje) return { data, estado: 'futuro' };
-      const semLeitura = data < hoje && !diasLidos.has(data);
+      const semLeitura = data < hoje && (!diasLidos.has(data) || !obraJaLida);   // dia que ninguém leu, ou obra que nunca teve o grupo lido
       const reg = registroDoDia(p, data);
       const itens = ehPendencia(CFG, p) ? [] : ((p.dias.find((x) => x.data === data) || {}).itens) || [];
       let algum = false;

@@ -7,7 +7,7 @@ import { avisoLeitura } from './comum.js';
 import * as oc from './obras-comum.js';
 import { resumoMetasSemana, resumoMetasItens, obrasEncerradas, situacaoDeObra } from '../telas/produtividade.js';
 import { barrasEmpilhadas } from '../graficos.js';
-import { somarDias, hojeISO } from '../datas.js';
+import { somarDias, hojeISO, inicioDaSemana } from '../datas.js';
 import { ordenarObras } from '../programacao.js';
 
 // ---- Meta × executado da semana: metas da programação que bateram, ficaram abaixo ou sem registro + dias em que a
@@ -146,6 +146,7 @@ export function painel(ctx) {
   const ultimoRelatorio = (cod) => (CFG.whats || []).filter((r) => oc.mesmaObra(r.obra, cod) && (r.relatorio || (r.itens || []).length)).map((r) => r.data).sort().pop() || '';
   const areaOp = CFG.areas.find((a) => a.id === 'operacao') || {};
   const dataMC = dataDeTexto(((areaOp.fontes || [])[0] || {}).ultima);
+  const iniSemana = inicioDaSemana(ctx.hoje); const fimSemana = somarDias(iniSemana, 4);
   const linhas = obras.map((o) => {
     const cr = oc.cronograma(ctx, o.obra);
     const cron = o.cronograma || {}; const prog = o.programacao || {};
@@ -153,6 +154,9 @@ export function painel(ctx) {
     const ini = ctx.hoje; const semana = p ? (p.dias || []).filter((d) => d.data >= oc.diaUtil(ini, -5) && d.data <= ini) : [];
     const metasFeitas = semana.some((d) => d.fonte === 'whatsapp') || oc.lista(ctx.celular).some((r) => r.tipo === 'executado' && oc.mesmaObra(r.obra, o.obra) && r.data >= oc.diaUtil(ini, -5));
     const med = MED[oc.medicao(ctx, o.obra).status] || MED.q;
+    // programação semanal: vale como feita se há programação com itens em QUALQUER dia desta semana (ex.: só até quinta); pendência só quando não há nenhuma para a semana
+    const temProgSemana = (prog.dias || []).some((d) => { const iso = dataDeTexto(d.dia); return iso >= iniSemana && iso <= fimSemana && (d.itens || []).length; });
+    const progOk = prog.ok === true || temProgSemana;
     const situ = situDe(o.obra);
     if (situ) return [pd.obraCel(o.obra, oc.endereco(ctx, o.obra), `#/obra/${encodeURIComponent(o.obra)}`), cr.erro ? pd.traco() : pd.barraCel(cr.exe), pd.traco(), pd.selo('', situ), pd.selo('', situ), pd.selo('', situ), pd.selo('', situ), pd.selo('', situ), html`<a class="pd-bt" href="#/obra/${encodeURIComponent(o.obra)}">Abrir obra</a>`];
     const atrasadas = cr.erro ? null : cr.ativ.filter((a) => a.atrasada).length;
@@ -161,7 +165,7 @@ export function painel(ctx) {
       cr.erro ? pd.traco() : pd.barraCel(cr.exe),
       atrasadas == null ? pd.traco() : html`<b class="pd-obra">${atrasadas}</b>`,
       html`${pd.selo(cron.ok == null ? 'critico' : st(cron.ok), cron.ok === true ? 'Feito' : cron.ok === false ? 'Pendências' : 'Não feito')}${subData(cr.modificado ? String(cr.modificado).slice(0, 10) : dataDeTexto(cron.info))}`,
-      html`${pd.selo(prog.ok == null ? 'critico' : st(prog.ok), prog.ok === true ? 'Feito' : prog.ok === false ? 'Pendências' : 'Não feito')}${subData(dataDeTexto(prog.info))}`,
+      html`${progOk ? pd.selo('ok', 'Feito') : pd.selo(prog.ok == null ? 'critico' : st(prog.ok), prog.ok === false ? 'Pendências' : 'Não feito')}${subData(dataDeTexto(prog.info))}`,
       html`${pd.selo(metasPdf.has(o.obra) ? 'ok' : 'critico', metasPdf.has(o.obra) ? 'Feito' : 'Não feito')}${subData(dataMetas.get(o.obra))}`,
       html`${bolsDe(o.obra)}${subData(ultimoRelatorio(o.obra))}`,
       html`${pd.selo(med[0], med[1])}${subData(dataMC)}`,

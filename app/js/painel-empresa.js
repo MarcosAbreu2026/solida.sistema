@@ -21,6 +21,8 @@ export function normalizar(d) {
     geral: { ...d.geral, kpis: lista(d.geral.kpis), alertas: lista(d.geral.alertas).map((a) => ({ ...a, nivel: niv(a.nivel) })) },
     areas: d.areas.filter((a) => a && a.id && a.nome).map((a) => ({
       resumo: '', instrucoes: '', frequencia: '', ...a, status: niv(a.status),
+      // porObra tem que ser uma lista; se um agente gravar como objeto ({ "0": {...}, "1": {...} }), vira lista em vez de quebrar a tela
+      ...(a.porObra && !Array.isArray(a.porObra) && typeof a.porObra === 'object' ? { porObra: Object.values(a.porObra) } : {}),
       kpis: lista(a.kpis), fontes: lista(a.fontes), alertas: lista(a.alertas).map((x) => ({ ...x, nivel: niv(x.nivel) })),
     })),
     funcionarios: lista(d.funcionarios),
