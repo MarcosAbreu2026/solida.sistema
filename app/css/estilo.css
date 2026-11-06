@@ -1164,7 +1164,7 @@ a.card:hover .card-rotulo { color: var(--clique2); text-decoration: underline; }
   background-image: repeating-linear-gradient(to right, transparent 0, transparent calc(100% / 12 - 1px), var(--linha2) calc(100% / 12 - 1px), var(--linha2) calc(100% / 12)); }
 .fn-linha.hoje .fn-trilho { background-color: #FFF6E3; }
 .fn-trilho.vazio { min-height: 40px; opacity: .6; }
-.fn-trilho .fn-caixa { margin: 0 3px; cursor: grab; min-width: 0; }
+.fn-trilho .fn-caixa { margin: 0 3px; cursor: var(--cur-pegar); min-width: 0; }
 .fn-trilho .fn-caixa.arrastando { opacity: .45; }
 .fn-hora { display: flex; align-items: center; gap: 3px; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .fn-hora span { font-weight: 700; color: var(--grafite); min-width: 36px; text-align: center; }
@@ -1216,13 +1216,13 @@ a.card:hover .card-rotulo { color: var(--clique2); text-decoration: underline; }
   background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 103px, var(--linha2) 103px, var(--linha2) 104px); }
 .fq-trilho.hoje { background-color: #FFF6E3; }
 .fq-card { position: absolute; box-sizing: border-box; overflow: hidden; padding: 3px 6px 7px 7px; background: #fff; border: 1px solid var(--linha2); border-left: 4px solid #E0B04A; border-radius: 7px;
-  display: flex; flex-direction: column; gap: 3px; cursor: grab; user-select: none; -webkit-user-select: none; font-size: 13.5px; line-height: 17px; z-index: 1; }
+  display: flex; flex-direction: column; gap: 3px; cursor: var(--cur-pegar); user-select: none; -webkit-user-select: none; font-size: 13.5px; line-height: 17px; z-index: 1; }
 .fq-card:hover { z-index: 3; box-shadow: 0 2px 8px rgba(0, 0, 0, .18); }
 .fq-card.fn-ok { border-left-color: #4E8A62; background: #F5FAF6; }
 .fq-card.fn-nao { border-left-color: #D9534F; background: #FDF4F3; }
 .fq-card.fn-futuro { border-left-color: #C9CFD6; background: #FBFAF8; }
 .fq-card.mudou { box-shadow: inset 0 0 0 1px #E0B04A; }
-.fq-card.arrastando { z-index: 30; opacity: .88; cursor: grabbing; box-shadow: 0 6px 18px rgba(0, 0, 0, .3); transition: none; }
+.fq-card.arrastando { z-index: 30; opacity: .88; cursor: var(--cur-pegando); box-shadow: 0 6px 18px rgba(0, 0, 0, .3); transition: none; }
 .fq-nome { font-weight: 600; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: var(--l, 1); min-height: 0; word-break: break-word; }
 .fq-card .fn-meta { font-size: 12px; line-height: 14px; flex: none; }
 .fq-card .fn-acoes { flex: none; margin-top: auto; flex-wrap: nowrap; gap: 3px; }
@@ -1726,7 +1726,7 @@ button.at-prazo:hover { filter: brightness(.96); box-shadow: 0 0 0 2px rgba(45, 
 .ap-corpo { display: flex; gap: 14px; align-items: flex-start; }
 .ap-func { flex: 0 0 190px; position: sticky; top: 10px; max-height: 80vh; overflow: auto; background: #F3F5F7; border: 1px solid #C9D0D8; border-radius: 4px; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
 .ap-func h3 { margin: 0 0 4px; font-size: 14px; color: #14283C; }
-.ap-card { display: grid; grid-template-columns: 1fr auto; gap: 0 6px; background: #fff; border: 1px solid #C9D0D8; border-left: 4px solid #1F3A56; border-radius: 4px; padding: 6px 8px; cursor: grab; user-select: none; }
+.ap-card { display: grid; grid-template-columns: 1fr auto; gap: 0 6px; background: #fff; border: 1px solid #C9D0D8; border-left: 4px solid #1F3A56; border-radius: 4px; padding: 6px 8px; cursor: var(--cur-pegar); user-select: none; }
 .ap-card b { font-size: 13.5px; } .ap-card small { grid-column: 1; color: var(--muted); font-size: 11px; } .ap-n { grid-row: 1 / 3; grid-column: 2; align-self: center; font-size: 11px; color: var(--muted); }
 .ap-card:hover { border-color: #1F3A56; } .ap-card.sel { background: #E3ECF5; border-color: #1F3A56; box-shadow: 0 0 0 2px rgba(31, 58, 86, .25); }
 .ap-grade { flex: 1; min-width: 0; }
@@ -1736,7 +1736,7 @@ button.at-prazo:hover { filter: brightness(.96); box-shadow: 0 0 0 2px rgba(45, 
 .ap-obra a { color: inherit; font-weight: 700; text-decoration: none; overflow-wrap: anywhere; } .ap-obra small { display: block; color: var(--muted); font-weight: 400; font-size: 11px; }
 .ap-cel { border: 1px solid #C9D0D8; vertical-align: top; padding: 4px; height: 58px; background: #fff; }
 .ap-cel.ap-sobre { background: #E3ECF5; outline: 2px dashed #1F3A56; outline-offset: -3px; }
-.ap-chip { display: inline-flex; align-items: center; gap: 4px; background: #E3ECF5; border: 1px solid #9FB3C8; border-radius: 3px; padding: 1px 5px; margin: 0 3px 3px 0; font-size: 12.5px; cursor: grab; }
+.ap-chip { display: inline-flex; align-items: center; gap: 4px; background: #E3ECF5; border: 1px solid #9FB3C8; border-radius: 3px; padding: 1px 5px; margin: 0 3px 3px 0; font-size: 12.5px; cursor: var(--cur-pegar); }
 .ap-chip small { color: #6B7580; } .ap-chip.ap-div { background: #F4EBD0; border-color: #D9C58A; }
 .ap-chip button { border: 0; background: none; cursor: pointer; color: #6B7580; font-size: 14px; line-height: 1; padding: 0; }
 .ap-plan { font-size: 11px; color: #8A939D; line-height: 1.25; overflow-wrap: anywhere; }
@@ -1771,7 +1771,7 @@ button.at-prazo:hover { filter: brightness(.96); box-shadow: 0 0 0 2px rgba(45, 
 .sv-mais { margin-left: auto; width: 22px; height: 22px; border-radius: 4px; border: 0; background: rgba(255, 255, 255, .9); color: #14283C; font-weight: 700; cursor: pointer; line-height: 1; }
 .sv-itens { display: flex; flex-direction: column; gap: 8px; padding: 8px; min-height: 40px; }
 .sv-col.sv-sobre { outline: 2px dashed #1F3A56; outline-offset: -3px; background: #E3ECF5; }
-.sv-card { background: #fff; border: 1px solid #DDE1E6; border-radius: 4px; padding: 8px 10px; display: flex; flex-direction: column; gap: 5px; cursor: grab; }
+.sv-card { background: #fff; border: 1px solid #DDE1E6; border-radius: 4px; padding: 8px 10px; display: flex; flex-direction: column; gap: 5px; cursor: var(--cur-pegar); }
 .sv-topo { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; font-size: 12.5px; } .sv-obra { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
 .sv-novo { background: #F4EBD0; color: #6E4F00; font-size: 10px; font-weight: 700; padding: 0 5px; border-radius: 3px; }
 .sv-relato { font-size: 13px; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
@@ -1986,7 +1986,7 @@ body.sem-login .nav-handle { display: none; }
 
 /* ---- Minhas funções: arrastar o cartão dentro do dia ---- */
 .fh-cel { min-height: 34px; }
-.fn-movivel { cursor: grab; }
+.fn-movivel { cursor: var(--cur-pegar); }
 .fn-movivel.arrastando { opacity: .4; }
 .fn-movivel .fn-b { cursor: pointer; }
 .fh-cel.alvo { background: rgba(160, 125, 79, .20); outline: 2px dashed var(--bronze, #A07D4F); outline-offset: -2px; border-radius: 8px; }
@@ -2230,9 +2230,9 @@ body.nav-recolhido .fq-card.fq-estreito { font-size: 11.5px; line-height: 14px; 
 /* Bolinha de ordem à esquerda de cada pendência ou informativo da ata: arrastar muda a posição */
 .pf-arrastar { display: none; }
 #ata-form .pf-linha { position: relative; padding-left: 26px; }
-#ata-form .pf-arrastar { display: flex; align-items: center; justify-content: center; position: absolute; left: 0; top: 8px; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 50%; background: #C9D0D8; color: #fff; font-size: 12px; line-height: 1; cursor: grab; user-select: none; }
+#ata-form .pf-arrastar { display: flex; align-items: center; justify-content: center; position: absolute; left: 0; top: 8px; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 50%; background: #C9D0D8; color: #fff; font-size: 12px; line-height: 1; cursor: var(--cur-pegar); user-select: none; }
 #ata-form .pf-arrastar:hover, #ata-form .pf-arrastar:focus-visible { background: #6A7480; }
-#ata-form .pf-arrastar:active { cursor: grabbing; }
+#ata-form .pf-arrastar:active { cursor: var(--cur-pegando); }
 .pf-linha.pf-arrastando { opacity: .45; }
 
 /* nome da pessoa ainda travado (sem o "de onde é"): ocupa o mesmo espaço do campo liberado e da lista de pessoas da Sólida */
@@ -2245,3 +2245,9 @@ body.nav-recolhido .fq-card.fq-estreito { font-size: 11.5px; line-height: 14px; 
 #ata-form .pf-arrastar { width: 24px; height: 24px; top: 5px; background: #1F3A56; color: #fff; font-size: 16px; font-weight: 700; box-shadow: 0 1px 3px rgba(0, 0, 0, .35); }
 #ata-form .pf-arrastar:hover, #ata-form .pf-arrastar:focus-visible { background: #2F5A87; outline: 2px solid #9FB3C8; outline-offset: 1px; }
 #ata-form .pf-linha { padding-left: 32px; }
+
+/* Mãozinha de pegar e mover os cards: escura, com contorno branco (a do sistema é toda branca e some no fundo claro) */
+:root {
+  --cur-pegar: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24'><path d='M23 5.5V20c0 2.2-1.8 4-4 4h-7.3c-1.08 0-2.1-.43-2.85-1.19L1 14.83s1.26-1.23 1.3-1.25c.22-.19.49-.29.79-.29.22 0 .42.06.6.16.04.01 4.31 2.46 4.31 2.46V4c0-.83.67-1.5 1.5-1.5S11 3.17 11 4v7h1V1.5c0-.83.67-1.5 1.5-1.5S15 .67 15 1.5V11h1V2.5c0-.83.67-1.5 1.5-1.5S19 1.67 19 2.5V11h1V5.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5z' fill='white' stroke='white' stroke-width='3' stroke-linejoin='round'/><path d='M23 5.5V20c0 2.2-1.8 4-4 4h-7.3c-1.08 0-2.1-.43-2.85-1.19L1 14.83s1.26-1.23 1.3-1.25c.22-.19.49-.29.79-.29.22 0 .42.06.6.16.04.01 4.31 2.46 4.31 2.46V4c0-.83.67-1.5 1.5-1.5S11 3.17 11 4v7h1V1.5c0-.83.67-1.5 1.5-1.5S15 .67 15 1.5V11h1V2.5c0-.83.67-1.5 1.5-1.5S19 1.67 19 2.5V11h1V5.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5z' fill='%231F3A56'/></svg>") 12 12, grab;
+  --cur-pegando: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24'><path d='M23 5.5V20c0 2.2-1.8 4-4 4h-7.3c-1.08 0-2.1-.43-2.85-1.19L1 14.83s1.26-1.23 1.3-1.25c.22-.19.49-.29.79-.29.22 0 .42.06.6.16.04.01 4.31 2.46 4.31 2.46V4c0-.83.67-1.5 1.5-1.5S11 3.17 11 4v7h1V1.5c0-.83.67-1.5 1.5-1.5S15 .67 15 1.5V11h1V2.5c0-.83.67-1.5 1.5-1.5S19 1.67 19 2.5V11h1V5.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5z' fill='white' stroke='white' stroke-width='3' stroke-linejoin='round'/><path d='M23 5.5V20c0 2.2-1.8 4-4 4h-7.3c-1.08 0-2.1-.43-2.85-1.19L1 14.83s1.26-1.23 1.3-1.25c.22-.19.49-.29.79-.29.22 0 .42.06.6.16.04.01 4.31 2.46 4.31 2.46V4c0-.83.67-1.5 1.5-1.5S11 3.17 11 4v7h1V1.5c0-.83.67-1.5 1.5-1.5S15 .67 15 1.5V11h1V2.5c0-.83.67-1.5 1.5-1.5S19 1.67 19 2.5V11h1V5.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5z' fill='%23C0392B'/></svg>") 12 12, grabbing;
+}

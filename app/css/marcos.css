@@ -185,7 +185,7 @@ a.pd-obra:hover { color: var(--pd-azul); }
 
 /* ---- detalhes da tarefa (janela) e arrastar cartões entre colunas / dias */
 .at-card[data-tarefa], .ag-mini[data-tarefa] { cursor: pointer; }
-.at-card[draggable="true"], .ag-mini[draggable="true"] { cursor: grab; }
+.at-card[draggable="true"], .ag-mini[draggable="true"] { cursor: var(--cur-pegar); }
 .tf-arrastando { opacity: .45; }
 .at-col.tf-sobre { outline: 2px dashed var(--pd-azul, #2B5C99); outline-offset: -3px; background: #EAF1FA; }
 .fq-cab.tf-sobre { outline: 2px dashed var(--pd-azul, #2B5C99); outline-offset: -2px; background: #EAF1FA !important; border-radius: 8px; }
