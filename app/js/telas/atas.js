@@ -55,7 +55,15 @@ function visivelParaMim(x, ehAta, pendDaAta) {
   const f = funcaoAtual();
   if (['socio', 'administrativo'].includes(f.id)) return true;
   const eu = souEu();
-  if (x.criado_por === eu || (!ehAta && (x.responsavel === eu || (x.gestores || []).includes(eu)))) return true;
+  if (!ehAta) {
+    // TAREFA: só a minha, a de quem eu respondo (gestores), a que eu criei, as da minha obra se eu sou gestor de obra / pós-obra,
+    // e a coordenação de operações segue vendo os setores dela. Os outros colegas do mesmo setor não aparecem.
+    if (x.responsavel === eu || (x.gestores || []).includes(eu) || x.criado_por === eu) return true;
+    if (['gestor_obra', 'posobra'].includes(f.id) && x.obra && (sessao().obras || []).includes(x.obra)) return true;
+    if (f.id === 'coord_operacoes' && x.setor) { const nomes = SETORES.filter(([id]) => (f.areas || []).includes(id)).map(([, nome]) => nome); return nomes.includes(x.setor); }
+    return false;
+  }
+  if (x.criado_por === eu) return true;
   if (x.obra && (sessao().obras || []).includes(x.obra)) return true;
   if (!f.porObra && x.setor) {
     const nomes = SETORES.filter(([id]) => (f.areas || []).includes(id)).map(([, nome]) => nome);
