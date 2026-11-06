@@ -190,9 +190,15 @@ export function painel(ctx) {
   const op = CFG.areas.find((a) => a.id === 'operacao');
   const kpiOp = (re) => ((op && op.kpis) || []).find((x) => re.test(x.label)) || {};
   const ano = String(ctx.hoje).slice(0, 4); const ultimos = {}; const rasc = {};
-  String(kpiOp(/[úu]ltimo di[áa]rio/i).valor || '').split('·').forEach((p) => { const m = p.trim().match(/^(M[oO]\d{3}[A-Za-z]?)\s+(\d{2})\/(\d{2})/); if (m) ultimos[m[1].replace(/^m/, 'M')] = `${ano}-${m[3]}-${m[2]}`; });
+  const autores = {};   // quem criou o último diário de cada obra: "Mo533 04/11 (Thaissa Carvalho, rascunho)" → Thaissa
+  String(kpiOp(/[úu]ltimo di[áa]rio/i).valor || '').split('·').forEach((p) => {
+    const m = p.trim().match(/^(M[oO]\d{3}[A-Za-z]?)\s+(\d{2})\/(\d{2})(?:\s*\(([^)]*)\))?/);
+    if (!m) return;
+    const cod = m[1].replace(/^m/, 'M'); ultimos[cod] = `${ano}-${m[3]}-${m[2]}`;
+    const nome = String(m[4] || '').split(',')[0].trim(); if (nome && !/^rascunho$/i.test(nome)) autores[cod] = nome.split(/\s+/)[0];
+  });
   String(kpiOp(/rascunho/i).valor || '').replace(/(M[oO]\d{3}[A-Za-z]?):\s*(\d+)/g, (_, c, n) => { rasc[c.replace(/^m/, 'M')] = Number(n); });
-  const respDiario = (cod) => { const e = oc.equipeDa(ctx, cod); return [...new Set([...e.estagiario, ...e.gestor])].join(', '); };
+  const respDiario = (cod) => { if (autores[cod]) return autores[cod]; const e = oc.equipeDa(ctx, cod); return [...new Set([...e.estagiario, ...e.gestor])].join(', '); };
   const diarios = [];
   for (const cod of ativas) {
     const ult = ultimos[cod]; const dias = ult ? Math.round((Date.parse(`${ctx.hoje}T12:00:00Z`) - Date.parse(`${ult}T12:00:00Z`)) / 86400000) : null;
