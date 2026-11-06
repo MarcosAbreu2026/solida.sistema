@@ -137,6 +137,15 @@ export function painel(ctx) {
   ]);
 
   // ---- 2 · planejado × executado, por obra
+  // embaixo de cada situação, o DIA em que aquilo foi atualizado (planilha, PDF, relatório, leitura do Mais Controle), no lugar da revisão
+  const anoCor = String(ctx.hoje).slice(0, 4);
+  const dataDeTexto = (txt) => { const m = String(txt || '').match(/(\d{2})\/(\d{2})/); if (!m) return ''; const d = `${anoCor}-${m[2]}-${m[1]}`; return d > ctx.hoje ? `${Number(anoCor) - 1}-${m[2]}-${m[1]}` : d; };
+  const subData = (iso) => (iso ? html`<span class="pd-obra-sub" title="Atualizado em ${pd.dma(iso)}">${pd.dm(iso)}</span>` : '');
+  const metasUltSem = ((CFG.metasSemanais || {}).semanas || []).slice(-1)[0] || { obras: [] };
+  const dataMetas = new Map(metasUltSem.obras.map((x) => [x.obra, dataDeTexto(x.fonte)]));
+  const ultimoRelatorio = (cod) => (CFG.whats || []).filter((r) => oc.mesmaObra(r.obra, cod) && (r.relatorio || (r.itens || []).length)).map((r) => r.data).sort().pop() || '';
+  const areaOp = CFG.areas.find((a) => a.id === 'operacao') || {};
+  const dataMC = dataDeTexto(((areaOp.fontes || [])[0] || {}).ultima);
   const linhas = obras.map((o) => {
     const cr = oc.cronograma(ctx, o.obra);
     const cron = o.cronograma || {}; const prog = o.programacao || {};
@@ -151,11 +160,11 @@ export function painel(ctx) {
       pd.obraCel(o.obra, oc.endereco(ctx, o.obra), `#/obra/${encodeURIComponent(o.obra)}`),
       cr.erro ? pd.traco() : pd.barraCel(cr.exe),
       atrasadas == null ? pd.traco() : html`<b class="pd-obra">${atrasadas}</b>`,
-      html`${pd.selo(cron.ok == null ? 'critico' : st(cron.ok), cron.ok === true ? 'Feito' : cron.ok === false ? 'Pendências' : 'Não feito')}${oc.revisao(cr.arquivo) ? html`<span class="pd-obra-sub">${oc.revisao(cr.arquivo)}</span>` : ''}`,
-      pd.selo(prog.ok == null ? 'critico' : st(prog.ok), prog.ok === true ? 'Feito' : prog.ok === false ? 'Pendências' : 'Não feito'),
-      pd.selo(metasPdf.has(o.obra) ? 'ok' : 'critico', metasPdf.has(o.obra) ? 'Feito' : 'Não feito'),
-      bolsDe(o.obra),
-      pd.selo(med[0], med[1]),
+      html`${pd.selo(cron.ok == null ? 'critico' : st(cron.ok), cron.ok === true ? 'Feito' : cron.ok === false ? 'Pendências' : 'Não feito')}${subData(cr.modificado ? String(cr.modificado).slice(0, 10) : dataDeTexto(cron.info))}`,
+      html`${pd.selo(prog.ok == null ? 'critico' : st(prog.ok), prog.ok === true ? 'Feito' : prog.ok === false ? 'Pendências' : 'Não feito')}${subData(dataDeTexto(prog.info))}`,
+      html`${pd.selo(metasPdf.has(o.obra) ? 'ok' : 'critico', metasPdf.has(o.obra) ? 'Feito' : 'Não feito')}${subData(dataMetas.get(o.obra))}`,
+      html`${bolsDe(o.obra)}${subData(ultimoRelatorio(o.obra))}`,
+      html`${pd.selo(med[0], med[1])}${subData(dataMC)}`,
       html`<a class="pd-bt" href="#/obra/${encodeURIComponent(o.obra)}">Abrir obra</a>`,
     ];
   });
