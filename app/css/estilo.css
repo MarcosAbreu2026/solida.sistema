@@ -2241,3 +2241,7 @@ body.nav-recolhido .fq-card.fq-estreito { font-size: 11.5px; line-height: 14px; 
 @container (max-width: 1000px) {
   .pf-linha .pf-sol, .pf-linha .pf-ext { grid-column: span 2; }
 }
+/* bolinha de ordem bem visível: fundo azul-escuro do painel, ícone branco e maior */
+#ata-form .pf-arrastar { width: 24px; height: 24px; top: 5px; background: #1F3A56; color: #fff; font-size: 16px; font-weight: 700; box-shadow: 0 1px 3px rgba(0, 0, 0, .35); }
+#ata-form .pf-arrastar:hover, #ata-form .pf-arrastar:focus-visible { background: #2F5A87; outline: 2px solid #9FB3C8; outline-offset: 1px; }
+#ata-form .pf-linha { padding-left: 32px; }
