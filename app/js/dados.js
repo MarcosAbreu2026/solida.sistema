@@ -69,6 +69,15 @@ export async function carregarMedicoesMC() {
   return r.ok ? r.json() : { obras: [] };
 }
 
+// Distribuição de funcionários por semana (RH GERAL > SL_FUNC_OBRAS): o que foi programado para cada pessoa.
+export async function carregarEquipeProg() {
+  try {
+    if (NA_NUVEM) return (await baixar('equipe-programada')) || { pessoas: [] };
+    const r = await fetch(`${PASTA}equipe-programada.json`, { cache: 'no-store' });
+    return r.ok ? await r.json() : { pessoas: [] };
+  } catch { return { pessoas: [] }; }
+}
+
 // Análise semanal das rotas da Strada (agente de Transporte, toda segunda): aba Rotas da área Transporte.
 export async function carregarRotas() {
   try {

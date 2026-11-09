@@ -2,6 +2,7 @@
 # e grava em dados/json:
 #   orcamentos.json  SL_ORÇAMENTOS<ano> de 2023 em diante (a situação de cada orçamento é a COR da linha,
 #                    conforme a legenda no topo da planilha)
+#   equipe-programada.json  RH: programado de cada funcionário por semana (planilha SL_FUNC_OBRAS)
 #   projetos.json    por obra: arquivos da pasta PROJETO (disciplina, revisão, data), a listagem de
 #                    projetos (quando existe), os .dwg do as-built e as atividades do cronograma
 # Só leitura no Drive. Não precisa de Excel nem de Python.
@@ -560,6 +561,42 @@ if ($arqFerr) {
 } else { $estoque = [ordered]@{ geradoEm = (Get-Date).ToString('o'); erro = "SL_FERRAMENTAS_SOLIDA não encontrada em $pastaFerr" } }
 [IO.File]::WriteAllText((Join-Path $Saida 'estoque.json'), ($estoque | ConvertTo-Json -Depth 6 -Compress), $utf8)
 "Estoque: $(if ($estoque.itens) { $estoque.itens.Count } else { $estoque.erro }) itens ($($estoque.arquivo))"
+
+# ---------------------------------------------------------------- equipe programada (RH › Programado × realizado)
+
+# RH GERAL\01.01 - DISTRIBUIÇÃO FUNCIONARIOS OBRA\SL_FUNC_OBRAS_Rnn.xlsx, abas "EQUIPE <MÊS>": uma linha por funcionário; as colunas depois do
+# contato são SEMANAS (a data da segunda-feira fica na linha 1, em colunas quase todas ocultas) e a célula é o que foi programado para a
+# pessoa naquela semana, em texto livre ("Mo358 -10 / Mo565C - 09", "MO581", "FÉRIAS", "PO"...). O texto é gravado como está: quem entende
+# o texto (dia a dia) é o sistema (app/js/equipe-prog.js), para dar para conferir. NÃO leva telefone nem dados pessoais: só nome, função e tipo.
+$equipeProg = $null
+$pastaDist = Join-Path $Raiz 'RH GERAL\01.01 - DISTRIBUIÇÃO FUNCIONARIOS OBRA'
+$arqDist = Get-ChildItem $pastaDist -File -ErrorAction SilentlyContinue |
+  Where-Object { $_.Name -match '(?i)^SL_FUNC_OBRAS_R(\d+)\.xlsx$' } |
+  Sort-Object { [int]([regex]::Match($_.Name, '_R(\d+)').Groups[1].Value) } | Select-Object -Last 1
+if ($arqDist) {
+  try {
+    $abasEq = Ler-Xlsx $arqDist.FullName 80 @('EQUIPE*')
+    $pessoasEq = [ordered]@{}   # nome -> pessoa
+    $semanasEq = New-Object Collections.Generic.SortedSet[string]
+    $letraCol = { param($n) $s = ''; while ($n -gt 0) { $m = ($n - 1) % 26; $s = [char](65 + $m) + $s; $n = [int][math]::Floor(($n - $m) / 26) }; $s }
+    foreach ($nomeAba in $abasEq.Keys) {
+      $linhasAba = @($abasEq[$nomeAba]); $cabAba = $linhasAba | Where-Object { $_.n -eq 1 } | Select-Object -First 1
+      if (-not $cabAba) { continue }
+      # colunas de semana: as que têm uma data (número de série do Excel) na linha 1, de F em diante, até a primeira sem data
+      $colsSemana = [ordered]@{}
+      for ($i = 6; $i -le 40; $i++) { $L = & $letraCol $i; $v = $cabAba.c[$L]; $n = $null
+        if ($v -and [double]::TryParse("$v", [Globalization.NumberStyles]::Float, [Globalization.CultureInfo]::InvariantCulture, [ref]$n) -and $n -gt 40000 -and $n -lt 60000) { $colsSemana[$L] = [DateTime]::FromOADate($n).ToString('yyyy-MM-dd') } elseif ($colsSemana.Count) { break } }
+      foreach ($lin in $linhasAba | Where-Object { $_.n -ge 2 }) {
+        $nome = "$($lin.c['B'])".Trim(); if (-not $nome -or $lin.c['A'] -notmatch '^\d+$') { continue }
+        if (-not $pessoasEq.Contains($nome)) { $pessoasEq[$nome] = [ordered]@{ n = [int]$lin.c['A']; nome = $nome; funcao = "$($lin.c['C'])".Trim(); tipo = "$($lin.c['D'])".Trim(); semanas = [ordered]@{} } }
+        foreach ($L in $colsSemana.Keys) { $t = "$($lin.c[$L])".Trim(); if ($t) { $pessoasEq[$nome].semanas[$colsSemana[$L]] = ($t -replace '\r', '') }; [void]$semanasEq.Add($colsSemana[$L]) }
+      }
+    }
+    $equipeProg = [ordered]@{ geradoEm = (Get-Date).ToString('o'); arquivo = $arqDist.Name; modificado = $arqDist.LastWriteTime.ToString('o'); semanas = @($semanasEq); pessoas = @($pessoasEq.Values) }
+  } catch { $equipeProg = [ordered]@{ geradoEm = (Get-Date).ToString('o'); arquivo = $arqDist.Name; erro = $_.Exception.Message } }
+} else { $equipeProg = [ordered]@{ geradoEm = (Get-Date).ToString('o'); erro = "SL_FUNC_OBRAS não encontrada em $pastaDist" } }
+[IO.File]::WriteAllText((Join-Path $Saida 'equipe-programada.json'), ($equipeProg | ConvertTo-Json -Depth 6 -Compress), $utf8)
+"Equipe programada: $(if ($equipeProg.pessoas) { "$($equipeProg.pessoas.Count) pessoas, $($equipeProg.semanas.Count) semanas" } else { $equipeProg.erro }) ($($equipeProg.arquivo))"
 
 "Orçamentos: $($orcamentos.Count) ($(($fontesOrc | ForEach-Object { "$($_.ano): $($_.arquivo)" }) -join ', '))"
 "Obras com pasta: $($obras.Count)"

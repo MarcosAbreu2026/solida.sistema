@@ -2,10 +2,11 @@
 // mais: perfis por função, "Meu dia" (quadro de funções), Operação › Metas e produtividade,
 // e no Pós-obra os detalhes da planilha integrada (dados/json).
 
-import { carregarDados, carregarPainel, carregarProdutividade, carregarDrive, carregarFerramentasChk, carregarTerceirizados, carregarEfetivo, carregarMedicoesMC, carregarRotas } from './dados.js';
+import { carregarDados, carregarPainel, carregarProdutividade, carregarDrive, carregarFerramentasChk, carregarTerceirizados, carregarEfetivo, carregarMedicoesMC, carregarRotas, carregarEquipeProg } from './dados.js';
 import * as terceiros from './telas/terceirizados.js';
 import * as ferrChk from './telas/ferramentas-checklist.js';
 import * as efetivoTela from './telas/efetivo.js';
+import { mudarSemana as mudarSemanaEP } from './equipe-prog.js';
 import * as equipeRank from './telas/equipe-ranking.js';
 import * as orcamentosTela from './telas/orcamentos.js';
 import * as reposicao from './telas/reposicao.js';
@@ -377,7 +378,7 @@ function ctxPainel(dep, area) {
   const f = funcaoAtual();
   if (estado.cfg) estado.cfg.obrasCad = estado.obrasCad || null;   // situação das obras (cadastro): as telas escondem finalizada e mostram pausada
   return { dep, CFG: estado.cfg, obrasCad: estado.obrasCad || null, podeMudarObra: podeMudarSituacaoObra(), area: area || null, f, veValores: veValores(), drive: estado.drive || {}, base: estado.base, efetivo: estado.efetivo || { dias: {} },
-    rotas: estado.rotas || { semanas: [] }, terceiros: estado.terceiros || { empresas: [] }, ferrChk: estado.ferrChk || { registros: [] }, mc: estado.mc || { obras: [] }, celular: celularObra.registros(),
+    rotas: estado.rotas || { semanas: [] }, equipeProg: estado.equipeProg || { pessoas: [] }, terceiros: estado.terceiros || { empresas: [] }, ferrChk: estado.ferrChk || { registros: [] }, mc: estado.mc || { obras: [] }, celular: celularObra.registros(),
     pendencias: atas.todasPendencias(), hoje: hojeISO(), visiveis: f.porObra ? obrasDaPessoa() : null, sync: estado.sync, obrasMenu: obrasDoMenu() };
 }
 
@@ -825,6 +826,7 @@ async function atualizar() {
   if (terR.status === 'fulfilled') estado.terceiros = terR.value;
   if (ferrR.status === 'fulfilled') estado.ferrChk = ferrR.value;
   if (prodR.status === 'fulfilled') estado.whats = prodR.value;
+  try { estado.equipeProg = await carregarEquipeProg(); } catch { /* sem a distribuição */ }
   try { estado.rotas = await carregarRotas(); } catch { estado.rotas = { semanas: [] }; }
   try { estado.mc = await carregarMedicoesMC(); } catch { /* ainda sem a leitura da medição no Mais Controle */ }
   if (driveR.status === 'fulfilled') estado.drive = driveR.value;
@@ -1334,6 +1336,11 @@ function configurar() {
     dica.style.transform = `translate(${x}px, ${e.clientY + 16}px)`;
   });
 }
+
+document.addEventListener('click', (e) => {   // RH › Programado × realizado: trocar a semana
+  const b = e.target.closest('[data-ep-sem]'); if (!b) return;
+  mudarSemanaEP(Number(b.dataset.epSem)); desenhar();
+});
 
 configurar();
 movimentacao.ligar(() => desenhar());

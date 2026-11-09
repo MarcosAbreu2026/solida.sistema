@@ -5,12 +5,14 @@ import { html } from '../formato.js';
 import * as pd from '../telas/painel-dep.js';
 import { areaDeHoje, cartoes as cartoesEfetivo } from '../telas/efetivo.js';
 import { cartaoDoAgente } from './comum.js';
+import { secaoProgramadoRealizado } from '../equipe-prog.js';
 
 export function painel(ctx) {
   const hoje = areaDeHoje(ctx.area || {}, ctx.CFG, ctx.efetivo, ctx.visiveis);
   const k = (re, opts) => cartaoDoAgente(hoje, re, opts);
   const semSolides = 'Sólides ainda não é lido pelo sistema (precisa de login)';
   return html`${pd.pergunta(ctx.dep.pergunta)}
+    ${pd.secao('Programado × realizado', 'Cada funcionário: em que obra foi programado em cada dia (planilha de distribuição) × onde apareceu no efetivo', secaoProgramadoRealizado(ctx.equipeProg, ctx.efetivo, ctx.hoje))}
     ${pd.secao('Faltas, atrasos e horas extras', 'Último mês, mês atual e acumulado do ano, com as justificativas · fonte: Sólides',
       pd.tabela(['Funcionário', 'Faltas no mês', 'Atrasos no mês', 'Horas extras no mês', 'Acumulado no ano', 'Justificativas'], [], { vazio: semSolides }))}
     ${pd.secao('Controle de férias', 'Planilha de férias: períodos aquisitivos e concessivos', pd.cartoes([
