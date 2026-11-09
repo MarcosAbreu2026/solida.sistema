@@ -105,7 +105,7 @@ const filtros = (params, extras) => html`<div class="at-filtros">
   <label>PO / cliente<select data-atas-filtro="cliente"><option value="">Todos</option>${clientesDe(extras).map((c) => html`<option value="${c}" ${c === params.get('cliente') ? html.seguro('selected') : ''}>${c}</option>`)}</select></label>
   <label>Procurar<input type="search" data-atas-filtro="q" value="${params.get('q') || ''}" placeholder="OS, assunto, problema…"></label></div>`;
 
-export function renderQuadro({ params, podeEditar, clientesPos = [] }) {
+export function renderQuadro({ params, podeEditar, clientesPos = [], semFiltros = false }) {
   const itens = filtrar(params);
   const hoje = hojeISO();
   const cartao = (o) => {
@@ -117,7 +117,7 @@ export function renderQuadro({ params, podeEditar, clientesPos = [] }) {
   };
   return html`<section class="osq">
     ${erro ? html`<p class="erro">${erro}</p>` : ''}
-    ${filtros(params, clientesPos)}
+    ${semFiltros ? '' : filtros(params, clientesPos)}
     <p class="pequeno">${podeEditar ? 'Arraste o cartão para a coluna certa ou clique nele para abrir a OS. O + cria uma OS nova naquela coluna.' : 'Só o pós-obra, a coordenação e a diretoria mexem nas OS; você acompanha por aqui.'}</p>
     <div class="at-quadro osq-quadro">${STATUS.map((s) => {
     const col = itens.filter((o) => o.status === s.id);

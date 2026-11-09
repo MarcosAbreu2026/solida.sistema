@@ -103,8 +103,8 @@ export function painel(ctx) {
     ${avisoFonte(base)}
     ${pd.secao('Solicitações: do pedido ao serviço concluído', 'Situações como estão no controle operacional. O mapeamento para solicitado, orçamento, a agendar, agendado e finalizado precisa ser confirmado.', fases)}
     ${pd.secao('Outros estados no controle', 'Fonte: Controle Operacional Pós-Obra', outros)}
-    ${pd.secao('Pós-obras em andamento e pendências específicas', 'Quadro geral do Drive. Um clique abre a OS (ou o pós-obra).', tabAndamento)}
-    ${pd.secao(`Profissionais de pós-obra na semana de ${pd.dm(ini)}`, 'Fonte: agenda semanal (feita pelo Ênio)', tabAgenda)}
+    ${pd.secao('Quadro de OS', 'Cada cartão é uma OS: arraste para a coluna certa ou clique para abrir (problema, solução, fotos, responsável e data limite)', ctx.quadroOs ? html.seguro(ctx.quadroOs()) : '')}
+    ${pd.secao('Agenda da semana', 'Profissionais de pós-obra por obra e dia · fonte: agenda semanal', ctx.agendaPos ? html.seguro(ctx.agendaPos()) : tabAgenda)}
     ${cobranca}
     ${pd.secao('Quem precisa agir', 'Cada alerta vira tarefa com responsável e data-limite', pd.quemAgir([
       ...atrasados.map((s) => ({ nivel: 'critico', texto: `${s.obra} (${s.os}) atrasado${s.prazo ? ` desde ${pd.dm(s.prazo)}` : ''}: ${String(s.relato || '').slice(0, 140)}`, resp: s.profissionais || '', obra: s.obra })),

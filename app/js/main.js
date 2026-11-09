@@ -71,11 +71,11 @@ const ATUALIZAR_A_CADA_MS = 5 * 60 * 1000;
 // abas do Pós-obra (21/10): Pós-obras (cartões) · Pendências (as mesmas de Atas e pendências) · Agenda (cartões de funcionários) · Equipe e PJ · Financeiro.
 // Painel, Obras e Serviços (planilha) continuam existindo, mas escondidos (links no rodapé de Pós-obras).
 const SUB = [
-  { id: '', nome: 'Pós-obras' },
-  { id: 'quadro-os', nome: 'Quadro de OS', nova: true },
+  { id: '', nome: 'Pós-obras', escondida: true },
+  { id: 'quadro-os', nome: 'Quadro de OS', escondida: true },
   { id: 'datas-os', nome: 'Datas das OS', nova: true },
-  { id: 'servicos', nome: 'Serviços', nova: true },
-  { id: 'agenda', nome: 'Agenda', nova: true },
+  { id: 'servicos', nome: 'Serviços', escondida: true },
+  { id: 'agenda', nome: 'Agenda', escondida: true },
   { id: 'equipe', nome: 'Equipe e PJ', mod: equipe },
   { id: 'financeiro', nome: 'Financeiro', mod: financeiro, restrita: true },
   { id: 'painel', nome: 'Painel da planilha', mod: painel, escondida: true },
@@ -235,10 +235,19 @@ function carregarAgendaSemana() {
   estado.posAgenda.chave = chave;
   agendaPos.carregar(de, somarDias(de, 6)).then(() => { const r = rotaAtual(); if (r.tela === 'posobra' && (!r.sub || r.sub === 'agenda')) desenhar(); });
 }
+// Pós-obra, página inicial: o Quadro de OS e a Agenda da semana entram no painel
+function ctxPosObra() {
+  garantirOsCarregadas(); garantirAtasCarregadas('#posobra-painel'); carregarAgendaSemana();
+  const podeEditar = podeEditarPos();
+  return {
+    quadroOs: () => String(osq.renderQuadro({ params: new URLSearchParams(), podeEditar, clientesPos: posObrasAtivas(), semFiltros: true })),
+    agendaPos: () => (estado.base ? String(posGeral.renderAgenda({ base: estado.base, semanaIni: estado.posAgenda.semana, linhasAgenda: agendaPos.linhas, podeEditar, selecionado: estado.posAgenda.sel, erro: agendaPos.erro, extras: apExtras() })) : ''),
+  };
+}
 function garantirOsCarregadas() {
   if (estado.osVisitada) return;
   estado.osVisitada = true;
-  osq.carregar().then(() => { const r = rotaAtual(); const a = document.activeElement; if (a && a.closest && a.closest('#at-modal')) return; if (r.tela === 'posobra' && ['quadro-os', 'datas-os'].includes(r.sub)) desenhar(); });
+  osq.carregar().then(() => { const r = rotaAtual(); const a = document.activeElement; if (a && a.closest && a.closest('#at-modal')) return; if (r.tela === 'posobra') desenhar(); });
 }
 function garantirAtasCarregadas(chave = '#posobra') {
   if (estado.atasVisitada === chave) return;
@@ -393,7 +402,8 @@ function ctxPainel(dep, area) {
   if (estado.cfg) estado.cfg.obrasCad = estado.obrasCad || null;   // situação das obras (cadastro): as telas escondem finalizada e mostram pausada
   return { dep, CFG: estado.cfg, obrasCad: estado.obrasCad || null, podeMudarObra: podeMudarSituacaoObra(), area: area || null, f, veValores: veValores(), drive: estado.drive || {}, base: estado.base, efetivo: estado.efetivo || { dias: {} },
     rotas: estado.rotas || { semanas: [] }, equipeProg: estado.equipeProg || { pessoas: [] }, terceiros: estado.terceiros || { empresas: [] }, ferrChk: estado.ferrChk || { registros: [] }, mc: estado.mc || { obras: [] }, celular: celularObra.registros(),
-    pendencias: atas.todasPendencias(), hoje: hojeISO(), visiveis: f.porObra ? obrasDaPessoa() : null, sync: estado.sync, obrasMenu: obrasDoMenu() };
+    pendencias: atas.todasPendencias(), hoje: hojeISO(), visiveis: f.porObra ? obrasDaPessoa() : null, sync: estado.sync, obrasMenu: obrasDoMenu(),
+    ...(dep && dep.id === 'posobra' ? ctxPosObra() : {}) };
 }
 
 // bonequinho do escritório como foto do perfil (nenhuma foto é guardada)
@@ -755,8 +765,8 @@ function desenhar() {
     else if (tela === 'funcionarios') out = T.telaPessoas(estado.pessoas);
     else if (tela === 'agentes') out = T.telaAgentes();
     else if (area && area.id === 'posobra') {
-      const { abas, conteudo, resumo } = telaPosObraPlanilha(rota);
-      out = rota.sub ? `<div>${abas}${conteudo}</div>` : T.telaArea(area, `<div style="margin-bottom:34px">${abas}${resumo || ''}</div>`);
+      const { abas, conteudo, resumo } = telaPosObraPlanilha(rota.sub ? rota : { ...rota, sub: 'datas-os' });
+      out = `<div>${abas}${conteudo}</div>`; void resumo;
     } else if (area) out = T.telaArea(area);
     else out = T.telaGeral();
     // tela antiga dentro do departamento: fica na aba "Detalhes"
