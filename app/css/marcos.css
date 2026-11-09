@@ -350,7 +350,12 @@ body.nav-recolhido nav::after { display: none; }
 .ep-orf { margin: 8px 0; font-size: 13px; }
 
 /* Pós-obra › Quadro de OS e Datas das OS */
-.osq-quadro { grid-auto-columns: minmax(210px, 1fr); }
+.osq-quadro { grid-auto-columns: minmax(0, 1fr); overflow-x: visible; gap: 6px; }
+.osq-quadro .at-col { min-width: 0; }
+.osq-quadro .at-col > header { padding: 7px 8px; font-size: 12px; gap: 4px; flex-wrap: wrap; }
+.osq-quadro .at-card { padding: 8px; font-size: 12px; }
+.osq-quadro .at-tit { overflow-wrap: anywhere; }
+@media (max-width: 1000px) { .osq-quadro { grid-auto-columns: minmax(180px, 1fr); overflow-x: auto; } }
 .osq-card { cursor: pointer; }
 .osq-st { display: inline-block; color: #fff; border-radius: 999px; padding: 1px 10px; font-size: 12px; font-weight: 600; white-space: nowrap; }
 .osq-grade { grid-template-columns: repeat(3, 1fr); }
