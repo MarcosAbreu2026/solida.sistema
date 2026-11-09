@@ -126,7 +126,11 @@ export function comparar(eqp, efetivo, segunda, hoje) {
       else if (obrasProg.length) {
         if (!real.length) est = 'semreg';
         else est = real.some((o) => obrasProg.some((c) => obraBase(c) === obraBase(o))) ? 'ok' : 'outra';
-      } else if (po) est = real.length ? 'outra' : 'po';
+      } else if (po) {
+        // pós-obra: o grupo de gestão do pós-obra manda o efetivo com o local "Pós-obra"; sem esse efetivo no dia, não dá para conferir
+        const noPos = real.some((o) => /^p[óo]s|^po\d/i.test(o)); const gruposPos = !!((efetivo && efetivo.dias && efetivo.dias[dia]) || {})['Pós-obra'];
+        est = noPos ? 'ok' : real.length ? 'outra' : (gruposPos ? 'semreg' : 'po');
+      }
       else if (real.length) est = 'fora';
       if (est === 'ok') { resumo.ok++; cont.ok++; } else if (est === 'outra') resumo.outra++; else if (est === 'semreg') resumo.semRegistro++; else if (est === 'fora') resumo.fora++;
       if (['ok', 'outra', 'semreg'].includes(est)) { resumo.conferidos++; cont.conf++; }
@@ -190,9 +194,9 @@ export function secaoProgramadoRealizado(eqp, efetivo, hoje = hojeISO()) {
         ${l.cel.slice(0, nDias).map(celula)}
         <td class="ep-tot">${l.conf ? `${l.ok}/${l.conf}` : '—'}</td></tr>`)}</tbody>
     </table></div></div>
-    <p class="ep-leg"><i class="ep-ok"></i>Bateu <i class="ep-outra"></i>Esteve em outra obra <i class="ep-semreg"></i>Programado e sem registro no efetivo <i class="ep-fora"></i>Esteve em obra sem estar programado <i class="ep-afast"></i>Afastado <i class="ep-po"></i>Pós-obra (não conferido) · passe o mouse na célula para ver o texto da planilha</p>
+    <p class="ep-leg"><i class="ep-ok"></i>Bateu <i class="ep-outra"></i>Esteve em outra obra <i class="ep-semreg"></i>Programado e sem registro no efetivo <i class="ep-fora"></i>Esteve em obra sem estar programado <i class="ep-afast"></i>Afastado <i class="ep-po"></i>Pós-obra (só confere se o grupo de gestão mandou o efetivo) · passe o mouse na célula para ver o texto da planilha</p>
     ${r.orfaos.length ? html`<details class="ep-orf"><summary>${r.orfaos.length} presença(s) no efetivo que não foram ligadas a ninguém da distribuição</summary>
       <p class="pequeno">${r.orfaos.map((o) => `${dm(o.dia)} ${o.obra}: ${o.nome}`).join(' · ')}</p></details>` : ''}
-    <p class="pequeno">Programado: planilha SL_FUNC_OBRAS (${eqp.arquivo || ''}) · Realizado: efetivo enviado nos grupos de WhatsApp das obras. Pós-obra (Po) e dias futuros não entram na conferência.</p>
+    <p class="pequeno">Programado: planilha SL_FUNC_OBRAS (${eqp.arquivo || ''}) · Realizado: efetivo enviado nos grupos de WhatsApp das obras. Dias futuros não entram na conferência.</p>
   </div>`;
 }

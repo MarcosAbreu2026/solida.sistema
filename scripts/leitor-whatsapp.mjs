@@ -164,7 +164,12 @@ for (const conv of (cfg.conversas || []).filter((c) => c && c.ativo !== false &&
       gravarJSON(arqConv, { conversa: conv.nome, lidoEm: agora(), mensagens: todas });
     }
     if (conv.tipo === 'ferramentas') for (const m of lidas.values()) novasFerramentas.push({ ...m, conversa: conv.nome });
-    if (conv.tipo === 'efetivo') { const cod = (conv.nome.match(/\b(mo|po)\s*-?\s*(\d{3})/i) || []); if (cod[2]) gruposEfetivo.push({ codigo: `${cod[1].toLowerCase() === 'po' ? 'Po' : 'Mo'}${cod[2]}`, arq: arqConv, lidoEm: agora() }); }
+    if (conv.tipo === 'efetivo') {
+      // grupo de obra: o código (Mo533) vem do nome; grupo que não é de uma obra (ex.: gestão do pós-obra) diz o local em "obra" na configuração
+      const cod = (conv.nome.match(/\b(mo|po)\s*-?\s*(\d{3})/i) || []);
+      const codigo = conv.obra || (cod[2] ? `${cod[1].toLowerCase() === 'po' ? 'Po' : 'Mo'}${cod[2]}` : '');
+      if (codigo) gruposEfetivo.push({ codigo, arq: arqConv, lidoEm: agora() });
+    }
     resultado.push({ nome: conv.nome, lidas: lidas.size, novas: novas.length });
   } catch (e) { resultado.push({ nome: conv.nome, erro: e.message }); }
   await tecla('Escape', 'Escape');
