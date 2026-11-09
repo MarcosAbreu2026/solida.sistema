@@ -739,3 +739,6 @@ function renderPautas(params, obras) {
 }
 export const pautaPorNome = (nome, params) => montarPautas(params).lista.find((g) => g.nome === nome) || null;
 void ataDe;
+
+// pessoas da Sólida (para escolher responsável em outras telas, como o Quadro de OS do pós-obra)
+export const pessoasDaEquipe = () => dados.pessoas;

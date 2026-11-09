@@ -40,6 +40,7 @@ import * as equipe from './telas/equipe.js';
 import * as posGeral from './telas/posobra-geral.js';
 import * as agendaPos from './agenda-pos.js';
 import * as svPos from './servicos-pos.js';
+import * as osq from './os-quadro.js';
 import * as tvSlides from './treinamentos-slides.js';
 import * as obrasPos from './obras-pos.js';
 import * as financeiro from './telas/financeiro.js';
@@ -71,6 +72,8 @@ const ATUALIZAR_A_CADA_MS = 5 * 60 * 1000;
 // Painel, Obras e Serviços (planilha) continuam existindo, mas escondidos (links no rodapé de Pós-obras).
 const SUB = [
   { id: '', nome: 'Pós-obras' },
+  { id: 'quadro-os', nome: 'Quadro de OS', nova: true },
+  { id: 'datas-os', nome: 'Datas das OS', nova: true },
   { id: 'servicos', nome: 'Serviços', nova: true },
   { id: 'agenda', nome: 'Agenda', nova: true },
   { id: 'equipe', nome: 'Equipe e PJ', mod: equipe },
@@ -173,6 +176,12 @@ function telaPosObraPlanilha(rota) {
     garantirAtasCarregadas();
     return { abas, conteudo: `<div class="pagina" style="margin-top:26px">${String(posGeral.renderOS({ base: estado.base, os: rota.arg, atualizacoes: svPos.atualizacoesDa(rota.arg), pendencias: atas.todasPendencias(), podeEditar: podeEditarPos(), veValores: veValores() }))}</div>` };
   }
+  // Quadro de OS (solicitação > análise > orçamento > falta agendar > agendado > em execução > concluído) e o quadro de datas das mesmas OS
+  if (rota.sub === 'quadro-os' || rota.sub === 'datas-os') {
+    garantirOsCarregadas(); garantirAtasCarregadas();
+    const dados = { params: rota.params, podeEditar: podeEditarPos(), clientesPos: posObrasAtivas() };
+    return { abas, conteudo: `<div class="pagina" style="margin-top:26px">${rota.sub === 'quadro-os' ? String(osq.renderQuadro(dados)) : String(osq.renderDatas(dados))}</div>` };
+  }
   // Serviços: quadro por fase (análise, orçamento, execução, concluído…), arrastando os cartões
   if (rota.sub === 'servicos') {
     if (!estado.base) return semBase();
@@ -225,6 +234,11 @@ function carregarAgendaSemana() {
   if (estado.posAgenda.chave === chave) return;
   estado.posAgenda.chave = chave;
   agendaPos.carregar(de, somarDias(de, 6)).then(() => { const r = rotaAtual(); if (r.tela === 'posobra' && (!r.sub || r.sub === 'agenda')) desenhar(); });
+}
+function garantirOsCarregadas() {
+  if (estado.osVisitada) return;
+  estado.osVisitada = true;
+  osq.carregar().then(() => { const r = rotaAtual(); const a = document.activeElement; if (a && a.closest && a.closest('#at-modal')) return; if (r.tela === 'posobra' && ['quadro-os', 'datas-os'].includes(r.sub)) desenhar(); });
 }
 function garantirAtasCarregadas(chave = '#posobra') {
   if (estado.atasVisitada === chave) return;
@@ -1336,6 +1350,64 @@ function configurar() {
     dica.style.transform = `translate(${x}px, ${e.clientY + 16}px)`;
   });
 }
+
+// ---------------------------------------------------------------- Pós-obra › Quadro de OS e Datas das OS
+let osqArrastando = null;
+const osqFazer = async (fn, { depois = null } = {}) => {
+  try { await fn(); try { await atas.carregar(); } catch { /* sem as tarefas: segue */ } desenhar(); if (depois) depois(); } catch (err) { alert(`Não foi possível mexer na OS (${err.message || err}).`); }
+};
+function osqAbrir(html, classe = '') {
+  let m = document.getElementById('at-modal');
+  if (!m) { m = document.createElement('div'); m.id = 'at-modal'; m.className = 'at-modal'; document.body.appendChild(m); }
+  m.innerHTML = `<div class="at-modal-caixa ${classe}">${String(html)}</div>`;
+}
+const osqDetalhe = (id, msg = '') => osqAbrir(osq.detalhe(id, { podeEditar: podeEditarPos(), clientesPos: posObrasAtivas(), msg }), 'tf-caixa');
+document.addEventListener('click', (e) => {
+  const nova = e.target.closest && e.target.closest('[data-osq-nova]');
+  if (nova) { osqAbrir(osq.formNova(nova.dataset.osqNova, posObrasAtivas())); const c = document.querySelector('#osq-form-nova [name="cliente"]'); if (c) c.focus(); return; }
+  const c = e.target.closest && e.target.closest('[data-osq]');
+  if (c) { if (c.dataset.arrastou) return; e.preventDefault(); osqDetalhe(c.dataset.osq); }
+});
+document.addEventListener('dragstart', (e) => {
+  const c = e.target.closest && e.target.closest('.osq-card[data-osq]'); if (!c) return;
+  osqArrastando = c.dataset.osq; c.dataset.arrastou = '1';
+  try { e.dataTransfer.setData('text/plain', 'osq:' + osqArrastando); e.dataTransfer.effectAllowed = 'move'; } catch { /* sem dataTransfer */ }
+});
+document.addEventListener('dragend', (e) => { const c = e.target.closest && e.target.closest('.osq-card[data-osq]'); if (c) setTimeout(() => { delete c.dataset.arrastou; }, 50); document.querySelectorAll('.tf-sobre').forEach((x) => x.classList.remove('tf-sobre')); osqArrastando = null; });
+document.addEventListener('dragover', (e) => { const col = e.target.closest && e.target.closest('[data-osq-col]'); if (!col || !osqArrastando) return; e.preventDefault(); col.classList.add('tf-sobre'); });
+document.addEventListener('dragleave', (e) => { const col = e.target.closest && e.target.closest('[data-osq-col]'); if (col && !col.contains(e.relatedTarget)) col.classList.remove('tf-sobre'); });
+document.addEventListener('drop', (e) => {
+  const col = e.target.closest && e.target.closest('[data-osq-col]'); if (!col || !osqArrastando) return;
+  e.preventDefault(); col.classList.remove('tf-sobre'); const id = osqArrastando; osqArrastando = null;
+  const o = osq.porIdOs(id); if (o && o.status !== col.dataset.osqCol) osqFazer(() => osq.mover(o.id, col.dataset.osqCol));
+});
+document.addEventListener('submit', (e) => {
+  const nf = e.target.closest && e.target.closest('#osq-form-nova');
+  if (nf) {
+    e.preventDefault(); const fd = new FormData(nf);
+    osqFazer(() => osq.criar({ cliente: fd.get('cliente'), assunto: fd.get('assunto'), status: nf.dataset.status }), { depois: () => { const m = document.getElementById('at-modal'); if (m) m.remove(); } });
+    return;
+  }
+  const f = e.target.closest && e.target.closest('#osq-form');
+  if (f) {
+    e.preventDefault(); const fd = new FormData(f); const id = f.dataset.osqForm;
+    const campos = { cliente: String(fd.get('cliente') || '').trim(), assunto: String(fd.get('assunto') || '').trim(), status: fd.get('status'), problema: fd.get('problema') || null, solucao: fd.get('solucao') || null };
+    if (fd.has('responsavel')) { campos.responsavel = fd.get('responsavel') || null; campos.data_limite = fd.get('data_limite') || null; }
+    osqFazer(() => osq.salvar(Number(id) || id, campos), { depois: () => osqDetalhe(id, 'Salvo ✓') });
+  }
+});
+document.addEventListener('change', (e) => {
+  const d = e.target.closest && e.target.closest('[data-osq-data]');
+  if (d) { const [id, campo] = d.dataset.osqData.split('|'); osqFazer(() => osq.salvar(Number(id) || id, { [campo]: d.value || null })); return; }
+  const fo = e.target.closest && e.target.closest('[data-osq-foto]');
+  if (fo) { const id = fo.dataset.osqFoto; const arqs = [...fo.files]; osqFazer(async () => { for (const a of arqs) await osq.adicionarFoto(id, a); }, { depois: () => osqDetalhe(id) }); }
+});
+document.addEventListener('click', (e) => {
+  const ft = e.target.closest && e.target.closest('[data-osq-foto-del]');
+  if (ft) { const [id, i] = ft.dataset.osqFotoDel.split('|'); osqFazer(() => osq.tirarFoto(id, Number(i)), { depois: () => osqDetalhe(id) }); return; }
+  const del = e.target.closest && e.target.closest('[data-osq-del]');
+  if (del && confirm('Excluir esta OS? Não dá para desfazer.')) osqFazer(() => osq.apagar(del.dataset.osqDel), { depois: () => { const m = document.getElementById('at-modal'); if (m) m.remove(); } });
+});
 
 document.addEventListener('click', (e) => {   // RH › Programado × realizado: trocar a semana
   const b = e.target.closest('[data-ep-sem]'); if (!b) return;

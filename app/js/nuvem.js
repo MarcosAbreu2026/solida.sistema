@@ -389,3 +389,35 @@ export async function apagarNotaPend(id) {
   const { error } = await sb.from('pendencias_notas').delete().eq('id', id);
   if (error) throw new Error(error.message);
 }
+
+// ---------------------------------------------------------------- quadro de OS do pós-obra (supabase/12-os-quadro.sql)
+export async function listarOsQuadro() {
+  const { data, error } = await sb.from('os_quadro').select('*').order('id', { ascending: false });
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+// cria (sem id) ou altera (com id); devolve a linha como ficou no banco (código, datas e pendência são feitos lá)
+export async function gravarOsQuadro(linha) {
+  const { id, codigo, pendencia_id, criado_em, criado_por, atualizado_em, responsavel_nome, ...resto } = linha;
+  const q = id ? sb.from('os_quadro').update(resto).eq('id', id) : sb.from('os_quadro').insert(resto);
+  const { data, error } = await q.select().single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+export async function apagarOsQuadro(id) {
+  const { error } = await sb.from('os_quadro').delete().eq('id', id);
+  if (error) throw new Error(error.message);
+}
+export async function enviarFotoOs(osId, blob) {
+  const caminho = `${osId}/foto-${Date.now()}-${Math.floor(Math.random() * 1000)}.jpg`;
+  const { error } = await sb.storage.from('os-fotos').upload(caminho, blob, { contentType: 'image/jpeg' });
+  if (error) throw new Error(error.message);
+  return caminho;
+}
+export async function apagarFotoOs(caminho) { await sb.storage.from('os-fotos').remove([caminho]).catch(() => {}); }
+export async function urlsFotosOs(caminhos) {
+  if (!caminhos.length) return {};
+  const { data } = await sb.storage.from('os-fotos').createSignedUrls(caminhos, 60 * 60 * 6);
+  const o = {}; (data || []).forEach((x) => { if (x.signedUrl) o[x.path] = x.signedUrl; });
+  return o;
+}

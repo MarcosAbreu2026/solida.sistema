@@ -348,3 +348,19 @@ body.nav-recolhido nav::after { display: none; }
 .ep-leg { font-size: 12px; color: #4B5560; margin: 10px 0; } .ep-leg i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin: 0 4px 0 12px; vertical-align: -2px; border: 1px solid #0002; }
 .ep-leg i.ep-ok { background: #E6F4EC; } .ep-leg i.ep-outra { background: #FBE4E1; } .ep-leg i.ep-semreg { background: #FFF1D6; } .ep-leg i.ep-fora { background: #E3EEFB; } .ep-leg i.ep-afast { background: #EEE; } .ep-leg i.ep-po { background: #F3EAF8; }
 .ep-orf { margin: 8px 0; font-size: 13px; }
+
+/* Pós-obra › Quadro de OS e Datas das OS */
+.osq-quadro { grid-auto-columns: minmax(210px, 1fr); }
+.osq-card { cursor: pointer; }
+.osq-st { display: inline-block; color: #fff; border-radius: 999px; padding: 1px 10px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.osq-grade { grid-template-columns: repeat(3, 1fr); }
+.osq-grade .osq-largo { grid-column: 1 / -1; }
+.osq-grade textarea { width: 100%; resize: vertical; }
+.osq-fotos { margin: 12px 0; }
+.osq-galeria { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 10px; }
+.osq-galeria figure { margin: 0; display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.osq-galeria img { width: 130px; height: 100px; object-fit: cover; border-radius: 4px; border: 1px solid #D5DCE4; }
+.osq-add { cursor: pointer; display: inline-block; }
+.osq-datas input[type="date"] { font-size: 12px; padding: 3px 4px; width: 128px; }
+.osq-datas td, .osq-datas th { white-space: nowrap; }
+@media (max-width: 700px) { .osq-grade { grid-template-columns: 1fr; } }
