@@ -1,13 +1,33 @@
-# Relatório de rotas da Strada Solida: planejado × executado (PDF)
+# Relatório de rotas da Strada Solida: planejado × executado (aba Transporte)
 
 Prompt oficial do Marcos/Felipe (09/11/2026). Usado pelo agente de Transporte toda **segunda-feira, na execução das 09:00**, para a SEMANA ANTERIOR (segunda a sábado), e sempre que pedirem o relatório sob demanda (por padrão, semana atual: segunda até hoje; se pedirem outro período, como "relatório mensal", cobre o período pedido; a metodologia e o visual valem igual).
 
+## Resultado: NA ABA TRANSPORTE DO SISTEMA (não é mais PDF) — pedido do Marcos, 09/11/2026
+O relatório aparece na aba **Rotas** da área Transporte (#/transporte/rotas). O agente NÃO gera PDF: grava os dados em **dados/json/rotas-semana.json** e envia à nuvem com `node scripts/enviar-nuvem.mjs rotas-semana` (conferir "N de N arquivos enviados"). A tela monta sozinha os cartões, o gráfico, a tabela e os textos. Regras de conteúdo (enxuto, só pontos de atenção reais, sem meta-comentário sobre automação) valem igual.
+
+Formato de rotas-semana.json (guarde no máximo as 8 últimas semanas; semana nova entra no início da lista; reescreva o arquivo inteiro mantendo as anteriores):
+```json
+{ "atualizadoEm": "ISO UTC com Z",
+  "semanas": [ {
+    "ini": "AAAA-MM-DD (segunda)", "fim": "AAAA-MM-DD (sábado)", "geradoEm": "ISO com -03:00",
+    "resumo": "2 a 4 frases do resumo executivo",
+    "kpis": { "diasComZonaDefinida": 4, "diasComViolacao": 0, "paradasPrevistas": 0, "paradasConfirmadas": 0, "paradasNaoInformadas": 0, "ociosoHorasEstimado": 0 },
+    "dias": [ { "data": "AAAA-MM-DD", "dia": "Segunda", "zona": "Zona Sul|Barra|Livre", "situacao": "ok|violacao|sem-rota|nao-lido",
+                "paradas": [ { "hora": "HH:MM", "local": "texto", "zonaLocal": "Zona Sul|Barra|Zona Norte|vendor|a confirmar", "aprovado": null } ],
+                "ocorrencia": "frase curta, só se houver ponto de atenção (senão omita)" } ],
+    "ociosidade": [ { "data": "AAAA-MM-DD", "texto": "caso concreto (2 a 4 por semana), com a suposição de deslocamento", "horas": 2.5 } ],
+    "pontos": [ "ponto de atenção consolidado, uma frase com a ação sugerida" ],
+    "lacunas": [ "o que não pôde ser lido (dia fora do alcance do WhatsApp Web etc.)" ],
+    "metodologia": "uma linha"
+  } ] }
+```
+Dia sem ocorrência: situacao "ok" e sem o campo "ocorrencia". Sexta é sempre zona "Livre" (não entra no gráfico de zona). Só fatos lidos; nada inventado.
+
 ## Adaptações para este computador (valem mais que o texto original onde divergirem)
-- Navegador: SÓ o Chrome deste computador (deviceId do `.claude/CLAUDE.md`), já logado no WhatsApp Web; trava `dados\whatsapp-web.lock`; confirme o nome do grupo antes de ler. Não há Python, matplotlib, reportlab nem pdftoppm aqui: gere o PDF por **HTML + gráficos em SVG inline** e imprima com o Chrome em modo headless: `& "C:\Program Files\Google\Chrome\Application\chrome.exe" --headless --disable-gpu --no-pdf-header-footer --print-to-pdf="<saida.pdf>" "file:///<entrada.html>"` (A4, margens 14 mm via `@page`). Fonte: Arial/Liberation Sans em todo o documento, inclusive nos gráficos SVG.
-- Saída agendada: salve o PDF em `dados\analises\rotas-AAAA-MM-DD.pdf` (data da segunda da análise) e NÃO envie a ninguém. Em pedido interativo, entregue o PDF com SendUserFile.
-- Para conferir o visual: leia o PDF com a ferramenta Read (parâmetro `pages`) e inspecione cada página antes de entregar.
-- Registro diário: a cada execução do agente de Transporte, atualize `dados\json\rotas-dia\AAAA-MM-DD.json` (`data`, `rotaPublicadaEm`, `previsto[{hora,local,acao}]`, `realizado[{hora,local,evento,obs}]`, `problemas[]`), só com fatos lidos. Ele ajuda a análise da segunda quando o histórico do WhatsApp Web não alcança a semana toda (o Web mostra só parte; avise no relatório se algum dia não pôde ser lido).
-- Depois do PDF: acrescente em `leituras-transporte.json` um kpi "Rotas da semana passada" (% de dias com violação, 1 linha) e um alerta por problema recorrente. Não envie esse arquivo à nuvem (o montador faz).
+- Navegador: SÓ o Chrome deste computador (deviceId do `.claude/CLAUDE.md`), já logado no WhatsApp Web; trava `dados/whatsapp-web.lock`; confirme o nome do grupo antes de ler.
+- Em pedido interativo do relatório, grave o mesmo rotas-semana.json e avise o usuário para abrir a aba Rotas.
+- Registro diário: a cada execução do agente de Transporte, atualize `dados/json/rotas-dia/AAAA-MM-DD.json` (`data`, `rotaPublicadaEm`, `previsto[{hora,local,acao}]`, `realizado[{hora,local,evento,obs}]`, `problemas[]`), só com fatos lidos. Ele ajuda a análise da segunda quando o histórico do WhatsApp Web não alcança a semana toda (o Web mostra só parte; registre isso em "lacunas").
+- Depois de gravar rotas-semana.json: acrescente em `leituras-transporte.json` um kpi "Rotas da semana passada" (dias com violação, 1 linha) e um alerta por problema recorrente. Não envie o leituras-transporte.json à nuvem (o montador faz).
 
 ---
 
@@ -49,16 +69,6 @@ Prompt oficial do Marcos/Felipe (09/11/2026). Usado pelo agente de Transporte to
    - Padrões recorrentes de problemas (mesma zona, mesmo dia da semana, mesma obra aparecendo repetidamente fora da zona) — este é geralmente o achado mais importante e deve ser destacado com clareza (ex.: KPI de % de dias com violação).
    - Antes de finalizar, faça uma checagem rápida de consistência: confira que cada violação listada realmente contraria a regra do dia (erro de direção — ex. marcar Barra como violação numa terça, que é dia de Barra — é o tipo de erro a evitar).
 
-6. MONTE O RELATÓRIO EM PDF SEGUINDO ESTE PADRÃO VISUAL (refinado em relatórios anteriores — siga à risca, não regrida para uma versão mais simples):
-   - Enxuto e objetivo: detalhe apenas o que for um ponto de atenção real. Não liste dias/itens sem ocorrência na tabela principal — omita-os e apenas cite em uma linha (ex.: "dias sem ocorrência: X, Y, Z"). Não inclua itens de recheio (observações menores sem ação associada) só para parecer mais completo.
-   - Estrutura enxuta em poucas páginas (idealmente 2): capa com KPIs + resumo executivo + gráfico donut de distribuição geral, seguida de regras de zona + gráfico de barras semanal, tabela de dias com ocorrência (condensada, só o que importa), e por fim ociosidade + pontos de atenção consolidados + metodologia (uma linha).
-   - Use gráficos (donut de % violação × conforme, barras empilhadas por semana) em SVG inline, com a fonte Arial/Liberation Sans, igual à do restante do documento.
-   - Título alinhado à esquerda.
-   - Todas as tabelas, gráficos e cards de KPI devem ocupar a mesma largura total de conteúdo da página (182 mm em A4 com margens de 14 mm) e usar o mesmo estilo (cabeçalho navy, linhas zebradas, linhas horizontais finas — evite grades verticais pesadas ou estilos de tabela diferentes entre si).
-   - Cards de KPI: centralize número e legenda, todos com a mesma altura — evite textos com "palavra/palavra" grudada sem espaço (impede quebra de linha e deixa o card mais alto); prefira frases curtas e com espaços quebráveis.
-   - Células de tabela devem quebrar linha (sem texto vazando para a coluna vizinha).
-   - Evite quebra de página forçada logo após um título com pouco conteúdo abaixo (título/callout órfão numa página quase em branco); deixe o conteúdo fluir e só force quebra onde fizer sentido estrutural.
-   - Não mencione automação, o fato de ser um assistente, conversas privadas de terceiros, ou processos internos de geração do relatório — o conteúdo é só sobre a operação de rotas.
-   - ANTES DE ENTREGAR: leia o PDF página a página (Read com `pages`) e confira que não há texto sobreposto/vazando, cards de altura desigual, títulos órfãos ou páginas com muito espaço em branco. Corrija e regenere antes de entregar.
+6. GRAVE O RESULTADO em rotas-semana.json (formato acima), seguindo este padrão de conteúdo: enxuto e objetivo; só pontos de atenção reais (dias sem ocorrência: situacao ok, sem texto); resumo executivo curto; KPIs com a % de dias com violação como destaque; 2 a 4 casos concretos de ociosidade; pontos de atenção consolidados com a ação sugerida; metodologia em uma linha. Não mencione automação, o fato de ser um assistente, conversas privadas de terceiros nem processos internos. Depois de enviar à nuvem, confira no site (aba Rotas) que a semana aparece.
 7. IMPORTANTE: não envie nenhuma mensagem no grupo do WhatsApp nem em nenhum outro contato para esta análise, independentemente de quem tenha pedido. O relatório é só para uso interno.
 8. Se encontrar problemas técnicos (WhatsApp Web não carregou, grupo não encontrado, sessão desconectada, etc.), relate o erro claramente e tente novamente antes de desistir.

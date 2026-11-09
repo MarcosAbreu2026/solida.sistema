@@ -2,13 +2,14 @@
 // mais: perfis por função, "Meu dia" (quadro de funções), Operação › Metas e produtividade,
 // e no Pós-obra os detalhes da planilha integrada (dados/json).
 
-import { carregarDados, carregarPainel, carregarProdutividade, carregarDrive, carregarFerramentasChk, carregarTerceirizados, carregarEfetivo, carregarMedicoesMC } from './dados.js';
+import { carregarDados, carregarPainel, carregarProdutividade, carregarDrive, carregarFerramentasChk, carregarTerceirizados, carregarEfetivo, carregarMedicoesMC, carregarRotas } from './dados.js';
 import * as terceiros from './telas/terceirizados.js';
 import * as ferrChk from './telas/ferramentas-checklist.js';
 import * as efetivoTela from './telas/efetivo.js';
 import * as equipeRank from './telas/equipe-ranking.js';
 import * as orcamentosTela from './telas/orcamentos.js';
 import * as reposicao from './telas/reposicao.js';
+import * as rotasTela from './telas/rotas.js';
 import * as ordenar from './ordenar.js';
 import * as atas from './telas/atas.js';
 import { montarBase } from './regras.js';
@@ -376,7 +377,7 @@ function ctxPainel(dep, area) {
   const f = funcaoAtual();
   if (estado.cfg) estado.cfg.obrasCad = estado.obrasCad || null;   // situação das obras (cadastro): as telas escondem finalizada e mostram pausada
   return { dep, CFG: estado.cfg, obrasCad: estado.obrasCad || null, podeMudarObra: podeMudarSituacaoObra(), area: area || null, f, veValores: veValores(), drive: estado.drive || {}, base: estado.base, efetivo: estado.efetivo || { dias: {} },
-    terceiros: estado.terceiros || { empresas: [] }, ferrChk: estado.ferrChk || { registros: [] }, mc: estado.mc || { obras: [] }, celular: celularObra.registros(),
+    rotas: estado.rotas || { semanas: [] }, terceiros: estado.terceiros || { empresas: [] }, ferrChk: estado.ferrChk || { registros: [] }, mc: estado.mc || { obras: [] }, celular: celularObra.registros(),
     pendencias: atas.todasPendencias(), hoje: hojeISO(), visiveis: f.porObra ? obrasDaPessoa() : null, sync: estado.sync, obrasMenu: obrasDoMenu() };
 }
 
@@ -654,7 +655,7 @@ function desenhar() {
   let out;
   try {
     // ---- desenho do Marcos: Início, painéis dos departamentos, página da obra e celular da obra
-    const abasDe = (base, ativa) => pd.abas([{ id: '', nome: 'Painel', href: base }, { id: 'detalhe', nome: tela === 'geral' ? 'Visão geral (anterior)' : 'Detalhes', href: `${base}/detalhe` }], ativa);
+    const abasDe = (base, ativa) => pd.abas([{ id: '', nome: 'Painel', href: base }, { id: 'detalhe', nome: tela === 'geral' ? 'Visão geral (anterior)' : 'Detalhes', href: `${base}/detalhe` }, ...(tela === 'transporte' ? [{ id: 'rotas', nome: 'Rotas da semana', href: `${base}/rotas` }] : [])], ativa);
     if (tela === 'geral' && ehPainel) {
       out = `<div class="pd">${pd.cabecalho({ rotulo: new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' }) })}${abasDe('#/geral', '')}${inicio.painel(ctxPainel(null, null))}</div>`;
     } else if (dep && ehPainel) {
@@ -692,7 +693,8 @@ function desenhar() {
       // abas: Resumo · Reposição de ferramentas (a reposição mostra carros e obras: só quem vê o estoque completo)
       const veRepos = estoque.VE_ESTOQUE_COMPLETO.includes(f.id);
       const abas = veRepos ? subnav(reposicao.ABAS_TRANSPORTE.map((a) => ({ ...a, href: `#/transporte${a.id ? `/${a.id}` : ''}` })), rota.sub === 'reposicao' ? 'reposicao' : '') : '';
-      if (veRepos && rota.sub === 'reposicao') out = `<div>${abas}<div style="margin-top:26px">${reposicao.render(estado.drive.estoque)}</div></div>`;
+      if (rota.sub === 'rotas') out = String(rotasTela.render(estado.rotas, rota.params));
+      else if (veRepos && rota.sub === 'reposicao') out = `<div>${abas}<div style="margin-top:26px">${reposicao.render(estado.drive.estoque)}</div></div>`;
       else out = T.telaArea(area, abas ? `<div style="margin-bottom:34px">${abas}</div>` : '', { depoisIndicadores: ferrChk.cartoes(CFG, estado.ferrChk, deObra ? obrasDaPessoa() : null, estado.drive.estoque) });
     }
     else if (area && area.id === 'rh') {
@@ -743,7 +745,7 @@ function desenhar() {
     } else if (area) out = T.telaArea(area);
     else out = T.telaGeral();
     // tela antiga dentro do departamento: fica na aba "Detalhes"
-    if ((dep || tela === 'geral') && !ehPainel) out = `<div class="pd">${dep ? pd.cabecalho({ resp: dep.resp }) : ''}${abasDe(`#/${dep ? dep.id : 'geral'}`, 'detalhe')}<div class="pd-legado">${out}</div></div>`;
+    if ((dep || tela === 'geral') && !ehPainel) out = `<div class="pd">${dep ? pd.cabecalho({ resp: dep.resp }) : ''}${abasDe(`#/${dep ? dep.id : 'geral'}`, tela === 'transporte' && rota.sub === 'rotas' ? 'rotas' : 'detalhe')}<div class="pd-legado">${out}</div></div>`;
   } catch (e) {
     console.error(e);
     out = `<div class="erro">Erro ao montar esta tela: ${esc(e.message)}</div>`;
@@ -823,6 +825,7 @@ async function atualizar() {
   if (terR.status === 'fulfilled') estado.terceiros = terR.value;
   if (ferrR.status === 'fulfilled') estado.ferrChk = ferrR.value;
   if (prodR.status === 'fulfilled') estado.whats = prodR.value;
+  try { estado.rotas = await carregarRotas(); } catch { estado.rotas = { semanas: [] }; }
   try { estado.mc = await carregarMedicoesMC(); } catch { /* ainda sem a leitura da medição no Mais Controle */ }
   if (driveR.status === 'fulfilled') estado.drive = driveR.value;
   if (painelR.status === 'fulfilled') {

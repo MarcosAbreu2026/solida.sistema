@@ -15,13 +15,15 @@ export function painel(ctx) {
   let rep = null;
   try { rep = ctx.drive && ctx.drive.estoque ? calcular(ctx.drive.estoque) : null; } catch { rep = null; }
   const viagens = rep ? new Set(rep.movs.map((m) => `${m.de}>${m.para}`)).size : null;
+  const ult = ((ctx.rotas && ctx.rotas.semanas) || [])[0] || null;
+  const kr = (ult && ult.kpis) || {};
+  const semRota = !ult;
   const alertas = pd.alertasDoAgente(area, { veValores: ctx.veValores }).filter((a) => /rota|reposi|entreg|carro|ve[íi]cul|strada|loca/i.test(a.texto));
   return html`${pd.pergunta(ctx.dep.pergunta)}
-    ${pd.aviso('As rotas do dia vêm do grupo Strada Sólida (WhatsApp), que ainda não é lido para esta tela. A análise das rotas do Anderson será definida com o Paiva.')}
-    ${pd.secao('Rotas da semana', 'Fonte: grupo Strada Sólida (rotas), lido do WhatsApp', pd.tabela(['Dia', 'Zona', 'Rota do dia enviada', 'Rota do dia seguinte enviada'],
-      ZONAS.map(([d, z]) => [html`<b class="pd-obra">${d}</b>`, z, '', ''])))}
-    ${pd.secao('Análise das rotas do Anderson', 'Resultado da análise do WhatsApp, a definir com o Paiva', pd.cartoes([
-      { rotulo: 'Rotas cumpridas', valor: '—' }, { rotulo: 'Desvios de rota', valor: '—' }, { rotulo: 'Pedidos de obra sem rota', valor: '—' },
+    ${pd.secao('Rotas da última semana', 'Análise feita toda segunda, a partir do grupo Strada Sólida · clique para ver o relatório completo', pd.cartoes([
+      { rotulo: 'Dias fora da zona', valor: kr.diasComZonaDefinida != null ? `${kr.diasComViolacao || 0} de ${kr.diasComZonaDefinida}` : '—', nivel: kr.diasComViolacao ? 'critico' : (semRota ? '' : 'ok'), href: '#/transporte/rotas' },
+      { rotulo: 'Paradas não informadas', valor: kr.paradasNaoInformadas != null ? String(kr.paradasNaoInformadas) : '—', nivel: kr.paradasNaoInformadas ? 'atencao' : '', href: '#/transporte/rotas' },
+      { rotulo: 'Ociosidade estimada', valor: kr.ociosoHorasEstimado != null ? `${String(kr.ociosoHorasEstimado).replace('.', ',')} h` : '—', sub: semRota ? 'a primeira análise sai na segunda, 09:00' : `semana de ${pd.dm(ult.ini)} a ${pd.dm(ult.fim)}`, href: '#/transporte/rotas' },
     ], { colunas: 3 }))}
     ${materiais.painel({ ...ctx, parte: 'vendas' })}
     ${pd.secao('Reposição de ferramentas', rep ? 'Calculada da planilha SL_FERRAMENTAS: cada origem → destino é uma viagem' : '', pd.cartoes([

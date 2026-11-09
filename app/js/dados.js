@@ -69,6 +69,15 @@ export async function carregarMedicoesMC() {
   return r.ok ? r.json() : { obras: [] };
 }
 
+// Análise semanal das rotas da Strada (agente de Transporte, toda segunda): aba Rotas da área Transporte.
+export async function carregarRotas() {
+  try {
+    if (NA_NUVEM) return (await baixar('rotas-semana')) || { semanas: [] };
+    const r = await fetch(`${PASTA}rotas-semana.json`, { cache: 'no-store' });
+    return r.ok ? await r.json() : { semanas: [] };
+  } catch { return { semanas: [] }; }
+}
+
 // Orçamentos (SL_ORÇAMENTOS<ano>) e projetos/as-built/cronograma por obra, lidos no Google Drive por
 // scripts/exportar-drive.ps1 (o servidor roda em segundo plano, no máximo a cada 10 minutos).
 export async function carregarDrive() {
