@@ -5,6 +5,7 @@ import { html } from '../formato.js';
 import { somarDias, inicioDaSemana } from '../datas.js';
 import { PRIORIDADE_SITUACAO, SITUACOES_ABERTAS } from '../regras.js';
 import { partesObra } from '../obras-pos.js';
+import { depPorId } from '../organograma.js';
 import { reprogramado, tituloReprogramacao } from '../servicos-pos.js';
 import { chipSituacao, chipPrazo, rotaObra, fmt } from '../componentes.js';
 
@@ -159,6 +160,9 @@ export function pessoasSoNaPlanilha(base, equipeProg) {
   const conhecidos = new Set();
   for (const e of base.equipe || []) for (const n of [e.profissional, e.apelido_1, e.apelido_2, e.nome]) if (n) { const k = semAcento(limparNomeAg(n)); conhecidos.add(k); conhecidos.add(k.split(' ')[0]); }
   const achados = new Map();
+  // o time do Pós-obra no organograma (diretor, gestor e executores) sempre tem cartão
+  const time = String((depPorId('posobra') || {}).resp || '').split(/[:·,]| e /).map((x) => x.trim()).filter((x) => x && x.split(' ').length === 1 && !/^(Diretor|Gestor|Executores)$/i.test(x));
+  for (const n of time) { const k = semAcento(n); if (!conhecidos.has(k) && !achados.has(k)) achados.set(k, { profissional: n, funcao: 'time do pós-obra', vinculo: '' }); }
   for (const a of base.agenda || []) {
     const nomes = (a.pessoas && a.pessoas.length ? a.pessoas : String(a.texto || '').split(/[/,+]| e /)).map(limparNomeAg);
     for (const n of nomes) {
