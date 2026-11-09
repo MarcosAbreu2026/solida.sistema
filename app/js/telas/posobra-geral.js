@@ -144,14 +144,39 @@ export function daPlanilha(base, semanaIni) {
 }
 
 // ---------------------------------------------------------------- Agenda da semana (cartões de funcionários)
-export function renderAgenda({ base, semanaIni, linhasAgenda, podeEditar, selecionado, erro, extras = [] }) {
+// nomes que estão na agenda semanal (planilha) mas não têm cartão porque não estão na aba Equipe: ganham um cartão também
+const semAcento = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+const limparNomeAg = (n) => String(n).replace(/\([^)]*\)/g, ' ').replace(/\b(in[íi]cio|a confirmar|a confimar|manh[ãa]|tarde)\b/gi, ' ').replace(/[()]/g, ' ').replace(/\s+/g, ' ').trim();
+export function pessoasSoNaPlanilha(base, equipeProg) {
+  // só vira cartão o nome de UMA palavra que seja de alguém do quadro de funcionários do RH (distribuição SL_FUNC_OBRAS): evita virar cartão texto solto da planilha
+  const roster = new Set();
+  for (const p of (equipeProg && equipeProg.pessoas) || []) {
+    const t = semAcento(p.nome);
+    for (const m of t.matchAll(/\(([^)]*)\)/g)) m[1].split(/[\s,]+/).forEach((w) => w.length > 2 && roster.add(w));
+    t.replace(/\([^)]*\)/g, ' ').split(/[\s-]+/).forEach((w) => w.length > 2 && roster.add(w));
+  }
+  if (roster.has('bill')) roster.add('bil');
+  const conhecidos = new Set();
+  for (const e of base.equipe || []) for (const n of [e.profissional, e.apelido_1, e.apelido_2, e.nome]) if (n) { const k = semAcento(limparNomeAg(n)); conhecidos.add(k); conhecidos.add(k.split(' ')[0]); }
+  const achados = new Map();
+  for (const a of base.agenda || []) {
+    const nomes = (a.pessoas && a.pessoas.length ? a.pessoas : String(a.texto || '').split(/[/,+]| e /)).map(limparNomeAg);
+    for (const n of nomes) {
+      if (n.length < 3 || n.length > 20 || /[\d:.]/.test(n) || n.split(' ').length > 1 || !roster.has(semAcento(n))) continue;
+      const k = semAcento(n); if (conhecidos.has(k) || conhecidos.has(k.split(' ')[0]) || achados.has(k)) continue;
+      achados.set(k, { profissional: n.charAt(0).toLocaleUpperCase('pt-BR') + n.slice(1), funcao: 'da planilha', vinculo: '' });
+    }
+  }
+  return [...achados.values()];
+}
+export function renderAgenda({ base, semanaIni, linhasAgenda, podeEditar, selecionado, erro, extras = [], equipeProg = null }) {
   const todasEm = obrasEmAndamento(base);
   const dias = DIAS.map((_, i) => somarDias(semanaIni, i));
   // só aparecem as obras com alguém escalado (ou escrito na planilha) nesta semana, mais as que você escolher em "+ Adicionar pós-obra"
   const comMovimento = (o) => linhasAgenda.some((l) => l.obra === o.obra) || base.agenda.some((a) => a.obra === o.obra && dias.includes(a.data));
   const obras = todasEm.filter((o) => comMovimento(o) || extras.includes(o.obra));
   const outras = todasEm.filter((o) => !obras.includes(o));
-  const gente = base.equipe.filter((e) => e.profissional && !/\(/.test(e.profissional)).sort((a, b) => a.profissional.localeCompare(b.profissional, 'pt-BR'));
+  const gente = [...base.equipe.filter((e) => e.profissional && !/\(/.test(e.profissional)), ...pessoasSoNaPlanilha(base, equipeProg)].sort((a, b) => a.profissional.localeCompare(b.profissional, 'pt-BR'));
   const naSemana = (nome) => new Set(linhasAgenda.filter((l) => l.pessoa === nome).map((l) => l.data)).size;
   const planilha = (obra, data) => base.agenda.filter((a) => a.obra === obra && a.data === data).map((a) => a.texto).filter(Boolean);
   const partes = (obra, data) => { const mesmoDia = (l) => l.data === data; return { daqui: linhasAgenda.filter((l) => l.obra === obra && mesmoDia(l)), todas: linhasAgenda.filter(mesmoDia) }; };
