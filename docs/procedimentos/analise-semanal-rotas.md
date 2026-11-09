@@ -20,10 +20,10 @@ Prompt oficial do Marcos/Felipe (09/11/2026). Usado pelo agente de Transporte to
 - Os avisos de rota são postados no grupo no formato: "ROTA [DIA DA SEMANA EM CAPS] [DD/MM]" seguido de horário e local (ex: "8h00 - Galpão").
 
 ## REFERÊNCIA DE OBRAS/LOCAIS (zona confirmada — use esta lista, não repita o processo de descoberta a cada relatório)
-- Zona Sul: Mo491 (Botafogo), Mo533 (Leblon), Mo358 (Cosme Velho), Mo577 (Rua Cupertino Durão, 20 — Leblon), Mo504 (Lagoa).
+- Zona Sul: Mo491 (Botafogo), Mo533 (Leblon), Mo358 (Cosme Velho), Mo504 (Lagoa).
 - Zona Sudoeste (Barra): Mo531, Mo465, Mo344 (todas na Barra da Tijuca).
 - Fora do sistema de zonas (Zona Norte): Honório Gurgel. Qualquer parada nesses locais em dia de zona definida conta como violação, por estarem fora das duas zonas.
-- IMPORTANTE: "Po577" e "Mo577" são o mesmo local (mesma obra, dois codinomes usados alternadamente no grupo) — trate como uma única obra e use sempre "Mo577" no relatório, nunca liste os dois como se fossem locais diferentes.
+- Mo577 (e Po577, mesmo local) JÁ ACABOU (informado pelo Marcos em 09/11/2026): NÃO entra na análise. Ignore qualquer parada ou menção a Mo577/Po577 (não conta como violação, ociosidade nem problema, e não aparece no relatório).
 - Locais sem zona confirmada com confiança (não classifique como violação; se aparecerem, marque como "a confirmar" e tente confirmar o endereço pelas mensagens do próprio grupo antes de desistir): Mo557 (possível erro de digitação para Mo531 ou Mo577), "Bulhões"/"Pos Bulhões", Po566, Mo311. Vendors/pontos de retirada de material (Nova Fase, Texturacor, Neves Rangel/Neves tintas, Citylar, Casarão dos lustres, Galpão) não contam para a regra de zona.
 
 ## SOBRE PESSOAS NO GRUPO E EM CONVERSAS PRIVADAS
