@@ -30,7 +30,7 @@ Os horários do WhatsApp são escalonados (nunca dois agentes ao mesmo tempo). M
 ## Regras comuns a TODOS os agentes
 
 1. **Somente leitura** em WhatsApp, Mais Controle, Drive, Gmail, Sólides: não enviar, reagir, responder, apagar,
-   baixar, criar, editar, aprovar nem excluir nada. Tela de login ou QR code: PARE essa fonte, diga qual e siga
+   baixar, criar, editar, aprovar nem excluir nada. **Única exceção (autorizada pelo Marcos em 06/11 e 09/11/2026): as cobranças de produtividade (09:00 e 16:30) e de efetivo (10:00), feitas só pelas rotinas `cobranca-produtividade-manha`, `cobranca-produtividade-tarde` e `cobranca-efetivo`**, UMA vez de cada tipo por obra por dia, registradas em `dados/json/cobrancas.json` (regras e textos em `docs/procedimentos/cobrancas-whatsapp.md`). Nenhum outro agente envia mensagem. Tela de login ou QR code: PARE essa fonte, diga qual e siga
    com as outras; nunca digite senha nem escaneie QR code.
 2. **Nunca inventar** número, obra, data, nome ou quantidade. O que não der para ler: "não foi possível ler X".
    Sem telefone, CPF nem dados pessoais. Sem valores em R$ de contratos (só em kpis/alertas com `restrito: true`).
