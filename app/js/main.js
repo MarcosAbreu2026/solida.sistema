@@ -566,7 +566,7 @@ function desenhar() {
   if (dep && !podeVerDep(dep, f)) { dep = null; tela = 'geral'; }
   let area = CFG && CFG.areas.find((a) => a.id === (dep ? dep.cfg : tela));
   if (area && !dep && !podeVerArea(area)) { area = null; tela = 'geral'; }   // setor fora do perfil: nem existe
-  const temLegado = !!(dep && area) || tela === 'geral';
+  const temLegado = !!(dep && area && dep.id !== 'materiais') || tela === 'geral';   // Materiais / Vendas: sem aba Detalhes por enquanto
   const ehPainel = (dep || tela === 'geral') && (!temLegado || ((!rota.sub || rota.sub === 'painel') && ![...rota.params.keys()].length));
   if ((dep || tela === 'geral') && !ehPainel && rota.sub === 'detalhe') rota = { ...rota, sub: '' };
   const ehObraPlan = tela === 'planejamento' && rota.sub === 'obra';

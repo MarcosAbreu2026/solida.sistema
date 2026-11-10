@@ -28,8 +28,5 @@ export function painel(ctx) {
       { rotulo: 'Itens abaixo do mínimo', valor: est ? String(abaixo.length) : '—', sub: est ? 'consumíveis abaixo do mínimo do galpão' : '', meta: 'Meta 0', nivel: est ? (abaixo.length ? 'critico' : 'ok') : '', href: '#/estoque' },
       { rotulo: 'Saídas por obra', valor: '—', sub: 'guias de movimentação ainda não somadas aqui' },
     ]))}
-    ${est ? pd.secao('O que está acabando', `${abaixo.length} consumíveis abaixo do mínimo do galpão · os 12 com mais falta`, pd.tabela(['Item', 'No galpão', 'Mínimo', 'Falta'],
-      abaixo.slice(0, 12).map(({ i, falta }) => [html`<b>${i.item}</b> <span class="pd-obra-sub">${i.cod}</span>`, String(n(gal(i).atual) ?? 0), String(gal(i).min), html`<b>${falta.toLocaleString('pt-BR')}</b>`]),
-      { vazio: 'Nenhum item abaixo do mínimo.' })) : ''}
     ${pd.caixa('Sugestão de conteúdo', pd.itens(['Material que sai do galpão, por obra e por pessoa', 'Material vendido, com valor e cliente', 'Itens com estoque abaixo do mínimo']), { direita: 'Origem: grupo Galpão Vendas e Gestão do Galpão' })}`;
 }
