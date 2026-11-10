@@ -467,23 +467,7 @@ body.nav-recolhido nav::after { display: none; }
 .lt-escolher { background: #0F1A34; border: 1px solid #2E3E66; color: #E8EDF7; border-radius: 999px; padding: 8px 16px; font-size: 14px; font-weight: 600; min-width: 190px; cursor: pointer; }
 .lt-escolher.on { background: #1E3566; border-color: #3E5A99; color: #fff; }
 
-/* Tarefas › modo Lista: fundo branco (pedido do Felipe, 10/11/2026) */
-.lt { background: #fff; color: #262A2B; border: 1px solid #D5DCE4; box-shadow: none; }
-.lt-resumo, .lt-grupo { background: #fff; border-color: #D5DCE4; }
-.lt-resumo h3, .lt-grupo > header h3, .lt-tit, .lt-data b { color: #1D2B3F; }
-.lt-resumo p, .lt-sub, .lt-grupo > header span, .lt-vazio, .lt-grp > span, .lt-grp-sel label, .lt-data span { color: #6B7480; }
-.lt-atraso { color: #C0392B; }
-.lt-seta, .lt-hoje { background: #fff; border-color: #C9D1DA; color: #1D2B3F; }
-.lt-seta:hover, .lt-hoje:hover { border-color: #F29B4B; }
-.lt-anel { background: conic-gradient(#3C9A6B calc(var(--pct) * 1%), #E1E6EC 0); }
-.lt-anel::before { background: #fff; } .lt-anel b { color: #1D2B3F; }
-.urg-alta { background: #FBE4E1; color: #B3261E; } .urg-media { background: #FFF1D6; color: #9A6200; } .urg-baixa { background: #E3F3EA; color: #1B7F4B; }
-.lt-pil, .lt-escolher { background: #fff; border-color: #C9D1DA; color: #263344; }
-.lt-pil:hover { border-color: #F29B4B; } .lt-pil.on, .lt-escolher.on { background: #1F3A56; border-color: #1F3A56; color: #fff; }
-.lt-grp-sel select, .lt-grp-sel input { background: #fff; border-color: #C9D1DA; color: #263344; }
-.lt-bt { background: #fff; border-color: #C9D1DA; color: #263344; } .lt-bt:hover { border-color: #F29B4B; color: #1D2B3F; }
-.lt-bt-ex { color: #C0392B; border-color: #E8B8B2; } .lt-bt-grande { background: #fff; }
-.lt-grupo > header { border-bottom-color: #E1E6EC; } .lt-linha { border-bottom-color: #EDF0F3; }
-.lt-chk { background: #fff; border-color: #9AA5B1; } .lt-chk:checked { background: #3C9A6B; border-color: #3C9A6B; } .lt-chk:checked::after { color: #fff; }
-.lt-feita .lt-tit { color: #8A94A0; }
-.lt-p0 { background: #EDE4FA; color: #5A3E99; } .lt-p1 { background: #E1ECFA; color: #1F4A78; } .lt-p2 { background: #DDF1EE; color: #1E6B63; } .lt-p3 { background: #FBE9DC; color: #8A4B1E; }
+/* Tarefas › modo Lista: só o FUNDO é branco (pedido do Felipe, 10/11/2026); cartões, filtros e botões ficam no azul-marinho */
+.lt { background: #fff; border: 1px solid #D5DCE4; box-shadow: none; }
+.lt-grp > span, .lt-grp-sel label { color: #5B6677; }
+.lt-vazio { color: #6B7480; }
