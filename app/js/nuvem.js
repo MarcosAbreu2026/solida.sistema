@@ -117,7 +117,7 @@ export async function listarAtasPendencias() {
   const [a, p, q] = await Promise.all([
     sb.from('atas').select('*').order('data', { ascending: false }).order('id', { ascending: false }),
     sb.from('pendencias').select('*').order('prazo', { ascending: true, nullsFirst: false }).order('id', { ascending: false }),
-    sb.from('perfis').select('id, nome, funcao, obras'),
+    sb.from('perfis').select('id, nome, funcao, obras, setores'),
   ]);
   if (a.error) throw new Error(a.error.message);
   if (p.error) throw new Error(p.error.message);

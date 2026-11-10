@@ -327,10 +327,16 @@ function filtrar(params, setorFixo = '') {
 // a diretoria e o administrativo escolhem qualquer um. Quem é de cargo abaixo não enxerga o de cima, a não ser como observador.
 const pessoasParaVer = () => {
   const f = funcaoAtual(); const eu = souEu();
-  if (['socio', 'administrativo'].includes(f.id)) return pessoasComPendencia().filter((x) => x.id !== eu);
+  // diretoria e administrativo: todas as pessoas, tenham tarefa ou não
+  if (['socio', 'administrativo'].includes(f.id)) return dados.pessoas.filter((x) => x.id !== eu).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  // os demais: quem responde a mim (gestores), quem eu observo e as pessoas do meu setor que são do meu cargo ou de cargo abaixo; nunca o cargo acima
   const ids = new Set(dados.pendencias.filter((p) => p.responsavel && p.responsavel !== eu && ((p.gestores || []).includes(eu) || (p.observadores || []).includes(eu))).map((p) => p.responsavel));
+  const meus = meusSetores(); const meuNivel = NIVEL[f.id] ?? 3;
+  for (const p of dados.pessoas) if (p.id !== eu && (NIVEL[p.funcao] ?? 3) >= meuNivel && (p.setores || []).some((s) => meus.includes(s))) ids.add(p.id);
   return dados.pessoas.filter((p) => ids.has(p.id)).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
 };
+// nível do cargo (0 = mais alto): quem é de nível abaixo não vê as tarefas do nível acima
+const NIVEL = { socio: 0, administrativo: 1, coord_operacoes: 1, tecnico: 2, planejamento: 2, projetos: 2, compras: 2, ferramentas: 2, financeiro: 2, rh: 2, marketing: 3, gestor_obra: 3, posobra: 3, orc_terceirizado: 4, estagiario_compras: 4, executor_ferramentas: 4, estagiario: 4, encarregado: 5, ajudante: 6 };
 const pessoasComPendencia = () => { const ids = new Set(dados.pendencias.filter((p) => naLista(p) && p.status !== 'cancelada' && p.responsavel).map((p) => p.responsavel)); return dados.pessoas.filter((p) => ids.has(p.id)).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')); };
 // o campo "Terceirizado" aparece depois de escolher "Terceirizados (todos)" em Responsável: só nomes de empresa ou pessoa
 // (sem tipo de serviço, para a lista não ficar enorme)
@@ -638,7 +644,7 @@ function vistaDia(params, obras, setorFixo) {
       <div class="lt-filtros">
         <div class="lt-grp"><span>Urgência</span>${pilula('urg', '', 'Todas', urg)}${pilula('urg', 'alta', 'Alta', urg)}${pilula('urg', 'media', 'Média', urg)}${pilula('urg', 'baixa', 'Baixa', urg)}${pilula('urg', 'sem', 'Sem', urg)}</div>
         <div class="lt-grp lt-grp-sel">
-          <label>Ver tarefas de<select data-atas-filtro="pessoa">${opt('eu', 'Só as minhas', pessoaSel)}${gente.length ? opt('todos', 'Todos (os que eu vejo)', pessoaSel) : ''}${gente.map((x) => opt(x.id, x.nome, pessoaSel))}</select></label>
+          <label>Ver tarefas de<select data-atas-filtro="pessoa">${opt('eu', 'Só as minhas', pessoaSel)}${opt('todos', 'Todos (os que eu vejo)', pessoaSel)}${opt('tipo:solida', 'Equipe da Sólida', pessoaSel)}${opt('tipo:terceirizado', 'Terceirizados (todos)', pessoaSel)}${opt('tipo:cliente', 'Clientes', pessoaSel)}${opt('tipo:arquitetura', 'Arquitetura', pessoaSel)}${gente.length ? html`<optgroup label="Pessoas">${gente.map((x) => opt(x.id, x.nome, pessoaSel))}</optgroup>` : ''}</select></label>
           ${setorFixo ? '' : html`<label>Setor<select data-atas-filtro="setor"><option value="">Todos</option>${SETORES_ATA.map((s) => opt(s, s, params.get('setor') || ''))}</select></label>`}
           ${selObra(obras, params.get('obra') || '')}
           <label>Procurar<input type="search" data-atas-filtro="q" value="${params.get('q') || ''}" placeholder="texto…"></label></div>
