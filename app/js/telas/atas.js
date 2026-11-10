@@ -607,20 +607,18 @@ function vistaDia(params, obras, setorFixo) {
   const pilula = (chave, valor, rotulo, atual) => html`<button type="button" class="lt-pil ${atual === valor ? 'on' : ''}" data-lt-filtro="${chave}|${valor}">${rotulo}</button>`;
   const diaSem = SEM_LONGO[new Date(`${dia}T12:00:00`).getDay()];
   return html`<section class="lt">
-    <div class="lt-topo">
-      <div><span class="lt-eyebrow">Construtora Sólida · ${funcaoAtual().nome}</span><h2>Tarefas do <b>dia</b></h2></div>
-      <div class="lt-nav">
-        <button type="button" class="lt-nova" data-av-nova="${dia}" data-av-setor="${params.get('setor') || ''}" data-av-obra="${params.get('obra') || ''}" data-av-resp="${pessoaSel === 'eu' ? souEu() : (pessoaSel !== 'todos' ? pessoaSel : '')}">+ Nova tarefa</button>
-        <button type="button" class="lt-seta" data-lt-dia="${somarDias(dia, -1)}" title="Dia anterior" aria-label="Dia anterior">‹</button>
-        <button type="button" class="lt-hoje" data-lt-dia="${hoje}">Hoje</button>
-        <div class="lt-data"><span>${diaSem}${dia === hoje ? ' · hoje' : ''}</span><b>${dm(dia)}</b></div>
-        <button type="button" class="lt-seta" data-lt-dia="${somarDias(dia, 1)}" title="Dia seguinte" aria-label="Dia seguinte">›</button>
-      </div></div>
-    <div class="lt-faixa"></div>
     <div class="lt-corpo-geral">
       <div class="lt-resumo"><div class="lt-anel" style="--pct:${pct}"><b>${pct}%</b></div>
         <div><h3>${nomeSel}</h3><p>${feitas} de ${itens.length} ${itens.length === 1 ? 'tarefa concluída' : 'tarefas concluídas'}</p>
-          <div class="lt-urgs">${['alta', 'media', 'baixa'].map((u) => (contaUrg(u) ? html`<span class="lt-urg ${URG[u][1]}"><i></i>${contaUrg(u)} ${URG[u][0]}</span>` : ''))}</div></div></div>
+          <div class="lt-urgs">${['alta', 'media', 'baixa'].map((u) => (contaUrg(u) ? html`<span class="lt-urg ${URG[u][1]}"><i></i>${contaUrg(u)} ${URG[u][0]}</span>` : ''))}</div></div>
+        <div class="lt-nav">
+          <button type="button" class="lt-nova" data-av-nova="${dia}" data-av-setor="${params.get('setor') || ''}" data-av-obra="${params.get('obra') || ''}" data-av-resp="${pessoaSel === 'eu' ? souEu() : (pessoaSel !== 'todos' ? pessoaSel : '')}">+ Nova tarefa</button>
+          <button type="button" class="lt-seta" data-lt-dia="${somarDias(dia, -1)}" title="Dia anterior" aria-label="Dia anterior">‹</button>
+          <button type="button" class="lt-hoje" data-lt-dia="${hoje}">Hoje</button>
+          <div class="lt-data"><span>${diaSem}${dia === hoje ? ' · hoje' : ''}</span><b>${dm(dia)}</b></div>
+          <button type="button" class="lt-seta" data-lt-dia="${somarDias(dia, 1)}" title="Dia seguinte" aria-label="Dia seguinte">›</button>
+        </div>
+      </div>
       <div class="lt-filtros">
         <div class="lt-grp"><span>Ver tarefas de</span>${pilula('pessoa', 'eu', 'Só as minhas', pessoaSel)}${pilula('pessoa', 'todos', 'Todos', pessoaSel)}${gente.map((x) => pilula('pessoa', x.id, x.nome, pessoaSel))}</div>
         <div class="lt-grp"><span>Urgência</span>${pilula('urg', '', 'Todas', urg)}${pilula('urg', 'alta', 'Alta', urg)}${pilula('urg', 'media', 'Média', urg)}${pilula('urg', 'baixa', 'Baixa', urg)}${pilula('urg', 'sem', 'Sem', urg)}</div>

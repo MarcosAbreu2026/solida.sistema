@@ -451,3 +451,9 @@ body.nav-recolhido nav::after { display: none; }
 .ag-bol-leg span { display: inline-flex; align-items: center; gap: 4px; }
 .ag-bol-leg .ag-bol { width: 11px; height: 11px; border-width: 1.5px; }
 @media (max-width: 1000px) { .ag-layout { grid-template-columns: 1fr; } .ag-funcoes { position: static; max-height: none; } }
+
+/* nav do dia dentro do cartão da pessoa */
+.lt-resumo { flex-wrap: wrap; }
+.lt-resumo > div:nth-child(2) { flex: 1 1 220px; }
+.lt-resumo .lt-nav { margin-left: auto; }
+.lt-corpo-geral { padding-top: 16px; }
