@@ -408,3 +408,4 @@ body.nav-recolhido nav::after { display: none; }
 .mv-seg button { border: 0; background: transparent; padding: 5px 16px; border-radius: 999px; font-size: 13px; font-weight: 600; color: #4B5560; cursor: pointer; }
 .mv-seg button.on { background: #1F3A56; color: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .2); }
 .lt-data { font-weight: 700; font-size: 15px; padding: 0 6px; align-self: center; color: #1F3A56; }
+.modo-vis[hidden] { display: none; }
