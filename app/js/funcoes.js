@@ -64,7 +64,8 @@ export const FUNCOES = [
 export const ACESSO_COMPLETO = ['socio', 'administrativo'];
 export const soMinhasFuncoes = (f) => !ACESSO_COMPLETO.includes(f.id);
 // ...e quem cuida das ferramentas e do galpão também entra no Estoque (guia de movimentação do galpão)
-export const ACESSO_ESTOQUE = ['ferramentas', 'executor_ferramentas', 'estagiario_compras'];
+// (pedido do Felipe, 10/11/2026: o Estoque sai para o pessoal por enquanto; só a diretoria e o administrativo veem. Para voltar, listar as funções aqui.)
+export const ACESSO_ESTOQUE = [];
 export const temEstoqueRestrito = (f) => ACESSO_ESTOQUE.includes(f.id);
 // Indicadores da Visão geral que quem é de obra não precisa ver (são de gestão da empresa)
 export const INDICADORES_SO_GESTAO = [/setores em dia/i, /convers/i, /fechad/i, /or[çc]ament/i];

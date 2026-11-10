@@ -371,6 +371,7 @@ function desenharNav(sel) {
       + (paginaVisivel(f, 'atas') ? itemTarefasRestrito(sel) + `<a class="nav-item${sel === 'atas' ? ' sel' : ''}" href="#/atas?aba=atas"><span>Atas</span></a>` : '')
       + '<div class="nav-grupo">Equipe</div>'
       + (temEstoqueRestrito(f) && paginaVisivel(f, 'estoque') ? item('estoque', 'Estoque') : '') + item('treinamentos', 'Treinamentos')
+      + (paginaVisivel(f, 'escritorio') ? item('escritorio', 'Escritório virtual') : '')
       + (paginaVisivel(f, 'feed') ? itemFeed() : '')
       + `<div class="navfoot">${estado.sync.origem === 'link' ? 'Atualiza sozinho a cada 5 minutos.' : 'Mostrando os últimos dados baixados.'}</div>`;
     desenharAvatares($('#nav'));
@@ -604,7 +605,7 @@ function desenhar() {
   if (tela === 'agenda' && !paginaVisivel(f, 'meudia') && f.id !== 'socio') tela = 'geral';
   if (['meudia', 'feed', 'estoque', 'escritorio', 'treinamentos', 'atas', 'tarefas', 'marketing'].includes(tela) && !paginaVisivel(f, tela === 'tarefas' ? 'atas' : tela)) tela = 'geral';   // aba que a diretoria tirou desta função
   // acesso restrito (por enquanto, quase todo mundo): Agenda, Tarefas, Atas, Treinamentos e Feed (o resto é da diretoria e do Administrativo)
-  if (soMinhasFuncoes(f)) tela = (['treinamentos', 'atas', 'tarefas', 'feed'].includes(tela) || (tela === 'celular' && f.porObra) || (tela === 'estoque' && temEstoqueRestrito(f))) ? tela : 'agenda';
+  if (soMinhasFuncoes(f)) tela = (['treinamentos', 'atas', 'tarefas', 'feed', 'escritorio'].includes(tela) || (tela === 'celular' && f.porObra) || (tela === 'estoque' && temEstoqueRestrito(f))) ? tela : 'agenda';
 
   // departamento do organograma (Painel no desenho do Marcos + Detalhes = a tela que já existia)
   let dep = depPorId(tela);
