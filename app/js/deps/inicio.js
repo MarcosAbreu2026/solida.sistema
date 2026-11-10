@@ -237,5 +237,5 @@ export function painel(ctx) {
     <div class="${finCaixa ? 'pd-grade2' : ''}">${orc}${finCaixa}</div>`;
 }
 
-const SETOR_DA_AREA = { operacao: 'Operação', posobra: 'Pós-obra', transporte: 'Transporte e logística', suprimentos: 'Suprimentos e compras', planejamento: 'Planejamento', projetos: 'Projetos', comercial: 'Comercial', orcamentos: 'Orçamentos', financeiro: 'Financeiro', rh: 'RH' };
+const SETOR_DA_AREA = { operacao: 'Operação', posobra: 'Pós-obra', transporte: 'Transporte e logística', suprimentos: 'Suprimentos e compras', planejamento: 'Planejamento', projetos: 'Projetos', comercial: 'Comercial', orcamentos: 'ORC obras novas', financeiro: 'Financeiro', rh: 'RH' };
 const setorDaArea = (id) => SETOR_DA_AREA[id] || '';

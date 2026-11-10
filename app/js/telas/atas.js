@@ -9,7 +9,7 @@ import { html, data as fmtData } from '../formato.js';
 import { hojeISO, somarDias, inicioDaSemana, diasEntre, ehData } from '../datas.js';
 import { NA_NUVEM, perfilAtual, listarAtasPendencias, criarAtaNuvem, criarPendenciaNuvem, atualizarPendenciaNuvem, atualizarAtaNuvem, apagarPendenciaNuvem, apagarAtaNuvem, listarNotasPend, criarNotaPend, apagarNotaPend } from '../nuvem.js';
 import { SETORES, SETORES_ORGANOGRAMA } from '../funcoes.js';
-import { sessao, idPessoa, funcaoReal, funcaoAtual } from '../sessao.js';
+import { sessao, idPessoa, funcaoReal, funcaoAtual, simulando } from '../sessao.js';
 import { lerPessoasTarefas } from '../armazenamento.js';
 import { analisarAta, lerArquivoAta, acharResponsavel } from '../ata-leitor.js';
 import { analisarReuniao, analisarFala, pareceResumoEmTopicos } from '../fala-leitor.js';
@@ -51,6 +51,12 @@ const souEu = () => (NA_NUVEM ? perfilAtual() && perfilAtual().id : idPessoa());
 // ou departamento. Os demais veem o que é seu (responsável ou criador), da(s) sua(s) obra(s) e, quem não é de obra,
 // do(s) departamento(s) da sua função. O banco já aplica esta regra para valer (tabelas atas e pendencias); aqui ela
 // também vale no modo teste e no "ver como", para a tela mostrar o mesmo.
+// setores da pessoa: na nuvem, os marcados em Acessos (perfis.setores); no modo teste ou "ver como", os da função
+function meusSetores() {
+  const f = funcaoAtual();
+  if (NA_NUVEM && !simulando() && perfilAtual() && Array.isArray(perfilAtual().setores) && perfilAtual().setores.length) return perfilAtual().setores;
+  return SETORES.filter(([id]) => (f.areas || []).includes(id)).map(([, nome]) => nome);
+}
 function visivelParaMim(x, ehAta, pendDaAta) {
   const f = funcaoAtual();
   if (['socio', 'administrativo'].includes(f.id)) return true;
@@ -60,16 +66,13 @@ function visivelParaMim(x, ehAta, pendDaAta) {
     // e a coordenação de operações segue vendo os setores dela. Os outros colegas do mesmo setor não aparecem.
     if (x.responsavel === eu || (x.gestores || []).includes(eu) || x.criado_por === eu) return true;
     if (['gestor_obra', 'posobra'].includes(f.id) && x.obra && (sessao().obras || []).includes(x.obra)) return true;
-    if (f.id === 'coord_operacoes' && x.setor) { const nomes = SETORES.filter(([id]) => (f.areas || []).includes(id)).map(([, nome]) => nome); return nomes.includes(x.setor); }
+    if (f.id === 'coord_operacoes' && x.setor) return meusSetores().includes(x.setor);
     return false;
   }
   if (x.criado_por === eu) return true;
   if (x.obra && (sessao().obras || []).includes(x.obra)) return true;
-  if (!f.porObra && x.setor) {
-    const nomes = SETORES.filter(([id]) => (f.areas || []).includes(id)).map(([, nome]) => nome);
-    if (nomes.includes(x.setor)) return true;
-  }
-  return ehAta && pendDaAta.some((p) => String(p.ata_id) === String(x.id) && (p.responsavel === eu || (p.gestores || []).includes(eu)));
+  // ATA: só quem é do setor (ou da obra) e quem criou. Quem recebeu uma pendência da ata de outro setor vê a pendência, não a ata.
+  return !f.porObra && !!x.setor && meusSetores().includes(x.setor);
 }
 export async function carregar() {
   try {
