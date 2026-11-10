@@ -575,11 +575,9 @@ function vistaDia(params, obras, setorFixo) {
   };
   const opt = (v, t, atual) => html`<option value="${v}" ${atual === v ? html.seguro('selected') : ''}>${t}</option>`;
   const gente = pessoasComPendencia().filter((x) => x.id !== souEu());
-  const chips = [-3, -2, -1, 0, 1, 2, 3].map((n) => { const d = somarDias(dia, n); return html`<button type="button" class="lt-dia ${n === 0 ? 'on' : ''}" data-lt-dia="${d}">${diaCurto(d)}</button>`; });
   return html`<section class="lt">
-    <div class="lt-topo"><div><span class="lt-rot">${dia === hoje ? 'Hoje' : SEM_LONGO[new Date(`${dia}T12:00:00`).getDay()]}</span><h2>Tarefas do dia <b>${dm(dia)}</b></h2></div>
-      <div class="lt-nav"><button type="button" class="botao" data-lt-dia="${somarDias(dia, -1)}">‹ Dia anterior</button><button type="button" class="botao" data-lt-dia="${hoje}">Hoje</button><button type="button" class="botao" data-lt-dia="${somarDias(dia, 1)}">Dia seguinte ›</button></div></div>
-    <div class="lt-dias">${chips}</div>
+    <div class="lt-topo"><div><span class="lt-rot">${dia === hoje ? 'Hoje' : SEM_LONGO[new Date(`${dia}T12:00:00`).getDay()]}</span><h2>Tarefas do dia</h2></div>
+      <div class="lt-nav"><button type="button" class="botao" data-lt-dia="${somarDias(dia, -1)}">‹ Dia anterior</button><button type="button" class="botao" data-lt-dia="${hoje}">Hoje</button><span class="lt-data">${dm(dia)}</span><button type="button" class="botao" data-lt-dia="${somarDias(dia, 1)}">Dia seguinte ›</button></div></div>
     <div class="lt-resumo"><div class="lt-anel" style="--pct:${pct}"><b>${pct}%</b></div>
       <div><h3>${nomeSel}</h3><p class="pequeno">${feitas} de ${itens.length} ${itens.length === 1 ? 'tarefa concluída' : 'tarefas concluídas'}</p>
         <div class="lt-urgs">${['alta', 'media', 'baixa'].map((u) => (contaUrg(u) ? html`<span class="lt-urg ${URG[u][1]}"><i></i>${contaUrg(u)} ${URG[u][0]}</span>` : ''))}</div></div></div>
@@ -602,10 +600,8 @@ export function renderPendencias({ params, obras = [], setorFixo = '', base = '#
   const eu = souEu(); const minhas = abertas.filter((p) => p.responsavel && p.responsavel === eu).length;
   const lista = filtrar(params, setorFixo);
   const modo = modoDe(params);
-  const seletorModo = html`<div class="at-filtros lt-modo"><label>Modo de visualização<select data-atas-filtro="modo"><option value="">Tabela</option><option value="lista" ${modo === 'lista' ? html.seguro('selected') : ''}>Lista</option></select></label></div>`;
-  if (modo === 'lista') return html`${datalistTerceiros()}${dados.erro ? html`<p class="erro">Não consegui carregar: ${dados.erro}</p>` : ''}${seletorModo}${vistaDia(params, obras, setorFixo)}`;
+  if (modo === 'lista') return html`${datalistTerceiros()}${dados.erro ? html`<p class="erro">Não consegui carregar: ${dados.erro}</p>` : ''}${vistaDia(params, obras, setorFixo)}`;
   return html`${datalistTerceiros()}${dados.erro ? html`<p class="erro">Não consegui carregar: ${dados.erro}</p>` : ''}
-    ${seletorModo}
     <div class="cards at-cards"><div class="card"><div class="card-valor">${abertas.length}</div><div class="card-rotulo">Pendências abertas</div></div>
       <div class="card"><div class="card-valor ${atrasadas ? 'tom-ruim' : ''}">${atrasadas}</div><div class="card-rotulo">Atrasadas</div></div>
       <div class="card"><div class="card-valor">${minhas}</div><div class="card-rotulo">Abertas comigo</div></div></div>

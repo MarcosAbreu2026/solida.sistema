@@ -612,6 +612,9 @@ function desenhar() {
   $('#titulo').textContent = titulo;
   document.title = `${titulo} · Sólida`;
 
+  // Tarefas: modo de visualização (Tabela | Lista) no topo, à esquerda de "Atualizado às…"
+  { const mv = $('#modoVis'); const abaP = rota.params.get('aba'); const naTarefas = (tela === 'atas' || tela === 'tarefas') && (!abaP || abaP === 'pendencias');
+    if (mv) { mv.hidden = !naTarefas; if (naTarefas) { const m = rota.params.get('modo') === 'lista' ? 'lista' : 'tabela'; mv.innerHTML = `<span class="mv-rot">Modo de visualização</span><span class="mv-seg"><button type="button" data-mv="" class="${m === 'tabela' ? 'on' : ''}">Tabela</button><button type="button" data-mv="lista" class="${m === 'lista' ? 'on' : ''}">Lista</button></span>`; } } }
   const sc = $('#sinc');
   const sy = estado.sync;
   if (sy.erro) { sc.textContent = 'Sem conexão, mostrando os últimos dados'; sc.className = 'sinc err'; sc.title = sy.erro; }
@@ -1711,6 +1714,7 @@ document.addEventListener('drop', async (e) => {
   } catch (err) { alert(`Não foi possível mudar o prazo (${err.message || err}).`); }
 });
 
+document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-mv]'); if (b) trocarQuery({ modo: b.dataset.mv || null }); });
 // Tarefas › modo Lista: trocar o dia, passar a tarefa para o dia seguinte, abrir a tarefa, passar as pendências atrasadas
 document.addEventListener('click', async (e) => {
   const d = e.target.closest && e.target.closest('[data-lt-dia]');
