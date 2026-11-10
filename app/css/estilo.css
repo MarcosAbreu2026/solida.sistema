@@ -59,8 +59,8 @@ h1 { margin: 0; font-weight: 700; font-size: 34px; letter-spacing: -.015em; line
 .perfil button.on { color: var(--grafite); border-bottom-color: var(--bronze); }
 .conteudo { flex: 1; overflow: auto; padding: 44px 64px 72px; }
 /* a tela só faz a transição suave ao TROCAR de tela (classe .troca, posta pelo desenhar()); redesenhar a mesma tela não pisca mais */
-.conteudo.troca > div { animation: entra .22s ease-out; }
-@keyframes entra { from { opacity: .35; } to { opacity: 1; } }
+.conteudo.troca > div { animation: entra .6s ease-in-out; }
+@keyframes entra { from { opacity: 0; } to { opacity: 1; } }
 .pagina { display: flex; flex-direction: column; gap: 26px; }
 h2 { margin: 0; font-weight: 700; font-size: 20px; line-height: 1.25; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 h3 { margin: 0; font-weight: 600; font-size: 16.5px; }
