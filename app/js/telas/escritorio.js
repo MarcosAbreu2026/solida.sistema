@@ -11,7 +11,7 @@ import { LARGURA, ALTURA, ENTRADA, andavel, sentavel, noVaso, tile, caminho, sal
 import { T, desenharPlanta, desenharBoneco, desenharEtiqueta, desenharBalao, desenharIcone } from '../escritorio/desenho.js';
 import { PESSOAS, pessoaPorId, pessoaDoLogin } from '../escritorio/pessoas.js';
 import { sessao } from '../sessao.js';
-import { NA_NUVEM, presenca, sairDaPresenca } from '../nuvem.js';
+import { NA_NUVEM, presenca, sairDaPresenca, ouvirPresenca, estadoPresenca } from '../nuvem.js';
 
 const SERVIDOR = '/api/escritorio';
 const VELOCIDADE = 6;          // quadrados por segundo
@@ -128,6 +128,7 @@ export function iniciar(raiz) {
   jogo.zoom = zSalvo > 0 ? Math.max(caber, Math.min(1.6, zSalvo)) : Math.max(caber, 0.8);
   canvas.focus();
   jogo.timer = setInterval(sincronizar, 1000);
+  if (NA_NUVEM) ouvirPresenca((lista) => { if (jogo) aplicarLista(jogo, lista); });
   sincronizar();
   requestAnimationFrame(quadro);
 }
@@ -359,7 +360,14 @@ async function sincronizar() {
     let lista;
     if (NA_NUVEM) lista = await presenca(meu);
     else { const r = await fetch(SERVIDOR, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(meu), cache: 'no-store' }); lista = r.ok ? await r.json() : []; }
-    if (jogo !== j) return;
+    aplicarLista(j, lista);
+  } catch { /* sem servidor: segue sozinho */ } finally { j.enviando = false; }
+}
+
+// aplica a lista de quem está no escritório (chamada a cada segundo e também na hora em que a presença muda)
+function aplicarLista(j, lista) {
+  if (jogo !== j) return;
+  {
     const vistos = new Set();
     for (const s of (Array.isArray(lista) ? lista : [])) {
       if (!s || s.id === j.eu.id) continue;
@@ -375,7 +383,7 @@ async function sincronizar() {
     }
     for (const id of [...j.outros.keys()]) if (!vistos.has(id)) j.outros.delete(id);
     listarOnline();
-  } catch { /* sem servidor: segue sozinho */ } finally { j.enviando = false; }
+  }
 }
 
 function listarOnline() {
@@ -388,5 +396,5 @@ function listarOnline() {
     <button type="button" ${o.voce ? html.seguro('disabled') : ''} data-esc-ir="${o.voce ? '' : o.pessoa.id}">
       <i class="esc-pt esc-${o.status || 'ok'}"></i><b>${o.pessoa.nome}${o.voce ? ' (você)' : ''}</b>
       <span class="pequeno">${o.sala || ''}${o.sentado ? (noVaso(o.x, o.y) ? ' · 💩' : ' · sentado') : ''}${o.status && o.status !== 'ok' ? ` · ${STATUS[o.status].toLowerCase()}` : ''}</span>
-    </button></li>`)}${lista.length === 1 ? html`<li class="pequeno">Só você por enquanto.</li>` : ''}`);
+    </button></li>`)}${lista.length === 1 ? html`<li class="pequeno">Só você por enquanto.</li>` : ''}${NA_NUVEM && estadoPresenca() !== 'SUBSCRIBED' ? html`<li class="pequeno esc-conexao">Conectando ao escritório em tempo real… (${estadoPresenca()})</li>` : ''}`);
 }

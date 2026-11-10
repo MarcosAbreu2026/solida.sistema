@@ -350,16 +350,31 @@ export async function removerFoto() {
 }
 
 // ---------------------------------------------------------------- escritório virtual (presença em tempo real)
-let canal = null; let pronto = false;
-export async function presenca(meu) {
-  if (!canal) {
-    canal = sb.channel('escritorio', { config: { presence: { key: meu.id } } });
-    canal.subscribe((st) => { pronto = st === 'SUBSCRIBED'; });
-  }
-  if (pronto) await canal.track(meu);
-  return Object.values(canal.presenceState()).map((xs) => xs[xs.length - 1]);
+let canal = null; let pronto = false; let estadoCanal = 'conectando'; let ouvinte = null; let ultimoMeu = null;
+export const estadoPresenca = () => estadoCanal;
+const listaPresenca = () => Object.values(canal ? canal.presenceState() : {}).map((xs) => xs[xs.length - 1]);
+// quem estiver com a tela do escritório aberta recebe a lista NA HORA em que alguém entra, sai ou anda (sem esperar o próximo ciclo)
+export const ouvirPresenca = (fn) => { ouvinte = fn; };
+function abrirCanal(meu) {
+  const este = sb.channel('escritorio', { config: { presence: { key: meu.id } } });
+  canal = este; pronto = false; estadoCanal = 'conectando';
+  este.on('presence', { event: 'sync' }, () => { if (canal === este && ouvinte) ouvinte(listaPresenca()); });
+  este.subscribe((st, err) => {
+    if (canal !== este) return;
+    estadoCanal = st; pronto = st === 'SUBSCRIBED';
+    if (err) console.warn('Escritório virtual (tempo real):', st, err);
+    if (pronto && ultimoMeu) este.track(ultimoMeu).catch(() => {});   // assim que conecta, já se anuncia
+    // caiu ou não conseguiu: derruba o canal; a próxima chamada abre outro
+    if (['CHANNEL_ERROR', 'TIMED_OUT', 'CLOSED'].includes(st)) setTimeout(() => { if (canal === este) { try { sb.removeChannel(este); } catch { /* nada */ } canal = null; pronto = false; } }, 2000);
+  });
 }
-export async function sairDaPresenca() { if (canal) { try { await canal.untrack(); await sb.removeChannel(canal); } catch { /* nada */ } canal = null; pronto = false; } }
+export async function presenca(meu) {
+  ultimoMeu = meu;
+  if (!canal) abrirCanal(meu);
+  if (pronto) { try { await canal.track(meu); } catch { /* tenta no próximo ciclo */ } }
+  return listaPresenca();
+}
+export async function sairDaPresenca() { ultimoMeu = null; if (canal) { try { await canal.untrack(); await sb.removeChannel(canal); } catch { /* nada */ } canal = null; pronto = false; } }
 
 // ---------------------------------------------------------------- celular da obra (executado, efetivo e diário do dia)
 export async function listarRegistrosObra(de, ate) {
