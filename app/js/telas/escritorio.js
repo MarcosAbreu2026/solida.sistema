@@ -374,6 +374,7 @@ function aplicarLista(j, lista) {
       const pessoa = pessoaPorId(s.id);
       if (!pessoa) continue;
       vistos.add(s.id);
+      const o0 = j.outros.get(s.id); if (o0) o0.ausenteDesde = 0;
       const o = j.outros.get(s.id) || { pessoa, x: s.x, y: s.y, passo: 0, balaoVisto: 0, acenoVisto: 0, balaoIdVisto: s.balaoId, acenoIdVisto: s.acenoId };
       o.alvo = { x: s.x, y: s.y }; o.dir = s.dir; o.sentado = s.sentado; o.status = s.status; o.sala = s.sala;
       // balão e aceno aparecem quando chega um novo (marcado pelo id)
@@ -381,7 +382,12 @@ function aplicarLista(j, lista) {
       if (s.acenoId && s.acenoId !== o.acenoIdVisto) { o.aceno = s.aceno; o.acenoVisto = Date.now(); o.acenoIdVisto = s.acenoId; }
       j.outros.set(s.id, o);
     }
-    for (const id of [...j.outros.keys()]) if (!vistos.has(id)) j.outros.delete(id);
+    // quem sumiu da lista só sai da tela depois de alguns segundos: quando alguém anda, a presença dele pisca (sai e entra) por um instante
+    for (const [id, o] of [...j.outros.entries()]) {
+      if (vistos.has(id)) continue;
+      o.ausenteDesde = o.ausenteDesde || Date.now();
+      if (Date.now() - o.ausenteDesde > 8000) j.outros.delete(id);
+    }
     listarOnline();
   }
 }

@@ -350,20 +350,20 @@ export async function removerFoto() {
 }
 
 // ---------------------------------------------------------------- escritório virtual (presença em tempo real)
-let canal = null; let pronto = false; let estadoCanal = 'conectando'; let ouvinte = null; let ultimoMeu = null;
+let canal = null; let pronto = false; let estadoCanal = 'conectando'; let ouvinte = null; let ultimoMeu = null; let ultimoJson = ''; let ultimoTrack = 0;
 export const estadoPresenca = () => estadoCanal;
 const listaPresenca = () => Object.values(canal ? canal.presenceState() : {}).map((xs) => xs[xs.length - 1]);
 // quem estiver com a tela do escritório aberta recebe a lista NA HORA em que alguém entra, sai ou anda (sem esperar o próximo ciclo)
 export const ouvirPresenca = (fn) => { ouvinte = fn; };
 function abrirCanal(meu) {
   const este = sb.channel('escritorio', { config: { presence: { key: meu.id } } });
-  canal = este; pronto = false; estadoCanal = 'conectando';
+  canal = este; pronto = false; estadoCanal = 'conectando'; ultimoJson = ''; ultimoTrack = 0;
   este.on('presence', { event: 'sync' }, () => { if (canal === este && ouvinte) ouvinte(listaPresenca()); });
   este.subscribe((st, err) => {
     if (canal !== este) return;
     estadoCanal = st; pronto = st === 'SUBSCRIBED';
     if (err) console.warn('Escritório virtual (tempo real):', st, err);
-    if (pronto && ultimoMeu) este.track(ultimoMeu).catch(() => {});   // assim que conecta, já se anuncia
+    if (pronto && ultimoMeu) { ultimoJson = JSON.stringify(ultimoMeu); ultimoTrack = Date.now(); este.track(ultimoMeu).catch(() => {}); }   // assim que conecta, já se anuncia
     // caiu ou não conseguiu: derruba o canal; a próxima chamada abre outro
     if (['CHANNEL_ERROR', 'TIMED_OUT', 'CLOSED'].includes(st)) setTimeout(() => { if (canal === este) { try { sb.removeChannel(este); } catch { /* nada */ } canal = null; pronto = false; } }, 2000);
   });
@@ -371,7 +371,9 @@ function abrirCanal(meu) {
 export async function presenca(meu) {
   ultimoMeu = meu;
   if (!canal) abrirCanal(meu);
-  if (pronto) { try { await canal.track(meu); } catch { /* tenta no próximo ciclo */ } }
+  // só reenvia quando algo mudou (posição, status, balão…) ou de tempos em tempos: cada envio faz a presença piscar para os outros
+  const json = JSON.stringify(meu);
+  if (pronto && (json !== ultimoJson || Date.now() - ultimoTrack > 15000)) { try { await canal.track(meu); ultimoJson = json; ultimoTrack = Date.now(); } catch { /* tenta no próximo ciclo */ } }
   return listaPresenca();
 }
 export async function sairDaPresenca() { ultimoMeu = null; if (canal) { try { await canal.untrack(); await sb.removeChannel(canal); } catch { /* nada */ } canal = null; pronto = false; } }
