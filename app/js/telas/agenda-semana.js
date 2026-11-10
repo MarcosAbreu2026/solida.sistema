@@ -9,6 +9,9 @@ import { html } from '../formato.js';
 import { hojeISO, somarDias, inicioDaSemana } from '../datas.js';
 import { feriado } from '../feriados.js';
 import * as meudia from './meudia.js';
+import { TAREFAS, valeNoDia, naGrade, grupoDaTarefa, funcoesDoCargo } from '../funcoes.js';
+import { funcaoAtual, idPessoa } from '../sessao.js';
+import { lerChecks } from '../armazenamento.js';
 
 const DIA_CURTO = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const MAX_DIA = 3;
@@ -70,7 +73,44 @@ function faixaTarefas(opts) {
 
 // Como no Google Agenda (print do Felipe, 04/11): as tarefas ficam DENTRO da grade, na linha de cima de cada dia,
 // logo abaixo do nome do dia (como os eventos de dia inteiro). Acima da grade fica só uma linha de resumo.
+// Cards das funções (grupos de tarefas do cargo) com uma bolinha por dia útil. A bolinha do dia fica VERDE quando tudo o que era daquela função
+// naquele dia foi concluído: as tarefas do quadro (✓ feito) e as tarefas da aba Tarefas ligadas à função (concluídas).
+//   cinza vazado = nada previsto · azul = de hoje, em aberto · cinza cheio = dia que vem · amarelo = parte feita · vermelho = dia passado sem concluir · verde = concluído
+function cardsFuncoes({ pendencias = [], eu, ref }) {
+  const f = funcaoAtual(); const hoje = hojeISO(); const ini = inicioDaSemana(ref || hoje);
+  const dias = [0, 1, 2, 3, 4].map((i) => somarDias(ini, i));
+  const checks = lerChecks(idPessoa());
+  const minhas = pendencias.filter((p) => p.prazo && p.funcao_tarefa && p.na_lista !== false && ['aberta', 'feita'].includes(p.status) && eu && (p.responsavel === eu || (p.gestores || []).includes(eu)));
+  const grupos = funcoesDoCargo(f.id);
+  // funções que só aparecem porque uma tarefa foi ligada a elas
+  for (const p of minhas) if (!grupos.includes(p.funcao_tarefa)) grupos.push(p.funcao_tarefa);
+  const linhas = grupos.map((g) => {
+    const bol = dias.map((d, i) => {
+      const rot = TAREFAS.filter((t) => t.funcao === f.id && naGrade(t) && grupoDaTarefa(t) === g && !feriado(d) && valeNoDia(t, d));
+      const pend = minhas.filter((p) => p.funcao_tarefa === g && p.prazo === d);
+      const total = rot.length + pend.length;
+      const feitos = rot.filter((t) => ((checks[d] || {})[t.id]) === 'feito').length + pend.filter((p) => p.status === 'feita').length;
+      let cls = 'vazio';
+      if (total) cls = feitos === total ? 'ok' : d > hoje ? 'futuro' : d === hoje ? (feitos ? 'parcial' : 'hoje') : (feitos ? 'parcial' : 'falha');
+      const nomes = [...rot.map((t) => t.texto), ...pend.map((p) => p.descricao)];
+      const rotulo = { ok: 'concluído', futuro: 'a fazer', hoje: 'de hoje, em aberto', parcial: 'parte concluída', falha: 'não concluído', vazio: 'nada previsto' }[cls];
+      return { d, i, cls, total, feitos, title: `${DIA_CURTO[i]} ${dm(d)} · ${rotulo}${total ? ` (${feitos}/${total})` : ''}${nomes.length ? `\n• ${nomes.join('\n• ')}` : ''}` };
+    });
+    return { g, bol, tem: bol.some((b) => b.total) };
+  });
+  return html`<aside class="ag-funcoes"><h3>Funções</h3><p class="pequeno">A bolinha do dia fica verde quando a tarefa daquela função é concluída.</p>
+    ${linhas.length ? [...linhas.filter((l) => l.tem), ...linhas.filter((l) => !l.tem)].map((l) => html`<div class="ag-func ${l.tem ? '' : 'ag-func-livre'}"><b>${l.g}</b>
+      <div class="ag-bols">${l.bol.map((b) => html`<span class="ag-bol-col"><i class="ag-bol ag-b-${b.cls}" title="${b.title}"></i><small>${DIA_CURTO[b.i][0]}</small></span>`)}</div></div>`) : html`<p class="vazio">Sem funções cadastradas para o seu cargo.</p>`}
+    <div class="ag-bol-leg"><span><i class="ag-bol ag-b-ok"></i> concluído</span><span><i class="ag-bol ag-b-parcial"></i> em parte</span><span><i class="ag-bol ag-b-hoje"></i> hoje</span><span><i class="ag-bol ag-b-falha"></i> não concluído</span><span><i class="ag-bol ag-b-futuro"></i> a fazer</span></div>
+  </aside>`;
+}
+
 export function render(opts) {
+  const principal = renderPrincipal(opts);
+  const lateral = cardsFuncoes({ pendencias: opts.pendencias || [], eu: opts.eu, ref: opts.semanaRef || opts.dia });
+  return html`<div class="ag-layout">${lateral}<div class="ag-principal">${principal}</div></div>`;
+}
+function renderPrincipal(opts) {
   const base = String(meudia.render({ ...opts, soFuncoes: true, aba: 'funcoes' }));
   const t = tarefasPorDia({ pendencias: opts.pendencias || [], eu: opts.eu, ref: opts.semanaRef || opts.dia });
   const ctx = { eu: opts.eu, hoje: t.hoje, nomeDe: opts.nomeDe };

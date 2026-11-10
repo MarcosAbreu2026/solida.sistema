@@ -8,7 +8,7 @@
 import { html, data as fmtData } from '../formato.js';
 import { hojeISO, somarDias, inicioDaSemana, diasEntre, ehData } from '../datas.js';
 import { NA_NUVEM, perfilAtual, listarAtasPendencias, criarAtaNuvem, criarPendenciaNuvem, atualizarPendenciaNuvem, atualizarAtaNuvem, apagarPendenciaNuvem, apagarAtaNuvem, listarNotasPend, criarNotaPend, apagarNotaPend } from '../nuvem.js';
-import { SETORES, SETORES_ORGANOGRAMA } from '../funcoes.js';
+import { SETORES, SETORES_ORGANOGRAMA, funcoesDoCargo } from '../funcoes.js';
 import { sessao, idPessoa, funcaoReal, funcaoAtual, simulando } from '../sessao.js';
 import { lerPessoasTarefas } from '../armazenamento.js';
 import { analisarAta, lerArquivoAta, acharResponsavel } from '../ata-leitor.js';
@@ -202,8 +202,8 @@ export async function criarAta({ titulo, data, tipo, obra, setor, participantes,
   await carregar();
   return nova;
 }
-export async function criarPendencia({ ata_id, descricao, responsavel, externoNome, externoTipo, externoCategoria, prazo, obra, setor, os, urgencia }) {
-  const p = { ata_id: ata_id || null, descricao, responsavel: responsavel || null, responsavel_nome: responsavel ? nomeDe(responsavel) : (externoNome || externoCategoria || (externoTipo === 'cliente' ? 'Cliente' : externoTipo === 'arquitetura' ? 'Arquitetura' : null)), responsavel_tipo: responsavel ? 'solida' : (externoTipo || 'terceirizado'), responsavel_categoria: responsavel ? null : (externoCategoria || null), prazo: prazo || null, status: 'aberta', obra: obra || null, setor: setor || null, os: os || null, urgencia: urgencia || null };
+export async function criarPendencia({ ata_id, descricao, responsavel, externoNome, externoTipo, externoCategoria, prazo, obra, setor, os, urgencia, funcaoTarefa }) {
+  const p = { ata_id: ata_id || null, descricao, responsavel: responsavel || null, responsavel_nome: responsavel ? nomeDe(responsavel) : (externoNome || externoCategoria || (externoTipo === 'cliente' ? 'Cliente' : externoTipo === 'arquitetura' ? 'Arquitetura' : null)), responsavel_tipo: responsavel ? 'solida' : (externoTipo || 'terceirizado'), responsavel_categoria: responsavel ? null : (externoCategoria || null), prazo: prazo || null, status: 'aberta', obra: obra || null, setor: setor || null, os: os || null, urgencia: urgencia || null, funcao_tarefa: funcaoTarefa || null };
   if (ata_id) { const a = dados.atas.find((x) => String(x.id) === String(ata_id)); const ns = [...dados.pendencias.filter((x) => String(x.ata_id) === String(ata_id)).map((x) => Number(x.item) || 0), ...((a && a.informativos) || []).map((x) => (x && x.n) || 0)]; p.item = Math.max(0, ...ns) + 1; }
   if (NA_NUVEM) await criarPendenciaNuvem(p);
   else { const l = lerLocal(); l.pendencias.push({ id: l.seq++, ...p, criado_por: idPessoa(), criado_em: new Date().toISOString(), concluida_em: null }); gravarLocal(l); }
@@ -417,6 +417,7 @@ export function formAvulsa(obras, prazo, setorPadrao = '', preset = {}) {
           <select name="p_resp" class="pf-sol"><option value="">Pessoa da Sólida…</option>${opcoesPessoas('')}</select>
           <input name="p_nome" class="pf-ext" list="dl-terceiros" placeholder="Nome da empresa ou pessoa" autocomplete="off" hidden></label>
         <label>Prazo<input type="date" name="p_prazo" value="${prazo || ''}"></label>
+        <label>Função (Agenda)<select name="p_func"><option value="">Nenhuma</option>${opcoesFuncaoTarefa(souEu(), '')}</select></label>
         <label>Urgência<select name="p_urg"><option value="">Sem urgência</option>${Object.entries(URG).map(([v, [t]]) => html`<option value="${v}">${t[0] + t.slice(1).toLocaleLowerCase('pt-BR')}</option>`)}</select></label>
       </div>
     </div>
@@ -538,6 +539,12 @@ function formNova(obras, revisarId = '') {
 // ================================================================ Modo Lista (pedido do Felipe, 10/11/2026)
 // As tarefas do dia em forma de lista: um bloco "Geral" (sem obra) e um por obra; dia anterior / seguinte; filtros de responsável,
 // setor, obra e urgência. A pessoa já está logada: por padrão vê só as dela, e pode escolher ver as do estagiário ou de todos.
+// funções (grupos do quadro) do cargo de quem é o responsável da tarefa; a que já está gravada sempre aparece
+const opcoesFuncaoTarefa = (respId, atual) => {
+  const cargo = respId === souEu() ? funcaoAtual().id : ((dados.pessoas.find((x) => x.id === respId) || {}).funcao || funcaoAtual().id);
+  const lista = funcoesDoCargo(cargo); if (atual && !lista.includes(atual)) lista.unshift(atual);
+  return lista.map((g) => html`<option value="${g}" ${g === atual ? html.seguro('selected') : ''}>${g}</option>`);
+};
 export const URG = { alta: ['ALTA', 'urg-alta'], media: ['MÉDIA', 'urg-media'], baixa: ['BAIXA', 'urg-baixa'] };
 const chipUrg = (u) => (URG[u] ? html`<span class="lt-urg ${URG[u][1]}"><i></i>${URG[u][0]}</span>` : '');
 const modoDe = (params) => (params.get('modo') === 'lista' ? 'lista' : 'tabela');
@@ -664,7 +671,7 @@ export async function salvarTarefa(id, c) {
   const p = pendenciaPorId(id); if (!p) throw new Error('Tarefa não encontrada.');
   const desc = String(c.desc || '').trim(); const ass = String(c.assunto || '').trim();
   if (!desc && !ass) throw new Error('Escreva o título da tarefa.');
-  const mud = { descricao: ass ? `${ass}, ${desc}` : desc, urgencia: c.urgencia || null };
+  const mud = { descricao: ass ? `${ass}, ${desc}` : desc, urgencia: c.urgencia || null, funcao_tarefa: c.funcaoTarefa || null };
   if (c.resp === 'ext') {
     const tipo = c.tipo || 'terceirizado';
     Object.assign(mud, { responsavel: null, responsavel_nome: String(c.nome || '').trim() || (tipo === 'cliente' ? 'Cliente' : tipo === 'arquitetura' ? 'Arquitetura' : null), responsavel_tipo: tipo, responsavel_categoria: null });
@@ -721,6 +728,7 @@ export function detalheTarefa(id, { msg = '' } = {}) {
           <label>Nome<input name="t_nome" value="${ext ? (p.responsavel_nome || '') : ''}" list="dl-terceiros" placeholder="empresa ou pessoa"></label></div>
         <label>Gestor<select name="t_gestor"><option value="">Automático (pelas obras e setores)${!gAtual && p.gestores_nome ? ` · ${p.gestores_nome}` : ''}</option>${opcoesPessoas(gAtual)}</select></label>
         <label>Prazo<input type="date" name="t_prazo" value="${p.prazo || ''}"></label>
+        <label>Função (Agenda)<select name="t_func"><option value="">Nenhuma</option>${opcoesFuncaoTarefa(p.responsavel, p.funcao_tarefa)}</select></label>
         <label>Urgência<select name="t_urg"><option value="">Sem urgência</option>${Object.entries(URG).map(([v, [t]]) => html`<option value="${v}" ${p.urgencia === v ? html.seguro('selected') : ''}>${t[0] + t.slice(1).toLocaleLowerCase('pt-BR')}</option>`)}</select></label>
       </div>
       ${reprogramada(p) ? html`<p class="pequeno">↻ ${tituloRepro(p)}</p>` : ''}

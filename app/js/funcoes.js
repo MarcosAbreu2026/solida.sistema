@@ -541,3 +541,8 @@ export function aplicarSetores(nomes) {
   const lista = [...new Set((nomes || []).map((n) => String(n).trim()).filter(Boolean))];
   if (lista.length) SETORES_ORGANOGRAMA.splice(0, SETORES_ORGANOGRAMA.length, ...lista);
 }
+
+// "Funções" da Agenda (pedido do Felipe, 10/11/2026): dentro do cargo, cada grupo de tarefas do quadro é uma função
+// (o que vem antes do ":" — "Compatibilizações: sobrepor projetos…" é da função "Compatibilizações"). Sem ":" vale o texto todo.
+export const grupoDaTarefa = (t) => { const s = String(t.texto || ''); return s.includes(':') ? s.split(':')[0].trim() : s.trim(); };
+export const funcoesDoCargo = (cargoId) => [...new Set(TAREFAS.filter((t) => t.funcao === cargoId).map(grupoDaTarefa))];

@@ -1685,7 +1685,7 @@ document.addEventListener('submit', async (e) => {
   const f = e.target.closest && e.target.closest('#tf-form'); if (!f) return;
   e.preventDefault(); const fd = new FormData(f); const id = f.dataset.tf;
   try {
-    await atas.salvarTarefa(id, { urgencia: fd.get('t_urg'), assunto: fd.get('t_assunto'), desc: fd.get('t_desc'), resp: fd.get('t_resp'), tipo: fd.get('t_tipo'), nome: fd.get('t_nome'), gestor: fd.get('t_gestor'), prazo: fd.get('t_prazo') });
+    await atas.salvarTarefa(id, { funcaoTarefa: fd.get('t_func'), urgencia: fd.get('t_urg'), assunto: fd.get('t_assunto'), desc: fd.get('t_desc'), resp: fd.get('t_resp'), tipo: fd.get('t_tipo'), nome: fd.get('t_nome'), gestor: fd.get('t_gestor'), prazo: fd.get('t_prazo') });
     await redesenharTarefas(id, 'Salvo ✓');
   } catch (err) { alert(`Não foi possível salvar (${err.message || err}).`); }
 });
@@ -1894,6 +1894,7 @@ function lerLinhaPendencia(l) {
     externoNome: tipo === 'solida' ? '' : l.querySelector('[name="p_nome"]').value.trim(),
     prazo: l.querySelector('[name="p_prazo"]').value,
     urgencia: (l.querySelector('[name="p_urg"]') || {}).value || '',
+    funcaoTarefa: (l.querySelector('[name="p_func"]') || {}).value || '',
   };
 }
 // Bolinha à esquerda de cada linha da ata: arrastar muda a posição da pendência ou do informativo (a ordem da lista é a ordem salva)
