@@ -202,8 +202,8 @@ export async function criarAta({ titulo, data, tipo, obra, setor, participantes,
   await carregar();
   return nova;
 }
-export async function criarPendencia({ ata_id, descricao, responsavel, externoNome, externoTipo, externoCategoria, prazo, obra, setor, os }) {
-  const p = { ata_id: ata_id || null, descricao, responsavel: responsavel || null, responsavel_nome: responsavel ? nomeDe(responsavel) : (externoNome || externoCategoria || (externoTipo === 'cliente' ? 'Cliente' : externoTipo === 'arquitetura' ? 'Arquitetura' : null)), responsavel_tipo: responsavel ? 'solida' : (externoTipo || 'terceirizado'), responsavel_categoria: responsavel ? null : (externoCategoria || null), prazo: prazo || null, status: 'aberta', obra: obra || null, setor: setor || null, os: os || null };
+export async function criarPendencia({ ata_id, descricao, responsavel, externoNome, externoTipo, externoCategoria, prazo, obra, setor, os, urgencia }) {
+  const p = { ata_id: ata_id || null, descricao, responsavel: responsavel || null, responsavel_nome: responsavel ? nomeDe(responsavel) : (externoNome || externoCategoria || (externoTipo === 'cliente' ? 'Cliente' : externoTipo === 'arquitetura' ? 'Arquitetura' : null)), responsavel_tipo: responsavel ? 'solida' : (externoTipo || 'terceirizado'), responsavel_categoria: responsavel ? null : (externoCategoria || null), prazo: prazo || null, status: 'aberta', obra: obra || null, setor: setor || null, os: os || null, urgencia: urgencia || null };
   if (ata_id) { const a = dados.atas.find((x) => String(x.id) === String(ata_id)); const ns = [...dados.pendencias.filter((x) => String(x.ata_id) === String(ata_id)).map((x) => Number(x.item) || 0), ...((a && a.informativos) || []).map((x) => (x && x.n) || 0)]; p.item = Math.max(0, ...ns) + 1; }
   if (NA_NUVEM) await criarPendenciaNuvem(p);
   else { const l = lerLocal(); l.pendencias.push({ id: l.seq++, ...p, criado_por: idPessoa(), criado_em: new Date().toISOString(), concluida_em: null }); gravarLocal(l); }
@@ -417,6 +417,7 @@ export function formAvulsa(obras, prazo, setorPadrao = '', preset = {}) {
           <select name="p_resp" class="pf-sol"><option value="">Pessoa da Sólida…</option>${opcoesPessoas('')}</select>
           <input name="p_nome" class="pf-ext" list="dl-terceiros" placeholder="Nome da empresa ou pessoa" autocomplete="off" hidden></label>
         <label>Prazo<input type="date" name="p_prazo" value="${prazo || ''}"></label>
+        <label>Urgência<select name="p_urg"><option value="">Sem urgência</option>${Object.entries(URG).map(([v, [t]]) => html`<option value="${v}">${t[0] + t.slice(1).toLocaleLowerCase('pt-BR')}</option>`)}</select></label>
       </div>
     </div>
     <div class="at-av-botoes"><button type="button" class="botao" data-av-fechar>Cancelar</button><button type="submit" class="botao on">Criar pendência</button></div></form>`;
@@ -534,6 +535,64 @@ function formNova(obras, revisarId = '') {
   </form>`;
 }
 // quadro de pendências (cartões + filtros + quadro por prazo ou lista); a tela do Pós-obra usa o mesmo, só com o setor dela
+// ================================================================ Modo Lista (pedido do Felipe, 10/11/2026)
+// As tarefas do dia em forma de lista: um bloco "Geral" (sem obra) e um por obra; dia anterior / seguinte; filtros de responsável,
+// setor, obra e urgência. A pessoa já está logada: por padrão vê só as dela, e pode escolher ver as do estagiário ou de todos.
+export const URG = { alta: ['ALTA', 'urg-alta'], media: ['MÉDIA', 'urg-media'], baixa: ['BAIXA', 'urg-baixa'] };
+const chipUrg = (u) => (URG[u] ? html`<span class="lt-urg ${URG[u][1]}"><i></i>${URG[u][0]}</span>` : '');
+const modoDe = (params) => (params.get('modo') === 'lista' ? 'lista' : 'tabela');
+const SEM = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+const diaCurto = (iso) => `${SEM[new Date(`${iso}T12:00:00`).getDay()]} ${dm(iso).slice(0, 5)}`;
+const SEM_LONGO = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+function vistaDia(params, obras, setorFixo) {
+  const hoje = hojeISO(); const dia = ehData(params.get('dia')) ? params.get('dia') : hoje;
+  const pessoaSel = params.get('pessoa') || 'eu';
+  const p2 = new URLSearchParams(params); if (pessoaSel === 'todos') p2.delete('pessoa'); else p2.set('pessoa', pessoaSel);
+  const urg = params.get('urg') || '';
+  const base = filtrar(p2, setorFixo).filter((p) => !urg || (urg === 'sem' ? !p.urgencia : p.urgencia === urg));
+  const aberta = (p) => p.status === 'aberta';
+  const atrasadas = dia >= hoje ? base.filter((p) => aberta(p) && p.prazo && p.prazo < hoje) : [];
+  const doDia = base.filter((p) => p.prazo === dia);
+  const semPrazo = dia === hoje ? base.filter((p) => aberta(p) && !p.prazo) : [];
+  const itens = [...atrasadas, ...doDia, ...semPrazo];
+  const feitas = itens.filter((p) => p.status === 'feita').length; const pct = itens.length ? Math.round((feitas / itens.length) * 100) : 0;
+  const nomeSel = pessoaSel === 'eu' ? (sessao().nome || 'Você') : pessoaSel === 'todos' ? 'Todos' : (dados.pessoas.find((x) => x.id === pessoaSel) || {}).nome || 'Tarefas';
+  const contaUrg = (u) => itens.filter((p) => aberta(p) && p.urgencia === u).length;
+  const alvoPassar = dia > hoje ? dia : somarDias(hoje, 1);
+  const grupos = new Map();
+  for (const p of itens) { const k = p.obra ? codigoDaObra(p.obra) : ''; if (!grupos.has(k)) grupos.set(k, { nome: p.obra || 'Geral', itens: [] }); grupos.get(k).itens.push(p); }
+  const ordem = [...grupos.entries()].sort(([a], [b]) => (a === '' ? -1 : b === '' ? 1 : a.localeCompare(b, 'pt-BR', { numeric: true })));
+  const linha = (p) => {
+    const atrasada = aberta(p) && p.prazo && p.prazo < hoje;
+    const sub = p.status === 'feita' ? 'Concluída' : atrasada ? `Pendente desde ${dm(p.prazo).slice(0, 5)}` : !p.prazo ? 'Sem prazo' : '';
+    return html`<div class="lt-linha ${p.status === 'feita' ? 'lt-feita' : ''}">
+      <input type="checkbox" class="lt-chk" data-pend="${p.id}|${p.status === 'feita' ? 'aberta' : 'feita'}" ${p.status === 'feita' ? html.seguro('checked') : ''} title="${p.status === 'feita' ? 'Reabrir' : 'Concluir'}">
+      <div class="lt-corpo"><span class="lt-tit" data-tarefa="${p.id}" title="Abrir a tarefa">${descRica(p.descricao)}</span>${sub ? html`<span class="lt-sub ${atrasada ? 'lt-atraso' : ''}">${sub}</span>` : ''}</div>
+      <span class="lt-quem">${nomeDe(p.responsavel, p.responsavel_nome)}</span>${chipUrg(p.urgencia)}
+      <button type="button" class="ac-mini" data-lt-mover="${p.id}|${somarDias(dia, 1)}" title="Passar para ${dm(somarDias(dia, 1))}">→ ${dm(somarDias(dia, 1)).slice(0, 5)}</button>
+      <button type="button" class="ac-mini" data-lt-abrir="${p.id}">Editar</button>
+      <button type="button" class="ac-mini ac-excluir" data-pend-del="${p.id}">Excluir</button></div>`;
+  };
+  const opt = (v, t, atual) => html`<option value="${v}" ${atual === v ? html.seguro('selected') : ''}>${t}</option>`;
+  const gente = pessoasComPendencia().filter((x) => x.id !== souEu());
+  const chips = [-3, -2, -1, 0, 1, 2, 3].map((n) => { const d = somarDias(dia, n); return html`<button type="button" class="lt-dia ${n === 0 ? 'on' : ''}" data-lt-dia="${d}">${diaCurto(d)}</button>`; });
+  return html`<section class="lt">
+    <div class="lt-topo"><div><span class="lt-rot">${dia === hoje ? 'Hoje' : SEM_LONGO[new Date(`${dia}T12:00:00`).getDay()]}</span><h2>Tarefas do dia <b>${dm(dia)}</b></h2></div>
+      <div class="lt-nav"><button type="button" class="botao" data-lt-dia="${somarDias(dia, -1)}">‹ Dia anterior</button><button type="button" class="botao" data-lt-dia="${hoje}">Hoje</button><button type="button" class="botao" data-lt-dia="${somarDias(dia, 1)}">Dia seguinte ›</button></div></div>
+    <div class="lt-dias">${chips}</div>
+    <div class="lt-resumo"><div class="lt-anel" style="--pct:${pct}"><b>${pct}%</b></div>
+      <div><h3>${nomeSel}</h3><p class="pequeno">${feitas} de ${itens.length} ${itens.length === 1 ? 'tarefa concluída' : 'tarefas concluídas'}</p>
+        <div class="lt-urgs">${['alta', 'media', 'baixa'].map((u) => (contaUrg(u) ? html`<span class="lt-urg ${URG[u][1]}"><i></i>${contaUrg(u)} ${URG[u][0]}</span>` : ''))}</div></div></div>
+    <div class="at-filtros">
+      <label>Ver tarefas de<select data-atas-filtro="pessoa">${opt('eu', 'Só as minhas', pessoaSel)}${opt('todos', 'Todos', pessoaSel)}${gente.map((x) => opt(x.id, x.nome, pessoaSel))}</select></label>
+      ${setorFixo ? '' : html`<label>Setor<select data-atas-filtro="setor"><option value="">Todos</option>${SETORES_ATA.map((s) => opt(s, s, params.get('setor') || ''))}</select></label>`}
+      ${selObra(obras, params.get('obra') || '')}
+      <label>Urgência<select data-atas-filtro="urg"><option value="">Todas</option>${opt('alta', 'Alta', urg)}${opt('media', 'Média', urg)}${opt('baixa', 'Baixa', urg)}${opt('sem', 'Sem urgência', urg)}</select></label>
+      <label>Procurar<input type="search" data-atas-filtro="q" value="${params.get('q') || ''}" placeholder="texto…"></label></div>
+    <div class="lt-acoes">${atrasadas.length ? html`<button type="button" class="botao" data-lt-passar="${atrasadas.map((p) => p.id).join(',')}|${alvoPassar}">Passar ${atrasadas.length} ${atrasadas.length === 1 ? 'pendência' : 'pendências'} para ${dm(alvoPassar).slice(0, 5)}</button>` : ''}</div>
+    ${ordem.length ? ordem.map(([, g]) => html`<section class="lt-grupo"><header><h3>${g.nome}</h3><span>${g.itens.filter((p) => p.status === 'feita').length}/${g.itens.length}</span></header>${g.itens.map(linha)}</section>`) : html`<p class="vazio">Nenhuma tarefa para este dia com esses filtros.</p>`}
+  </section>`;
+}
 export function renderPendencias({ params, obras = [], setorFixo = '', base = '#/atas', sugestoes = [] }) {
   definirSugestoes(sugestoes);
   const hoje = hojeISO();
@@ -542,7 +601,11 @@ export function renderPendencias({ params, obras = [], setorFixo = '', base = '#
   const atrasadas = abertas.filter((p) => p.prazo && p.prazo < hoje).length;
   const eu = souEu(); const minhas = abertas.filter((p) => p.responsavel && p.responsavel === eu).length;
   const lista = filtrar(params, setorFixo);
+  const modo = modoDe(params);
+  const seletorModo = html`<div class="at-filtros lt-modo"><label>Modo de visualização<select data-atas-filtro="modo"><option value="">Tabela</option><option value="lista" ${modo === 'lista' ? html.seguro('selected') : ''}>Lista</option></select></label></div>`;
+  if (modo === 'lista') return html`${datalistTerceiros()}${dados.erro ? html`<p class="erro">Não consegui carregar: ${dados.erro}</p>` : ''}${seletorModo}${vistaDia(params, obras, setorFixo)}`;
   return html`${datalistTerceiros()}${dados.erro ? html`<p class="erro">Não consegui carregar: ${dados.erro}</p>` : ''}
+    ${seletorModo}
     <div class="cards at-cards"><div class="card"><div class="card-valor">${abertas.length}</div><div class="card-rotulo">Pendências abertas</div></div>
       <div class="card"><div class="card-valor ${atrasadas ? 'tom-ruim' : ''}">${atrasadas}</div><div class="card-rotulo">Atrasadas</div></div>
       <div class="card"><div class="card-valor">${minhas}</div><div class="card-rotulo">Abertas comigo</div></div></div>
@@ -605,7 +668,7 @@ export async function salvarTarefa(id, c) {
   const p = pendenciaPorId(id); if (!p) throw new Error('Tarefa não encontrada.');
   const desc = String(c.desc || '').trim(); const ass = String(c.assunto || '').trim();
   if (!desc && !ass) throw new Error('Escreva o título da tarefa.');
-  const mud = { descricao: ass ? `${ass}, ${desc}` : desc };
+  const mud = { descricao: ass ? `${ass}, ${desc}` : desc, urgencia: c.urgencia || null };
   if (c.resp === 'ext') {
     const tipo = c.tipo || 'terceirizado';
     Object.assign(mud, { responsavel: null, responsavel_nome: String(c.nome || '').trim() || (tipo === 'cliente' ? 'Cliente' : tipo === 'arquitetura' ? 'Arquitetura' : null), responsavel_tipo: tipo, responsavel_categoria: null });
@@ -662,6 +725,7 @@ export function detalheTarefa(id, { msg = '' } = {}) {
           <label>Nome<input name="t_nome" value="${ext ? (p.responsavel_nome || '') : ''}" list="dl-terceiros" placeholder="empresa ou pessoa"></label></div>
         <label>Gestor<select name="t_gestor"><option value="">Automático (pelas obras e setores)${!gAtual && p.gestores_nome ? ` · ${p.gestores_nome}` : ''}</option>${opcoesPessoas(gAtual)}</select></label>
         <label>Prazo<input type="date" name="t_prazo" value="${p.prazo || ''}"></label>
+        <label>Urgência<select name="t_urg"><option value="">Sem urgência</option>${Object.entries(URG).map(([v, [t]]) => html`<option value="${v}" ${p.urgencia === v ? html.seguro('selected') : ''}>${t[0] + t.slice(1).toLocaleLowerCase('pt-BR')}</option>`)}</select></label>
       </div>
       ${reprogramada(p) ? html`<p class="pequeno">↻ ${tituloRepro(p)}</p>` : ''}
       <div class="tf-botoes">

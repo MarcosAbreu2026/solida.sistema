@@ -1661,7 +1661,7 @@ document.addEventListener('submit', async (e) => {
   const f = e.target.closest && e.target.closest('#tf-form'); if (!f) return;
   e.preventDefault(); const fd = new FormData(f); const id = f.dataset.tf;
   try {
-    await atas.salvarTarefa(id, { assunto: fd.get('t_assunto'), desc: fd.get('t_desc'), resp: fd.get('t_resp'), tipo: fd.get('t_tipo'), nome: fd.get('t_nome'), gestor: fd.get('t_gestor'), prazo: fd.get('t_prazo') });
+    await atas.salvarTarefa(id, { urgencia: fd.get('t_urg'), assunto: fd.get('t_assunto'), desc: fd.get('t_desc'), resp: fd.get('t_resp'), tipo: fd.get('t_tipo'), nome: fd.get('t_nome'), gestor: fd.get('t_gestor'), prazo: fd.get('t_prazo') });
     await redesenharTarefas(id, 'Salvo ✓');
   } catch (err) { alert(`Não foi possível salvar (${err.message || err}).`); }
 });
@@ -1711,6 +1711,21 @@ document.addEventListener('drop', async (e) => {
   } catch (err) { alert(`Não foi possível mudar o prazo (${err.message || err}).`); }
 });
 
+// Tarefas › modo Lista: trocar o dia, passar a tarefa para o dia seguinte, abrir a tarefa, passar as pendências atrasadas
+document.addEventListener('click', async (e) => {
+  const d = e.target.closest && e.target.closest('[data-lt-dia]');
+  if (d) { trocarQuery({ dia: d.dataset.ltDia === hojeISO() ? null : d.dataset.ltDia }); return; }
+  const ab = e.target.closest && e.target.closest('[data-lt-abrir]');
+  if (ab) { abrirTarefaComNotas(ab.dataset.ltAbrir); return; }
+  const mv = e.target.closest && e.target.closest('[data-lt-mover]');
+  if (mv) { const [id, dia] = mv.dataset.ltMover.split('|'); try { await atas.reprogramar(id, dia); desenhar(); } catch (err) { alert(`Não foi possível mudar o prazo (${err.message || err}).`); } return; }
+  const ps = e.target.closest && e.target.closest('[data-lt-passar]');
+  if (ps) {
+    const [ids, dia] = ps.dataset.ltPassar.split('|'); const lista = ids.split(',');
+    if (!confirm(`Passar ${lista.length} pendência(s) atrasada(s) para ${dia.slice(8, 10)}/${dia.slice(5, 7)}?`)) return;
+    try { for (const id of lista) await atas.reprogramar(id, dia); desenhar(); } catch (err) { alert(`Não foi possível passar as pendências (${err.message || err}).`); }
+  }
+});
 // Pautas: copiar a pauta de uma obra em texto
 document.addEventListener('click', async (e) => {
   const b = e.target.closest && e.target.closest('[data-pauta-txt]'); if (!b) return;
@@ -1853,6 +1868,7 @@ function lerLinhaPendencia(l) {
     externoCategoria: '',
     externoNome: tipo === 'solida' ? '' : l.querySelector('[name="p_nome"]').value.trim(),
     prazo: l.querySelector('[name="p_prazo"]').value,
+    urgencia: (l.querySelector('[name="p_urg"]') || {}).value || '',
   };
 }
 // Bolinha à esquerda de cada linha da ata: arrastar muda a posição da pendência ou do informativo (a ordem da lista é a ordem salva)
