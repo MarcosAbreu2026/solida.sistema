@@ -890,6 +890,7 @@ function separarOrcamentos(cfg) {
 }
 
 async function atualizar() {
+  if (nuvem.NA_NUVEM && logado()) escritorio.presencaDeFundo();   // aparece no escritório virtual enquanto o sistema estiver aberto
   // marcações de tarefas de todos (pontuação do Perfil); quem está logado manda o que só tinha neste navegador
   const atual = logado() ? { pessoa: idPessoa(), nome: sessao().nome, funcao: funcaoAtual().id, teste: simulando(), obras: obrasDaPessoa() } : null;
   if (nuvem.NA_NUVEM && logado()) { try { aplicarAbas(await nuvem.carregarAbas()); } catch { /* sem a tabela: fica o padrão de cada função */ } }
@@ -995,6 +996,7 @@ function configurar() {
   });
   ajustarMenuRecolhivel();
   $('#bSair').addEventListener('click', async () => {
+    escritorio.pararPresencaDeFundo();
     if (nuvem.NA_NUVEM) await nuvem.sair();
     sair();
     location.hash = '#/geral';

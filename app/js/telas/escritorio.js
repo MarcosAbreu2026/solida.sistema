@@ -87,6 +87,7 @@ export function iniciar(raiz) {
   };
   // volta para onde estava (mesma aba)
   try { const s = JSON.parse(sessionStorage.getItem('solida.escritorio.pos') || 'null'); if (s && andavel(s.x, s.y)) jogo.pos = s; } catch { /* nada */ }
+  try { const st = sessionStorage.getItem('solida.escritorio.status'); if (st && STATUS[st]) { jogo.status = st; const sel = raiz.querySelector('#esc-status'); if (sel) sel.value = st; } } catch { /* nada */ }
 
   jogo.aoTecla = (e) => {
     if (e.target.closest && e.target.closest('input, textarea, select')) return;
@@ -138,14 +139,34 @@ export function parar() {
   window.removeEventListener('keydown', jogo.aoTecla);
   window.removeEventListener('keyup', jogo.aoTecla);
   window.removeEventListener('resize', jogo.aoRedimensionar);
-  try { sessionStorage.setItem('solida.escritorio.pos', JSON.stringify({ x: Math.round(jogo.pos.x), y: Math.round(jogo.pos.y) })); } catch { /* nada */ }
-  // avisa que saiu
-  if (NA_NUVEM) sairDaPresenca();
-  else { try { navigator.sendBeacon(`${SERVIDOR}/sair`, JSON.stringify({ id: jogo.eu.id })); } catch { /* nada */ } }
+  try { sessionStorage.setItem('solida.escritorio.pos', JSON.stringify({ x: Math.round(jogo.pos.x), y: Math.round(jogo.pos.y) })); sessionStorage.setItem('solida.escritorio.status', jogo.status || 'ok'); } catch { /* nada */ }
+  // na nuvem a pessoa continua no escritório enquanto o sistema estiver aberto (presença de fundo, abaixo); só no teste local avisa que saiu
+  if (!NA_NUVEM) { try { navigator.sendBeacon(`${SERVIDOR}/sair`, JSON.stringify({ id: jogo.eu.id })); } catch { /* nada */ } }
   jogo = null;
 }
 
 export const ativo = () => !!jogo;
+
+// ---------------------------------------------------------------- presença de fundo (pedido do Felipe, 10/11/2026)
+// Enquanto o sistema estiver aberto (em qualquer tela), a pessoa aparece no escritório virtual, parada onde estava (ou na entrada),
+// e todo mundo se vê. Ao abrir a tela do escritório, o boneco volta a andar a partir dali. Fechar o sistema tira a pessoa sozinho.
+let fundo = null;
+function meuFundo() {
+  const eu = euDoLogin(); if (!eu) return null;
+  let pos = { x: ENTRADA.x, y: ENTRADA.y }; let status = 'ok';
+  try { const s = JSON.parse(sessionStorage.getItem('solida.escritorio.pos') || 'null'); if (s && andavel(s.x, s.y)) pos = s; status = sessionStorage.getItem('solida.escritorio.status') || 'ok'; } catch { /* nada */ }
+  return { id: eu.id, x: pos.x, y: pos.y, dir: 'baixo', sentado: sentavel(pos.x, pos.y), status, balao: '', balaoId: 0, aceno: '', acenoId: 0, sala: salaEm(pos.x, pos.y) };
+}
+export function presencaDeFundo() {
+  if (!NA_NUVEM || fundo) return;
+  const bater = async () => { if (jogo) return; const m = meuFundo(); if (m) { try { await presenca(m); } catch { /* sem conexão: tenta de novo */ } } };
+  fundo = setInterval(bater, 10000);
+  bater();
+}
+export function pararPresencaDeFundo() {
+  if (fundo) { clearInterval(fundo); fundo = null; }
+  if (NA_NUVEM) sairDaPresenca();
+}
 
 function aoClicarPainel(e) {
   const zb = e.target.closest('[data-esc-zoom]');
