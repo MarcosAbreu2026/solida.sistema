@@ -860,7 +860,7 @@ function separarOrcamentos(cfg) {
   const i = cfg.areas.findIndex((a) => a.id === 'comercial');
   if (i >= 0) cfg.areas[i] = { ...cfg.areas[i], nome: 'Comercial' };
   if (i < 0 || cfg.areas.some((a) => a.id === 'orcamentos')) return;
-  cfg.areas.splice(i + 1, 0, { id: 'orcamentos', nome: 'ORC obras novas', status: 'ok', resumo: '', kpis: [], alertas: [], processos: [], instrucoes: '', frequencia: '',
+  cfg.areas.splice(i + 1, 0, { id: 'orcamentos', nome: 'ORC Obras Novas', status: 'ok', resumo: '', kpis: [], alertas: [], processos: [], instrucoes: '', frequencia: '',
     fontes: [{ nome: 'Drive', via: 'GERENCIAMENTO > DOC > ESCOPO de cada obra em andamento (escopo e aditivos)', ultima: '—' }] });
 }
 
