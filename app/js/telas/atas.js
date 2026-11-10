@@ -542,9 +542,27 @@ function formNova(obras, revisarId = '') {
 // funções (grupos do quadro) do cargo de quem é o responsável da tarefa; a que já está gravada sempre aparece
 const opcoesFuncaoTarefa = (respId, atual) => {
   const cargo = respId === souEu() ? funcaoAtual().id : ((dados.pessoas.find((x) => x.id === respId) || {}).funcao || funcaoAtual().id);
-  const lista = funcoesDoCargo(cargo); if (atual && !lista.includes(atual)) lista.unshift(atual);
-  return lista.map((g) => html`<option value="${g}" ${g === atual ? html.seguro('selected') : ''}>${g}</option>`);
+  const lista = [...funcoesDoCargo(cargo), FUNCAO_OUTRAS]; if (atual && !lista.includes(atual)) lista.unshift(atual);
+  return lista.map((g) => html`<option value="${g}" ${g === atual ? html.seguro('selected') : ''}>${g === FUNCAO_OUTRAS ? 'Outras atividades (fora das funções)' : g}</option>`);
 };
+// Ligar a tarefa a uma função é opcional ao criar, mas OBRIGATÓRIO ao concluir (senão não conta nas funções da pessoa). "Outras atividades" = fora do quadro de funções.
+export const FUNCAO_OUTRAS = 'Outras atividades';
+export const precisaFuncao = (id) => { const p = pendenciaPorId(id); return !!p && !!p.responsavel && !p.funcao_tarefa; };
+export async function definirFuncaoTarefa(id, funcao) {
+  const mud = { funcao_tarefa: funcao || null };
+  if (NA_NUVEM) await atualizarPendenciaNuvem(id, mud);
+  else { const l = lerLocal(); const q = l.pendencias.find((x) => String(x.id) === String(id)); if (q) Object.assign(q, mud); gravarLocal(l); }
+  await carregar();
+}
+export function formFuncaoConcluir(id) {
+  const p = pendenciaPorId(id); if (!p) return html`<p class="erro">Não achei esta tarefa.</p>`;
+  const [ass, resto] = dividirDescricao(p.descricao);
+  return html`<form class="at-nova-pend at-avulsa" id="fn-conc" data-id="${p.id}">
+    <h3>Em qual função esta tarefa conta?</h3>
+    <p class="pequeno at-av-sub"><b>${ass ? `${ass}: ` : ''}${resto}</b><br>Para concluir, a tarefa precisa estar ligada a uma função da Agenda; é assim que ela conta nas suas funções. Se não é de nenhuma, escolha "Outras atividades".</p>
+    <div class="at-av-grade"><label class="av-m" style="grid-column:1/-1">Função<select name="funcao" required><option value="">— escolher —</option>${opcoesFuncaoTarefa(p.responsavel, '')}</select></label></div>
+    <div class="at-av-botoes"><button type="button" class="botao" data-av-fechar>Cancelar</button><button type="submit" class="botao on">Concluir a tarefa</button></div></form>`;
+}
 export const URG = { alta: ['ALTA', 'urg-alta'], media: ['MÉDIA', 'urg-media'], baixa: ['BAIXA', 'urg-baixa'] };
 const chipUrg = (u) => (URG[u] ? html`<span class="lt-urg ${URG[u][1]}"><i></i>${URG[u][0]}</span>` : '');
 const modoDe = (params) => (params.get('modo') === 'lista' ? 'lista' : 'tabela');

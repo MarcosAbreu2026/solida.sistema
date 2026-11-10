@@ -1667,6 +1667,25 @@ async function abrirTarefaComNotas(id) {
   await abrirTarefa(id);
   try { await atas.carregarNotas(id); await abrirTarefa(id); const n = document.querySelector('.tf-notas'); if (n) n.scrollTop = n.scrollHeight; } catch (e) { /* sem a tabela de notas: abre sem o chat */ }
 }
+// Concluir exige a função da tarefa: abre a janelinha, grava a função e só então conclui
+let aposFuncao = null;
+function pedirFuncao(id, depois) {
+  aposFuncao = depois;
+  let m = document.getElementById('at-modal');
+  if (!m) { m = document.createElement('div'); m.id = 'at-modal'; m.className = 'at-modal'; document.body.appendChild(m); }
+  m.innerHTML = `<div class="at-modal-caixa">${String(atas.formFuncaoConcluir(id))}</div>`;
+  const s = m.querySelector('select'); if (s) s.focus();
+}
+document.addEventListener('submit', async (e) => {
+  const f = e.target.closest && e.target.closest('#fn-conc'); if (!f) return;
+  e.preventDefault(); const id = f.dataset.id; const funcao = String(new FormData(f).get('funcao') || '');
+  if (!funcao) { alert('Escolha a função (ou "Outras atividades").'); return; }
+  try {
+    await atas.definirFuncaoTarefa(id, funcao); await atas.mudarStatus(id, 'feita');
+    const m = document.getElementById('at-modal'); if (m) m.remove();
+    const f2 = aposFuncao; aposFuncao = null; if (f2) await f2(); else desenhar();
+  } catch (err) { alert(`Não foi possível concluir (${err.message || err}).`); }
+});
 const redesenharTarefas = async (id, msg) => { await atas.carregar(); desenhar(); if (id && document.getElementById('at-modal')) await abrirTarefa(id, msg); };
 
 document.addEventListener('click', (e) => {
@@ -1700,7 +1719,7 @@ document.addEventListener('keydown', (e) => {
 });
 document.addEventListener('click', async (e) => {
   const st = e.target.closest && e.target.closest('[data-tf-status]');
-  if (st) { const [id, status] = st.dataset.tfStatus.split('|'); try { await atas.mudarStatus(id, status); await redesenharTarefas(id, status === 'feita' ? 'Concluída ✓' : 'Reaberta'); } catch (err) { alert(`Não foi possível mudar (${err.message || err}).`); } return; }
+  if (st) { const [id, status] = st.dataset.tfStatus.split('|'); if (status === 'feita' && atas.precisaFuncao(id)) { pedirFuncao(id, () => redesenharTarefas(id, 'Concluída ✓')); return; } try { await atas.mudarStatus(id, status); await redesenharTarefas(id, status === 'feita' ? 'Concluída ✓' : 'Reaberta'); } catch (err) { alert(`Não foi possível mudar (${err.message || err}).`); } return; }
   const del = e.target.closest && e.target.closest('[data-tf-del]');
   if (del) {
     const p = atas.pendenciaPorId(del.dataset.tfDel);
@@ -1800,7 +1819,7 @@ document.addEventListener('click', async (e) => {
   const del = e.target.closest('[data-pf-del]');
   if (del) { const l = del.closest('.pf-linha'); const box = l.parentElement; if (box.id === 'pend-linhas' && box.children.length === 1) { l.querySelectorAll('input,select').forEach((c) => { c.value = ''; }); } else if (box.id === 'pend-linhas') l.remove(); return; }
   const st = e.target.closest('[data-pend]');
-  if (st) { const [id, status] = st.dataset.pend.split('|'); try { await atas.mudarStatus(id, status); desenhar(); } catch (err) { alert(`Não foi possível (${err.message || err}). Só quem é o responsável, quem criou ou a diretoria pode mudar.`); } return; }
+  if (st) { const [id, status] = st.dataset.pend.split('|'); if (status === 'feita' && atas.precisaFuncao(id)) { e.preventDefault(); desenhar(); pedirFuncao(id, () => desenhar()); return; } try { await atas.mudarStatus(id, status); desenhar(); } catch (err) { alert(`Não foi possível (${err.message || err}). Só quem é o responsável, quem criou ou a diretoria pode mudar.`); } return; }
   const pd = e.target.closest('[data-pend-del]');
   if (pd) {
     const dePendencia = atas.pendenciaPorId(pd.dataset.pendDel);
