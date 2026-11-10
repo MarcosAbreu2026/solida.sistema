@@ -1809,7 +1809,7 @@ document.addEventListener('click', (e) => {
   if (nova) {
     const antigo = document.getElementById('at-modal'); if (antigo) antigo.remove();
     const m = document.createElement('div'); m.id = 'at-modal'; m.className = 'at-modal';
-    m.innerHTML = `<div class="at-modal-caixa">${String(atas.formAvulsa(obrasDeAtas(), nova.dataset.avNova, nova.dataset.avSetor || ''))}</div>`;
+    m.innerHTML = `<div class="at-modal-caixa">${String(atas.formAvulsa(obrasDeAtas(), nova.dataset.avNova, nova.dataset.avSetor || '', { obra: nova.dataset.avObra || '', resp: nova.dataset.avResp || '' }))}</div>`;
     document.body.appendChild(m); const campo = m.querySelector('[name="p_assunto"]'); if (campo) campo.focus();
     return;
   }

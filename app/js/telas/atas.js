@@ -414,7 +414,7 @@ export function formAvulsa(obras, prazo, setorPadrao = '', preset = {}) {
         <label class="av-desc">O que fazer<input name="p_desc" placeholder="ex.: Retirar da área gourmet" autocomplete="off" value="${preset.desc || ''}"></label>
         <label>Responsável<select name="p_tipo" data-pf-tipo><option value="solida">Sólida</option><option value="terceirizado">Terceirizado</option><option value="cliente">Cliente</option><option value="arquitetura">Arquitetura</option></select></label>
         <label class="av-quem">Nome da empresa ou pessoa
-          <select name="p_resp" class="pf-sol"><option value="">Pessoa da Sólida…</option>${opcoesPessoas('')}</select>
+          <select name="p_resp" class="pf-sol"><option value="">Pessoa da Sólida…</option>${opcoesPessoas(preset.resp || '')}</select>
           <input name="p_nome" class="pf-ext" list="dl-terceiros" placeholder="Nome da empresa ou pessoa" autocomplete="off" hidden></label>
         <label>Prazo<input type="date" name="p_prazo" value="${prazo || ''}"></label>
         <label>Função (Agenda)<select name="p_func"><option value="">Nenhuma</option>${opcoesFuncaoTarefa(souEu(), '')}</select></label>
@@ -602,7 +602,7 @@ function vistaDia(params, obras, setorFixo) {
   const gente = pessoasComPendencia().filter((x) => x.id !== souEu());
   return html`<section class="lt">
     <div class="lt-topo"><div><span class="lt-rot">${dia === hoje ? 'Hoje' : SEM_LONGO[new Date(`${dia}T12:00:00`).getDay()]}</span><h2>Tarefas do dia</h2></div>
-      <div class="lt-nav"><button type="button" class="botao" data-lt-dia="${somarDias(dia, -1)}">‹ Dia anterior</button><button type="button" class="botao" data-lt-dia="${hoje}">Hoje</button><span class="lt-data">${dm(dia)}</span><button type="button" class="botao" data-lt-dia="${somarDias(dia, 1)}">Dia seguinte ›</button></div></div>
+      <div class="lt-nav"><button type="button" class="botao on lt-nova" data-av-nova="${dia}" data-av-setor="${params.get('setor') || ''}" data-av-obra="${params.get('obra') || ''}" data-av-resp="${pessoaSel === 'eu' ? souEu() : (pessoaSel !== 'todos' ? pessoaSel : '')}">+ Nova tarefa</button><button type="button" class="botao" data-lt-dia="${somarDias(dia, -1)}">‹ Dia anterior</button><button type="button" class="botao" data-lt-dia="${hoje}">Hoje</button><span class="lt-data">${dm(dia)}</span><button type="button" class="botao" data-lt-dia="${somarDias(dia, 1)}">Dia seguinte ›</button></div></div>
     <div class="lt-resumo"><div class="lt-anel" style="--pct:${pct}"><b>${pct}%</b></div>
       <div><h3>${nomeSel}</h3><p class="pequeno">${feitas} de ${itens.length} ${itens.length === 1 ? 'tarefa concluída' : 'tarefas concluídas'}</p>
         <div class="lt-urgs">${['alta', 'media', 'baixa'].map((u) => (contaUrg(u) ? html`<span class="lt-urg ${URG[u][1]}"><i></i>${contaUrg(u)} ${URG[u][0]}</span>` : ''))}</div></div></div>
