@@ -82,7 +82,7 @@ export const funcaoPorId = (id) => FUNCOES.find((f) => f.id === (ANTIGAS[id] || 
 // Abas que cada função vê: setores + páginas gerais. O padrão está nas listas acima (areas); a diretoria pode
 // escolher outras na tela Acessos (guardado no banco, tabela funcao_abas) e isso passa a valer no lugar do padrão.
 export const SETORES = [['operacao', 'Operação'], ['posobra', 'Pós-obra'], ['transporte', 'Transporte e logística'], ['suprimentos', 'Suprimentos e compras'],
-  ['planejamento', 'Planejamento'], ['projetos', 'Projetos'], ['comercial', 'Comercial'], ['orcamentos', 'Orçamentos'], ['financeiro', 'Financeiro'], ['rh', 'RH']];
+  ['planejamento', 'Planejamento'], ['projetos', 'Projetos'], ['comercial', 'Comercial'], ['orcamentos', 'ORC obras novas'], ['financeiro', 'Financeiro'], ['rh', 'RH']];
 // Setores como no organograma (R07, 09/2026): as pessoas (Acessos) e as atas/pendências usam esta lista. Os que não têm aba própria no menu (Técnico, Ferramentas, Marketing, Novos negócios, Administrativo) existem só para ligar pessoas e pendências ao setor.
 export const SETORES_ORGANOGRAMA = ['Operação', 'Pós-obra', 'Técnico / qualidade', 'Suprimentos e compras', 'Transporte e logística', 'Ferramentas / EPI', 'Projetos', 'Planejamento', 'Comercial', 'ORC terceirizado laranja', 'ORC obras novas', 'Marketing', 'Novos negócios', 'Financeiro', 'RH', 'Administrativo'];
 
