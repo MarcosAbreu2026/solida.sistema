@@ -1679,7 +1679,7 @@ function pedirFuncao(id, depois) {
 document.addEventListener('submit', async (e) => {
   const f = e.target.closest && e.target.closest('#fn-conc'); if (!f) return;
   e.preventDefault(); const id = f.dataset.id; const funcao = String(new FormData(f).get('funcao') || '');
-  if (!funcao) { alert('Escolha a função (ou "Outras atividades").'); return; }
+  if (!funcao) { alert('Escolha a função (ou "Fora da função").'); return; }
   try {
     await atas.definirFuncaoTarefa(id, funcao); await atas.mudarStatus(id, 'feita');
     const m = document.getElementById('at-modal'); if (m) m.remove();
