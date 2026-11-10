@@ -161,7 +161,7 @@ export function presencaDeFundo() {
   if (!NA_NUVEM || fundo) return;
   const bater = async () => { if (jogo) return; const m = meuFundo(); if (m) { try { await presenca(m); } catch { /* sem conexão: tenta de novo */ } } };
   fundo = setInterval(bater, 10000);
-  bater();
+  bater(); setTimeout(bater, 2500);   // a 1ª chamada só abre o canal; a 2ª já se anuncia
 }
 export function pararPresencaDeFundo() {
   if (fundo) { clearInterval(fundo); fundo = null; }

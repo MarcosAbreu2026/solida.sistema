@@ -18,3 +18,4 @@ config.json
 # programas baixados no computador do escritorio (whisper, ffmpeg) e arquivos temporarios de audio
 ferramentas/
 dados/audios/
+app/versao.json

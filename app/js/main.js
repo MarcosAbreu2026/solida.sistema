@@ -292,6 +292,23 @@ function fonteDoPosObra() {
 const numerico = (a, b) => String(a).localeCompare(String(b), 'pt-BR', { numeric: true });
 // Tudo o que é criado ou excluído (obra, setor, login/pessoa) aparece em todas as telas: depois de cada criação/exclusão, de minuto em minuto e ao voltar para a aba,
 // recarrega os cadastros e redesenha (sem atrapalhar quem está digitando). Regra do Felipe, 10/11/2026: listas nunca fixas no código.
+// Versão nova do sistema: quem deixa o sistema aberto o dia todo continuava com o código antigo (e, por exemplo, não aparecia no escritório virtual).
+// A cada 2 min vê se saiu versão nova (versao.json, gerado a cada publicação) e, quando não está digitando, recarrega a página.
+{
+  let versaoAbriu = null;
+  const checar = async () => {
+    try {
+      const r = await fetch('versao.json', { cache: 'no-store' }); if (!r.ok) return;
+      const v = (await r.json()).v; if (!v) return;
+      if (versaoAbriu === null) { versaoAbriu = v; return; }
+      if (v === versaoAbriu) return;
+      const a = document.activeElement;
+      const ocupado = document.getElementById('at-modal') || (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.closest('#conteudo, #at-modal'));
+      if (!ocupado) location.reload();
+    } catch { /* sem conexão ou ambiente local: ignora */ }
+  };
+  setTimeout(checar, 3000); setInterval(checar, 2 * 60 * 1000);
+}
 let sincronizandoCad = false;
 async function sincronizarCadastros({ forcar = false } = {}) {
   if (!nuvem.NA_NUVEM || !logado() || sincronizandoCad) return;

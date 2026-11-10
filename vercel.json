@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "buildCommand": "",
+  "buildCommand": "node -e \"require('fs').writeFileSync('app/versao.json', JSON.stringify({ v: process.env.VERCEL_GIT_COMMIT_SHA || String(Date.now()) }))\"",
   "installCommand": "",
   "outputDirectory": "app",
   "headers": [
@@ -13,6 +13,7 @@
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
       ]
     },
+    { "source": "/versao.json", "headers": [{ "key": "Cache-Control", "value": "no-store" }] },
     { "source": "/js/(.*)", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
     { "source": "/(index.html)?", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] }
   ]
