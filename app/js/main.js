@@ -1775,6 +1775,7 @@ document.addEventListener('drop', async (e) => {
 });
 
 document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-mv]'); if (b) trocarQuery({ modo: b.dataset.mv || null }); });
+document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-lt-filtro]'); if (!b) return; const [k, v] = b.dataset.ltFiltro.split('|'); trocarQuery({ [k]: v || null }); });
 // Tarefas › modo Lista: trocar o dia, passar a tarefa para o dia seguinte, abrir a tarefa, passar as pendências atrasadas
 document.addEventListener('click', async (e) => {
   const d = e.target.closest && e.target.closest('[data-lt-dia]');

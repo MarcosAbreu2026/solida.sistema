@@ -587,33 +587,51 @@ function vistaDia(params, obras, setorFixo) {
   const grupos = new Map();
   for (const p of itens) { const k = p.obra ? codigoDaObra(p.obra) : ''; if (!grupos.has(k)) grupos.set(k, { nome: p.obra || 'Geral', itens: [] }); grupos.get(k).itens.push(p); }
   const ordem = [...grupos.entries()].sort(([a], [b]) => (a === '' ? -1 : b === '' ? 1 : a.localeCompare(b, 'pt-BR', { numeric: true })));
+  const corPessoa = (nome) => { let h = 0; for (const c of String(nome || '')) h = (h * 31 + c.charCodeAt(0)) % 4; return `lt-p${h}`; };
   const linha = (p) => {
     const atrasada = aberta(p) && p.prazo && p.prazo < hoje;
     const sub = p.status === 'feita' ? 'Concluída' : atrasada ? `Pendente desde ${dm(p.prazo).slice(0, 5)}` : !p.prazo ? 'Sem prazo' : '';
+    const quem = nomeDe(p.responsavel, p.responsavel_nome);
+    const ontem = somarDias(dia, -1); const amanha = somarDias(dia, 1);
     return html`<div class="lt-linha ${p.status === 'feita' ? 'lt-feita' : ''}">
       <input type="checkbox" class="lt-chk" data-pend="${p.id}|${p.status === 'feita' ? 'aberta' : 'feita'}" ${p.status === 'feita' ? html.seguro('checked') : ''} title="${p.status === 'feita' ? 'Reabrir' : 'Concluir'}">
-      <div class="lt-corpo"><span class="lt-tit" data-tarefa="${p.id}" title="Abrir a tarefa">${descRica(p.descricao)}</span>${sub ? html`<span class="lt-sub ${atrasada ? 'lt-atraso' : ''}">${sub}</span>` : ''}</div>
-      <span class="lt-quem">${nomeDe(p.responsavel, p.responsavel_nome)}</span>${chipUrg(p.urgencia)}
-      <button type="button" class="ac-mini" data-lt-mover="${p.id}|${somarDias(dia, 1)}" title="Passar para ${dm(somarDias(dia, 1))}">→ ${dm(somarDias(dia, 1)).slice(0, 5)}</button>
-      <button type="button" class="ac-mini" data-lt-abrir="${p.id}">Editar</button>
-      <button type="button" class="ac-mini ac-excluir" data-pend-del="${p.id}">Excluir</button></div>`;
+      <div class="lt-corpo"><span class="lt-tit" data-tarefa="${p.id}" title="Abrir a tarefa">${descRica(p.descricao)}</span>${sub ? html`<span class="lt-sub ${atrasada ? 'lt-atraso' : ''}">${sub}</span>` : ''}${p.funcao_tarefa ? html`<span class="lt-sub">Função: ${p.funcao_tarefa}</span>` : ''}</div>
+      <div class="lt-dir"><span class="lt-quem ${corPessoa(quem)}">${quem}</span>${chipUrg(p.urgencia)}
+        <button type="button" class="lt-bt" data-lt-mover="${p.id}|${ontem}" title="Passar para ${dm(ontem)}">↩ Devolver para ${dm(ontem).slice(0, 5)}</button>
+        <button type="button" class="lt-bt" data-lt-mover="${p.id}|${amanha}" title="Passar para ${dm(amanha)}">→ ${dm(amanha).slice(0, 5)}</button>
+        <button type="button" class="lt-bt" data-lt-abrir="${p.id}">Editar</button>
+        <button type="button" class="lt-bt lt-bt-ex" data-pend-del="${p.id}">Excluir</button></div></div>`;
   };
   const opt = (v, t, atual) => html`<option value="${v}" ${atual === v ? html.seguro('selected') : ''}>${t}</option>`;
   const gente = pessoasComPendencia().filter((x) => x.id !== souEu());
+  const pilula = (chave, valor, rotulo, atual) => html`<button type="button" class="lt-pil ${atual === valor ? 'on' : ''}" data-lt-filtro="${chave}|${valor}">${rotulo}</button>`;
+  const diaSem = SEM_LONGO[new Date(`${dia}T12:00:00`).getDay()];
   return html`<section class="lt">
-    <div class="lt-topo"><div><span class="lt-rot">${dia === hoje ? 'Hoje' : SEM_LONGO[new Date(`${dia}T12:00:00`).getDay()]}</span><h2>Tarefas do dia</h2></div>
-      <div class="lt-nav"><button type="button" class="botao on lt-nova" data-av-nova="${dia}" data-av-setor="${params.get('setor') || ''}" data-av-obra="${params.get('obra') || ''}" data-av-resp="${pessoaSel === 'eu' ? souEu() : (pessoaSel !== 'todos' ? pessoaSel : '')}">+ Nova tarefa</button><button type="button" class="botao" data-lt-dia="${somarDias(dia, -1)}">‹ Dia anterior</button><button type="button" class="botao" data-lt-dia="${hoje}">Hoje</button><span class="lt-data">${dm(dia)}</span><button type="button" class="botao" data-lt-dia="${somarDias(dia, 1)}">Dia seguinte ›</button></div></div>
-    <div class="lt-resumo"><div class="lt-anel" style="--pct:${pct}"><b>${pct}%</b></div>
-      <div><h3>${nomeSel}</h3><p class="pequeno">${feitas} de ${itens.length} ${itens.length === 1 ? 'tarefa concluída' : 'tarefas concluídas'}</p>
-        <div class="lt-urgs">${['alta', 'media', 'baixa'].map((u) => (contaUrg(u) ? html`<span class="lt-urg ${URG[u][1]}"><i></i>${contaUrg(u)} ${URG[u][0]}</span>` : ''))}</div></div></div>
-    <div class="at-filtros">
-      <label>Ver tarefas de<select data-atas-filtro="pessoa">${opt('eu', 'Só as minhas', pessoaSel)}${opt('todos', 'Todos', pessoaSel)}${gente.map((x) => opt(x.id, x.nome, pessoaSel))}</select></label>
-      ${setorFixo ? '' : html`<label>Setor<select data-atas-filtro="setor"><option value="">Todos</option>${SETORES_ATA.map((s) => opt(s, s, params.get('setor') || ''))}</select></label>`}
-      ${selObra(obras, params.get('obra') || '')}
-      <label>Urgência<select data-atas-filtro="urg"><option value="">Todas</option>${opt('alta', 'Alta', urg)}${opt('media', 'Média', urg)}${opt('baixa', 'Baixa', urg)}${opt('sem', 'Sem urgência', urg)}</select></label>
-      <label>Procurar<input type="search" data-atas-filtro="q" value="${params.get('q') || ''}" placeholder="texto…"></label></div>
-    <div class="lt-acoes">${atrasadas.length ? html`<button type="button" class="botao" data-lt-passar="${atrasadas.map((p) => p.id).join(',')}|${alvoPassar}">Passar ${atrasadas.length} ${atrasadas.length === 1 ? 'pendência' : 'pendências'} para ${dm(alvoPassar).slice(0, 5)}</button>` : ''}</div>
-    ${ordem.length ? ordem.map(([, g]) => html`<section class="lt-grupo"><header><h3>${g.nome}</h3><span>${g.itens.filter((p) => p.status === 'feita').length}/${g.itens.length}</span></header>${g.itens.map(linha)}</section>`) : html`<p class="vazio">Nenhuma tarefa para este dia com esses filtros.</p>`}
+    <div class="lt-topo">
+      <div><span class="lt-eyebrow">Construtora Sólida · ${funcaoAtual().nome}</span><h2>Tarefas do <b>dia</b></h2></div>
+      <div class="lt-nav">
+        <button type="button" class="lt-nova" data-av-nova="${dia}" data-av-setor="${params.get('setor') || ''}" data-av-obra="${params.get('obra') || ''}" data-av-resp="${pessoaSel === 'eu' ? souEu() : (pessoaSel !== 'todos' ? pessoaSel : '')}">+ Nova tarefa</button>
+        <button type="button" class="lt-seta" data-lt-dia="${somarDias(dia, -1)}" title="Dia anterior" aria-label="Dia anterior">‹</button>
+        <button type="button" class="lt-hoje" data-lt-dia="${hoje}">Hoje</button>
+        <div class="lt-data"><span>${diaSem}${dia === hoje ? ' · hoje' : ''}</span><b>${dm(dia)}</b></div>
+        <button type="button" class="lt-seta" data-lt-dia="${somarDias(dia, 1)}" title="Dia seguinte" aria-label="Dia seguinte">›</button>
+      </div></div>
+    <div class="lt-faixa"></div>
+    <div class="lt-corpo-geral">
+      <div class="lt-resumo"><div class="lt-anel" style="--pct:${pct}"><b>${pct}%</b></div>
+        <div><h3>${nomeSel}</h3><p>${feitas} de ${itens.length} ${itens.length === 1 ? 'tarefa concluída' : 'tarefas concluídas'}</p>
+          <div class="lt-urgs">${['alta', 'media', 'baixa'].map((u) => (contaUrg(u) ? html`<span class="lt-urg ${URG[u][1]}"><i></i>${contaUrg(u)} ${URG[u][0]}</span>` : ''))}</div></div></div>
+      <div class="lt-filtros">
+        <div class="lt-grp"><span>Ver tarefas de</span>${pilula('pessoa', 'eu', 'Só as minhas', pessoaSel)}${pilula('pessoa', 'todos', 'Todos', pessoaSel)}${gente.map((x) => pilula('pessoa', x.id, x.nome, pessoaSel))}</div>
+        <div class="lt-grp"><span>Urgência</span>${pilula('urg', '', 'Todas', urg)}${pilula('urg', 'alta', 'Alta', urg)}${pilula('urg', 'media', 'Média', urg)}${pilula('urg', 'baixa', 'Baixa', urg)}${pilula('urg', 'sem', 'Sem', urg)}</div>
+        <div class="lt-grp lt-grp-sel">
+          ${setorFixo ? '' : html`<label>Setor<select data-atas-filtro="setor"><option value="">Todos</option>${SETORES_ATA.map((s) => opt(s, s, params.get('setor') || ''))}</select></label>`}
+          ${selObra(obras, params.get('obra') || '')}
+          <label>Procurar<input type="search" data-atas-filtro="q" value="${params.get('q') || ''}" placeholder="texto…"></label></div>
+      </div>
+      <div class="lt-acoes">${atrasadas.length ? html`<button type="button" class="lt-bt lt-bt-grande" data-lt-passar="${atrasadas.map((p) => p.id).join(',')}|${alvoPassar}">Passar ${atrasadas.length} ${atrasadas.length === 1 ? 'pendência' : 'pendências'} para ${dm(alvoPassar).slice(0, 5)}</button>` : ''}</div>
+      ${ordem.length ? ordem.map(([, g]) => html`<section class="lt-grupo"><header><h3>${g.nome}</h3><span>${g.itens.filter((p) => p.status === 'feita').length}/${g.itens.length}</span></header>${g.itens.map(linha)}</section>`) : html`<p class="lt-vazio">Nenhuma tarefa para este dia com esses filtros.</p>`}
+    </div>
   </section>`;
 }
 export function renderPendencias({ params, obras = [], setorFixo = '', base = '#/atas', sugestoes = [] }) {
