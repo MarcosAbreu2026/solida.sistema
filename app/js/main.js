@@ -83,6 +83,27 @@ const SUB = [
   { id: 'servicos-tabela', nome: 'Serviços (tabela da planilha)', mod: servicos, escondida: true },
 ];
 
+// Sem piscar: qualquer tela que escreve em #conteudo só troca o HTML se ele mudou (ou se o usuário mexeu em algum campo e a tela precisa voltar ao
+// estado salvo). A transição suave (fade, classe .troca) acontece só quando a TELA muda, não quando a mesma tela é redesenhada com dados novos.
+{
+  const alvo = document.getElementById('conteudo');
+  const original = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
+  let ultimoHtml = null; let ultimaRota = null;
+  Object.defineProperty(alvo, 'innerHTML', {
+    configurable: true,
+    get() { return original.get.call(this); },
+    set(v) {
+      const rotaChave = location.hash.split('?')[0];
+      const sujo = [...this.querySelectorAll('input, select, textarea')].some((el) => (el.type === 'checkbox' || el.type === 'radio' ? el.checked !== el.defaultChecked : el.tagName === 'SELECT' ? (el.multiple ? false : el.selectedIndex !== Math.max(0, [...el.options].findIndex((o) => o.defaultSelected))) : el.value !== el.defaultValue));
+      if (v !== ultimoHtml || sujo || this.innerText === '') {
+        original.set.call(this, v); ultimoHtml = v;
+        if (ultimaRota !== rotaChave) { this.classList.remove('troca'); void this.offsetWidth; this.classList.add('troca'); }
+      }
+      ultimaRota = rotaChave;
+    },
+  });
+}
+
 const estado = {
   cfg: null,          // dados.json do painel (agentes)
   sync: {},           // { origem, atualizado, erro }
@@ -802,7 +823,7 @@ function desenhar() {
     console.error(e);
     out = `<div class="erro">Erro ao montar esta tela: ${esc(e.message)}</div>`;
   }
-  $('#conteudo').innerHTML = out;
+  $('#conteudo').innerHTML = out;   // (o setter de #conteudo, logo abaixo de estado, evita redesenhar à toa e piscar)
   ordenar.aplicar();   // tabelas ordenáveis: reaplica a ordem escolhida
   desenharPedido();
   // Projetos: clicar numa obra do ranking abre as disciplinas dela
