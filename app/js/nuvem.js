@@ -421,3 +421,18 @@ export async function urlsFotosOs(caminhos) {
   const o = {}; (data || []).forEach((x) => { if (x.signedUrl) o[x.path] = x.signedUrl; });
   return o;
 }
+
+// ---------------------------------------------------------------- setores / departamentos cadastráveis (supabase/13-setores.sql)
+export async function listarSetores() {
+  const { data, error } = await sb.from('setores').select('nome').order('ordem').order('nome');
+  if (error) throw new Error(error.message);
+  return (data || []).map((s) => s.nome);
+}
+export async function criarSetor(nome) {
+  const { error } = await sb.from('setores').insert({ nome: String(nome).trim(), ordem: 100 });
+  if (error) throw new Error(error.message);
+}
+export async function excluirSetor(nome) {
+  const { error } = await sb.from('setores').delete().eq('nome', nome);
+  if (error) throw new Error(error.message);
+}

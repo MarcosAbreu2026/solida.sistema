@@ -20,7 +20,7 @@ import { definirPerfil } from './componentes.js';
 import { normalizar, criarTelas, pt } from './painel-empresa.js';
 import { sessao, funcaoAtual, veValores, podeMudarSituacaoObra, entrar, sair, logado, idPessoa, podeVerArea, obrasDaPessoa,
   podeVerComo, simulando, verComo, funcaoReal } from './sessao.js';
-import { FUNCOES, funcaoPorId, veBlocoGeral, INDICADORES_SO_GESTAO, paginaVisivel, aplicarAbas, abasPadrao, soMinhasFuncoes, temEstoqueRestrito } from './funcoes.js';
+import { SETORES_ORGANOGRAMA, aplicarSetores, FUNCOES, funcaoPorId, veBlocoGeral, INDICADORES_SO_GESTAO, paginaVisivel, aplicarAbas, abasPadrao, soMinhasFuncoes, temEstoqueRestrito } from './funcoes.js';
 import * as marketing from './telas/marketing.js';
 import * as login from './telas/login.js';
 import { marcarCheck, gravarLancamento, apagarLancamento, gravarManual, vincularDia, sincronizarTarefas, lerPessoasTarefas, sincronizarHorarios } from './armazenamento.js';
@@ -269,6 +269,28 @@ function fonteDoPosObra() {
 // A caixinha de obra sai do CADASTRO (Cadastros): toda obra não finalizada, Mo… = obra e Po… = pós-obra. Obra nova cadastrada aparece sozinha.
 // Sem cadastro carregado (modo de teste), vale o que vem dos dados.
 const numerico = (a, b) => String(a).localeCompare(String(b), 'pt-BR', { numeric: true });
+// Tudo o que é criado ou excluído (obra, setor, login/pessoa) aparece em todas as telas: depois de cada criação/exclusão, de minuto em minuto e ao voltar para a aba,
+// recarrega os cadastros e redesenha (sem atrapalhar quem está digitando). Regra do Felipe, 10/11/2026: listas nunca fixas no código.
+let sincronizandoCad = false;
+async function sincronizarCadastros({ forcar = false } = {}) {
+  if (!nuvem.NA_NUVEM || !logado() || sincronizandoCad) return;
+  sincronizandoCad = true;
+  try {
+    const chavePessoas = () => JSON.stringify((atas.pessoasDaEquipe() || []).map((p) => `${p.id}|${p.nome}|${p.funcao}`));
+    const antesPessoas = chavePessoas();
+    const [oc, st] = await Promise.all([nuvem.listarObras().catch(() => null), nuvem.listarSetores().catch(() => null), atas.carregar().catch(() => null)]);
+    let mudou = forcar;
+    if (oc && JSON.stringify(oc) !== JSON.stringify(estado.obrasCad || [])) { estado.obrasCad = oc; mudou = true; }
+    if (st && st.length && JSON.stringify(st) !== JSON.stringify(SETORES_ORGANOGRAMA)) { aplicarSetores(st); atas.atualizarSetoresAta(); mudou = true; }
+    if (chavePessoas() !== antesPessoas) mudou = true;
+    const a = document.activeElement;
+    const digitando = !forcar && a && a.closest && a.closest('#conteudo form, #at-modal') && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName);
+    if (mudou && !digitando) desenhar();
+  } finally { sincronizandoCad = false; }
+}
+setInterval(() => sincronizarCadastros(), 60 * 1000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) sincronizarCadastros(); });
+window.addEventListener('focus', () => sincronizarCadastros());
 const cadastroAtivo = () => (estado.obrasCad || []).filter((c) => c.situacao !== 'finalizada').map((c) => c.codigo);
 function obrasDeAtas() {
   if (funcaoAtual().porObra) return obrasDaPessoa();
@@ -546,6 +568,8 @@ function desenhar() {
   esconderLogin();
   const CFG = estado.cfg;
   // onde está cada funcionário: só o efetivo de HOJE (zera todo dia); a lista de nomes vem do RH
+  // obra cadastrada em Acessos entra na hora nas telas que usam a lista de obras dos dados (efetivo, ferramentas, orçamentos…)
+  if (CFG) { CFG.obrasDados = CFG.obrasDados || [...(CFG.obras || [])]; CFG.obras = [...new Set([...CFG.obrasDados, ...(estado.obrasCad || []).filter((c) => c.situacao !== 'finalizada').map((c) => c.codigo)])]; }
   if (CFG) { CFG.funcionariosRH = CFG.funcionariosRH || CFG.funcionarios; CFG.funcionarios = efetivoTela.funcionariosDeHoje(CFG.funcionariosRH, estado.efetivo); }
   let rota = rotaAtual();
   let tela = rota.tela;
@@ -844,7 +868,8 @@ async function atualizar() {
   // marcações de tarefas de todos (pontuação do Perfil); quem está logado manda o que só tinha neste navegador
   const atual = logado() ? { pessoa: idPessoa(), nome: sessao().nome, funcao: funcaoAtual().id, teste: simulando(), obras: obrasDaPessoa() } : null;
   if (nuvem.NA_NUVEM && logado()) { try { aplicarAbas(await nuvem.carregarAbas()); } catch { /* sem a tabela: fica o padrão de cada função */ } }
-  if (nuvem.NA_NUVEM && logado()) { try { estado.obrasCad = await nuvem.listarObras(); } catch { /* sem o cadastro: ficam só as obras dos dados */ } }
+  if (nuvem.NA_NUVEM && logado()) { try { estado.obrasCad = await nuvem.listarObras(); } catch { /* sem o cadastro: ficam só as obras dos dados */ }
+    try { aplicarSetores(await nuvem.listarSetores()); atas.atualizarSetoresAta(); } catch { /* sem a tabela de setores: fica a lista padrão */ } }
   const [painelR, baseR, prodR, driveR, , , , , ferrR, terR, , efR] = await Promise.allSettled([carregarPainel(), carregarDados(), carregarProdutividade(), carregarDrive(), sincronizarTarefas(atual), perfil.carregarFotos(), feed.carregar(), evidencias.carregar(), carregarFerramentasChk(), carregarTerceirizados(), atas.carregar(), carregarEfetivo(), sincronizarHorarios(logado() ? idPessoa() : null)]);
   if (efR.status === 'fulfilled') estado.efetivo = efR.value;
   if (terR.status === 'fulfilled') estado.terceiros = terR.value;
@@ -1202,7 +1227,7 @@ function configurar() {
     if (!nome || !usuario || !funcao) { alert('Preencha nome, usuário e função.'); return; }
     if (funcaoPorId(funcao).porObra && !obras.length) { alert('Escolha pelo menos uma obra para esta função.'); return; }
     const senha = nuvem.senhaProvisoria();
-    try { await nuvem.criarLogin({ usuario, nome, funcao, obras, senha }); estado.acessosAviso = { titulo: `Login criado para ${nome}`, usuario, senha }; desenhar(); }
+    try { await nuvem.criarLogin({ usuario, nome, funcao, obras, senha }); estado.acessosAviso = { titulo: `Login criado para ${nome}`, usuario, senha }; await sincronizarCadastros({ forcar: true }); }
     catch (err) { alert(`Não foi possível criar (${err.message || err}).`); }
   });
   document.addEventListener('click', async (e) => {
@@ -1228,8 +1253,24 @@ function configurar() {
     const b = e.target.closest('[data-excluir-login]'); if (!b) return;
     const [id, nome] = b.dataset.excluirLogin.split('|');
     if (!confirm(`Excluir o login de ${nome}?\n\nIsso apaga o acesso e tudo o que a pessoa marcou no sistema (tarefas, publicações). Não dá para desfazer.\nPara só impedir a entrada, use "ativo" desmarcado.`)) return;
-    try { await nuvem.excluirLogin(id); estado.acessosMsg = `Login de ${nome} excluído.`; desenhar(); }
+    try { await nuvem.excluirLogin(id); estado.acessosMsg = `Login de ${nome} excluído.`; await sincronizarCadastros({ forcar: true }); }
     catch (err) { alert(`Não foi possível excluir (${err.message || err}).`); }
+  });
+  // Setores (departamentos): criar e excluir; aparecem na hora em atas, pendências, tarefas e acessos
+  document.addEventListener('submit', async (e) => {
+    const f = e.target.closest('#set-novo'); if (!f) return;
+    e.preventDefault(); const nome = String(new FormData(f).get('nome') || '').trim();
+    if (!nome) return;
+    if (SETORES_ORGANOGRAMA.some((s) => s.toLocaleLowerCase('pt-BR') === nome.toLocaleLowerCase('pt-BR'))) { alert('Este setor já existe.'); return; }
+    try { await nuvem.criarSetor(nome); estado.acessosMsg = `Setor ${nome} criado.`; await sincronizarCadastros({ forcar: true }); }
+    catch (err) { alert(`Não foi possível criar o setor (${err.message || err}).`); }
+  });
+  document.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-excluir-setor]'); if (!b) return;
+    const nome = b.dataset.excluirSetor;
+    if (!confirm(`Excluir o setor "${nome}"? Ele sai das listas; as atas e pendências que já usam esse nome continuam como estão.`)) return;
+    try { await nuvem.excluirSetor(nome); estado.acessosMsg = `Setor ${nome} excluído.`; await sincronizarCadastros({ forcar: true }); }
+    catch (err) { alert(`Não foi possível excluir o setor (${err.message || err}).`); }
   });
   // Cadastro de obras: incluir, mudar a situação (andamento · pausada · finalizada) e excluir
   const codigoObra = (txt) => { const s = String(txt || '').trim().replace(/\s+/g, ''); const m = s.match(/^(mo|po)(\d+.*)$/i); return m ? `${m[1][0].toUpperCase()}${m[1][1].toLowerCase()}${m[2]}` : s; };
@@ -1241,7 +1282,7 @@ function configurar() {
     try {
       const cad = (estado.obrasCad || []).find((o) => o.codigo === codigo);
       await nuvem.salvarObra({ codigo, nome: (cad && cad.nome) || '', situacao });
-      estado.obrasCad = await nuvem.listarObras(); desenhar();
+      await sincronizarCadastros({ forcar: true });
     } catch (err) { alert(`Não foi possível mudar a situação da obra (${err.message || err}).`); desenhar(); }
   });
   document.addEventListener('submit', async (e) => {
@@ -1250,7 +1291,7 @@ function configurar() {
     const fd = new FormData(f);
     const codigo = f.id === 'ob-novo' ? codigoObra(fd.get('codigo')) : f.dataset.obraCad;
     if (!codigo) { alert('Digite o código da obra (ex.: Mo565).'); return; }
-    try { await nuvem.salvarObra({ codigo, nome: String(fd.get('nome') || '').trim(), situacao: fd.get('situacao') || 'andamento' }); estado.acessosMsg = `Obra ${codigo} salva.`; desenhar(); }
+    try { await nuvem.salvarObra({ codigo, nome: String(fd.get('nome') || '').trim(), situacao: fd.get('situacao') || 'andamento' }); estado.acessosMsg = `Obra ${codigo} salva.`; await sincronizarCadastros({ forcar: true }); }
     catch (err) { alert(`Não foi possível salvar a obra (${err.message || err}).`); }
   });
   // a lista de obras do Cadastro lembra se estava aberta (para não fechar ao salvar uma obra)
@@ -1259,7 +1300,7 @@ function configurar() {
     const b = e.target.closest('[data-excluir-obra]'); if (!b) return;
     const codigo = b.dataset.excluirObra;
     if (!confirm(`Tirar a obra ${codigo} do cadastro? (Para só encerrar, mude a situação para "finalizada".)`)) return;
-    try { await nuvem.excluirObra(codigo); estado.acessosMsg = `Obra ${codigo} removida do cadastro.`; desenhar(); }
+    try { await nuvem.excluirObra(codigo); estado.acessosMsg = `Obra ${codigo} removida do cadastro.`; await sincronizarCadastros({ forcar: true }); }
     catch (err) { alert(`Não foi possível remover (${err.message || err}).`); }
   });
   // abas por função: voltar uma linha ao padrão e salvar a tabela
@@ -1288,7 +1329,7 @@ function configurar() {
     const funcao = fd.get('funcao') || null; const obras = fd.getAll('obras');
     if (!funcao) { alert('Escolha a função da pessoa.'); return; }
     if (funcaoPorId(funcao).porObra && !obras.length) { alert('Escolha pelo menos uma obra para esta função.'); return; }
-    try { await nuvem.salvarPerfil(f.dataset.acesso, { funcao, obras, setores: fd.getAll('setores') }); estado.acessosMsg = 'Salvo.'; desenhar(); }
+    try { await nuvem.salvarPerfil(f.dataset.acesso, { funcao, obras, setores: fd.getAll('setores') }); estado.acessosMsg = 'Salvo.'; await sincronizarCadastros({ forcar: true }); }
     catch (err) { alert(`Não foi possível salvar (${err.message || err}).`); }
   });
   // Feed: publicar, comentar, curtir, fixar e apagar

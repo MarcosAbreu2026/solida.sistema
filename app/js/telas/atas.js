@@ -742,3 +742,6 @@ void ataDe;
 
 // pessoas da Sólida (para escolher responsável em outras telas, como o Quadro de OS do pós-obra)
 export const pessoasDaEquipe = () => dados.pessoas;
+
+// refaz a lista de departamentos das atas/pendências depois que um setor é criado ou excluído
+export const atualizarSetoresAta = () => { SETORES_ATA.splice(0, SETORES_ATA.length, ...SETORES_ORGANOGRAMA, 'Diretoria / geral'); };

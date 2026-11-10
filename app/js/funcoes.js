@@ -535,3 +535,9 @@ export function descreverDias(d) {
   if (d && d.primeira) return `1ª ${NOMES_DIA[d.primeira].toLowerCase()} do mês`;
   return '';
 }
+
+// Setores cadastrados (tabela setores): troca a lista no mesmo array, para todas as telas que a importaram enxergarem a mudança na hora
+export function aplicarSetores(nomes) {
+  const lista = [...new Set((nomes || []).map((n) => String(n).trim()).filter(Boolean))];
+  if (lista.length) SETORES_ORGANOGRAMA.splice(0, SETORES_ORGANOGRAMA.length, ...lista);
+}

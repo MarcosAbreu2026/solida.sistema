@@ -76,6 +76,11 @@ export function render({ perfis = [], obras = [], posObras = [], obrasCad = [], 
             ${l.map((o) => html`<details class="ac-obra-item"><summary><b>${o.codigo}</b><span class="ac-obra-nome">${o.nome || 'sem nome'}</span><span class="ac-sit ac-sit-${o.situacao}">${({ andamento: 'em andamento', pausada: 'pausada', finalizada: 'finalizada' })[o.situacao] || o.situacao}</span>${o.semCadastro ? html`<span class="pequeno pendente">não cadastrada</span>` : ''}</summary>${linhaObra(o)}</details>`)}`)}
         </div>
       </details></section>
+    <section class="secao"><h2>Setores <span class="pequeno">${SETORES_ORGANOGRAMA.length}</span></h2>
+      <p class="pequeno">Departamentos usados em atas, pendências, tarefas e acessos. O que você criar ou excluir aqui aparece na hora em todas as telas.</p>
+      <form class="ac-novo" id="set-novo"><label>Novo setor<input name="nome" placeholder="ex.: Jurídico" autocomplete="off" required></label><button type="submit" class="botao on">Criar setor</button></form>
+      <div class="ac-chips">${SETORES_ORGANOGRAMA.map((s) => html`<span class="ac-chip"><span>${s}</span> <button type="button" class="ac-mini" data-excluir-setor="${s}" title="Excluir o setor">×</button></span>`)}</div>
+    </section>
     <section class="secao"><h2>Criar login</h2>
       <form class="ac-novo" id="ac-novo">
         <label>Nome<input name="nome" placeholder="ex.: Mariana C." required></label>
