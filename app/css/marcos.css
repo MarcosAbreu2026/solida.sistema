@@ -463,3 +463,6 @@ body.nav-recolhido nav::after { display: none; }
 .tf-obs summary { cursor: pointer; font-weight: 700; font-size: 13px; }
 .tf-obs-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 4px 12px; margin-top: 8px; max-height: 180px; overflow-y: auto; }
 .tf-obs-lista label { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; }
+
+.lt-escolher { background: #0F1A34; border: 1px solid #2E3E66; color: #E8EDF7; border-radius: 999px; padding: 8px 16px; font-size: 14px; font-weight: 600; min-width: 190px; cursor: pointer; }
+.lt-escolher.on { background: #1E3566; border-color: #3E5A99; color: #fff; }

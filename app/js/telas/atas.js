@@ -636,7 +636,8 @@ function vistaDia(params, obras, setorFixo) {
         </div>
       </div>
       <div class="lt-filtros">
-        <div class="lt-grp"><span>Ver tarefas de</span>${pilula('pessoa', 'eu', 'Só as minhas', pessoaSel)}${pilula('pessoa', 'todos', 'Todos', pessoaSel)}${gente.map((x) => pilula('pessoa', x.id, x.nome, pessoaSel))}</div>
+        <div class="lt-grp"><span>Ver tarefas de</span>${pilula('pessoa', 'eu', 'Só as minhas', pessoaSel)}
+          ${gente.length ? html`<select class="lt-escolher ${pessoaSel !== 'eu' ? 'on' : ''}" data-atas-filtro="pessoa" aria-label="Escolher a pessoa"><option value="">Escolher a pessoa…</option>${opt('todos', 'Todos (os que eu vejo)', pessoaSel)}${gente.map((x) => opt(x.id, x.nome, pessoaSel))}</select>` : ''}</div>
         <div class="lt-grp"><span>Urgência</span>${pilula('urg', '', 'Todas', urg)}${pilula('urg', 'alta', 'Alta', urg)}${pilula('urg', 'media', 'Média', urg)}${pilula('urg', 'baixa', 'Baixa', urg)}${pilula('urg', 'sem', 'Sem', urg)}</div>
         <div class="lt-grp lt-grp-sel">
           ${setorFixo ? '' : html`<label>Setor<select data-atas-filtro="setor"><option value="">Todos</option>${SETORES_ATA.map((s) => opt(s, s, params.get('setor') || ''))}</select></label>`}
