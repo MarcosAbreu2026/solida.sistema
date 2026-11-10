@@ -52,6 +52,10 @@ const souEu = () => (NA_NUVEM ? perfilAtual() && perfilAtual().id : idPessoa());
 // do(s) departamento(s) da sua função. O banco já aplica esta regra para valer (tabelas atas e pendencias); aqui ela
 // também vale no modo teste e no "ver como", para a tela mostrar o mesmo.
 // setores da pessoa: na nuvem, os marcados em Acessos (perfis.setores); no modo teste ou "ver como", os da função
+// Observadores: uma ou mais pessoas que acompanham a tarefa (veem e anotam no chat, sem editar). Lista = quem tem login, menos o responsável.
+const caixaObservadores = (nome, marcados, respId) => html`<details class="tf-obs"><summary>Observadores <span class="pequeno">${marcados.length ? `(${marcados.length})` : '(ninguém)'}</span></summary>
+  <div class="tf-obs-lista">${dados.pessoas.filter((x) => x.id !== respId).map((x) => html`<label><input type="checkbox" name="${nome}" value="${x.id}" ${marcados.includes(x.id) ? html.seguro('checked') : ''}> ${x.nome}</label>`)}</div></details>`;
+const ABAIXO_DA_OBRA = ['estagiario', 'encarregado', 'ajudante', 'gestor_obra', 'posobra', 'executor_ferramentas', 'estagiario_compras', 'orc_terceirizado'];
 function meusSetores() {
   const f = funcaoAtual();
   if (NA_NUVEM && !simulando() && perfilAtual() && Array.isArray(perfilAtual().setores) && perfilAtual().setores.length) return perfilAtual().setores;
@@ -64,9 +68,12 @@ function visivelParaMim(x, ehAta, pendDaAta) {
   if (!ehAta) {
     // TAREFA: só a minha, a de quem eu respondo (gestores), a que eu criei, as da minha obra se eu sou gestor de obra / pós-obra,
     // e a coordenação de operações segue vendo os setores dela. Os outros colegas do mesmo setor não aparecem.
-    if (x.responsavel === eu || (x.gestores || []).includes(eu) || x.criado_por === eu) return true;
-    if (['gestor_obra', 'posobra'].includes(f.id) && x.obra && (sessao().obras || []).includes(x.obra)) return true;
-    if (f.id === 'coord_operacoes' && x.setor) return meusSetores().includes(x.setor);
+    if (x.responsavel === eu || (x.gestores || []).includes(eu) || (x.observadores || []).includes(eu) || x.criado_por === eu) return true;
+    // quem é de um cargo abaixo não vê a tarefa do cargo acima (a não ser como observador): o gestor de obra / pós-obra só vê da obra as de quem é de obra ou externo;
+    // a coordenação de operações não vê as da diretoria
+    const funcDoResp = x.responsavel ? ((dados.pessoas.find((p) => p.id === x.responsavel) || {}).funcao || '') : '';
+    if (['gestor_obra', 'posobra'].includes(f.id) && x.obra && (sessao().obras || []).includes(x.obra)) return !x.responsavel || ABAIXO_DA_OBRA.includes(funcDoResp);
+    if (f.id === 'coord_operacoes' && x.setor) return meusSetores().includes(x.setor) && funcDoResp !== 'socio';
     return false;
   }
   if (x.criado_por === eu) return true;
@@ -202,8 +209,8 @@ export async function criarAta({ titulo, data, tipo, obra, setor, participantes,
   await carregar();
   return nova;
 }
-export async function criarPendencia({ ata_id, descricao, responsavel, externoNome, externoTipo, externoCategoria, prazo, obra, setor, os, urgencia, funcaoTarefa }) {
-  const p = { ata_id: ata_id || null, descricao, responsavel: responsavel || null, responsavel_nome: responsavel ? nomeDe(responsavel) : (externoNome || externoCategoria || (externoTipo === 'cliente' ? 'Cliente' : externoTipo === 'arquitetura' ? 'Arquitetura' : null)), responsavel_tipo: responsavel ? 'solida' : (externoTipo || 'terceirizado'), responsavel_categoria: responsavel ? null : (externoCategoria || null), prazo: prazo || null, status: 'aberta', obra: obra || null, setor: setor || null, os: os || null, urgencia: urgencia || null, funcao_tarefa: funcaoTarefa || null };
+export async function criarPendencia({ ata_id, descricao, responsavel, externoNome, externoTipo, externoCategoria, prazo, obra, setor, os, urgencia, funcaoTarefa, observadores }) {
+  const p = { ata_id: ata_id || null, descricao, responsavel: responsavel || null, responsavel_nome: responsavel ? nomeDe(responsavel) : (externoNome || externoCategoria || (externoTipo === 'cliente' ? 'Cliente' : externoTipo === 'arquitetura' ? 'Arquitetura' : null)), responsavel_tipo: responsavel ? 'solida' : (externoTipo || 'terceirizado'), responsavel_categoria: responsavel ? null : (externoCategoria || null), prazo: prazo || null, status: 'aberta', obra: obra || null, setor: setor || null, os: os || null, urgencia: urgencia || null, funcao_tarefa: funcaoTarefa || null, observadores: observadores || [] };
   if (ata_id) { const a = dados.atas.find((x) => String(x.id) === String(ata_id)); const ns = [...dados.pendencias.filter((x) => String(x.ata_id) === String(ata_id)).map((x) => Number(x.item) || 0), ...((a && a.informativos) || []).map((x) => (x && x.n) || 0)]; p.item = Math.max(0, ...ns) + 1; }
   if (NA_NUVEM) await criarPendenciaNuvem(p);
   else { const l = lerLocal(); l.pendencias.push({ id: l.seq++, ...p, criado_por: idPessoa(), criado_em: new Date().toISOString(), concluida_em: null }); gravarLocal(l); }
@@ -316,6 +323,14 @@ function filtrar(params, setorFixo = '') {
 }
 
 // só aparecem nos filtros as pessoas e os terceirizados que realmente têm pendência (senão a lista fica enorme)
+// quem dá para escolher em "Ver tarefas de": o gestor escolhe quem responde a ele (estagiários e equipe do mesmo setor/obra, por gestores) e quem ele observa;
+// a diretoria e o administrativo escolhem qualquer um. Quem é de cargo abaixo não enxerga o de cima, a não ser como observador.
+const pessoasParaVer = () => {
+  const f = funcaoAtual(); const eu = souEu();
+  if (['socio', 'administrativo'].includes(f.id)) return pessoasComPendencia().filter((x) => x.id !== eu);
+  const ids = new Set(dados.pendencias.filter((p) => p.responsavel && p.responsavel !== eu && ((p.gestores || []).includes(eu) || (p.observadores || []).includes(eu))).map((p) => p.responsavel));
+  return dados.pessoas.filter((p) => ids.has(p.id)).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+};
 const pessoasComPendencia = () => { const ids = new Set(dados.pendencias.filter((p) => naLista(p) && p.status !== 'cancelada' && p.responsavel).map((p) => p.responsavel)); return dados.pessoas.filter((p) => ids.has(p.id)).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')); };
 // o campo "Terceirizado" aparece depois de escolher "Terceirizados (todos)" em Responsável: só nomes de empresa ou pessoa
 // (sem tipo de serviço, para a lista não ficar enorme)
@@ -417,6 +432,7 @@ export function formAvulsa(obras, prazo, setorPadrao = '', preset = {}) {
           <select name="p_resp" class="pf-sol"><option value="">Pessoa da Sólida…</option>${opcoesPessoas(preset.resp || '')}</select>
           <input name="p_nome" class="pf-ext" list="dl-terceiros" placeholder="Nome da empresa ou pessoa" autocomplete="off" hidden></label>
         <label>Prazo<input type="date" name="p_prazo" value="${prazo || ''}"></label>
+        ${caixaObservadores('p_obs', [], '')}
         <label>Função (Agenda)<select name="p_func"><option value="">Nenhuma</option>${opcoesFuncaoTarefa(souEu(), '')}</select></label>
         <label>Urgência<select name="p_urg"><option value="">Sem urgência</option>${Object.entries(URG).map(([v, [t]]) => html`<option value="${v}">${t[0] + t.slice(1).toLocaleLowerCase('pt-BR')}</option>`)}</select></label>
       </div>
@@ -603,7 +619,7 @@ function vistaDia(params, obras, setorFixo) {
         <button type="button" class="lt-bt lt-bt-ex" data-pend-del="${p.id}">Excluir</button></div></div>`;
   };
   const opt = (v, t, atual) => html`<option value="${v}" ${atual === v ? html.seguro('selected') : ''}>${t}</option>`;
-  const gente = pessoasComPendencia().filter((x) => x.id !== souEu());
+  const gente = pessoasParaVer();
   const pilula = (chave, valor, rotulo, atual) => html`<button type="button" class="lt-pil ${atual === valor ? 'on' : ''}" data-lt-filtro="${chave}|${valor}">${rotulo}</button>`;
   const diaSem = SEM_LONGO[new Date(`${dia}T12:00:00`).getDay()];
   return html`<section class="lt">
@@ -705,7 +721,7 @@ export async function salvarTarefa(id, c) {
   const p = pendenciaPorId(id); if (!p) throw new Error('Tarefa não encontrada.');
   const desc = String(c.desc || '').trim(); const ass = String(c.assunto || '').trim();
   if (!desc && !ass) throw new Error('Escreva o título da tarefa.');
-  const mud = { descricao: ass ? `${ass}, ${desc}` : desc, urgencia: c.urgencia || null, funcao_tarefa: c.funcaoTarefa || null };
+  const mud = { descricao: ass ? `${ass}, ${desc}` : desc, urgencia: c.urgencia || null, funcao_tarefa: c.funcaoTarefa || null, observadores: c.observadores || [] };
   if (c.resp === 'ext') {
     const tipo = c.tipo || 'terceirizado';
     Object.assign(mud, { responsavel: null, responsavel_nome: String(c.nome || '').trim() || (tipo === 'cliente' ? 'Cliente' : tipo === 'arquitetura' ? 'Arquitetura' : null), responsavel_tipo: tipo, responsavel_categoria: null });
@@ -762,6 +778,7 @@ export function detalheTarefa(id, { msg = '' } = {}) {
           <label>Nome<input name="t_nome" value="${ext ? (p.responsavel_nome || '') : ''}" list="dl-terceiros" placeholder="empresa ou pessoa"></label></div>
         <label>Gestor<select name="t_gestor"><option value="">Automático (pelas obras e setores)${!gAtual && p.gestores_nome ? ` · ${p.gestores_nome}` : ''}</option>${opcoesPessoas(gAtual)}</select></label>
         <label>Prazo<input type="date" name="t_prazo" value="${p.prazo || ''}"></label>
+        ${caixaObservadores('t_obs', p.observadores || [], p.responsavel)}
         <label>Função (Agenda)<select name="t_func"><option value="">Nenhuma</option>${opcoesFuncaoTarefa(p.responsavel, p.funcao_tarefa)}</select></label>
         <label>Urgência<select name="t_urg"><option value="">Sem urgência</option>${Object.entries(URG).map(([v, [t]]) => html`<option value="${v}" ${p.urgencia === v ? html.seguro('selected') : ''}>${t[0] + t.slice(1).toLocaleLowerCase('pt-BR')}</option>`)}</select></label>
       </div>

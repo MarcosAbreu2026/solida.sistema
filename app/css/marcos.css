@@ -457,3 +457,9 @@ body.nav-recolhido nav::after { display: none; }
 .lt-resumo > div:nth-child(2) { flex: 1 1 220px; }
 .lt-resumo .lt-nav { margin-left: auto; }
 .lt-corpo-geral { padding-top: 16px; }
+
+/* Observadores da tarefa */
+.tf-obs { grid-column: 1 / -1; border: 1px solid #D5DCE4; border-radius: 8px; padding: 6px 10px; background: #FAFBFC; }
+.tf-obs summary { cursor: pointer; font-weight: 700; font-size: 13px; }
+.tf-obs-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 4px 12px; margin-top: 8px; max-height: 180px; overflow-y: auto; }
+.tf-obs-lista label { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; }
