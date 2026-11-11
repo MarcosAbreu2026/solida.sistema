@@ -645,3 +645,14 @@ body.nav-recolhido nav::after { display: none; }
 /* Janela da tarefa: fundo branco como antes (os dois quadrados ficam separados por borda); o título Tarefa fica dentro do quadrado da tarefa */
 .at-modal-caixa.tf-caixa { background: #fff; }
 .tf-esq .tf-cab { margin-bottom: 12px; }
+
+/* Janela da tarefa (e de nova tarefa): moldura transparente, só os quadrados da tarefa e das anotações são brancos */
+.at-modal-caixa:has(.tf-corpo), .at-modal-caixa.tf-caixa { background: transparent !important; box-shadow: none !important; padding: 0 !important; width: min(1040px, calc(100vw - 32px)); max-height: calc(100vh - 40px); overflow-y: auto; }
+.tf-esq, .tf-dir { background: #fff !important; box-shadow: 0 10px 34px rgba(10, 20, 40, .28); }
+.tf-nova .tf-grade.pf-linha { display: grid !important; grid-template-columns: 1fr 2fr !important; gap: 12px 14px !important; margin: 0 !important; align-items: start !important; }
+.tf-nova .tf-grade.pf-linha > * { min-width: 0; }
+.tf-nova .tf-grade.pf-linha .tf-sep, .tf-nova .tf-grade.pf-linha .obs { grid-column: 1 / -1 !important; }
+.tf-nova .tf-grade.pf-linha .pf-sol, .tf-nova .tf-grade.pf-linha[data-tipo="cliente"] .pf-ext { grid-column: auto !important; }
+.tf-nova .tf-grade.pf-linha input, .tf-nova .tf-grade.pf-linha select { height: auto !important; padding: 7px 9px !important; white-space: normal; font-size: 13.5px !important; }
+.tf-nova .tf-cab .pequeno { margin-left: auto; color: #B3261E; }
+.tf-req { border-left: 4px solid #D9534F !important; }

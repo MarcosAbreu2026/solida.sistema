@@ -443,28 +443,32 @@ function prazoDaColuna(id, hoje) {
   return '';
 }
 // formulário de pendência avulsa (sem ata): janela com rótulos e grade organizada
+// Nova tarefa: o MESMO cartão da janela da tarefa (formulário à esquerda, anotações à direita), com os obrigatórios marcados em vermelho e o botão "Criar tarefa".
+// Os nomes dos campos (p_*, av_obra, av_setor) são os de sempre: quem grava é o mesmo código das pendências avulsas.
 export function formAvulsa(obras, prazo, setorPadrao = '', preset = {}) {
   const listaObras = preset.obra && !obras.includes(preset.obra) ? [preset.obra, ...obras] : obras;
-  return html`<form class="at-nova-pend at-avulsa" id="pend-form" data-avulsa="1" data-os="${preset.os || ''}">
-    <h3>Nova pendência${preset.os ? html` da ${preset.os}` : ''}</h3>
-    <p class="pequeno at-av-sub">Para o que não veio de uma ata. Tudo marcado em vermelho precisa ser preenchido.</p>
-    <div class="at-av-grade">
-      <label class="av-m">Obra<select name="av_obra"><option value="">Nenhuma</option>${gruposDeObras(listaObras, preset.obra || '')}</select></label>
-      <label class="av-m">Departamento<select name="av_setor" required><option value="">— escolher —</option>${SETORES_ATA.map((s) => html`<option value="${s}" ${s === setorPadrao ? html.seguro('selected') : ''}>${s}</option>`)}</select></label>
-      <div class="pf-linha av-linha" data-tipo="solida" data-kind="pendencia">
-        <label class="av-ass">Assunto<input name="p_assunto" class="pf-assunto" placeholder="ex.: ACM" autocomplete="off" value="${preset.assunto || ''}"></label>
-        <label class="av-desc">O que fazer<input name="p_desc" placeholder="ex.: Retirar da área gourmet" autocomplete="off" value="${preset.desc || ''}"></label>
-        <label>Responsável<select name="p_tipo" data-pf-tipo><option value="solida">Sólida</option><option value="terceirizado">Terceirizado</option><option value="cliente">Cliente</option><option value="arquitetura">Arquitetura</option></select></label>
-        <label class="av-quem">Nome da empresa ou pessoa
-          <select name="p_resp" class="pf-sol"><option value="">Pessoa da Sólida…</option>${opcoesPessoas(preset.resp || '')}</select>
-          <input name="p_nome" class="pf-ext" list="dl-terceiros" placeholder="Nome da empresa ou pessoa" autocomplete="off" hidden></label>
-        <label>Prazo<input type="date" name="p_prazo" value="${prazo || ''}"></label>
-        ${caixaObservadores('p_obs', [], '')}
+  return html`<div class="tf tf-nova"><div class="tf-corpo">
+    <form class="at-nova-pend at-avulsa tf-esq" id="pend-form" data-avulsa="1" data-os="${preset.os || ''}" autocomplete="off">
+      <div class="tf-cab"><h3>Nova tarefa</h3>${preset.os ? html`<span class="at-chip">${preset.os}</span>` : ''}<span class="pequeno">O que tem a borda vermelha precisa ser preenchido.</span></div>
+      <div class="tf-grade pf-linha av-linha" data-tipo="solida" data-kind="pendencia">
+        <label class="tf-ass">Assunto / cômodo<input name="p_assunto" class="pf-assunto" placeholder="ex.: ACM" autocomplete="off" value="${preset.assunto || ''}"></label>
+        <label class="tf-desc">Título (o que fazer)<input name="p_desc" class="tf-req" placeholder="ex.: Retirar da área gourmet" autocomplete="off" value="${preset.desc || ''}"></label>
+        <label>Responsável<select name="p_tipo" class="tf-req" data-pf-tipo><option value="solida">Sólida</option><option value="terceirizado">Terceirizado</option><option value="cliente">Cliente</option><option value="arquitetura">Arquitetura</option></select></label>
+        <label class="av-quem">Quem
+          <select name="p_resp" class="pf-sol tf-req"><option value="">Pessoa da Sólida…</option>${opcoesPessoas(preset.resp || '')}</select>
+          <input name="p_nome" class="pf-ext tf-req" list="dl-terceiros" placeholder="Nome da empresa ou pessoa" autocomplete="off" hidden></label>
+        <label>Departamento<select name="av_setor" class="tf-req" required><option value="">— escolher —</option>${SETORES_ATA.map((s) => html`<option value="${s}" ${s === setorPadrao ? html.seguro('selected') : ''}>${s}</option>`)}</select></label>
+        <label>Obra<select name="av_obra"><option value="">Nenhuma</option>${gruposDeObras(listaObras, preset.obra || '')}</select></label>
+        <label>Prazo<input type="date" name="p_prazo" class="tf-req" value="${prazo || ''}"></label>
+        <div class="tf-sep"></div>
         <label>Função (Agenda)<select name="p_func"><option value="">Nenhuma</option>${opcoesFuncaoTarefa(souEu(), '')}</select></label>
         <label>Urgência<select name="p_urg"><option value="">Sem urgência</option>${Object.entries(URG).map(([v, [t]]) => html`<option value="${v}">${t[0] + t.slice(1).toLocaleLowerCase('pt-BR')}</option>`)}</select></label>
+        ${caixaObservadores('p_obs', [], '')}
       </div>
-    </div>
-    <div class="at-av-botoes"><button type="button" class="botao" data-av-fechar>Cancelar</button><button type="submit" class="botao on">Criar pendência</button></div></form>`;
+      <div class="tf-botoes"><button type="button" class="botao" data-av-fechar>Cancelar</button><button type="submit" class="botao on">Criar tarefa</button></div>
+    </form>
+    <div class="tf-chat tf-dir"><h4>Anotações</h4><p class="pequeno">As anotações ficam disponíveis depois que a tarefa for criada.</p></div>
+  </div></div>`;
 }
 function vistaPrazo(lista, hoje, setorPadrao = '') {
   return html`<div class="at-quadro">${COLUNAS.map(([id, nome]) => {
