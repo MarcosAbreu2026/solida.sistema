@@ -1316,7 +1316,13 @@ a.card:hover .card-rotulo { color: var(--clique2); text-decoration: underline; }
 /* Impressão: só a lista de compras (1 página, texto reduzido) e as duas rotas. O app usa tela cheia com
    rolagem interna (body com altura fixa); na impressão vira página normal. */
 @media print {
-  @page { size: A4; margin: 5mm; }
+  /* Margem de 0,5 cm em TODAS as bordas de tudo que o sistema imprime. @page com margem 0 também faz o navegador NÃO escrever o título/endereço/data no topo e no rodapé;
+     os 0,5 cm vêm da moldura (.imp-moldura, montada no main.js antes de imprimir) que repete um espaço de 5 mm no começo e no fim de cada folha. */
+  @page { size: A4; margin: 0; }
+  .imp-moldura { width: 100%; border-collapse: collapse; border: 0; }
+  .imp-moldura > thead > tr > td, .imp-moldura > tfoot > tr > td { padding: 0; border: 0; }
+  .imp-moldura > tbody > tr > td { padding: 0 5mm; border: 0; }
+  .imp-esp { height: 5mm; }
   html, body { height: auto !important; overflow: visible !important; display: block !important; background: #fff !important; }
   body > nav, #nav, .topo, #ver-como, #dica, #login, .pd-botao, .pd-painel, .pd-fundo, .subnav, [data-imprimir], .rp-barra, .rp-detalhe, .rp-como, .rp-aviso, .rp-resumo, .rp-nota, .rt-ajuste, .rt-copiar, .ob-sec .painel-h p { display: none !important; }
   main { display: block !important; }

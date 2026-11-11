@@ -1815,6 +1815,21 @@ document.addEventListener('click', async (e) => {
   const r = e.target.closest && e.target.closest('[data-cfg-reset]');
   if (r) { try { await restaurarConfig(r.dataset.cfgReset); estado.cfgMsg = 'Voltou ao padrão ✓'; desenhar(); } catch (err) { alert(`Não foi possível restaurar (${err.message || err}).`); } }
 });
+// Impressão: moldura com 0,5 cm de margem em todas as bordas, em cada folha (ver @page em estilo.css). Monta antes de imprimir e desmonta depois.
+window.addEventListener('beforeprint', () => {
+  const c = document.getElementById('conteudo'); if (!c || c.querySelector(':scope > .imp-moldura')) return;
+  const t = document.createElement('table'); t.className = 'imp-moldura';
+  t.innerHTML = '<thead><tr><td><div class="imp-esp"></div></td></tr></thead><tfoot><tr><td><div class="imp-esp"></div></td></tr></tfoot><tbody><tr><td></td></tr></tbody>';
+  const td = t.querySelector('tbody td');
+  while (c.firstChild) td.appendChild(c.firstChild);
+  c.appendChild(t);
+});
+window.addEventListener('afterprint', () => {
+  const c = document.getElementById('conteudo'); const t = c && c.querySelector(':scope > .imp-moldura'); if (!t) return;
+  const td = t.querySelector('tbody td');
+  while (td.firstChild) c.insertBefore(td.firstChild, t);
+  t.remove();
+});
 // Tarefas › modo Lista: trocar o dia, passar a tarefa para o dia seguinte, abrir a tarefa, passar as pendências atrasadas
 document.addEventListener('click', async (e) => {
   const d = e.target.closest && e.target.closest('[data-lt-dia]');

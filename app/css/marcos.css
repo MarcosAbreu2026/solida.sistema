@@ -580,3 +580,15 @@ body.nav-recolhido nav::after { display: none; }
   .at-quadro { display: grid !important; grid-auto-flow: row !important; grid-template-columns: repeat(3, 1fr) !important; overflow: visible !important; }
   .at-col { break-inside: avoid; } .at-col-mais, .at-card .at-acoes, .at-filtros, .at-cards { display: none !important; }
 }
+
+/* Impressão da ata: só a folha da ata (sem o nome do arquivo no alto), maior e sem a moldura do cartão */
+@media print {
+  .at-ata-det { border: 0 !important; border-radius: 0 !important; padding: 0 !important; }
+  .at-ata-det h2, .at-ata-det .at-resumo { display: none !important; }
+  .at-ata-det .sd-folha { margin: 0 !important; border-radius: 0 !important; }
+  .at-ata-det .sd-tab { font-size: 15px !important; }
+  .at-ata-det .sd-tab th { font-size: 13px !important; padding: 9px 8px !important; }
+  .at-ata-det .sd-tab td { padding: 9px 10px !important; }
+  .at-ata-det .sd-tab td small { font-size: 12px !important; }
+  .at-ata-det .sd-tit { font-size: 24px !important; } .at-ata-det .sd-cod { font-size: 17px !important; } .at-ata-det .sd-linha { font-size: 14px !important; }
+}
