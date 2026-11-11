@@ -665,13 +665,6 @@ function desenhar() {
   // Tarefas: modo de visualização (Tabela | Lista) no topo, à esquerda de "Atualizado às…"
   { const mv = $('#modoVis'); const abaP = rota.params.get('aba'); const naTarefas = (tela === 'atas' || tela === 'tarefas') && (!abaP || abaP === 'pendencias');
     if (mv) { mv.hidden = !naTarefas; if (naTarefas) { const m = rota.params.get('modo') === 'lista' ? 'lista' : 'tabela'; mv.innerHTML = `<span class="mv-rot">Modo de visualização</span><span class="mv-seg"><button type="button" data-mv="" class="${m === 'tabela' ? 'on' : ''}">Tabela</button><button type="button" data-mv="lista" class="${m === 'lista' ? 'on' : ''}">Lista</button></span><button type="button" class="mv-imp" data-imprimir="" title="Imprimir as tarefas (ou salvar em PDF)">🖨 Imprimir</button>`; } } }
-  // atalho para as configurações da aba que está aberta (só diretoria)
-  { const bc = $('#bConfig');
-    if (bc) {
-      const pid = dep ? dep.id : tela === 'geral' ? 'geral' : tela === 'agenda' ? 'agenda' : (tela === 'atas' || tela === 'tarefas') ? 'atas' : ['treinamentos', 'feed', 'escritorio', 'estoque', 'marketing'].includes(tela) ? tela : null;
-      const ok = funcaoReal().id === 'socio' && !!pid && tela !== 'configuracoes';
-      bc.hidden = !ok; if (ok) bc.href = `#/configuracoes/${pid}`;
-    } }
   const sc = $('#sinc');
   const sy = estado.sync;
   if (sy.erro) { sc.textContent = 'Sem conexão, mostrando os últimos dados'; sc.className = 'sinc err'; sc.title = sy.erro; }
