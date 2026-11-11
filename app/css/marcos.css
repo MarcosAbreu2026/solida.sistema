@@ -683,3 +683,14 @@ body.nav-recolhido nav::after { display: none; }
   .at-ata-det .sd-tab th:nth-child(2), .at-ata-det .sd-tab td:nth-child(2) { width: 132px !important; min-width: 132px; }
   .at-ata-det .sd-tab td.sd-t-info, .at-ata-det .sd-tab td.sd-t-pend { font-size: 12.5px !important; letter-spacing: 0 !important; white-space: nowrap !important; overflow-wrap: normal !important; word-break: keep-all !important; padding-left: 4px !important; padding-right: 4px !important; }
 }
+
+/* Cartão da tabela de tarefas: meio = data (esq.) e prioridade (dir.); embaixo = responsável (esq.) e obra ou setor (dir.) */
+.at-linha2, .at-linha3 { display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap; }
+.at-linha2 .at-dir, .at-linha3 .at-dir { display: inline-flex; gap: 4px; align-items: center; margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
+.at-linha3 .at-esq { display: inline-flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+.at-linha4 { display: flex; gap: 6px; flex-wrap: wrap; font-size: 11px; color: #7A8794; }
+.at-sem-prio { font-size: 11px; color: #9AA5B1; }
+.at-card .lt-urg { padding: 1px 7px; font-size: 10.5px; }
+.at-card .urg-alta { background: #FBE4E1; color: #B3261E; } .at-card .urg-media { background: #FFF1D6; color: #9A6200; } .at-card .urg-baixa { background: #E3F3EA; color: #1B7F4B; }
+.tf-nota.tf-sis { align-self: stretch; max-width: 100%; background: #FFF6E3; border: 1px dashed #E0B04A; }
+@media print { .at-card .at-linha2, .at-card .at-linha3 { flex-wrap: nowrap; } .at-card .lt-urg { background: transparent !important; color: #000 !important; border: 1px solid #999; padding: 0 4px; font-size: 8.5px; } }

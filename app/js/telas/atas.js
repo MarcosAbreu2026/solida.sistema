@@ -400,6 +400,7 @@ function barraFiltros(params, obras, aba, ctx = {}) {
     ${ctx.setorFixo ? '' : sel('setor', 'Setor', SETORES_ATA.map((s) => [s, s]), params.get('setor') || '')}
     ${selObra(obras, params.get('obra') || '')}
     <label>Procurar<input type="search" data-atas-filtro="q" value="${params.get('q') || ''}" placeholder="texto…"></label>
+    ${aba === 'atas' ? '' : html`<label>Ordenar por<select data-atas-filtro="ord"><option value="">Padrão</option>${[['prioridade', 'Prioridade'], ['data', 'Data'], ['assunto', 'Assunto'], ['responsavel', 'Responsável']].map(([v, t]) => html`<option value="${v}" ${params.get('ord') === v ? html.seguro('selected') : ''}>${t}</option>`)}</select></label>`}
   </div>`;
 }
 
@@ -423,10 +424,12 @@ function cartao(p, hoje) {
   const a = ataDe(p); const col = coluna(p, hoje);
   const dias = p.prazo ? diasEntre(hoje, p.prazo) : null;
   const rotuloPrazo = !p.prazo ? 'Sem prazo' : col === 'vencido' ? `${dm(p.prazo)} · ${Math.abs(dias)} ${Math.abs(dias) === 1 ? 'dia' : 'dias'} de atraso` : col === 'hoje' ? 'Hoje' : dm(p.prazo);
+  const onde2 = p.obra || p.setor || '';   // se tem obra aparece a obra; senão, o setor
   return html`<article class="at-card at-${col}" data-tarefa="${p.id}" draggable="true" title="Clique para ver os detalhes · arraste para mudar o prazo">
     <div class="at-tit">${descRica(p.descricao)}</div>
-    <div class="at-meta">${prazoBtn(p, rotuloPrazo, `at-prazo at-p-${col}`)}${reprogramada(p) ? html`<span class="at-repro-tag" title="${tituloRepro(p)}">↻ Reprogramada (era ${dm(p.prazo_original).slice(0, 5)})</span>` : ''}${onde(p) ? html`<span class="at-chip">${onde(p)}</span>` : ''}${p.os ? html`<a class="at-chip at-os" href="#/posobra/os/${encodeURIComponent(p.os)}" title="Abrir a OS desta pendência">${p.os}</a>` : ''}</div>
-    <div class="at-quem"><span class="at-pessoa">${nomeDe(p.responsavel, p.responsavel_nome)}</span>${p.responsavel_tipo && p.responsavel_tipo !== 'solida' ? html`<span class="at-tipo at-t-${p.responsavel_tipo}">${ROTULO_TIPO[p.responsavel_tipo] || 'Externo'}${p.responsavel_categoria ? ` · ${p.responsavel_categoria}` : ''}</span>` : ''}${p.gestores_nome ? html`<span class="at-gestor" title="Gestor da pendência: acompanha o responsável (pelas obras dele)">gestor: ${p.gestores_nome}</span>` : ''}${a ? html`<a class="at-ata" href="#/atas?aba=atas&ata=${a.id}" title="Ata de origem">ata ${dm(a.data).slice(0, 5)}</a>` : ''}</div>
+    <div class="at-linha2"><span class="at-esq">${prazoBtn(p, rotuloPrazo, `at-prazo at-p-${col}`)}</span><span class="at-dir">${p.urgencia ? chipUrg(p.urgencia) : html`<span class="at-sem-prio">sem prioridade</span>`}</span></div>
+    <div class="at-linha3"><span class="at-esq"><span class="at-pessoa">${nomeDe(p.responsavel, p.responsavel_nome)}</span>${p.responsavel_tipo && p.responsavel_tipo !== 'solida' ? html`<span class="at-tipo at-t-${p.responsavel_tipo}">${ROTULO_TIPO[p.responsavel_tipo] || 'Externo'}${p.responsavel_categoria ? ` · ${p.responsavel_categoria}` : ''}</span>` : ''}</span><span class="at-dir">${onde2 ? html`<span class="at-chip">${onde2}</span>` : ''}${p.os ? html`<a class="at-chip at-os" href="#/posobra/os/${encodeURIComponent(p.os)}" title="Abrir a OS desta pendência">${p.os}</a>` : ''}</span></div>
+    ${p.gestores_nome || a ? html`<div class="at-linha4">${p.gestores_nome ? html`<span class="at-gestor" title="Gestor da pendência: acompanha o responsável (pelas obras dele)">gestor: ${p.gestores_nome}</span>` : ''}${a ? html`<a class="at-ata" href="#/atas?aba=atas&ata=${a.id}" title="Ata de origem">ata ${dm(a.data).slice(0, 5)}</a>` : ''}</div>` : ''}
     <div class="at-acoes">
       ${p.status === 'feita' ? html`<button type="button" class="ac-mini" data-pend="${p.id}|aberta">↺ reabrir</button>` : html`<button type="button" class="ac-mini at-ok" data-pend="${p.id}|feita">✓ concluir</button>`}
       <button type="button" class="ac-mini" data-pend-del="${p.id}" title="${p.ata_id ? 'Tirar da lista de pendências (o item continua na ata)' : 'Excluir esta pendência'}">${p.ata_id ? 'tirar da lista' : 'excluir'}</button>
@@ -612,6 +615,17 @@ export function formFuncaoConcluir(id) {
 }
 export const URG = { alta: ['ALTA', 'urg-alta'], media: ['MÉDIA', 'urg-media'], baixa: ['BAIXA', 'urg-baixa'] };
 const chipUrg = (u) => (URG[u] ? html`<span class="lt-urg ${URG[u][1]}"><i></i>${URG[u][0]}</span>` : '');
+// ordenação das tarefas (lista e tabela): assunto, prioridade (urgência), responsável ou data; sem escolha, a ordem de sempre
+const assuntoDe = (p) => dividirDescricao(p.descricao)[0] || String(p.descricao || '');
+const pesoUrg = (p) => ({ alta: 0, media: 1, baixa: 2 }[p.urgencia] ?? 3);
+export function comparador(ord) {
+  return {
+    assunto: (x, y) => assuntoDe(x).localeCompare(assuntoDe(y), 'pt-BR'),
+    prioridade: (x, y) => pesoUrg(x) - pesoUrg(y) || String(x.prazo || '9').localeCompare(String(y.prazo || '9')),
+    responsavel: (x, y) => String(nomeDe(x.responsavel, x.responsavel_nome)).localeCompare(String(nomeDe(y.responsavel, y.responsavel_nome)), 'pt-BR'),
+    data: (x, y) => String(x.prazo || '9999').localeCompare(String(y.prazo || '9999')) || pesoUrg(x) - pesoUrg(y),
+  }[ord];
+}
 const modoDe = (params) => (params.get('modo') === 'lista' ? 'lista' : 'tabela');
 const SEM = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
 const diaCurto = (iso) => `${SEM[new Date(`${iso}T12:00:00`).getDay()]} ${dm(iso).slice(0, 5)}`;
@@ -629,10 +643,7 @@ function vistaDia(params, obras, setorFixo) {
   let itens = [...atrasadas, ...doDia, ...semPrazo];
   // ordenar por assunto, prioridade (urgência), responsável ou data; sem escolha vale a ordem padrão (atrasadas, do dia, sem prazo)
   const ord = params.get('ord') || '';
-  const assuntoDe = (p) => dividirDescricao(p.descricao)[0] || String(p.descricao || '');
-  const pesoUrg = (p) => ({ alta: 0, media: 1, baixa: 2 }[p.urgencia] ?? 3);
-  const cmp = { assunto: (x, y) => assuntoDe(x).localeCompare(assuntoDe(y), 'pt-BR'), prioridade: (x, y) => pesoUrg(x) - pesoUrg(y) || String(x.prazo || '9').localeCompare(String(y.prazo || '9')),
-    responsavel: (x, y) => String(nomeDe(x.responsavel, x.responsavel_nome)).localeCompare(String(nomeDe(y.responsavel, y.responsavel_nome)), 'pt-BR'), data: (x, y) => String(x.prazo || '9999').localeCompare(String(y.prazo || '9999')) || pesoUrg(x) - pesoUrg(y) }[ord];
+  const cmp = comparador(ord);
   if (cmp) itens = [...itens].sort(cmp);
   const feitas = itens.filter((p) => p.status === 'feita').length; const pct = itens.length ? Math.round((feitas / itens.length) * 100) : 0;
   const nomeSel = pessoaSel === 'eu' ? (sessao().nome || 'Você') : pessoaSel === 'todos' ? 'Todos' : (dados.pessoas.find((x) => x.id === pessoaSel) || {}).nome || 'Tarefas';
@@ -698,7 +709,8 @@ export function renderPendencias({ params, obras = [], setorFixo = '', base = '#
   const abertas = doSetor.filter((p) => p.status === 'aberta');
   const atrasadas = abertas.filter((p) => p.prazo && p.prazo < hoje).length;
   const eu = souEu(); const minhas = abertas.filter((p) => p.responsavel && p.responsavel === eu).length;
-  const lista = filtrar(params, setorFixo);
+  let lista = filtrar(params, setorFixo);
+  const cmpTab = comparador(params.get('ord') || ''); if (cmpTab) lista = [...lista].sort(cmpTab);
   const modo = modoDe(params);
   const cabImp = html`<div class="at-cab-imp"><b>Tarefas</b> · ${sessao().nome || ''} · ${fmtData(hoje)}</div>`;
   if (modo === 'lista') return html`${cabImp}${datalistTerceiros()}${dados.erro ? html`<p class="erro">Não consegui carregar: ${dados.erro}</p>` : ''}${vistaDia(params, obras, setorFixo)}`;
@@ -840,7 +852,7 @@ export function detalheTarefa(id, { msg = '' } = {}) {
       </div>
     </form>
     <div class="tf-chat tf-dir"><h4>Anotações <span class="pequeno">${notas.length}</span></h4>
-      <div class="tf-notas">${notas.length ? notas.map((n) => html`<div class="tf-nota ${n.autor === eu ? 'tf-minha' : ''}"><div class="tf-nota-h"><b>${n.autor_nome || 'Alguém'}</b><span>${quando(n.criado_em)}</span>${n.autor === eu ? html`<button type="button" class="tf-x" data-tf-nota-del="${n.id}|${p.id}" title="Apagar esta anotação">×</button>` : ''}</div><div class="tf-nota-t">${textoRico(n.texto)}</div></div>`) : html`<p class="pequeno">Nenhuma anotação ainda. Use para registrar o que foi combinado, cobrado ou resolvido.</p>`}</div>
+      <div class="tf-notas">${(p.reprogramacoes || []).map((r) => html`<div class="tf-nota tf-sis"><div class="tf-nota-h"><b>Reprogramada</b><span>${r.em ? quando(r.em) : ''}</span></div><div class="tf-nota-t">↻ de ${dm(r.de)} para ${dm(r.para)}${r.por ? html` · ${r.por}` : ''}</div></div>`)}${notas.length ? notas.map((n) => html`<div class="tf-nota ${n.autor === eu ? 'tf-minha' : ''}"><div class="tf-nota-h"><b>${n.autor_nome || 'Alguém'}</b><span>${quando(n.criado_em)}</span>${n.autor === eu ? html`<button type="button" class="tf-x" data-tf-nota-del="${n.id}|${p.id}" title="Apagar esta anotação">×</button>` : ''}</div><div class="tf-nota-t">${textoRico(n.texto)}</div></div>`) : html`<p class="pequeno">Nenhuma anotação ainda. Use para registrar o que foi combinado, cobrado ou resolvido.</p>`}</div>
       <form id="tf-nota" data-tf-nota="${p.id}"><textarea name="t_nota" rows="2" placeholder="Escreva uma anotação… (Ctrl+Enter envia)"></textarea><button type="submit" class="botao on">Enviar</button></form>
     </div>
     </div>

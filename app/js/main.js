@@ -1880,7 +1880,8 @@ document.addEventListener('click', (e) => {
     document.body.appendChild(m); const campo = m.querySelector('[name="p_assunto"]'); if (campo) campo.focus();
     return;
   }
-  if ((e.target.closest && e.target.closest('[data-av-fechar]')) || (e.target.id === 'at-modal')) { const m = document.getElementById('at-modal'); if (m) m.remove(); }
+  const foraDosQuadrados = e.target.classList && ((e.target.classList.contains('at-modal-caixa') && e.target.querySelector('.tf-corpo')) || e.target.classList.contains('tf') || e.target.classList.contains('tf-corpo'));   // a moldura da janela da tarefa é transparente: clicar nela é clicar fora
+  if ((e.target.closest && e.target.closest('[data-av-fechar]')) || (e.target.id === 'at-modal') || foraDosQuadrados) { const m = document.getElementById('at-modal'); if (m) m.remove(); }
 });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { const m = document.getElementById('at-modal'); if (m) m.remove(); } });
 // pauta da próxima reunião: o que ficou aberto da ata (e das anteriores do mesmo lugar), pronto para copiar
