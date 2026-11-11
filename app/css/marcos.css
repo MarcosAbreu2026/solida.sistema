@@ -670,3 +670,10 @@ body.nav-recolhido nav::after { display: none; }
   .at-card .at-meta > *, .at-card .at-quem, .at-card .at-pessoa { font-size: 8.5px !important; padding: 0 4px !important; line-height: 1.4 !important; }
   .at-card .at-quem { margin: 0 !important; }
 }
+
+/* Tarefas na impressão: o que já está concluído não sai (senão a folha fica enorme) */
+@media print {
+  .at-col.at-c-concluido, .at-card.at-concluido { display: none !important; }
+  .lt-linha.lt-feita { display: none !important; }
+  .lt-grupo:not(:has(.lt-linha:not(.lt-feita))) { display: none !important; }
+}
