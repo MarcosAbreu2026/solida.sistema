@@ -641,3 +641,7 @@ body.nav-recolhido nav::after { display: none; }
 .obs-lista { display: flex; flex-wrap: wrap; gap: 6px; max-height: 118px; overflow-y: auto; padding: 2px; }
 .obs-item { border: 1px solid #C9D1DA; background: #fff; border-radius: 999px; padding: 4px 12px; font-size: 12.5px; cursor: pointer; color: #262A2B; }
 .obs-item:hover { border-color: #2F6FA8; background: #F0F6FC; } .obs-item.on { display: none; } .obs-item[hidden] { display: none; }
+
+/* Janela da tarefa: fundo branco como antes (os dois quadrados ficam separados por borda); o título Tarefa fica dentro do quadrado da tarefa */
+.at-modal-caixa.tf-caixa { background: #fff; }
+.tf-esq .tf-cab { margin-bottom: 12px; }

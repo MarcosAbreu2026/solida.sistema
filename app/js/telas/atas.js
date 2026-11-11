@@ -808,9 +808,9 @@ export function detalheTarefa(id, { msg = '' } = {}) {
   const a = ataDe(p); const hoje = hojeISO(); const col = coluna(p, hoje);
   const eu = souEu(); const notas = notasDe(id);
   return html`<div class="tf" data-tf-raiz="${p.id}">
-    <div class="tf-cab"><h3>Tarefa</h3>${p.status === 'feita' ? html`<span class="at-chip">concluída</span>` : col === 'vencido' ? html`<span class="at-chip tf-venc">vencida</span>` : ''}${onde(p) ? html`<span class="at-chip">${onde(p)}</span>` : ''}${a ? html`<a class="at-ata" href="#/atas?aba=atas&ata=${a.id}" title="Ata de origem">ata ${dm(a.data).slice(0, 5)}</a>` : ''}${p.os ? html`<a class="at-chip at-os" href="#/posobra/os/${encodeURIComponent(p.os)}">${p.os}</a>` : ''}</div>
     <div class="tf-corpo">
     <form id="tf-form" class="tf-esq" data-tf="${p.id}" autocomplete="off">
+    <div class="tf-cab"><h3>Tarefa</h3>${p.status === 'feita' ? html`<span class="at-chip">concluída</span>` : col === 'vencido' ? html`<span class="at-chip tf-venc">vencida</span>` : ''}${onde(p) ? html`<span class="at-chip">${onde(p)}</span>` : ''}${a ? html`<a class="at-ata" href="#/atas?aba=atas&ata=${a.id}" title="Ata de origem">ata ${dm(a.data).slice(0, 5)}</a>` : ''}${p.os ? html`<a class="at-chip at-os" href="#/posobra/os/${encodeURIComponent(p.os)}">${p.os}</a>` : ''}</div>
       <div class="tf-grade">
         <label class="tf-ass">Assunto / cômodo<input name="t_assunto" value="${ass}" placeholder="ex.: ACM"></label>
         <label class="tf-desc">Título (o que fazer)<input name="t_desc" value="${resto}" placeholder="ex.: Retirar da área gourmet" required></label>
