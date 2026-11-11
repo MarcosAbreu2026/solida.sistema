@@ -656,3 +656,17 @@ body.nav-recolhido nav::after { display: none; }
 .tf-nova .tf-grade.pf-linha input, .tf-nova .tf-grade.pf-linha select { height: auto !important; padding: 7px 9px !important; white-space: normal; font-size: 13.5px !important; }
 .tf-nova .tf-cab .pequeno { margin-left: auto; color: #B3261E; }
 .tf-req { border-left: 4px solid #D9534F !important; }
+
+/* Tarefas em Tabela, na impressão: cada coluna (Vencido, Hoje, Esta semana…) vira uma faixa com os cartões lado a lado, bem juntinhos: poucas folhas, pouco espaço em branco */
+@media print {
+  .at-quadro { display: block !important; overflow: visible !important; }
+  .at-col { margin: 0 0 7px !important; padding: 0 !important; min-height: 0 !important; background: transparent !important; border-radius: 0 !important; break-inside: auto; }
+  .at-col > header { padding: 3px 8px !important; font-size: 11px !important; border-radius: 3px !important; break-after: avoid; }
+  .at-col > header span { font-size: 10px !important; }
+  .at-itens { display: grid !important; grid-template-columns: repeat(3, 1fr) !important; gap: 4px !important; padding: 4px 0 0 !important; max-height: none !important; overflow: visible !important; }
+  .at-card { padding: 3px 6px !important; gap: 2px !important; font-size: 9.5px !important; line-height: 1.25 !important; border: 1px solid #aaa !important; border-radius: 3px !important; break-inside: avoid; }
+  .at-card .at-tit { font-size: 10px !important; line-height: 1.25 !important; }
+  .at-card .at-meta { gap: 3px !important; flex-wrap: wrap; }
+  .at-card .at-meta > *, .at-card .at-quem, .at-card .at-pessoa { font-size: 8.5px !important; padding: 0 4px !important; line-height: 1.4 !important; }
+  .at-card .at-quem { margin: 0 !important; }
+}
