@@ -592,3 +592,12 @@ body.nav-recolhido nav::after { display: none; }
   .at-ata-det .sd-tab td small { font-size: 12px !important; }
   .at-ata-det .sd-tit { font-size: 24px !important; } .at-ata-det .sd-cod { font-size: 17px !important; } .at-ata-det .sd-linha { font-size: 14px !important; }
 }
+
+.lt-obra { background: #2F4A73; color: #fff; border-radius: 5px; padding: 0 6px; font-size: 11px; font-weight: 700; margin-right: 4px; }
+@media print {
+  /* tabela com muita pendência: nada de rolagem dentro da coluna, tudo sai impresso */
+  .at-itens { max-height: none !important; overflow: visible !important; }
+  .at-col { min-height: 0 !important; overflow: visible !important; }
+  .at-quadro { overflow: visible !important; }
+  .lt-obra { background: transparent !important; color: #000 !important; border: 1px solid #666; }
+}

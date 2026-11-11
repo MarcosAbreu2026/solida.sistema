@@ -626,8 +626,10 @@ function vistaDia(params, obras, setorFixo) {
   const contaUrg = (u) => itens.filter((p) => aberta(p) && p.urgencia === u).length;
   const alvoPassar = dia > hoje ? dia : somarDias(hoje, 1);
   const grupos = new Map();
-  for (const p of itens) { const k = p.obra ? codigoDaObra(p.obra) : ''; if (!grupos.has(k)) grupos.set(k, { nome: p.obra || 'Geral', itens: [] }); grupos.get(k).itens.push(p); }
-  const ordem = [...grupos.entries()].sort(([a], [b]) => (a === '' ? -1 : b === '' ? 1 : a.localeCompare(b, 'pt-BR', { numeric: true })));
+  const rotuloOrd = { assunto: 'por assunto', prioridade: 'por prioridade', responsavel: 'por responsável', data: 'por data' }[ord];
+  if (cmp) grupos.set('__todas', { nome: `Todas as tarefas · ${rotuloOrd}`, itens });   // ordenando: uma lista só, uma tarefa atrás da outra
+  else for (const p of itens) { const k = p.obra ? codigoDaObra(p.obra) : ''; if (!grupos.has(k)) grupos.set(k, { nome: p.obra || 'Geral', itens: [] }); grupos.get(k).itens.push(p); }
+  const ordem = cmp ? [...grupos.entries()] : [...grupos.entries()].sort(([a], [b]) => (a === '' ? -1 : b === '' ? 1 : a.localeCompare(b, 'pt-BR', { numeric: true })));
   const corPessoa = (nome) => { let h = 0; for (const c of String(nome || '')) h = (h * 31 + c.charCodeAt(0)) % 4; return `lt-p${h}`; };
   // o nome do responsável só aparece quando não é óbvio: vendo só as minhas (ou só uma pessoa) ele se repetiria em toda linha; terceirizado, cliente e outras visões mostram
   const mostrarQuem = (p) => !(p.responsavel && ((pessoaSel === 'eu' && p.responsavel === souEu()) || pessoaSel === p.responsavel));
@@ -638,7 +640,7 @@ function vistaDia(params, obras, setorFixo) {
     const ontem = somarDias(dia, -1); const amanha = somarDias(dia, 1);
     return html`<div class="lt-linha ${p.status === 'feita' ? 'lt-feita' : ''}">
       <input type="checkbox" class="lt-chk" data-pend="${p.id}|${p.status === 'feita' ? 'aberta' : 'feita'}" ${p.status === 'feita' ? html.seguro('checked') : ''} title="${p.status === 'feita' ? 'Reabrir' : 'Concluir'}">
-      <div class="lt-corpo"><span class="lt-tit" data-tarefa="${p.id}" title="Abrir a tarefa">${descRica(p.descricao)}</span>${sub ? html`<span class="lt-sub ${atrasada ? 'lt-atraso' : ''}">${sub}</span>` : ''}${p.funcao_tarefa ? html`<span class="lt-sub">Função: ${p.funcao_tarefa}</span>` : ''}</div>
+      <div class="lt-corpo"><span class="lt-tit" data-tarefa="${p.id}" title="Abrir a tarefa">${cmp && p.obra ? html`<b class="lt-obra">${p.obra}</b> ` : ''}${descRica(p.descricao)}</span>${sub ? html`<span class="lt-sub ${atrasada ? 'lt-atraso' : ''}">${sub}</span>` : ''}${p.funcao_tarefa ? html`<span class="lt-sub">Função: ${p.funcao_tarefa}</span>` : ''}</div>
       <div class="lt-dir">${mostrarQuem(p) ? html`<span class="lt-quem ${corPessoa(quem)}">${quem}</span>` : ''}${chipUrg(p.urgencia)}
         <button type="button" class="lt-bt" data-lt-mover="${p.id}|${ontem}" title="Passar para ${dm(ontem)}">↩ Devolver para ${dm(ontem).slice(0, 5)}</button>
         <button type="button" class="lt-bt" data-lt-mover="${p.id}|${amanha}" title="Passar para ${dm(amanha)}">→ ${dm(amanha).slice(0, 5)}</button>
