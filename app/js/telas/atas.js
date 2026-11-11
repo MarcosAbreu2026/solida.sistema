@@ -613,7 +613,14 @@ function vistaDia(params, obras, setorFixo) {
   const atrasadas = dia >= hoje ? base.filter((p) => aberta(p) && p.prazo && p.prazo < hoje) : [];
   const doDia = base.filter((p) => p.prazo === dia);
   const semPrazo = dia === hoje ? base.filter((p) => aberta(p) && !p.prazo) : [];
-  const itens = [...atrasadas, ...doDia, ...semPrazo];
+  let itens = [...atrasadas, ...doDia, ...semPrazo];
+  // ordenar por assunto, prioridade (urgência), responsável ou data; sem escolha vale a ordem padrão (atrasadas, do dia, sem prazo)
+  const ord = params.get('ord') || '';
+  const assuntoDe = (p) => dividirDescricao(p.descricao)[0] || String(p.descricao || '');
+  const pesoUrg = (p) => ({ alta: 0, media: 1, baixa: 2 }[p.urgencia] ?? 3);
+  const cmp = { assunto: (x, y) => assuntoDe(x).localeCompare(assuntoDe(y), 'pt-BR'), prioridade: (x, y) => pesoUrg(x) - pesoUrg(y) || String(x.prazo || '9').localeCompare(String(y.prazo || '9')),
+    responsavel: (x, y) => String(nomeDe(x.responsavel, x.responsavel_nome)).localeCompare(String(nomeDe(y.responsavel, y.responsavel_nome)), 'pt-BR'), data: (x, y) => String(x.prazo || '9999').localeCompare(String(y.prazo || '9999')) || pesoUrg(x) - pesoUrg(y) }[ord];
+  if (cmp) itens = [...itens].sort(cmp);
   const feitas = itens.filter((p) => p.status === 'feita').length; const pct = itens.length ? Math.round((feitas / itens.length) * 100) : 0;
   const nomeSel = pessoaSel === 'eu' ? (sessao().nome || 'Você') : pessoaSel === 'todos' ? 'Todos' : (dados.pessoas.find((x) => x.id === pessoaSel) || {}).nome || 'Tarefas';
   const contaUrg = (u) => itens.filter((p) => aberta(p) && p.urgencia === u).length;
@@ -661,7 +668,8 @@ function vistaDia(params, obras, setorFixo) {
           <label>Ver tarefas de<select data-atas-filtro="pessoa">${opt('eu', 'Só as minhas', pessoaSel)}${opt('todos', 'Todos (os que eu vejo)', pessoaSel)}${opt('tipo:solida', 'Equipe da Sólida', pessoaSel)}${opt('tipo:terceirizado', 'Terceirizados (todos)', pessoaSel)}${opt('tipo:cliente', 'Clientes', pessoaSel)}${opt('tipo:arquitetura', 'Arquitetura', pessoaSel)}${gente.length ? html`<optgroup label="Pessoas">${gente.map((x) => opt(x.id, x.nome, pessoaSel))}</optgroup>` : ''}</select></label>
           ${setorFixo ? '' : html`<label>Setor<select data-atas-filtro="setor"><option value="">Todos</option>${SETORES_ATA.map((s) => opt(s, s, params.get('setor') || ''))}</select></label>`}
           ${selObra(obras, params.get('obra') || '')}
-          <label>Procurar<input type="search" data-atas-filtro="q" value="${params.get('q') || ''}" placeholder="texto…"></label></div>
+          <label>Procurar<input type="search" data-atas-filtro="q" value="${params.get('q') || ''}" placeholder="texto…"></label>
+          <label>Ordenar por<select data-atas-filtro="ord"><option value="">Padrão</option>${opt('assunto', 'Assunto', ord)}${opt('prioridade', 'Prioridade', ord)}${opt('responsavel', 'Responsável', ord)}${opt('data', 'Data', ord)}</select></label></div>
       </div>
       <div class="lt-acoes">${atrasadas.length ? html`<button type="button" class="lt-bt lt-bt-grande" data-lt-passar="${atrasadas.map((p) => p.id).join(',')}|${alvoPassar}">Passar ${atrasadas.length} ${atrasadas.length === 1 ? 'pendência' : 'pendências'} para ${dm(alvoPassar).slice(0, 5)}</button>` : ''}</div>
       ${ordem.length ? ordem.map(([, g]) => html`<section class="lt-grupo"><header><h3>${g.nome}</h3><span>${g.itens.filter((p) => p.status === 'feita').length}/${g.itens.length}</span></header>${g.itens.map(linha)}</section>`) : html`<p class="lt-vazio">Nenhuma tarefa para este dia com esses filtros.</p>`}
@@ -677,8 +685,9 @@ export function renderPendencias({ params, obras = [], setorFixo = '', base = '#
   const eu = souEu(); const minhas = abertas.filter((p) => p.responsavel && p.responsavel === eu).length;
   const lista = filtrar(params, setorFixo);
   const modo = modoDe(params);
-  if (modo === 'lista') return html`${datalistTerceiros()}${dados.erro ? html`<p class="erro">Não consegui carregar: ${dados.erro}</p>` : ''}${vistaDia(params, obras, setorFixo)}`;
-  return html`${datalistTerceiros()}${dados.erro ? html`<p class="erro">Não consegui carregar: ${dados.erro}</p>` : ''}
+  const cabImp = html`<div class="at-cab-imp"><b>Tarefas</b> · ${sessao().nome || ''} · ${fmtData(hoje)}</div>`;
+  if (modo === 'lista') return html`${cabImp}${datalistTerceiros()}${dados.erro ? html`<p class="erro">Não consegui carregar: ${dados.erro}</p>` : ''}${vistaDia(params, obras, setorFixo)}`;
+  return html`${cabImp}${datalistTerceiros()}${dados.erro ? html`<p class="erro">Não consegui carregar: ${dados.erro}</p>` : ''}
     <div class="cards at-cards"><div class="card"><div class="card-valor">${abertas.length}</div><div class="card-rotulo">Pendências abertas</div></div>
       <div class="card"><div class="card-valor ${atrasadas ? 'tom-ruim' : ''}">${atrasadas}</div><div class="card-rotulo">Atrasadas</div></div>
       <div class="card"><div class="card-valor">${minhas}</div><div class="card-rotulo">Abertas comigo</div></div></div>

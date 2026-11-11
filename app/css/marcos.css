@@ -558,3 +558,25 @@ body.nav-recolhido nav::after { display: none; }
   .at-ata-det .tabela-rolagem { overflow: visible !important; }
   .at-ata-det h2 { font-size: 15px; margin: 0 0 6px; }
 }
+
+/* Tarefas: imprimir (modo Tabela e modo Lista) e ordenar a lista */
+.mv-imp { margin-left: 10px; border: 1px solid #C9D1DA; background: #fff; border-radius: 999px; padding: 5px 14px; font-size: 13px; font-weight: 700; color: #1F3A56; cursor: pointer; }
+.mv-imp:hover { background: #F0F3F7; }
+.at-cab-imp { display: none; }
+@media print {
+  .at-cab-imp { display: block !important; font-size: 13px; margin: 0 0 8px; }
+  /* modo Lista: sai em branco e preto, sem os botões e filtros */
+  .lt { background: #fff !important; border: 0 !important; color: #000 !important; }
+  .lt-corpo-geral { padding: 0 !important; }
+  .lt-resumo, .lt-grupo { background: #fff !important; border: 1px solid #999 !important; color: #000 !important; break-inside: avoid; }
+  .lt-resumo h3, .lt-resumo p, .lt-grupo > header h3, .lt-grupo > header span, .lt-tit, .lt-sub, .lt-data span, .lt-data b, .lt-quem { color: #000 !important; background: transparent !important; }
+  .lt-atraso { color: #b00 !important; }
+  .lt-filtros, .lt-acoes, .lt-nova, .lt-seta, .lt-hoje, .lt-bt, .lt-linha .lt-dir .lt-bt { display: none !important; }
+  .lt-anel { background: conic-gradient(#3C9A6B calc(var(--pct) * 1%), #ddd 0) !important; } .lt-anel::before { background: #fff !important; } .lt-anel b { color: #000 !important; }
+  .lt-urg { background: transparent !important; color: #000 !important; border: 1px solid #999; }
+  .lt-chk { background: #fff !important; border-color: #000 !important; }
+  .lt-linha { border-bottom-color: #ccc !important; break-inside: avoid; }
+  /* modo Tabela (quadro por prazo): colunas lado a lado, quebrando em linhas se faltar espaço */
+  .at-quadro { display: grid !important; grid-auto-flow: row !important; grid-template-columns: repeat(3, 1fr) !important; overflow: visible !important; }
+  .at-col { break-inside: avoid; } .at-col-mais, .at-card .at-acoes, .at-filtros, .at-cards { display: none !important; }
+}
