@@ -42,7 +42,7 @@ import * as agendaPos from './agenda-pos.js';
 import * as svPos from './servicos-pos.js';
 import * as osq from './os-quadro.js';
 import * as configTela from './telas/configuracoes.js';
-import { carregarConfig, definirConfig, restaurarConfig, snapshotConfig } from './config.js';
+import { carregarConfig, definirConfig, restaurarConfig, snapshotConfig, listaConfig } from './config.js';
 import * as tvSlides from './treinamentos-slides.js';
 import * as obrasPos from './obras-pos.js';
 import * as financeiro from './telas/financeiro.js';
@@ -311,6 +311,8 @@ const numerico = (a, b) => String(a).localeCompare(String(b), 'pt-BR', { numeric
   };
   setTimeout(checar, 3000); setInterval(checar, 2 * 60 * 1000);
 }
+// Acesso restrito (todo mundo menos diretoria e administrativo): o que a diretoria liberar em Configurações (Início, departamentos, Estoque, Marketing) também aparece e abre
+const liberadoExtra = (f, id) => !!id && soMinhasFuncoes(f) && (listaConfig(`pagina.${id}`) || []).includes(f.id);
 let sincronizandoCad = false;
 async function sincronizarCadastros({ forcar = false } = {}) {
   if (!nuvem.NA_NUVEM || !logado() || sincronizandoCad) return;
@@ -398,6 +400,7 @@ function desenharNav(sel) {
       + (temEstoqueRestrito(f) && paginaVisivel(f, 'estoque') ? item('estoque', 'Estoque') : '') + item('treinamentos', 'Treinamentos')
       + (paginaVisivel(f, 'escritorio') ? item('escritorio', 'Escritório virtual') : '')
       + (paginaVisivel(f, 'feed') ? itemFeed() : '')
+      + (() => { const ex = [...(liberadoExtra(f, 'geral') ? [item('geral', 'Início')] : []), ...DEPARTAMENTOS.filter((d) => liberadoExtra(f, d.id)).map((d) => item(d.id, d.nome)), ...['estoque', 'marketing'].filter((id) => liberadoExtra(f, id)).map((id) => item(id, id === 'estoque' ? 'Estoque' : 'Marketing'))]; return ex.length ? '<div class="nav-grupo">Liberado para você</div>' + ex.join('') : ''; })()
       + `<div class="navfoot">${estado.sync.origem === 'link' ? 'Atualiza sozinho a cada 5 minutos.' : 'Mostrando os últimos dados baixados.'}</div>`;
     desenharAvatares($('#nav'));
     return;
@@ -630,7 +633,7 @@ function desenhar() {
   if (tela === 'agenda' && !paginaVisivel(f, 'meudia') && f.id !== 'socio') tela = 'geral';
   if (['meudia', 'feed', 'estoque', 'escritorio', 'treinamentos', 'atas', 'tarefas', 'marketing'].includes(tela) && !paginaVisivel(f, tela === 'tarefas' ? 'atas' : tela)) tela = 'geral';   // aba que a diretoria tirou desta função
   // acesso restrito (por enquanto, quase todo mundo): Agenda, Tarefas, Atas, Treinamentos e Feed (o resto é da diretoria e do Administrativo)
-  if (soMinhasFuncoes(f)) tela = (['treinamentos', 'atas', 'tarefas', 'feed', 'escritorio'].includes(tela) || (tela === 'celular' && f.porObra) || (tela === 'estoque' && temEstoqueRestrito(f))) ? tela : 'agenda';
+  if (soMinhasFuncoes(f)) tela = (['treinamentos', 'atas', 'tarefas', 'feed', 'escritorio'].includes(tela) || (tela === 'celular' && f.porObra) || (tela === 'estoque' && temEstoqueRestrito(f)) || liberadoExtra(f, (depPorId(tela) || {}).id || tela)) ? tela : 'agenda';
 
   // departamento do organograma (Painel no desenho do Marcos + Detalhes = a tela que já existia)
   let dep = depPorId(tela);
