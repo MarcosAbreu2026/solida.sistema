@@ -527,3 +527,25 @@ body.nav-recolhido nav::after { display: none; }
 .cfg-chip.on { background: #1F4A85; border-color: #1F4A85; color: #fff; }
 .cfg-chip.cfg-fixo { background: #E8EDF3; border-color: #E8EDF3; color: #4B5560; cursor: default; }
 @media (max-width: 900px) { .cfg-corpo { grid-template-columns: 1fr; } .cfg-menu { position: static; max-height: none; } }
+
+/* Tarefas › modo Lista: o azul-marinho vira o azul das abas em tom pastel (pedido do Marcos, 11/11/2026); letras escuras para ler bem */
+.lt-resumo, .lt-grupo { background: #E6EEF7; border-color: #B9CCE2; }
+.lt-resumo h3, .lt-grupo > header h3, .lt-tit, .lt-anel b, .lt-data b { color: #1F3A56; }
+.lt-resumo p, .lt-grupo > header span, .lt-sub, .lt-data span { color: #3D5F85; }
+.lt-grupo > header { border-bottom-color: #B9CCE2; }
+.lt-linha { border-bottom-color: #CBD9EA; }
+.lt-anel { background: conic-gradient(#4CC38A calc(var(--pct) * 1%), #B9CCE2 0); }
+.lt-anel::before { background: #E6EEF7; }
+.lt-pil, .lt-bt, .lt-grp-sel select, .lt-grp-sel input, .lt-escolher { background: #E6EEF7; border-color: #B9CCE2; color: #1F4A78; }
+.lt-pil:hover, .lt-bt:hover, .lt-escolher:hover { border-color: #2B5E96; color: #1F4A78; }
+.lt-pil.on, .lt-escolher.on { background: #2B5E96; border-color: #2B5E96; color: #fff; }
+.lt-bt-grande { background: #2B5E96; border-color: #2B5E96; color: #fff; }
+.lt-bt-ex { color: #B83A2E; border-color: #E3B8B2; }
+.lt-seta, .lt-hoje { background: #fff; border-color: #B9CCE2; color: #1F4A78; }
+.lt-chk { background: #fff; border-color: #2B5E96; }
+.lt-chk:checked { background: #4CC38A; border-color: #4CC38A; } .lt-chk:checked::after { color: #fff; }
+.lt-feita .lt-tit { color: #6B86A6; }
+.lt-atraso { color: #C0392B; }
+.lt-vazio { color: #3D5F85; }
+.lt-p0 { background: #E4DAF5; color: #4B2F7A; } .lt-p1 { background: #D3E3F8; color: #1F4A78; } .lt-p2 { background: #D2EEE8; color: #1E5A52; } .lt-p3 { background: #F8E1D1; color: #7A4220; }
+.lt-grupo .urg-alta, .lt-resumo .urg-alta { color: #B83A2E; } .lt-grupo .urg-media, .lt-resumo .urg-media { color: #8A5E00; } .lt-grupo .urg-baixa, .lt-resumo .urg-baixa { color: #2F7A55; }
