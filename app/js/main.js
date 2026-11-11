@@ -1802,6 +1802,25 @@ document.addEventListener('drop', async (e) => {
 
 document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-mv]'); if (b) trocarQuery({ modo: b.dataset.mv || null }); });
 document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-lt-filtro]'); if (!b) return; const [k, v] = b.dataset.ltFiltro.split('|'); trocarQuery({ [k]: v || null }); });
+// Observadores da tarefa: clicar no nome da lista acrescenta; o × tira; a busca filtra a lista
+document.addEventListener('click', (e) => {
+  const add = e.target.closest && e.target.closest('[data-obs-add]');
+  if (add) {
+    const cx = add.closest('.obs'); const nome = cx.dataset.obs; const id = add.dataset.obsAdd;
+    if (cx.querySelector(`[data-obs-chip="${id}"]`)) return;
+    const chip = document.createElement('span'); chip.className = 'obs-chip'; chip.dataset.obsChip = id;
+    chip.innerHTML = `${esc(add.dataset.obsNome)}<button type="button" data-obs-del="${esc(id)}" title="Tirar">×</button><input type="hidden" name="${esc(nome)}" value="${esc(id)}">`;
+    cx.querySelector('.obs-chips').appendChild(chip); add.classList.add('on');
+    return;
+  }
+  const del = e.target.closest && e.target.closest('[data-obs-del]');
+  if (del) { const cx = del.closest('.obs'); const id = del.dataset.obsDel; const b = cx.querySelector(`[data-obs-add="${id}"]`); if (b) b.classList.remove('on'); del.closest('.obs-chip').remove(); }
+});
+document.addEventListener('input', (e) => {
+  const q = e.target.closest && e.target.closest('[data-obs-busca]'); if (!q) return;
+  const t = q.value.trim().toLocaleLowerCase('pt-BR');
+  q.closest('.obs').querySelectorAll('.obs-item').forEach((b) => { b.hidden = !!t && !b.dataset.obsNome.toLocaleLowerCase('pt-BR').includes(t); });
+});
 // Configurações: marcar/desmarcar quem vê (salva na hora) e restaurar o padrão
 document.addEventListener('click', async (e) => {
   const b = e.target.closest && e.target.closest('[data-cfg-fn]');

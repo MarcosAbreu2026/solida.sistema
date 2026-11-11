@@ -54,8 +54,17 @@ const souEu = () => (NA_NUVEM ? perfilAtual() && perfilAtual().id : idPessoa());
 // também vale no modo teste e no "ver como", para a tela mostrar o mesmo.
 // setores da pessoa: na nuvem, os marcados em Acessos (perfis.setores); no modo teste ou "ver como", os da função
 // Observadores: uma ou mais pessoas que acompanham a tarefa (veem e anotam no chat, sem editar). Lista = quem tem login, menos o responsável.
-const caixaObservadores = (nome, marcados, respId) => html`<details class="tf-obs"><summary>Observadores <span class="pequeno">${marcados.length ? `(${marcados.length})` : '(ninguém)'}</span></summary>
-  <div class="tf-obs-lista">${dados.pessoas.filter((x) => x.id !== respId).map((x) => html`<label><input type="checkbox" name="${nome}" value="${x.id}" ${marcados.includes(x.id) ? html.seguro('checked') : ''}> ${x.nome}</label>`)}</div></details>`;
+const chipObs = (nome, id, nomePessoa) => html`<span class="obs-chip" data-obs-chip="${id}">${nomePessoa}<button type="button" data-obs-del="${id}" title="Tirar">×</button><input type="hidden" name="${nome}" value="${id}"></span>`;
+// Observadores (opcional): clique nos nomes da lista para acrescentar; o clique no × do nome tira. O gestor automático (pelas obras e setores) já aparece como observador, travado.
+const caixaObservadores = (nome, marcados, respId, gestoresNome = '') => {
+  const pessoas = dados.pessoas.filter((x) => x.id !== respId).sort((x, y) => x.nome.localeCompare(y.nome, 'pt-BR'));
+  return html`<div class="obs" data-obs="${nome}">
+    <span class="obs-rot">Observadores <small>(opcional)</small></span>
+    <div class="obs-chips">${String(gestoresNome || '').split(', ').filter(Boolean).map((n) => html`<span class="obs-chip obs-fixo" title="Gestor automático: acompanha a tarefa e não dá para tirar">🔒 ${n} <small>gestor</small></span>`)}${pessoas.filter((x) => marcados.includes(x.id)).map((x) => chipObs(nome, x.id, x.nome))}</div>
+    <input type="search" class="obs-busca" placeholder="Procurar um nome…" data-obs-busca autocomplete="off">
+    <div class="obs-lista">${pessoas.map((x) => html`<button type="button" class="obs-item ${marcados.includes(x.id) ? 'on' : ''}" data-obs-add="${x.id}" data-obs-nome="${x.nome}">${x.nome}</button>`)}</div>
+  </div>`;
+};
 export const DURACOES = [[30, '30 min'], [60, '1 hora'], [90, '1h30'], [120, '2 horas'], [180, '3 horas'], [240, '4 horas']];
 // arrastar o cartão da tarefa na Agenda: muda o dia (prazo), o horário e a duração; guarda o prazo original como qualquer reprogramação
 export async function definirHorarioTarefa(id, { prazo, hora, duracao }) {
@@ -760,7 +769,7 @@ export async function salvarTarefa(id, c) {
   else throw new Error('Escolha o responsável.');
   // gestor: "automático" volta ao cálculo pelas obras e setores (o responsavel no pacote faz o banco recalcular)
   if (c.gestor) { const g = dados.pessoas.find((x) => x.id === c.gestor); Object.assign(mud, { gestores: [c.gestor], gestores_nome: g ? g.nome : '', gestores_manual: true }); }
-  else if (p.gestores_manual) Object.assign(mud, { gestores_manual: false, responsavel: mud.responsavel === undefined ? p.responsavel : mud.responsavel });
+  else if (c.gestor === '' && p.gestores_manual) Object.assign(mud, { gestores_manual: false, responsavel: mud.responsavel === undefined ? p.responsavel : mud.responsavel });
   if (NA_NUVEM) await atualizarPendenciaNuvem(id, mud);
   else { const l = lerLocal(); const q = l.pendencias.find((x) => String(x.id) === String(id)); if (q) Object.assign(q, mud); gravarLocal(l); }
   await carregar();
@@ -808,17 +817,16 @@ export function detalheTarefa(id, { msg = '' } = {}) {
         <label>Responsável<select name="t_resp" data-tf-resp><option value="ext" ${ext ? html.seguro('selected') : ''}>Outro: terceirizado, cliente, arquitetura…</option>${opcoesPessoas(p.responsavel || '')}</select></label>
         <div class="tf-ext" ${ext ? '' : html.seguro('hidden')}><label>Quem é<select name="t_tipo"><option value="terceirizado" ${tipo === 'terceirizado' ? html.seguro('selected') : ''}>Terceirizado</option><option value="cliente" ${tipo === 'cliente' ? html.seguro('selected') : ''}>Cliente</option><option value="arquitetura" ${tipo === 'arquitetura' ? html.seguro('selected') : ''}>Arquitetura</option></select></label>
           <label>Nome<input name="t_nome" value="${ext ? (p.responsavel_nome || '') : ''}" list="dl-terceiros" placeholder="empresa ou pessoa"></label></div>
-        <label>Gestor<select name="t_gestor"><option value="">Automático (pelas obras e setores)${!gAtual && p.gestores_nome ? ` · ${p.gestores_nome}` : ''}</option>${opcoesPessoas(gAtual)}</select></label>
         <label>Prazo<input type="date" name="t_prazo" value="${p.prazo || ''}"></label>
-        ${caixaObservadores('t_obs', p.observadores || [], p.responsavel)}
-        <label>Função (Agenda)<select name="t_func"><option value="">Nenhuma</option>${opcoesFuncaoTarefa(p.responsavel, p.funcao_tarefa)}</select></label>
-        <label>Urgência<select name="t_urg"><option value="">Sem urgência</option>${Object.entries(URG).map(([v, [t]]) => html`<option value="${v}" ${p.urgencia === v ? html.seguro('selected') : ''}>${t[0] + t.slice(1).toLocaleLowerCase('pt-BR')}</option>`)}</select></label>
       </div>
-      <div class="tf-sep"><span>Agenda · opcional</span></div>
+      <div class="tf-sep"></div>
       <div class="tf-grade tf-agenda">
         <label>Horário na Agenda<input type="time" name="t_hora" value="${p.hora || ''}"></label>
         <label>Duração<select name="t_dur">${DURACOES.map(([v, t]) => html`<option value="${v}" ${(Number(p.duracao) || 60) === v ? html.seguro('selected') : ''}>${t}</option>`)}</select></label>
+        <label>Função (Agenda)<select name="t_func"><option value="">Nenhuma</option>${opcoesFuncaoTarefa(p.responsavel, p.funcao_tarefa)}</select></label>
+        <label>Urgência<select name="t_urg"><option value="">Sem urgência</option>${Object.entries(URG).map(([v, [t]]) => html`<option value="${v}" ${p.urgencia === v ? html.seguro('selected') : ''}>${t[0] + t.slice(1).toLocaleLowerCase('pt-BR')}</option>`)}</select></label>
       </div>
+      ${caixaObservadores('t_obs', p.observadores || [], p.responsavel, p.gestores_nome)}
       <p class="pequeno tf-ajuda">Normalmente você define o horário e o tempo arrastando o cartão na Agenda. Sem horário, a tarefa fica na faixa de cima do dia, como no Google Agenda.</p>
       ${reprogramada(p) ? html`<p class="pequeno">↻ ${tituloRepro(p)}</p>` : ''}
       <div class="tf-botoes">
