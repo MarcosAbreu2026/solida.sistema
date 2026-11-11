@@ -677,3 +677,9 @@ body.nav-recolhido nav::after { display: none; }
   .lt-linha.lt-feita { display: none !important; }
   .lt-grupo:not(:has(.lt-linha:not(.lt-feita))) { display: none !important; }
 }
+
+/* Impressão da ata: a coluna TIPO tem que caber "INFORMATIVO" inteiro, sem quebrar a palavra */
+@media print {
+  .at-ata-det .sd-tab th:nth-child(2), .at-ata-det .sd-tab td:nth-child(2) { width: 132px !important; min-width: 132px; }
+  .at-ata-det .sd-tab td.sd-t-info, .at-ata-det .sd-tab td.sd-t-pend { font-size: 12.5px !important; letter-spacing: 0 !important; white-space: nowrap !important; overflow-wrap: normal !important; word-break: keep-all !important; padding-left: 4px !important; padding-right: 4px !important; }
+}
