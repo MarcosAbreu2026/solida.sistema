@@ -800,33 +800,37 @@ export function detalheTarefa(id, { msg = '' } = {}) {
   const eu = souEu(); const notas = notasDe(id);
   return html`<div class="tf" data-tf-raiz="${p.id}">
     <div class="tf-cab"><h3>Tarefa</h3>${p.status === 'feita' ? html`<span class="at-chip">concluída</span>` : col === 'vencido' ? html`<span class="at-chip tf-venc">vencida</span>` : ''}${onde(p) ? html`<span class="at-chip">${onde(p)}</span>` : ''}${a ? html`<a class="at-ata" href="#/atas?aba=atas&ata=${a.id}" title="Ata de origem">ata ${dm(a.data).slice(0, 5)}</a>` : ''}${p.os ? html`<a class="at-chip at-os" href="#/posobra/os/${encodeURIComponent(p.os)}">${p.os}</a>` : ''}</div>
-    <form id="tf-form" data-tf="${p.id}" autocomplete="off">
+    <div class="tf-corpo">
+    <form id="tf-form" class="tf-esq" data-tf="${p.id}" autocomplete="off">
       <div class="tf-grade">
-        <label class="tf-ass">Assunto<input name="t_assunto" value="${ass}" placeholder="ex.: ACM"></label>
+        <label class="tf-ass">Assunto / cômodo<input name="t_assunto" value="${ass}" placeholder="ex.: ACM"></label>
         <label class="tf-desc">Título (o que fazer)<input name="t_desc" value="${resto}" placeholder="ex.: Retirar da área gourmet" required></label>
         <label>Responsável<select name="t_resp" data-tf-resp><option value="ext" ${ext ? html.seguro('selected') : ''}>Outro: terceirizado, cliente, arquitetura…</option>${opcoesPessoas(p.responsavel || '')}</select></label>
         <div class="tf-ext" ${ext ? '' : html.seguro('hidden')}><label>Quem é<select name="t_tipo"><option value="terceirizado" ${tipo === 'terceirizado' ? html.seguro('selected') : ''}>Terceirizado</option><option value="cliente" ${tipo === 'cliente' ? html.seguro('selected') : ''}>Cliente</option><option value="arquitetura" ${tipo === 'arquitetura' ? html.seguro('selected') : ''}>Arquitetura</option></select></label>
           <label>Nome<input name="t_nome" value="${ext ? (p.responsavel_nome || '') : ''}" list="dl-terceiros" placeholder="empresa ou pessoa"></label></div>
         <label>Gestor<select name="t_gestor"><option value="">Automático (pelas obras e setores)${!gAtual && p.gestores_nome ? ` · ${p.gestores_nome}` : ''}</option>${opcoesPessoas(gAtual)}</select></label>
         <label>Prazo<input type="date" name="t_prazo" value="${p.prazo || ''}"></label>
-        <label>Horário na Agenda<input type="time" name="t_hora" value="${p.hora || ''}"></label>
-        <label>Duração<select name="t_dur">${DURACOES.map(([v, t]) => html`<option value="${v}" ${(Number(p.duracao) || 60) === v ? html.seguro('selected') : ''}>${t}</option>`)}</select></label>
         ${caixaObservadores('t_obs', p.observadores || [], p.responsavel)}
         <label>Função (Agenda)<select name="t_func"><option value="">Nenhuma</option>${opcoesFuncaoTarefa(p.responsavel, p.funcao_tarefa)}</select></label>
         <label>Urgência<select name="t_urg"><option value="">Sem urgência</option>${Object.entries(URG).map(([v, [t]]) => html`<option value="${v}" ${p.urgencia === v ? html.seguro('selected') : ''}>${t[0] + t.slice(1).toLocaleLowerCase('pt-BR')}</option>`)}</select></label>
       </div>
+      <div class="tf-sep"><span>Agenda · opcional</span></div>
+      <div class="tf-grade tf-agenda">
+        <label>Horário na Agenda<input type="time" name="t_hora" value="${p.hora || ''}"></label>
+        <label>Duração<select name="t_dur">${DURACOES.map(([v, t]) => html`<option value="${v}" ${(Number(p.duracao) || 60) === v ? html.seguro('selected') : ''}>${t}</option>`)}</select></label>
+      </div>
+      <p class="pequeno tf-ajuda">Normalmente você define o horário e o tempo arrastando o cartão na Agenda. Sem horário, a tarefa fica na faixa de cima do dia, como no Google Agenda.</p>
       ${reprogramada(p) ? html`<p class="pequeno">↻ ${tituloRepro(p)}</p>` : ''}
       <div class="tf-botoes">
-        <button type="submit" class="botao on">Salvar alterações</button>
-        ${p.status === 'feita' ? html`<button type="button" class="botao" data-tf-status="${p.id}|aberta">↺ Reabrir</button>` : html`<button type="button" class="botao at-ok" data-tf-status="${p.id}|feita">✓ Concluir</button>`}
-        <button type="button" class="botao ac-excluir" data-tf-del="${p.id}" title="${p.ata_id ? 'Tira da lista de tarefas (o item continua na ata)' : 'Exclui a tarefa'}">${p.ata_id ? 'Tirar da lista' : 'Excluir'}</button>
-        <button type="button" class="botao" data-av-fechar>Fechar</button>
         ${msg ? html`<span class="tf-msg">${msg}</span>` : ''}
+        <button type="button" class="botao" data-av-fechar>Fechar</button>
+        <button type="submit" class="botao on">Salvar alterações</button>
       </div>
     </form>
-    <div class="tf-chat"><h4>Anotações <span class="pequeno">${notas.length}</span></h4>
+    <div class="tf-chat tf-dir"><h4>Anotações <span class="pequeno">${notas.length}</span></h4>
       <div class="tf-notas">${notas.length ? notas.map((n) => html`<div class="tf-nota ${n.autor === eu ? 'tf-minha' : ''}"><div class="tf-nota-h"><b>${n.autor_nome || 'Alguém'}</b><span>${quando(n.criado_em)}</span>${n.autor === eu ? html`<button type="button" class="tf-x" data-tf-nota-del="${n.id}|${p.id}" title="Apagar esta anotação">×</button>` : ''}</div><div class="tf-nota-t">${textoRico(n.texto)}</div></div>`) : html`<p class="pequeno">Nenhuma anotação ainda. Use para registrar o que foi combinado, cobrado ou resolvido.</p>`}</div>
       <form id="tf-nota" data-tf-nota="${p.id}"><textarea name="t_nota" rows="2" placeholder="Escreva uma anotação… (Ctrl+Enter envia)"></textarea><button type="submit" class="botao on">Enviar</button></form>
+    </div>
     </div>
   </div>`;
 }

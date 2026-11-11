@@ -379,27 +379,31 @@ function agendaDeTarefas(ref, { pendencias = [], eu }) {
     ${hoje < ini || hoje > somarDias(ini, 6) ? html`<button type="button" class="botao" data-semana-md="${hoje}">Esta semana</button>` : ''}
     <button type="button" class="botao" data-semana-md="${somarDias(ini, 7)}">Próxima semana →</button>
   </div>`;
-  const colunas = dias.map((c) => { const l = lados(entradas.filter((e) => e.dia === c)); return { c, l, fe: l.filter((e) => e.p.status === 'feita').length }; }).filter(({ l }, i) => i < 5 || l.length);
+  // sem horário = faixa "dia todo" no alto de cada dia (como no Google Agenda); com horário = cartão na grade, no horário e pela duração
+  const colunas = dias.map((c) => { const todas = entradas.filter((e) => e.dia === c); return { c, l: lados(todas.filter((e) => !e.semHora)), livres: todas.filter((e) => e.semHora), fe: todas.filter((e) => e.p.status === 'feita').length, total: todas.length }; }).filter(({ total }, i) => i < 5 || total);
   const feitas = entradas.filter((e) => e.p.status === 'feita').length;
   const altTotal = GRADE.faixas * GRADE.alt;
   const rotuloSlot = (s) => (s % 60 ? `${Math.floor(s / 60)}h30` : `${s / 60}h`);
   const horas = Array.from({ length: GRADE.faixas }, (_, i) => html`<span style="top:${i * GRADE.alt}px">${rotuloSlot(GRADE.ini + i * GRADE.passo)}</span>`);
-  const cabecas = colunas.map(({ c, l, fe }, i) => html`<div class="fq-cab ${c === hoje ? 'hoje' : ''}"><b>${DIA_CURTO[i]} ${c.slice(8, 10)}/${c.slice(5, 7)}</b><small>${feriado(c) ? 'feriado' : l.length ? `${fe} de ${l.length} feitas` : 'sem tarefas'}</small></div>`);
+  const resumoDia = (total, fe, c) => (feriado(c) ? 'feriado' : total ? `${fe} de ${total} feitas` : 'sem tarefas');
+  const cabecas = colunas.map(({ c, total, fe }, i) => html`<div class="fq-cab ${c === hoje ? 'hoje' : ''}"><b>${DIA_CURTO[i]} ${c.slice(8, 10)}/${c.slice(5, 7)}</b><small>${resumoDia(total, fe, c)}</small></div>`);
+  const cartaoLivre = (e) => { const p = e.p; const feita = p.status === 'feita'; const cls = feita ? 'ok' : p.prazo < hoje ? 'venc' : p.prazo === hoje ? 'hoje' : 'futura'; const [ass, resto] = assuntoDe(p.descricao);
+    return html`<div class="ag-lcard ag-t-${cls}" data-tarefa="${p.id}" data-tcard="${p.id}" data-livre="1" title="${ass ? `${ass}: ` : ''}${resto}${p.obra ? ` · ${p.obra}` : ''} — sem horário (dia todo). Arraste para um horário do dia; clique para abrir.">${p.obra ? html`<b>${p.obra}</b> ` : ''}${ass ? `${ass} · ` : ''}${resto}</div>`; };
+  const livres = colunas.map(({ c, livres: l }) => html`<div class="ag-livres ${c === hoje ? 'hoje' : ''}" data-livres="${c}">${l.map(cartaoLivre)}</div>`);
   const trilhos = colunas.map(({ c, l }) => html`<div class="fq-trilho ${c === hoje ? 'hoje' : ''}" data-trilho="${c}" style="height:${altTotal}px">${l.map((e) => cartaoTarefa(e, hoje))}</div>`);
-  const lanes = (l) => Math.max(1, ...l.map((e) => e.n || 1));
   const colsCss = `52px repeat(${colunas.length}, minmax(0, 1fr))`;   // todos os dias com a mesma largura: o que se achata são os cartões que caem no mesmo horário, não a coluna
-  const vistaQuadro = html`<div class="fq-quadro" style="grid-template-columns:${colsCss}"><div class="fq-canto"></div>${cabecas}<div class="fq-horas" style="height:${altTotal}px">${horas}</div>${trilhos}</div>`;
+  const vistaQuadro = html`<div class="fq-quadro" style="grid-template-columns:${colsCss}"><div class="fq-canto"></div>${cabecas}<div class="ag-livre-rot">dia todo</div>${livres}<div class="fq-horas" style="height:${altTotal}px">${horas}</div>${trilhos}</div>`;
   const caixa = (e) => { const [ass, resto] = assuntoDe(e.p.descricao); const cls = e.p.status === 'feita' ? 'ok' : e.p.prazo < hoje ? 'venc' : e.p.prazo === hoje ? 'hoje' : 'futura';
-    return html`<div class="ag-tcaixa ag-t-${cls}" data-tarefa="${e.p.id}"><b>${e.p.obra || ''}</b> ${ass ? `${ass} · ` : ''}${resto}<small>${e.semHora ? 'sem horário' : hhmm(e.ini)}</small></div>`; };
-  const vistaLista = html`<div class="fl-lista" style="--nd:${colunas.length}">${colunas.map(({ c, l, fe }, i) => html`<div class="fl-col ${c === hoje ? 'hoje' : ''}">
-      <div class="fq-cab ${c === hoje ? 'hoje' : ''}"><b>${DIA_CURTO[i]} ${c.slice(8, 10)}/${c.slice(5, 7)}</b><small>${feriado(c) ? 'feriado' : l.length ? `${fe} de ${l.length} feitas` : 'sem tarefas'}</small></div>
-      ${[...l].sort((a, b) => a.faixa - b.faixa).map(caixa)}</div>`)}</div>`;
+    return html`<div class="ag-tcaixa ag-t-${cls}" data-tarefa="${e.p.id}"><b>${e.p.obra || ''}</b> ${ass ? `${ass} · ` : ''}${resto}<small>${e.semHora ? 'sem horário (dia todo)' : hhmm(e.ini)}</small></div>`; };
+  const vistaLista = html`<div class="fl-lista" style="--nd:${colunas.length}">${colunas.map(({ c, l, livres: lv, fe, total }, i) => html`<div class="fl-col ${c === hoje ? 'hoje' : ''}">
+      <div class="fq-cab ${c === hoje ? 'hoje' : ''}"><b>${DIA_CURTO[i]} ${c.slice(8, 10)}/${c.slice(5, 7)}</b><small>${resumoDia(total, fe, c)}</small></div>
+      ${lv.map(caixa)}${[...l].sort((a, b) => a.faixa - b.faixa).map(caixa)}</div>`)}</div>`;
   return html`${nav}
     <section class="fn-painel">
       <header class="fn-cab"><h3>Agenda</h3><span class="fn-cab-dir"><span class="pequeno">${entradas.length ? `${feitas} de ${entradas.length} tarefas concluídas nesta semana` : 'nenhuma tarefa com prazo nesta semana'}</span></span></header>
       ${entradas.length ? html`<div class="pct" style="margin:6px 0 12px"><i style="width:${Math.round((feitas / entradas.length) * 100)}%"></i></div>` : ''}
       <div class="fh-larga">${vistaQuadro}</div><div class="fh-estreita">${vistaLista}</div>
-      <p class="legenda-semana">Cada cartão é uma tarefa da aba Tarefas, no horário e pelo tempo que você definiu (sem horário fica no início do dia, tracejado, para você pegar e arrastar). Arraste para outro horário ou dia, puxe a borda de baixo para mudar a duração e clique para abrir. O horário também se escolhe dentro da tarefa.</p>
+      <p class="legenda-semana">Cada cartão é uma tarefa da aba Tarefas, no horário e pelo tempo que você definiu (sem horário fica na faixa "dia todo", no alto do dia, como no Google Agenda: arraste para um horário). Arraste para outro horário ou dia, puxe a borda de baixo para mudar a duração e clique para abrir. O horário também se escolhe dentro da tarefa.</p>
     </section>`;
 }
 // Preencher é de quem está na obra. Sócio e coordenação consultam em Operação › Metas e produtividade.

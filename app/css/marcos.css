@@ -601,3 +601,25 @@ body.nav-recolhido nav::after { display: none; }
   .at-quadro { overflow: visible !important; }
   .lt-obra { background: transparent !important; color: #000 !important; border: 1px solid #666; }
 }
+
+/* Agenda: faixa "dia todo" (tarefas sem horário, como no Google Agenda) */
+.ag-livre-rot { font-size: 10.5px; color: #7A8794; align-self: center; text-align: right; padding-right: 4px; line-height: 1.1; }
+.ag-livres { display: flex; flex-direction: column; gap: 3px; min-height: 30px; padding: 3px; border-radius: 8px; background: #F2F4F7; border: 1px dashed #D0D7E0; }
+.ag-livres.hoje { background: #EEF4FB; border-color: #BFD3EA; }
+.ag-lcard { box-sizing: border-box; padding: 3px 7px; border: 1px solid #D5DCE4; border-left: 4px solid #8FA0B5; border-radius: 6px; background: #fff; font-size: 12px; line-height: 15px; cursor: grab; user-select: none; touch-action: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ag-lcard b { font-size: 11px; color: #4B5560; }
+.ag-lcard:hover { box-shadow: 0 2px 8px rgba(0, 0, 0, .18); }
+.ag-lcard.arrastando, .ag-tcard.arrastando { z-index: 40; opacity: .88; box-shadow: 0 6px 18px rgba(0, 0, 0, .3); transition: none; pointer-events: none; }
+.ag-lcard.ag-t-ok .fq-nome { text-decoration: line-through; } .ag-lcard.ag-t-ok { text-decoration: line-through; color: #6B7480; }
+.ag-lcard.ag-t-venc { border-left-color: #D8574B; background: #FDF4F3; } .ag-lcard.ag-t-hoje { border-left-color: #2F6FA8; background: #F0F6FC; } .ag-lcard.ag-t-futura { border-left-color: #A9B4C2; } .ag-lcard.ag-t-ok { border-left-color: #3C9A6B; background: #F2FAF5; }
+
+/* Janela da tarefa: formulário à esquerda e anotações em uma caixa à direita */
+.tf-caixa { width: min(1040px, calc(100vw - 32px)); }
+.tf-corpo { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(300px, 1fr); gap: 18px; align-items: start; }
+.tf-dir { margin: 0; padding: 12px 14px; border: 1px solid #D5DCE4; border-radius: 10px; background: #FAFBFC; position: sticky; top: 0; }
+.tf-dir .tf-notas { max-height: 380px; }
+.tf-botoes { justify-content: flex-end; }
+.tf-sep { display: flex; align-items: center; gap: 10px; margin: 18px 0 10px; color: #8A94A0; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.tf-sep::before, .tf-sep::after { content: ''; flex: 1; height: 1px; background: #D5DCE4; }
+.tf-agenda { grid-template-columns: 1fr 1fr; } .tf-ajuda { margin: 8px 0 0; }
+@media (max-width: 820px) { .tf-corpo { grid-template-columns: 1fr; } .tf-dir { position: static; } }

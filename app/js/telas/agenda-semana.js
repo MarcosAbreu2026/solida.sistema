@@ -116,16 +116,19 @@ function renderPrincipal(opts) {
 }
 
 // Arrastar o cartão da tarefa na grade (e puxar a borda de baixo): muda dia, horário e duração. Clicar (sem arrastar) abre a tarefa.
+// A faixa "dia todo" (tarefas sem horário, como no Google Agenda) funciona nos dois sentidos: arrastar dela para um horário define o horário (1 hora);
+// arrastar um cartão da grade para a faixa tira o horário.
 export function instalarTarefasNaGrade(mover) {
   const ALT = 44; const PASSO = 30; const INI = 8 * 60; const FAIXAS = 18;
   let a = null;
   const limitar = (v, x, y) => Math.max(x, Math.min(y, v));
   const reset = () => { if (a) { a.card.classList.remove('arrastando'); a.card.style.transform = ''; a = null; } };
+  const hhmm = (min) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
   document.addEventListener('pointerdown', (e) => {
     if (e.button || a) return;
-    const card = e.target.closest && e.target.closest('.ag-tcard'); if (!card || e.target.closest('button, a')) return;
+    const card = e.target.closest && e.target.closest('.ag-tcard, .ag-lcard'); if (!card || e.target.closest('button, a')) return;
     const r = card.getBoundingClientRect();
-    a = { card, trilho: card.parentElement, alca: !!e.target.closest('.ag-alca'), x0: e.clientX, y0: e.clientY, moveu: false, h0: r.height, desloc: e.clientY - r.top, id: card.dataset.tcard, span: Number(card.dataset.span) };
+    a = { card, livre: !!card.dataset.livre, trilho: card.parentElement, alca: !!e.target.closest('.ag-alca'), x0: e.clientX, y0: e.clientY, moveu: false, h0: r.height, desloc: e.clientY - r.top, id: card.dataset.tcard, span: Number(card.dataset.span) || 2 };
     if (a.alca) e.preventDefault();
   });
   document.addEventListener('pointermove', (e) => {
@@ -141,16 +144,25 @@ export function instalarTarefasNaGrade(mover) {
     const x = a;
     if (!x.moveu) { reset(); return; }
     setTimeout(() => { delete x.card.dataset.arrastou; }, 80);   // o clique que vem logo depois do arraste não abre a tarefa
+    const id = x.id;
+    if (!x.alca) {
+      // o cartão arrastado fica "transparente" ao mouse para achar o que está embaixo
+      x.card.style.pointerEvents = 'none';
+      const sob = document.elementFromPoint(e.clientX, e.clientY);
+      x.card.style.pointerEvents = '';
+      const faixaLivre = sob && sob.closest && sob.closest('.ag-livres');
+      if (faixaLivre) { reset(); mover(id, { prazo: faixaLivre.dataset.livres, hora: null, duracao: null }); return; }   // volta para "dia todo"
+    }
     const trilhos = [...document.querySelectorAll('.fq-trilho')];
-    const alvo = x.alca ? x.trilho : (trilhos.find((t) => { const r = t.getBoundingClientRect(); return e.clientX >= r.left && e.clientX < r.right; }) || x.trilho);
+    const alvo = x.alca ? x.trilho : (trilhos.find((t) => { const r = t.getBoundingClientRect(); return e.clientX >= r.left && e.clientX < r.right; }) || (x.livre ? null : x.trilho));
+    if (!alvo) { reset(); return; }
     const r = alvo.getBoundingClientRect();
-    let span = x.span; let faixa = Math.round((x.card.getBoundingClientRect().top - r.top) / ALT);
+    let span = x.livre ? 2 : x.span; let faixa;
     if (x.alca) { span = Math.max(1, Math.round((x.h0 + (e.clientY - x.y0) + 2) / ALT)); faixa = Math.round((parseFloat(x.card.style.top) || 0) / ALT); }
-    else faixa = Math.round((e.clientY - x.desloc - r.top) / ALT);
+    else faixa = Math.round((e.clientY - (x.livre ? 10 : x.desloc) - r.top) / ALT);
     faixa = limitar(faixa, 0, FAIXAS - span); span = limitar(span, 1, FAIXAS - faixa);
-    const min = INI + faixa * PASSO; const hora = `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
-    const id = x.id; reset();
-    mover(id, { prazo: alvo.dataset.trilho, hora, duracao: span * PASSO });
+    reset();
+    mover(id, { prazo: alvo.dataset.trilho, hora: hhmm(INI + faixa * PASSO), duracao: span * PASSO });
   });
   document.addEventListener('pointercancel', reset);
 }
