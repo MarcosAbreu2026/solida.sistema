@@ -41,6 +41,8 @@ import * as posGeral from './telas/posobra-geral.js';
 import * as agendaPos from './agenda-pos.js';
 import * as svPos from './servicos-pos.js';
 import * as osq from './os-quadro.js';
+import * as configTela from './telas/configuracoes.js';
+import { carregarConfig, definirConfig, restaurarConfig, snapshotConfig } from './config.js';
 import * as tvSlides from './treinamentos-slides.js';
 import * as obrasPos from './obras-pos.js';
 import * as financeiro from './telas/financeiro.js';
@@ -315,9 +317,9 @@ async function sincronizarCadastros({ forcar = false } = {}) {
   sincronizandoCad = true;
   try {
     const chavePessoas = () => JSON.stringify((atas.pessoasDaEquipe() || []).map((p) => `${p.id}|${p.nome}|${p.funcao}`));
-    const antesPessoas = chavePessoas();
-    const [oc, st] = await Promise.all([nuvem.listarObras().catch(() => null), nuvem.listarSetores().catch(() => null), atas.carregar().catch(() => null)]);
-    let mudou = forcar;
+    const antesPessoas = chavePessoas(); const antesCfg = snapshotConfig();
+    const [oc, st] = await Promise.all([nuvem.listarObras().catch(() => null), nuvem.listarSetores().catch(() => null), atas.carregar().catch(() => null), carregarConfig().catch(() => null)]);
+    let mudou = forcar || snapshotConfig() !== antesCfg;
     if (oc && JSON.stringify(oc) !== JSON.stringify(estado.obrasCad || [])) { estado.obrasCad = oc; mudou = true; }
     if (st && st.length && JSON.stringify(st) !== JSON.stringify(SETORES_ORGANOGRAMA)) { aplicarSetores(st); atas.atualizarSetoresAta(); mudou = true; }
     if (chavePessoas() !== antesPessoas) mudou = true;
@@ -425,7 +427,7 @@ function desenharNav(sel) {
     + (paginaVisivel(f, 'escritorio') ? item('escritorio', 'Escritório virtual') : '')
     + (paginaVisivel(f, 'treinamentos') ? item('treinamentos', 'Treinamentos') : '')
     + (paginaVisivel(f, 'marketing') ? item('marketing', 'Marketing') : '')
-    + (f.veAgentes ? `${grupo('Diretoria')}${item('agentes', 'Agentes')}${nuvem.NA_NUVEM && funcaoReal().id === 'socio' ? item('acessos', 'Cadastros') : ''}` : '')
+    + (f.veAgentes ? `${grupo('Diretoria')}${item('agentes', 'Agentes')}${nuvem.NA_NUVEM && funcaoReal().id === 'socio' ? item('acessos', 'Cadastros') : ''}${funcaoReal().id === 'socio' ? item('configuracoes', 'Configurações') : ''}` : '')
     + `<div class="navfoot">${estado.sync.origem === 'link' ? 'Atualiza sozinho a cada 5 minutos.' : 'Mostrando os últimos dados baixados.'}</div>`;
   desenharAvatares($('#nav'));
 }
@@ -639,7 +641,7 @@ function desenhar() {
   const ehPainel = (dep || tela === 'geral') && (!temLegado || ((!rota.sub || rota.sub === 'painel') && ![...rota.params.keys()].length));
   if ((dep || tela === 'geral') && !ehPainel && rota.sub === 'detalhe') rota = { ...rota, sub: '' };
   const ehObraPlan = tela === 'planejamento' && rota.sub === 'obra';
-  const fixas = ['agentes', 'meudia', 'agenda', 'quadro', 'estoque', 'escritorio', 'perfil', 'feed', 'treinamentos', 'acessos', 'atas', 'tarefas', 'marketing', 'equipe', 'obra', 'celular'];
+  const fixas = ['agentes', 'meudia', 'agenda', 'quadro', 'estoque', 'escritorio', 'perfil', 'feed', 'treinamentos', 'acessos', 'configuracoes', 'atas', 'tarefas', 'marketing', 'equipe', 'obra', 'celular'];
   const abaAtas = rota.params.get('aba');
   const sel = tela === 'funcionarios' ? 'rh' : tela === 'tarefas' || (tela === 'atas' && !['atas', 'nova', 'pautas'].includes(abaAtas)) ? 'tarefas' : (dep || area || fixas.includes(tela)) ? tela : 'geral';
   desenharNav(sel);
@@ -653,13 +655,20 @@ function desenhar() {
     : dep ? (dep.titulo || dep.nome)
     : tela === 'obra' ? rota.sub
     : area ? area.nome
-    : ({ agentes: 'Agentes', funcionarios: 'Funcionários por obra', meudia: 'Minha semana', agenda: 'Agenda', quadro: 'Quadro de funções', estoque: 'Estoque', escritorio: 'Escritório virtual', perfil: 'Perfil', feed: 'Feed', treinamentos: 'Treinamentos', acessos: 'Cadastros', atas: ['atas', 'nova', 'pautas'].includes(abaAtas) ? 'Atas' : 'Tarefas', tarefas: 'Tarefas', marketing: 'Marketing', equipe: 'Ranking', celular: 'Celular da obra' }[tela] || (f.id === 'socio' ? 'Início · visão do CEO' : 'Início'));
+    : ({ configuracoes: 'Configurações', agentes: 'Agentes', funcionarios: 'Funcionários por obra', meudia: 'Minha semana', agenda: 'Agenda', quadro: 'Quadro de funções', estoque: 'Estoque', escritorio: 'Escritório virtual', perfil: 'Perfil', feed: 'Feed', treinamentos: 'Treinamentos', acessos: 'Cadastros', atas: ['atas', 'nova', 'pautas'].includes(abaAtas) ? 'Atas' : 'Tarefas', tarefas: 'Tarefas', marketing: 'Marketing', equipe: 'Ranking', celular: 'Celular da obra' }[tela] || (f.id === 'socio' ? 'Início · visão do CEO' : 'Início'));
   $('#titulo').textContent = titulo;
   document.title = `${titulo} · Sólida`;
 
   // Tarefas: modo de visualização (Tabela | Lista) no topo, à esquerda de "Atualizado às…"
   { const mv = $('#modoVis'); const abaP = rota.params.get('aba'); const naTarefas = (tela === 'atas' || tela === 'tarefas') && (!abaP || abaP === 'pendencias');
     if (mv) { mv.hidden = !naTarefas; if (naTarefas) { const m = rota.params.get('modo') === 'lista' ? 'lista' : 'tabela'; mv.innerHTML = `<span class="mv-rot">Modo de visualização</span><span class="mv-seg"><button type="button" data-mv="" class="${m === 'tabela' ? 'on' : ''}">Tabela</button><button type="button" data-mv="lista" class="${m === 'lista' ? 'on' : ''}">Lista</button></span>`; } } }
+  // atalho para as configurações da aba que está aberta (só diretoria)
+  { const bc = $('#bConfig');
+    if (bc) {
+      const pid = dep ? dep.id : tela === 'geral' ? 'geral' : tela === 'agenda' ? 'agenda' : (tela === 'atas' || tela === 'tarefas') ? 'atas' : ['treinamentos', 'feed', 'escritorio', 'estoque', 'marketing'].includes(tela) ? tela : null;
+      const ok = funcaoReal().id === 'socio' && !!pid && tela !== 'configuracoes';
+      bc.hidden = !ok; if (ok) bc.href = `#/configuracoes/${pid}`;
+    } }
   const sc = $('#sinc');
   const sy = estado.sync;
   if (sy.erro) { sc.textContent = 'Sem conexão, mostrando os últimos dados'; sc.className = 'sinc err'; sc.title = sy.erro; }
@@ -671,6 +680,11 @@ function desenhar() {
     feed.marcarVisto();
     $('#conteudo').innerHTML = `<div>${feed.render({ eu: { nome: sessao().nome }, diretoria: f.id === 'socio', msg: estado.feedMsg || '' })}</div>`;
     estado.feedMsg = '';
+    return;
+  }
+  if (tela === 'configuracoes') {
+    $('#conteudo').innerHTML = funcaoReal().id === 'socio' ? `<div>${configTela.render({ pagina: rota.sub || 'geral', msg: estado.cfgMsg || '' })}</div>` : '<div class="erro">Só a diretoria acessa as configurações.</div>';
+    estado.cfgMsg = '';
     return;
   }
   if (tela === 'acessos' && nuvem.NA_NUVEM && funcaoReal().id === 'socio') {
@@ -919,7 +933,8 @@ async function atualizar() {
   const atual = logado() ? { pessoa: idPessoa(), nome: sessao().nome, funcao: funcaoAtual().id, teste: simulando(), obras: obrasDaPessoa() } : null;
   if (nuvem.NA_NUVEM && logado()) { try { aplicarAbas(await nuvem.carregarAbas()); } catch { /* sem a tabela: fica o padrão de cada função */ } }
   if (nuvem.NA_NUVEM && logado()) { try { estado.obrasCad = await nuvem.listarObras(); } catch { /* sem o cadastro: ficam só as obras dos dados */ }
-    try { aplicarSetores(await nuvem.listarSetores()); atas.atualizarSetoresAta(); } catch { /* sem a tabela de setores: fica a lista padrão */ } }
+    try { aplicarSetores(await nuvem.listarSetores()); atas.atualizarSetoresAta(); } catch { /* sem a tabela de setores: fica a lista padrão */ }
+    try { await carregarConfig(); } catch { /* sem a tabela de configurações: vale o padrão do código */ } }
   const [painelR, baseR, prodR, driveR, , , , , ferrR, terR, , efR] = await Promise.allSettled([carregarPainel(), carregarDados(), carregarProdutividade(), carregarDrive(), sincronizarTarefas(atual), perfil.carregarFotos(), feed.carregar(), evidencias.carregar(), carregarFerramentasChk(), carregarTerceirizados(), atas.carregar(), carregarEfetivo(), sincronizarHorarios(logado() ? idPessoa() : null)]);
   if (efR.status === 'fulfilled') estado.efetivo = efR.value;
   if (terR.status === 'fulfilled') estado.terceiros = terR.value;
@@ -1784,6 +1799,19 @@ document.addEventListener('drop', async (e) => {
 
 document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-mv]'); if (b) trocarQuery({ modo: b.dataset.mv || null }); });
 document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-lt-filtro]'); if (!b) return; const [k, v] = b.dataset.ltFiltro.split('|'); trocarQuery({ [k]: v || null }); });
+// Configurações: marcar/desmarcar quem vê (salva na hora) e restaurar o padrão
+document.addEventListener('click', async (e) => {
+  const b = e.target.closest && e.target.closest('[data-cfg-fn]');
+  if (b) {
+    const [chave, fid] = b.dataset.cfgFn.split('|');
+    const itens = [...b.closest('.cfg-chips').querySelectorAll('[data-cfg-fn]')].map((x) => ({ id: x.dataset.cfgFn.split('|')[1], on: x.classList.contains('on') }));
+    const nova = itens.filter((x) => (x.id === fid ? !x.on : x.on)).map((x) => x.id);
+    try { await definirConfig(chave, nova); estado.cfgMsg = 'Salvo ✓'; desenhar(); } catch (err) { alert(`Não foi possível salvar (${err.message || err}).`); }
+    return;
+  }
+  const r = e.target.closest && e.target.closest('[data-cfg-reset]');
+  if (r) { try { await restaurarConfig(r.dataset.cfgReset); estado.cfgMsg = 'Voltou ao padrão ✓'; desenhar(); } catch (err) { alert(`Não foi possível restaurar (${err.message || err}).`); } }
+});
 // Tarefas › modo Lista: trocar o dia, passar a tarefa para o dia seguinte, abrir a tarefa, passar as pendências atrasadas
 document.addEventListener('click', async (e) => {
   const d = e.target.closest && e.target.closest('[data-lt-dia]');

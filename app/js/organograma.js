@@ -11,6 +11,8 @@
 // Pedido do Felipe (04/11): Materiais e Ferramentas e EPI não são departamentos à parte. Ficam Compras, Materiais / Vendas (venda de materiais, Mercado Livre), Transporte e Logística
 // (rotas) e Estoque (tela própria com abas: estoque, contagem, guia de movimentação, pedir itens, checklists, reposição).
 
+import { listaConfig } from './config.js';
+
 export const DEPARTAMENTOS = [
   { id: 'operacao', nome: 'Operações', cfg: 'operacao', setor: 'Operação', comObras: true,
     resp: 'Coordenadora: Simone · obras em curso aparecem como submenus',
@@ -74,9 +76,16 @@ export const DEPARTAMENTOS = [
 export const depPorId = (id) => DEPARTAMENTOS.find((d) => d.id === id) || null;
 
 // diretoria e administrativo veem todos os departamentos; os outros, os do seu trabalho
-export function podeVerDep(dep, f) {
+// regra padrão do código; a diretoria pode mudar em Configurações (config.js: pagina.<id>)
+export function podeVerDepPadrao(dep, f) {
   if (!dep || !f) return false;
   if (['socio', 'administrativo'].includes(f.id)) return true;
   if (dep.id === 'financeiro') return !!f.veValores;
   return (dep.funcoes || []).includes(f.id);
+}
+export function podeVerDep(dep, f) {
+  if (!dep || !f) return false;
+  const l = listaConfig(`pagina.${dep.id}`);
+  if (l) return f.id === 'socio' || l.includes(f.id);
+  return podeVerDepPadrao(dep, f);
 }

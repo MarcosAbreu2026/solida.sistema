@@ -454,3 +454,18 @@ export async function excluirSetor(nome) {
   const { error } = await sb.from('setores').delete().eq('nome', nome);
   if (error) throw new Error(error.message);
 }
+
+// ---------------------------------------------------------------- configurações (supabase/19-configuracoes.sql)
+export async function carregarConfiguracoes() {
+  const { data, error } = await sb.from('configuracoes').select('chave, valor');
+  if (error) throw new Error(error.message);
+  const m = {}; for (const r of data || []) m[r.chave] = r.valor; return m;
+}
+export async function gravarConfiguracao(chave, valor) {
+  const { error } = await sb.from('configuracoes').upsert({ chave, valor, atualizado_em: new Date().toISOString(), atualizado_por: perfil.id });
+  if (error) throw new Error(error.message);
+}
+export async function apagarConfiguracao(chave) {
+  const { error } = await sb.from('configuracoes').delete().eq('chave', chave);
+  if (error) throw new Error(error.message);
+}

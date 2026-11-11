@@ -9,6 +9,7 @@ import { html, data as fmtData } from '../formato.js';
 import { hojeISO, somarDias, inicioDaSemana, diasEntre, ehData } from '../datas.js';
 import { NA_NUVEM, perfilAtual, listarAtasPendencias, criarAtaNuvem, criarPendenciaNuvem, atualizarPendenciaNuvem, atualizarAtaNuvem, apagarPendenciaNuvem, apagarAtaNuvem, listarNotasPend, criarNotaPend, apagarNotaPend } from '../nuvem.js';
 import { SETORES, SETORES_ORGANOGRAMA, funcoesDoCargo } from '../funcoes.js';
+import { funcaoVe } from '../config.js';
 import { sessao, idPessoa, funcaoReal, funcaoAtual, simulando } from '../sessao.js';
 import { lerPessoasTarefas } from '../armazenamento.js';
 import { analisarAta, lerArquivoAta, acharResponsavel } from '../ata-leitor.js';
@@ -88,6 +89,7 @@ function visivelParaMim(x, ehAta, pendDaAta) {
   }
   if (x.criado_por === eu) return true;
   if (x.obra && (sessao().obras || []).includes(x.obra)) return true;
+  if (funcaoVe('opcao.atas.escopo_todos', f.id, false)) return true;   // Configurações: esta função vê as atas de todos os departamentos
   // ATA: só quem é do setor (ou da obra) e quem criou. Quem recebeu uma pendência da ata de outro setor vê a pendência, não a ata.
   return !f.porObra && !!x.setor && meusSetores().includes(x.setor);
 }

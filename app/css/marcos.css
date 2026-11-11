@@ -510,3 +510,20 @@ body.nav-recolhido nav::after { display: none; }
 .lt-corpo { gap: 0; } .lt-tit { font-size: 13px; } .lt-sub { font-size: 11px; }
 .lt-dir { gap: 5px; } .lt-quem { padding: 2px 9px; font-size: 11px; }
 .lt-vazio { padding: 14px 0; font-size: 13px; }
+
+/* Configurações */
+.cfg-link { font-size: 13px; font-weight: 700; color: #1F4A78; background: #E6EEF7; border-radius: 999px; padding: 6px 14px; text-decoration: none; margin-right: 10px; white-space: nowrap; }
+.cfg-link:hover { background: #D5E4F5; } .cfg-link[hidden] { display: none; }
+.cfg-corpo { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 18px; align-items: start; }
+.cfg-menu { background: #fff; border: 1px solid #D5DCE4; border-radius: 10px; padding: 8px; position: sticky; top: 0; max-height: calc(100vh - 230px); overflow-y: auto; }
+.cfg-menu h4 { margin: 10px 8px 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #7A8794; }
+.cfg-menu a { display: block; padding: 6px 10px; border-radius: 7px; font-size: 13.5px; color: #262A2B; text-decoration: none; }
+.cfg-menu a:hover { background: #F0F3F7; } .cfg-menu a.on { background: #1F3A56; color: #fff; font-weight: 700; }
+.cfg-painel { background: #fff; border: 1px solid #D5DCE4; border-radius: 10px; padding: 16px 20px; }
+.cfg-painel h2 { margin: 0 0 4px; font-size: 22px; } .cfg-sec { margin-top: 18px; } .cfg-sec h3 { margin: 0 0 8px; font-size: 16px; }
+.cfg-bloco { border: 1px solid #E1E6EC; border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; background: #FAFBFC; }
+.cfg-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 4px; }
+.cfg-chip { border: 1px solid #C9D1DA; background: #fff; color: #6B7480; border-radius: 999px; padding: 5px 12px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.cfg-chip.on { background: #1F4A85; border-color: #1F4A85; color: #fff; }
+.cfg-chip.cfg-fixo { background: #E8EDF3; border-color: #E8EDF3; color: #4B5560; cursor: default; }
+@media (max-width: 900px) { .cfg-corpo { grid-template-columns: 1fr; } .cfg-menu { position: static; max-height: none; } }

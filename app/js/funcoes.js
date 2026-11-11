@@ -82,6 +82,7 @@ export const funcaoPorId = (id) => FUNCOES.find((f) => f.id === (ANTIGAS[id] || 
 
 // Abas que cada função vê: setores + páginas gerais. O padrão está nas listas acima (areas); a diretoria pode
 // escolher outras na tela Acessos (guardado no banco, tabela funcao_abas) e isso passa a valer no lugar do padrão.
+import { listaConfig } from './config.js';
 export const SETORES = [['operacao', 'Operação'], ['posobra', 'Pós-obra'], ['transporte', 'Transporte e logística'], ['suprimentos', 'Suprimentos e compras'],
   ['planejamento', 'Planejamento'], ['projetos', 'Projetos'], ['comercial', 'Comercial'], ['orcamentos', 'ORC Obras Novas'], ['financeiro', 'Financeiro'], ['rh', 'RH']];
 // Setores como no organograma (R07, 09/2026): as pessoas (Acessos) e as atas/pendências usam esta lista. Os que não têm aba própria no menu (Técnico, Ferramentas, Marketing, Novos negócios, Administrativo) existem só para ligar pessoas e pendências ao setor.
@@ -109,7 +110,7 @@ export function abasPadrao(f) {
   return [...(f.areasPadrao || IDS_SETORES), ...PAGINAS.map((p) => p[0]).filter((id) => !(id === 'meudia' && f.semMinhaSemana) && (!PAGINAS_RESTRITAS[id] || PAGINAS_RESTRITAS[id].includes(f.id)))];
 }
 export const abasDa = (f) => f.abas || abasPadrao(f);
-export const paginaVisivel = (f, id) => abasDa(f).includes(id);
+export const paginaVisivel = (f, id) => { const l = listaConfig(`pagina.${id}`); return l ? f.id === 'socio' || l.includes(f.id) : abasDa(f).includes(id); };   // Configurações (config.js) manda; sem ela vale o padrão
 // mapa = { funcaoId: [ids de abas] } vindo do banco; função sem linha no mapa fica no padrão. Diretoria vê tudo sempre.
 export function aplicarAbas(mapa) {
   for (const f of FUNCOES) {

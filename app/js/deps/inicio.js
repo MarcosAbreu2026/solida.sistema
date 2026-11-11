@@ -2,6 +2,7 @@
 //   1 · Cumprimento da semana (cronogramas, efetivo, diário, setores) · 2 · Planejado × executado por obra
 //   3 · Meta × executado da semana · 4 · Quem precisa agir (geral + todas as áreas) · Orçamento e Financeiro (valores só para sócios)
 import { html } from '../formato.js';
+import { secaoVisivel } from '../config.js';
 import * as pd from '../telas/painel-dep.js';
 import { avisoLeitura } from './comum.js';
 import * as oc from './obras-comum.js';
@@ -228,13 +229,15 @@ export function painel(ctx) {
     { rotulo: 'Margem de lucro', valor: (marg || {}).valor }, { rotulo: 'A receber', valor: (rec || {}).valor },
   ], { colunas: 2 })}<p class="pd-c-sub">Lucro e a receber: aguardando a leitura do Conta Azul pelo agente financeiro.</p>`, { direita: 'Conta Azul · só sócios' }) : '';
 
+  const ve = (b) => secaoVisivel('geral', b, (ctx.f || {}).id);
+  const orcV = ve('orcamento') ? orc : ''; const finV = ve('financeiro') ? finCaixa : '';
   return html`${pd.pergunta('O que está acontecendo hoje no canteiro? Está de acordo com o planejado? Se não, quem precisa agir?', 'Pergunta do dia')}
     ${avisoLeitura(ctx)}
-    ${pd.secao('1 · Cumprimento da semana', `Fonte: Drive (cronograma), WhatsApp (efetivo e diário) · leitura ${leitura}`, cumprimento)}
-    ${pd.secao('2 · Planejado × executado, por obra', 'Fonte: Drive (GERENCIAMENTO de cada obra) e agentes', html`${pd.tabela(['Obra', 'Avanço', 'Ativ. atrasadas', 'Cronograma', 'Programação semanal', 'Metas semanais', 'Produtividade', 'Medições', ''], linhas, { vazio: 'Nenhuma obra em curso no planejamento.' })}${legendaProd}`)}
-    ${pd.secao('3 · Meta × executado da semana', 'Fonte: programação semanal e metas (Drive/WhatsApp) · produtividade enviada nos grupos', metaExecutado(ctx, CFG))}
-    ${pd.secao('4 · Quem precisa agir', 'Cada alerta vira tarefa com responsável e data-limite', pd.quemAgir(agir))}
-    <div class="${finCaixa ? 'pd-grade2' : ''}">${orc}${finCaixa}</div>`;
+    ${ve('cumprimento') ? pd.secao('1 · Cumprimento da semana', `Fonte: Drive (cronograma), WhatsApp (efetivo e diário) · leitura ${leitura}`, cumprimento) : ''}
+    ${ve('planejado') ? pd.secao('2 · Planejado × executado, por obra', 'Fonte: Drive (GERENCIAMENTO de cada obra) e agentes', html`${pd.tabela(['Obra', 'Avanço', 'Ativ. atrasadas', 'Cronograma', 'Programação semanal', 'Metas semanais', 'Produtividade', 'Medições', ''], linhas, { vazio: 'Nenhuma obra em curso no planejamento.' })}${legendaProd}`) : ''}
+    ${ve('meta') ? pd.secao('3 · Meta × executado da semana', 'Fonte: programação semanal e metas (Drive/WhatsApp) · produtividade enviada nos grupos', metaExecutado(ctx, CFG)) : ''}
+    ${ve('agir') ? pd.secao('4 · Quem precisa agir', 'Cada alerta vira tarefa com responsável e data-limite', pd.quemAgir(agir)) : ''}
+    <div class="${finV ? 'pd-grade2' : ''}">${orcV}${finV}</div>`;
 }
 
 const SETOR_DA_AREA = { operacao: 'Operação', posobra: 'Pós-obra', transporte: 'Transporte e logística', suprimentos: 'Suprimentos e compras', planejamento: 'Planejamento', projetos: 'Projetos', comercial: 'Comercial', orcamentos: 'ORC Obras Novas', financeiro: 'Financeiro', rh: 'RH' };
