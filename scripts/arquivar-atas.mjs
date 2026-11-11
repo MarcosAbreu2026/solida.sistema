@@ -13,13 +13,14 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
+import { pastaDaAta } from './ata-pastas.mjs';
 
 // sem internet (ou nuvem fora do ar) não é erro do sistema: avisa curto no registro e tenta de novo no próximo ciclo
 process.on('uncaughtException', (e) => { console.log(`Atas: não consegui falar com a nuvem agora (${(e.cause && e.cause.code) || e.message}). Tento de novo no próximo ciclo.`); process.exit(1); });
 const raiz = join(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
 const opc = (n) => { const i = args.indexOf(n); return i >= 0 ? (args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : true) : null; };
-const saidaTeste = opc('--saida'); const simular = !!opc('--simular'); const soId = opc('--id');
+const saidaTeste = opc('--saida'); const simular = !!opc('--simular'); const soId = opc('--id'); const raizTeste = opc('--raiz');   // --raiz <pasta>: usa essa pasta no lugar da raiz do Drive (teste)
 
 const cfgArq = join(raiz, 'config.local.json');
 if (!existsSync(cfgArq)) { console.log('Atas: sem config.local.json, nada feito.'); process.exit(0); }
@@ -37,35 +38,11 @@ const rest = async (caminho, opts = {}) => {
 
 // ---------------------------------------------------------------- pastas do Drive
 function raizDoDrive() {
+  if (typeof raizTeste === 'string') return raizTeste;
   const base = 'G:\\.shortcut-targets-by-id';
   if (existsSync(base)) for (const d of readdirSync(base, { withFileTypes: true })) { const p = join(base, d.name, 'SOLIDA GERAL'); if (existsSync(p)) return p; }
   const alt = 'G:\\Meu Drive\\SOLIDA GERAL'; return existsSync(alt) ? alt : null;
 }
-const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-const sub = (dir, teste) => (existsSync(dir) ? readdirSync(dir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name).find(teste) : undefined);
-
-// pasta ATA da obra (cria GERENCIAMENTO e ATA se faltarem); devolve { pasta, existe }
-function pastaDaAta(drive, obra) {
-  const cod = norm(obra).replace(/_/g, '');
-  let pastaObra;
-  if (/^mo/i.test(obra)) {
-    const base = join(drive, 'OPERACOES', 'OBRAS');
-    const n = sub(base, (x) => norm(x).replace(/_/g, '').startsWith(cod) && /^mo\d/i.test(x) && (norm(x).startsWith(`${cod}_`) || norm(x).replace(/_/g, '').startsWith(cod)));
-    if (n) pastaObra = join(base, n);
-  } else {
-    const po = sub(drive, (x) => /^p.s obra$/i.test(norm(x)));
-    const obras = po ? join(drive, po, sub(join(drive, po), (x) => /^po_obras$/i.test(x)) || 'PO_OBRAS') : null;
-    if (obras && existsSync(obras)) for (const ano of readdirSync(obras, { withFileTypes: true }).filter((e) => e.isDirectory() && /^\d{4}$/.test(e.name)).map((e) => e.name).sort().reverse()) {
-      const n = sub(join(obras, ano), (x) => norm(x).replace(/_/g, '').startsWith(cod));
-      if (n) { pastaObra = join(obras, ano, n); break; }
-    }
-  }
-  if (!pastaObra) return null;
-  const ger = join(pastaObra, sub(pastaObra, (x) => /^gerenciamento$/i.test(x)) || 'GERENCIAMENTO');
-  const ata = join(ger, sub(ger, (x) => /^atas?$/i.test(x)) || 'ATA');
-  return { pasta: ata, existe: existsSync(ata) };
-}
-
 // ---------------------------------------------------------------- PDF
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const neg = (t) => { const s = String(t ?? ''); const i = s.indexOf(','); return i > 0 && i < 60 ? `<b>${esc(s.slice(0, i).toLocaleUpperCase('pt-BR'))}</b>${esc(s.slice(i))}` : esc(s); };
@@ -131,7 +108,7 @@ function gerarPdf(html, destino) {
 }
 
 // ---------------------------------------------------------------- rodada
-const filtro = soId ? `id=eq.${soId}` : 'arquivada_em=is.null&obra=not.is.null';
+const filtro = soId ? `id=eq.${soId}` : 'arquivada_em=is.null';   // todas: de obra, de pós-obra e de departamento
 const atas = await rest(`atas?select=*&${filtro}&order=id`);
 if (!atas.length) { console.log('Atas: nada novo para salvar.'); process.exit(0); }
 const pends = await rest(`pendencias?select=*&ata_id=in.(${atas.map((a) => a.id).join(',')})&status=neq.cancelada&order=id`);
@@ -139,12 +116,11 @@ const drive = saidaTeste ? null : raizDoDrive();
 if (!saidaTeste && !drive) { console.log('Atas: Drive (G:) não encontrado neste computador.'); process.exit(1); }
 let ok = 0; const falhas = [];
 for (const a of atas) {
-  if (!a.obra) continue;
   const nome = `${a.titulo}.pdf`;
   try {
     let pasta;
     if (saidaTeste) { pasta = String(saidaTeste); }
-    else { const f = pastaDaAta(drive, a.obra); if (!f) throw new Error(`não achei a pasta da obra ${a.obra} no Drive`); pasta = f.pasta; if (simular) { console.log(`Atas: ${nome} iria para ${pasta}${f.existe ? '' : ' (a pasta ATA seria criada)'}`); continue; } }
+    else { const f = pastaDaAta(drive, a); if (!f || f.erro) throw new Error((f && f.erro) || 'não achei a pasta da ata no Drive'); pasta = f.pasta; if (simular) { console.log(`Atas: ${nome} iria para ${pasta}${f.existe ? '' : ' (as pastas que faltam seriam criadas)'}`); continue; } }
     mkdirSync(pasta, { recursive: true });
     const destino = join(pasta, nome);
     gerarPdf(htmlDaAta(a, pends.filter((p) => p.ata_id === a.id)), destino);

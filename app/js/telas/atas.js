@@ -503,7 +503,7 @@ function detalheAta(id, hoje, obras) {
   if (!a) return html`<p class="vazio">Ata não encontrada (ou você não tem acesso a ela). <a class="link" href="#/atas?aba=atas">Voltar às atas</a></p>`;
   const ps = dados.pendencias.filter((p) => p.ata_id === a.id && p.status !== 'cancelada');
   const podeApagar = funcaoReal().id === 'socio' || a.criado_por === souEu();
-  return html`<p><a class="link" href="#/atas?aba=atas">← Todas as atas</a></p>
+  return html`<p class="at-voltar"><a class="link" href="#/atas?aba=atas">← Todas as atas</a> <button type="button" class="botao on at-imprimir" data-imprimir="" title="Imprimir esta ata (ou salvar em PDF)">🖨 Imprimir ata</button></p>
     <article class="at-ata-det">
       <h2>${a.titulo}</h2>
       <p class="pequeno at-drive ${a.arquivada_em ? 'ok' : a.arquivo_erro ? 'erro' : ''}">${a.arquivada_em ? html`✓ Salva no Drive (${new Date(a.arquivada_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}): ${a.arquivo || a.titulo + '.pdf'}` : a.arquivo_erro ? html`Não consegui salvar no Drive: ${a.arquivo_erro}. Vou tentar de novo no próximo ciclo.` : a.obra ? 'Aguardando ser salva no Drive (o computador do escritório salva a cada 10 minutos).' : 'Ata sem obra: fica só no sistema.'}${a.criado_por_nome ? ` Registrada por ${a.criado_por_nome}.` : ''}</p>

@@ -549,3 +549,12 @@ body.nav-recolhido nav::after { display: none; }
 .lt-vazio { color: #3D5F85; }
 .lt-p0 { background: #E4DAF5; color: #4B2F7A; } .lt-p1 { background: #D3E3F8; color: #1F4A78; } .lt-p2 { background: #D2EEE8; color: #1E5A52; } .lt-p3 { background: #F8E1D1; color: #7A4220; }
 .lt-grupo .urg-alta, .lt-resumo .urg-alta { color: #B83A2E; } .lt-grupo .urg-media, .lt-resumo .urg-media { color: #8A5E00; } .lt-grupo .urg-baixa, .lt-resumo .urg-baixa { color: #2F7A55; }
+
+/* Atas: botão de imprimir; na impressão sai só a ata (sem menu, botões e avisos) */
+.at-voltar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.at-imprimir { padding: 6px 14px; }
+@media print {
+  .at-voltar, .at-ata-det > p, .at-drive, .at-acomp, .sd-sem-pdf, .at-ata-det .botao { display: none !important; }
+  .at-ata-det .tabela-rolagem { overflow: visible !important; }
+  .at-ata-det h2 { font-size: 15px; margin: 0 0 6px; }
+}
