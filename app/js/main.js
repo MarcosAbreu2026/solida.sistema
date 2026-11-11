@@ -664,7 +664,8 @@ function desenhar() {
 
   // Tarefas: modo de visualização (Tabela | Lista) no topo, à esquerda de "Atualizado às…"
   { const mv = $('#modoVis'); const abaP = rota.params.get('aba'); const naTarefas = (tela === 'atas' || tela === 'tarefas') && (!abaP || abaP === 'pendencias');
-    if (mv) { mv.hidden = !naTarefas; if (naTarefas) { const m = rota.params.get('modo') === 'lista' ? 'lista' : 'tabela'; mv.innerHTML = `<span class="mv-rot">Modo de visualização</span><span class="mv-seg"><button type="button" data-mv="" class="${m === 'tabela' ? 'on' : ''}">Tabela</button><button type="button" data-mv="lista" class="${m === 'lista' ? 'on' : ''}">Lista</button></span><button type="button" class="mv-imp" data-imprimir="" title="Imprimir as tarefas (ou salvar em PDF)">🖨 Imprimir</button>`; } } }
+    if (mv && tela === 'agenda') { const m = rota.params.get('modo') === 'dia' ? 'dia' : 'semana'; mv.hidden = false; mv.innerHTML = `<span class="mv-rot">Modo de visualização</span><span class="mv-seg"><button type="button" data-mva="semana" class="${m === 'semana' ? 'on' : ''}">Semana</button><button type="button" data-mva="dia" class="${m === 'dia' ? 'on' : ''}">Dia</button></span>`; }
+    else if (mv) { mv.hidden = !naTarefas; if (naTarefas) { const m = rota.params.get('modo') === 'lista' ? 'lista' : 'tabela'; mv.innerHTML = `<span class="mv-rot">Modo de visualização</span><span class="mv-seg"><button type="button" data-mv="" class="${m === 'tabela' ? 'on' : ''}">Tabela</button><button type="button" data-mv="lista" class="${m === 'lista' ? 'on' : ''}">Lista</button></span><button type="button" class="mv-imp" data-imprimir="" title="Imprimir as tarefas (ou salvar em PDF)">🖨 Imprimir</button>`; } } }
   const sc = $('#sinc');
   const sy = estado.sync;
   if (sy.erro) { sc.textContent = 'Sem conexão, mostrando os últimos dados'; sc.className = 'sinc err'; sc.title = sy.erro; }
@@ -718,7 +719,7 @@ function desenhar() {
   // Agenda: as funções da semana + as tarefas (pendências com prazo) no mesmo calendário
   if (tela === 'agenda') {
     garantirAtasCarregadas('#agenda');
-    $('#conteudo').innerHTML = `<div>${agendaSemana.render({ dia: estado.dia, CFG, pendAberta: estado.pendAberta, params: rota.params, semanaRef: estado.semanaRef, pendencias: atas.todasPendencias(), eu: nuvem.NA_NUVEM ? (nuvem.perfilAtual() || {}).id : idPessoa(), nomeDe: atas.nomePessoa })}</div>`;
+    $('#conteudo').innerHTML = `<div>${agendaSemana.render({ dia: estado.dia, CFG, pendAberta: estado.pendAberta, params: rota.params, semanaRef: estado.semanaRef, modo: rota.params.get('modo') === 'dia' ? 'dia' : 'semana', diaRef: ehData(rota.params.get('dia')) ? rota.params.get('dia') : hojeISO(), pendencias: atas.todasPendencias(), eu: nuvem.NA_NUVEM ? (nuvem.perfilAtual() || {}).id : idPessoa(), nomeDe: atas.nomePessoa })}</div>`;
     return;
   }
   // escritório virtual: tela com animação própria (não redesenha sozinha a cada 5 min)
@@ -1793,6 +1794,7 @@ document.addEventListener('drop', async (e) => {
   } catch (err) { alert(`Não foi possível mudar o prazo (${err.message || err}).`); }
 });
 
+document.addEventListener('click', (e) => { const a = e.target.closest && e.target.closest('[data-mva]'); if (a) { trocarQuery({ modo: a.dataset.mva === 'dia' ? 'dia' : null, dia: null }); return; } const d = e.target.closest && e.target.closest('[data-ag-dia]'); if (d) { trocarQuery({ dia: d.dataset.agDia }); return; } });
 document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-mv]'); if (b) trocarQuery({ modo: b.dataset.mv || null }); });
 document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-lt-filtro]'); if (!b) return; const [k, v] = b.dataset.ltFiltro.split('|'); trocarQuery({ [k]: v || null }); });
 // Observadores da tarefa: clicar no nome da lista acrescenta; o × tira; a busca filtra a lista

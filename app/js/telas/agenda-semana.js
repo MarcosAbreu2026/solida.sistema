@@ -107,7 +107,7 @@ function cardsFuncoes({ pendencias = [], eu, ref }) {
 
 export function render(opts) {
   const principal = renderPrincipal(opts);
-  const lateral = cardsFuncoes({ pendencias: opts.pendencias || [], eu: opts.eu, ref: opts.semanaRef || opts.dia });
+  const lateral = cardsFuncoes({ pendencias: opts.pendencias || [], eu: opts.eu, ref: (opts.modo === 'dia' && opts.diaRef) || opts.semanaRef || opts.dia });
   return html`<div class="ag-layout">${lateral}<div class="ag-principal">${principal}</div></div>`;
 }
 function renderPrincipal(opts) {

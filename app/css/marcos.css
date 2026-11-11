@@ -704,3 +704,17 @@ body.nav-recolhido nav::after { display: none; }
 .at-card .at-linha2 .at-prazo, .at-card .at-linha2 .at-data-btn { font-size: 10.5px !important; padding: 1px 6px !important; line-height: 1.3; white-space: normal; }
 .at-card .at-linha2 .lt-urg { font-size: 10px; padding: 1px 6px; }
 .at-card .at-sem-prio { font-size: 10px; }
+
+/* Agenda: modo Dia (um dia só, cartões grandes e legíveis) */
+.ag-chips-dia { display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0 10px; }
+.ag-chip-dia { border: 1px solid #C9D1DA; background: #fff; border-radius: 999px; padding: 5px 14px; font-size: 13px; cursor: pointer; color: #262A2B; }
+.ag-chip-dia.hj { border-color: #2F6FA8; color: #1F4A78; } .ag-chip-dia.on { background: #1F4A78; border-color: #1F4A78; color: #fff; font-weight: 700; }
+.ag-chip-dia small { margin-left: 6px; background: rgba(0,0,0,.14); border-radius: 999px; padding: 0 6px; font-size: 11px; } .ag-chip-dia:not(.on) small { background: #E1ECF8; color: #1F4A78; }
+.ag-dia .fq-quadro { max-width: 860px; margin: 0 auto; }
+.ag-dia .ag-tcard { font-size: 15px; line-height: 20px; padding: 6px 12px; }
+.ag-dia .ag-t-obra { font-size: 13.5px; } .ag-dia .fn-meta { font-size: 13px; }
+.ag-dia .ag-lcard { font-size: 15px; line-height: 21px; padding: 7px 12px; white-space: normal; }
+.ag-dia .fq-cab b { font-size: 16px; }
+.ag-t-det { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 3px; font-size: 12.5px; color: #4B5560; }
+.ag-t-det > span { background: rgba(0,0,0,.06); border-radius: 999px; padding: 0 8px; }
+.ag-t-urg.ag-u-alta { background: #FBE4E1 !important; color: #B3261E; } .ag-t-urg.ag-u-media { background: #FFF1D6 !important; color: #9A6200; } .ag-t-urg.ag-u-baixa { background: #E3F3EA !important; color: #1B7F4B; }
