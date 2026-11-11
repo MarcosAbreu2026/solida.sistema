@@ -38,11 +38,11 @@ export const ABAS = [
   { id: 'funcoes', nome: 'Funções' },
 ];
 
-// Quadro da semana (Funções): dias em colunas, horas na vertical (7h às 17h, faixas de 30 min).
+// Quadro da semana (Funções): dias em colunas, horas na vertical (8h às 17h, faixas de 30 min).
 // Cada tarefa é um cartão: arrastar muda o dia/horário, puxar a borda de baixo muda a duração, clicar abre
 // uma janelinha com os detalhes (e os mesmos ajustes, para quem está no celular). Cartões no mesmo horário
 // ficam lado a lado, com o texto cortado em "…". O ajuste fica guardado neste navegador, por dia da tarefa.
-export const GRADE = { ini: 7 * 60, passo: 30, faixas: 20, alt: 44 };   // alt = altura de cada meia hora (maior = cartões com o texto inteiro)
+export const GRADE = { ini: 8 * 60, passo: 30, faixas: 18, alt: 44 };   // alt = altura de cada meia hora (maior = cartões com o texto inteiro)
 const PADRAO = 8 * 60; // sem horário no quadro: começa às 8h
 function previsto(t) {
   const txt = String(t.hora || '');
@@ -358,7 +358,7 @@ function cartaoTarefa(e, hoje) {
   const [ass, resto] = assuntoDe(p.descricao);
   const estilo = `top:${e.faixa * GRADE.alt}px;height:${e.span * GRADE.alt - 2}px;left:calc(${e.lane} * 100% / ${e.n} + 2px);width:calc(100% / ${e.n} - 4px)`;
   return html`<div class="ag-tcard ag-t-${cls} ${e.semHora ? 'ag-t-semhora' : ''} ${e.n > 1 ? 'fq-estreito' : ''}" style="${estilo}" data-tarefa="${p.id}" data-tcard="${p.id}" data-span="${e.span}"
-    title="${ass ? `${ass}: ` : ''}${resto}${p.obra ? ` · ${p.obra}` : ''} — ${hhmm(e.ini)} a ${hhmm(e.ini + e.dur)}${e.semHora ? ' (sem horário definido: arraste para escolher)' : ''}. Clique para abrir; arraste para mudar o horário ou o dia; puxe a borda de baixo para mudar a duração.">
+    title="${ass ? `${ass}: ` : ''}${resto}${p.obra ? ` · ${p.obra}` : ''} — ${hhmm(e.ini)} a ${hhmm(e.ini + e.dur)}${e.semHora ? ' (sem horário definido: está no início do dia; arraste para escolher)' : ''}. Clique para abrir; arraste para mudar o horário ou o dia; puxe a borda de baixo para mudar a duração.">
     ${p.obra ? html`<b class="ag-t-obra">${p.obra}</b>` : ''}<div class="fq-nome">${ass ? `${ass} · ` : ''}${resto}</div>
     <div class="fn-meta">${e.semHora ? 'sem horário' : `${hhmm(e.ini)}–${hhmm(e.ini + e.dur)}`}${feita ? ' · ✓ concluída' : ''}</div>
     <div class="ag-alca" title="Puxe para mudar a duração"></div></div>`;
@@ -370,7 +370,7 @@ function agendaDeTarefas(ref, { pendencias = [], eu }) {
   const entradas = minhas.map((p) => {
     const m = hm(p.hora); const dur = limitar(Number(p.duracao) || 60, GRADE.passo, GRADE.faixas * GRADE.passo);
     const span = Math.round(dur / GRADE.passo);
-    const faixa = limitar(Math.round(((m ?? PADRAO) - GRADE.ini) / GRADE.passo), 0, GRADE.faixas - span);
+    const faixa = limitar(Math.round(((m ?? GRADE.ini) - GRADE.ini) / GRADE.passo), 0, GRADE.faixas - span);
     return { p, dia: p.prazo, faixa, span, dur: span * GRADE.passo, ini: GRADE.ini + faixa * GRADE.passo, semHora: m == null };
   });
   const nav = html`<div class="periodo">
@@ -399,7 +399,7 @@ function agendaDeTarefas(ref, { pendencias = [], eu }) {
       <header class="fn-cab"><h3>Agenda</h3><span class="fn-cab-dir"><span class="pequeno">${entradas.length ? `${feitas} de ${entradas.length} tarefas concluídas nesta semana` : 'nenhuma tarefa com prazo nesta semana'}</span></span></header>
       ${entradas.length ? html`<div class="pct" style="margin:6px 0 12px"><i style="width:${Math.round((feitas / entradas.length) * 100)}%"></i></div>` : ''}
       <div class="fh-larga">${vistaQuadro}</div><div class="fh-estreita">${vistaLista}</div>
-      <p class="legenda-semana">Cada cartão é uma tarefa da aba Tarefas, no horário e pelo tempo que você definiu (sem horário aparece às 8h, tracejado). Arraste para outro horário ou dia, puxe a borda de baixo para mudar a duração e clique para abrir. O horário também se escolhe dentro da tarefa.</p>
+      <p class="legenda-semana">Cada cartão é uma tarefa da aba Tarefas, no horário e pelo tempo que você definiu (sem horário fica no início do dia, tracejado, para você pegar e arrastar). Arraste para outro horário ou dia, puxe a borda de baixo para mudar a duração e clique para abrir. O horário também se escolhe dentro da tarefa.</p>
     </section>`;
 }
 // Preencher é de quem está na obra. Sócio e coordenação consultam em Operação › Metas e produtividade.

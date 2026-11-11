@@ -117,7 +117,7 @@ function renderPrincipal(opts) {
 
 // Arrastar o cartão da tarefa na grade (e puxar a borda de baixo): muda dia, horário e duração. Clicar (sem arrastar) abre a tarefa.
 export function instalarTarefasNaGrade(mover) {
-  const ALT = 44; const PASSO = 30; const INI = 7 * 60; const FAIXAS = 20;
+  const ALT = 44; const PASSO = 30; const INI = 8 * 60; const FAIXAS = 18;
   let a = null;
   const limitar = (v, x, y) => Math.max(x, Math.min(y, v));
   const reset = () => { if (a) { a.card.classList.remove('arrastando'); a.card.style.transform = ''; a = null; } };
