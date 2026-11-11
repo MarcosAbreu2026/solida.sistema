@@ -209,7 +209,7 @@ function funcoesSemana(ref, CFG) {
   // Agenda (padrão em tela larga): horas de meia em meia hora na lateral, um dia por coluna, e UM cartão por tarefa com a altura do tempo
   // que ela ocupa (8h às 9h ocupa as linhas de 8h e 8h30). Tarefas no mesmo horário ficam lado a lado e a coluna do dia alarga para caber.
   const lanes = (l) => Math.max(1, ...l.map((e) => e.n || 1));
-  const colsCss = `52px ${colunas.map(({ l }) => `minmax(${lanes(l) * 48}px, ${lanes(l)}fr)`).join(' ')}`;   // no mínimo ~48 px por cartão lado a lado (a página não rola para o lado)
+  const colsCss = `52px repeat(${colunas.length}, minmax(0, 1fr))`;   // todos os dias com a mesma largura: o que se achata são os cartões que caem no mesmo horário, não a coluna   // no mínimo ~48 px por cartão lado a lado (a página não rola para o lado)
   const vistaQuadro = html`<div class="fq-quadro" style="grid-template-columns:${colsCss}"><div class="fq-canto"></div>${cabecas}<div class="fq-horas" style="height:${altTotal}px">${horas}</div>${trilhos}</div>
   <p class="legenda-semana">Segure um cartão e arraste para outro horário ou outro dia da semana (cada linha é meia hora); puxe a borda de baixo do cartão para mudar quanto tempo a tarefa ocupa; clique no cartão para ver os detalhes. O que você ajustar vale para as próximas semanas e é só seu. "↺" no cartão = foi mexido; abra o cartão para voltar ao quadro original.</p>`;  const botoesVista = html`<div class="fl-vista" role="group" aria-label="Como ver as tarefas"><span class="pequeno">Ver:</span>
     <button type="button" class="botao ${vista === 'lista' ? 'on' : ''}" data-vista-fn="lista">Lista por dia</button>
@@ -387,7 +387,7 @@ function agendaDeTarefas(ref, { pendencias = [], eu }) {
   const cabecas = colunas.map(({ c, l, fe }, i) => html`<div class="fq-cab ${c === hoje ? 'hoje' : ''}"><b>${DIA_CURTO[i]} ${c.slice(8, 10)}/${c.slice(5, 7)}</b><small>${feriado(c) ? 'feriado' : l.length ? `${fe} de ${l.length} feitas` : 'sem tarefas'}</small></div>`);
   const trilhos = colunas.map(({ c, l }) => html`<div class="fq-trilho ${c === hoje ? 'hoje' : ''}" data-trilho="${c}" style="height:${altTotal}px">${l.map((e) => cartaoTarefa(e, hoje))}</div>`);
   const lanes = (l) => Math.max(1, ...l.map((e) => e.n || 1));
-  const colsCss = `52px ${colunas.map(({ l }) => `minmax(${lanes(l) * 48}px, ${lanes(l)}fr)`).join(' ')}`;
+  const colsCss = `52px repeat(${colunas.length}, minmax(0, 1fr))`;   // todos os dias com a mesma largura: o que se achata são os cartões que caem no mesmo horário, não a coluna
   const vistaQuadro = html`<div class="fq-quadro" style="grid-template-columns:${colsCss}"><div class="fq-canto"></div>${cabecas}<div class="fq-horas" style="height:${altTotal}px">${horas}</div>${trilhos}</div>`;
   const caixa = (e) => { const [ass, resto] = assuntoDe(e.p.descricao); const cls = e.p.status === 'feita' ? 'ok' : e.p.prazo < hoje ? 'venc' : e.p.prazo === hoje ? 'hoje' : 'futura';
     return html`<div class="ag-tcaixa ag-t-${cls}" data-tarefa="${e.p.id}"><b>${e.p.obra || ''}</b> ${ass ? `${ass} · ` : ''}${resto}<small>${e.semHora ? 'sem horário' : hhmm(e.ini)}</small></div>`; };
