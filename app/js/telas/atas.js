@@ -423,7 +423,7 @@ export async function reprogramar(id, novo) {
 function cartao(p, hoje) {
   const a = ataDe(p); const col = coluna(p, hoje);
   const dias = p.prazo ? diasEntre(hoje, p.prazo) : null;
-  const rotuloPrazo = !p.prazo ? 'Sem prazo' : col === 'vencido' ? `${dm(p.prazo)} · ${Math.abs(dias)} ${Math.abs(dias) === 1 ? 'dia' : 'dias'} de atraso` : col === 'hoje' ? 'Hoje' : dm(p.prazo);
+  const rotuloPrazo = !p.prazo ? 'Sem prazo' : col === 'vencido' ? `${dm(p.prazo).slice(0, 5)} · ${Math.abs(dias)} ${Math.abs(dias) === 1 ? 'dia' : 'dias'} de atraso` : col === 'hoje' ? 'Hoje' : dm(p.prazo);
   const onde2 = p.obra || p.setor || '';   // se tem obra aparece a obra; senão, o setor
   return html`<article class="at-card at-${col}" data-tarefa="${p.id}" draggable="true" title="Clique para ver os detalhes · arraste para mudar o prazo">
     <div class="at-tit">${descRica(p.descricao)}</div>
