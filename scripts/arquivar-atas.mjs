@@ -111,6 +111,7 @@ function gerarPdf(html, destino) {
 const filtro = soId ? `id=eq.${soId}` : 'arquivada_em=is.null';   // todas: de obra, de pós-obra e de departamento
 const atas = await rest(`atas?select=*&${filtro}&order=id`);
 if (!atas.length) { console.log('Atas: nada novo para salvar.'); process.exit(0); }
+const obrasCad = await rest('obras_cadastro?select=codigo,nome').catch(() => []);
 const pends = await rest(`pendencias?select=*&ata_id=in.(${atas.map((a) => a.id).join(',')})&status=neq.cancelada&order=id`);
 const drive = saidaTeste ? null : raizDoDrive();
 if (!saidaTeste && !drive) { console.log('Atas: Drive (G:) não encontrado neste computador.'); process.exit(1); }
@@ -120,7 +121,7 @@ for (const a of atas) {
   try {
     let pasta;
     if (saidaTeste) { pasta = String(saidaTeste); }
-    else { const f = pastaDaAta(drive, a); if (!f || f.erro) throw new Error((f && f.erro) || 'não achei a pasta da ata no Drive'); pasta = f.pasta; if (simular) { console.log(`Atas: ${nome} iria para ${pasta}${f.existe ? '' : ' (as pastas que faltam seriam criadas)'}`); continue; } }
+    else { const f = pastaDaAta(drive, a, String(new Date().getFullYear()), obrasCad); if (!f || f.erro) throw new Error((f && f.erro) || 'não achei a pasta da ata no Drive'); pasta = f.pasta; if (simular) { console.log(`Atas: ${nome} iria para ${pasta}${f.existe ? '' : ' (as pastas que faltam seriam criadas)'}`); continue; } }
     mkdirSync(pasta, { recursive: true });
     const destino = join(pasta, nome);
     gerarPdf(htmlDaAta(a, pends.filter((p) => p.ata_id === a.id)), destino);

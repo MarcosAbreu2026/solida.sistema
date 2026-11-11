@@ -29,14 +29,20 @@ function gerenciamentoAtas(pastaBase) {
 }
 
 // a = { obra, setor }; devolve { pasta, existe } ou null (com motivo em .erro)
-export function pastaDaAta(drive, a, anoAtual = String(new Date().getFullYear())) {
+// obrasCad = obras do cadastro do sistema ([{ codigo, nome }]): obra cadastrada que ainda não tem pasta em OPERACOES\\OBRAS ganha a pasta
+export function pastaDaAta(drive, a, anoAtual = String(new Date().getFullYear()), obrasCad = []) {
   const obra = String(a.obra || '').trim();
   if (obra) {
     const cod = norm(obra).replace(/_/g, '').replace(/\s+/g, '');
     if (/^mo/i.test(obra)) {
       const base = join(drive, 'OPERACOES', 'OBRAS');
       const n = sub(base, (x) => /^mo\d/i.test(x) && norm(x).replace(/_/g, '').replace(/\s+/g, '').startsWith(cod));
-      return n ? gerenciamentoAtas(join(base, n)) : { erro: `não achei a pasta da obra ${obra} em OPERACOES\\OBRAS` };
+      if (n) return gerenciamentoAtas(join(base, n));
+      // obra já cadastrada no sistema mas sem pasta em OPERACOES\\OBRAS: cria a pasta (<codigo>_<nome>)
+      const cad = (obrasCad || []).find((o) => norm(o.codigo).replace(/\s+/g, '') === cod);
+      if (!cad) return { erro: `a obra ${obra} não tem pasta em OPERACOES\\OBRAS e não está no cadastro do sistema` };
+      const nomePasta = limpaNome(`${cad.codigo}${cad.nome ? `_${cad.nome}` : ''}`);
+      return { pasta: join(base, nomePasta, 'GERENCIAMENTO', 'ATAS'), existe: false, criaPastaDaObra: true };
     }
     // pós-obra: PÓS OBRA\PO_OBRAS\<ano atual>\<pasta do pós-obra>; se o pós-obra não tem pasta, cria
     const topo = acharTopo(drive, 'PÓS OBRA') || 'PÓS OBRA';
