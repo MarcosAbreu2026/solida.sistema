@@ -346,10 +346,66 @@ export function instalarQuadro(aoMudar) {
     aoMudar();
   });
 }
+// ---------------------------------------------------------------- Agenda só com as TAREFAS (pedido do Felipe, 11/11/2026)
+// As funções deixam de aparecer nos horários do dia (elas ficam na lateral, com as bolinhas). Na grade do dia aparecem as tarefas da aba Tarefas como
+// cartões, no horário que a pessoa definiu (sem horário: 8h, tracejado) e pelo tempo da duração. Arrastar muda o dia e o horário; puxar a borda de baixo
+// muda a duração; clicar abre a tarefa. Vencida = vermelho · de hoje = azul · dos próximos dias = cinza · concluída = verde.
+const hm = (txt) => { const m = String(txt || '').match(/^(\d{1,2}):(\d{2})/); return m ? Number(m[1]) * 60 + Number(m[2]) : null; };
+const assuntoDe = (t) => { const s = String(t || ''); const i = s.indexOf(','); return i > 0 && i < 60 ? [s.slice(0, i).trim(), s.slice(i + 1).trim()] : ['', s.trim()]; };
+function cartaoTarefa(e, hoje) {
+  const p = e.p; const feita = p.status === 'feita'; const venc = !feita && p.prazo < hoje;
+  const cls = feita ? 'ok' : venc ? 'venc' : p.prazo === hoje ? 'hoje' : 'futura';
+  const [ass, resto] = assuntoDe(p.descricao);
+  const estilo = `top:${e.faixa * GRADE.alt}px;height:${e.span * GRADE.alt - 2}px;left:calc(${e.lane} * 100% / ${e.n} + 2px);width:calc(100% / ${e.n} - 4px)`;
+  return html`<div class="ag-tcard ag-t-${cls} ${e.semHora ? 'ag-t-semhora' : ''} ${e.n > 1 ? 'fq-estreito' : ''}" style="${estilo}" data-tarefa="${p.id}" data-tcard="${p.id}" data-span="${e.span}"
+    title="${ass ? `${ass}: ` : ''}${resto}${p.obra ? ` · ${p.obra}` : ''} — ${hhmm(e.ini)} a ${hhmm(e.ini + e.dur)}${e.semHora ? ' (sem horário definido: arraste para escolher)' : ''}. Clique para abrir; arraste para mudar o horário ou o dia; puxe a borda de baixo para mudar a duração.">
+    ${p.obra ? html`<b class="ag-t-obra">${p.obra}</b>` : ''}<div class="fq-nome">${ass ? `${ass} · ` : ''}${resto}</div>
+    <div class="fn-meta">${e.semHora ? 'sem horário' : `${hhmm(e.ini)}–${hhmm(e.ini + e.dur)}`}${feita ? ' · ✓ concluída' : ''}</div>
+    <div class="ag-alca" title="Puxe para mudar a duração"></div></div>`;
+}
+function agendaDeTarefas(ref, { pendencias = [], eu }) {
+  const hoje = hojeISO(); const ini = inicioDaSemana(ref);
+  const dias = [0, 1, 2, 3, 4, 5].map((i) => somarDias(ini, i));
+  const minhas = pendencias.filter((p) => p.prazo && p.na_lista !== false && ['aberta', 'feita'].includes(p.status) && eu && (p.responsavel === eu || (p.gestores || []).includes(eu)) && dias.includes(p.prazo));
+  const entradas = minhas.map((p) => {
+    const m = hm(p.hora); const dur = limitar(Number(p.duracao) || 60, GRADE.passo, GRADE.faixas * GRADE.passo);
+    const span = Math.round(dur / GRADE.passo);
+    const faixa = limitar(Math.round(((m ?? PADRAO) - GRADE.ini) / GRADE.passo), 0, GRADE.faixas - span);
+    return { p, dia: p.prazo, faixa, span, dur: span * GRADE.passo, ini: GRADE.ini + faixa * GRADE.passo, semHora: m == null };
+  });
+  const nav = html`<div class="periodo">
+    <button type="button" class="botao" data-semana-md="${somarDias(ini, -7)}">← Semana anterior</button>
+    <div class="atual"><span>Semana</span><b>${fmtData(ini).slice(0, 5)} a ${fmtData(somarDias(ini, entradas.some((e) => e.dia === dias[5]) ? 5 : 4)).slice(0, 5)}</b></div>
+    ${hoje < ini || hoje > somarDias(ini, 6) ? html`<button type="button" class="botao" data-semana-md="${hoje}">Esta semana</button>` : ''}
+    <button type="button" class="botao" data-semana-md="${somarDias(ini, 7)}">Próxima semana →</button>
+  </div>`;
+  const colunas = dias.map((c) => { const l = lados(entradas.filter((e) => e.dia === c)); return { c, l, fe: l.filter((e) => e.p.status === 'feita').length }; }).filter(({ l }, i) => i < 5 || l.length);
+  const feitas = entradas.filter((e) => e.p.status === 'feita').length;
+  const altTotal = GRADE.faixas * GRADE.alt;
+  const rotuloSlot = (s) => (s % 60 ? `${Math.floor(s / 60)}h30` : `${s / 60}h`);
+  const horas = Array.from({ length: GRADE.faixas }, (_, i) => html`<span style="top:${i * GRADE.alt}px">${rotuloSlot(GRADE.ini + i * GRADE.passo)}</span>`);
+  const cabecas = colunas.map(({ c, l, fe }, i) => html`<div class="fq-cab ${c === hoje ? 'hoje' : ''}"><b>${DIA_CURTO[i]} ${c.slice(8, 10)}/${c.slice(5, 7)}</b><small>${feriado(c) ? 'feriado' : l.length ? `${fe} de ${l.length} feitas` : 'sem tarefas'}</small></div>`);
+  const trilhos = colunas.map(({ c, l }) => html`<div class="fq-trilho ${c === hoje ? 'hoje' : ''}" data-trilho="${c}" style="height:${altTotal}px">${l.map((e) => cartaoTarefa(e, hoje))}</div>`);
+  const lanes = (l) => Math.max(1, ...l.map((e) => e.n || 1));
+  const colsCss = `52px ${colunas.map(({ l }) => `minmax(${lanes(l) * 48}px, ${lanes(l)}fr)`).join(' ')}`;
+  const vistaQuadro = html`<div class="fq-quadro" style="grid-template-columns:${colsCss}"><div class="fq-canto"></div>${cabecas}<div class="fq-horas" style="height:${altTotal}px">${horas}</div>${trilhos}</div>`;
+  const caixa = (e) => { const [ass, resto] = assuntoDe(e.p.descricao); const cls = e.p.status === 'feita' ? 'ok' : e.p.prazo < hoje ? 'venc' : e.p.prazo === hoje ? 'hoje' : 'futura';
+    return html`<div class="ag-tcaixa ag-t-${cls}" data-tarefa="${e.p.id}"><b>${e.p.obra || ''}</b> ${ass ? `${ass} · ` : ''}${resto}<small>${e.semHora ? 'sem horário' : hhmm(e.ini)}</small></div>`; };
+  const vistaLista = html`<div class="fl-lista" style="--nd:${colunas.length}">${colunas.map(({ c, l, fe }, i) => html`<div class="fl-col ${c === hoje ? 'hoje' : ''}">
+      <div class="fq-cab ${c === hoje ? 'hoje' : ''}"><b>${DIA_CURTO[i]} ${c.slice(8, 10)}/${c.slice(5, 7)}</b><small>${feriado(c) ? 'feriado' : l.length ? `${fe} de ${l.length} feitas` : 'sem tarefas'}</small></div>
+      ${[...l].sort((a, b) => a.faixa - b.faixa).map(caixa)}</div>`)}</div>`;
+  return html`${nav}
+    <section class="fn-painel">
+      <header class="fn-cab"><h3>Agenda</h3><span class="fn-cab-dir"><span class="pequeno">${entradas.length ? `${feitas} de ${entradas.length} tarefas concluídas nesta semana` : 'nenhuma tarefa com prazo nesta semana'}</span></span></header>
+      ${entradas.length ? html`<div class="pct" style="margin:6px 0 12px"><i style="width:${Math.round((feitas / entradas.length) * 100)}%"></i></div>` : ''}
+      <div class="fh-larga">${vistaQuadro}</div><div class="fh-estreita">${vistaLista}</div>
+      <p class="legenda-semana">Cada cartão é uma tarefa da aba Tarefas, no horário e pelo tempo que você definiu (sem horário aparece às 8h, tracejado). Arraste para outro horário ou dia, puxe a borda de baixo para mudar a duração e clique para abrir. O horário também se escolhe dentro da tarefa.</p>
+    </section>`;
+}
 // Preencher é de quem está na obra. Sócio e coordenação consultam em Operação › Metas e produtividade.
 const veTodasAsObras = () => false;
 
-export function render({ dia, CFG, aba, semanaRef, soFuncoes = false }) {
+export function render({ dia, CFG, aba, semanaRef, soFuncoes = false, semFuncoes = false, pendencias = [], eu = null }) {
   const s = sessao();
   const f = funcaoAtual();
   const todas = veTodasAsObras(f);
@@ -366,6 +422,7 @@ export function render({ dia, CFG, aba, semanaRef, soFuncoes = false }) {
   if (ativa.obra && !CFG) corpo = html`<p class="vazio">Carregando…</p>`;
   else if (ativa.obra && !obras.length) corpo = html`<p class="vazio">Nenhuma obra vinculada ao seu acesso.</p>`;
   else if (ativa.id === 'semana') corpo = telaSemana({ CFG, progs, ref });
+  else if (semFuncoes) corpo = agendaDeTarefas(ref, { pendencias, eu });
   else corpo = funcoesSemana(ref, CFG);
 
   return html`<div class="pagina">

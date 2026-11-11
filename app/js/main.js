@@ -329,6 +329,12 @@ async function sincronizarCadastros({ forcar = false } = {}) {
 setInterval(() => sincronizarCadastros(), 60 * 1000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) sincronizarCadastros(); });
 window.addEventListener('focus', () => sincronizarCadastros());
+// Agenda: a lista de funções da lateral tem a altura da área visível (quem rola é o #conteudo, não a janela): assim ela rola por dentro até o último card
+function ajustarAlturaFuncoes() {
+  const f = document.querySelector('.ag-funcoes'); const c = document.getElementById('conteudo'); if (!f || !c) return;
+  f.style.maxHeight = `${Math.max(240, c.clientHeight - 24)}px`;
+}
+window.addEventListener('resize', ajustarAlturaFuncoes);
 const cadastroAtivo = () => (estado.obrasCad || []).filter((c) => c.situacao !== 'finalizada').map((c) => c.codigo);
 function obrasDeAtas() {
   if (funcaoAtual().porObra) return obrasDaPessoa();
@@ -843,6 +849,7 @@ function desenhar() {
   }
   $('#conteudo').innerHTML = out;   // (o setter de #conteudo, logo abaixo de estado, evita redesenhar à toa e piscar)
   ordenar.aplicar();   // tabelas ordenáveis: reaplica a ordem escolhida
+  ajustarAlturaFuncoes();
   desenharPedido();
   // Projetos: clicar numa obra do ranking abre as disciplinas dela
   const obraAberta = tela === 'projetos' && rota.sub === 'obras' && rota.params.get('obra');
@@ -1639,6 +1646,7 @@ document.addEventListener('drop', (e) => {
 });
 
 meudia.instalarQuadro(() => desenhar());
+agendaSemana.instalarTarefasNaGrade(async (id, mud) => { try { await atas.definirHorarioTarefa(id, mud); } catch (err) { alert(`Não foi possível mudar o horário (${err.message || err}).`); } desenhar(); });
 ordenar.instalar();
 
 // Reposição › rota: dia e horário de saída (a rota em texto se refaz)
@@ -1724,7 +1732,7 @@ document.addEventListener('submit', async (e) => {
   const f = e.target.closest && e.target.closest('#tf-form'); if (!f) return;
   e.preventDefault(); const fd = new FormData(f); const id = f.dataset.tf;
   try {
-    await atas.salvarTarefa(id, { observadores: fd.getAll('t_obs'), funcaoTarefa: fd.get('t_func'), urgencia: fd.get('t_urg'), assunto: fd.get('t_assunto'), desc: fd.get('t_desc'), resp: fd.get('t_resp'), tipo: fd.get('t_tipo'), nome: fd.get('t_nome'), gestor: fd.get('t_gestor'), prazo: fd.get('t_prazo') });
+    await atas.salvarTarefa(id, { hora: fd.get('t_hora'), duracao: fd.get('t_dur'), observadores: fd.getAll('t_obs'), funcaoTarefa: fd.get('t_func'), urgencia: fd.get('t_urg'), assunto: fd.get('t_assunto'), desc: fd.get('t_desc'), resp: fd.get('t_resp'), tipo: fd.get('t_tipo'), nome: fd.get('t_nome'), gestor: fd.get('t_gestor'), prazo: fd.get('t_prazo') });
     await redesenharTarefas(id, 'Salvo ✓');
   } catch (err) { alert(`Não foi possível salvar (${err.message || err}).`); }
 });
@@ -1895,7 +1903,7 @@ document.addEventListener('submit', async (e) => {
       if (!p.descricao || (p.externoTipo === '' && !p.responsavel) || (p.externoTipo === 'terceirizado' && !p.externoCategoria && !p.externoNome)) { alert('Escreva a pendência e escolha o responsável.'); return; }
       if (g.dataset.avulsa) {
         const setorV = String(new FormData(g).get('av_setor') || ''); if (!setorV) { alert('Escolha o departamento da pendência.'); return; }
-        await atas.criarPendencia({ ata_id: null, ...p, obra: String(new FormData(g).get('av_obra') || ''), setor: setorV, os: g.dataset.os || null, observadores: new FormData(g).getAll('p_obs') });
+        await atas.criarPendencia({ ata_id: null, ...p, obra: String(new FormData(g).get('av_obra') || ''), setor: setorV, os: g.dataset.os || null, observadores: new FormData(g).getAll('p_obs'), hora: String(new FormData(g).get('p_hora') || ''), duracao: new FormData(g).get('p_dur') });
         const mod = document.getElementById('at-modal'); if (mod) mod.remove();
       } else await atas.criarPendencia({ ata_id: Number(g.dataset.ata), ...p, obra: g.dataset.obra, setor: g.dataset.setor });
     }

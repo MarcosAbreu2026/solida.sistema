@@ -111,33 +111,46 @@ export function render(opts) {
   return html`<div class="ag-layout">${lateral}<div class="ag-principal">${principal}</div></div>`;
 }
 function renderPrincipal(opts) {
-  const base = String(meudia.render({ ...opts, soFuncoes: true, aba: 'funcoes' }));
-  const t = tarefasPorDia({ pendencias: opts.pendencias || [], eu: opts.eu, ref: opts.semanaRef || opts.dia });
-  const ctx = { eu: opts.eu, hoje: t.hoje, nomeDe: opts.nomeDe };
-  const porRotulo = new Map(t.dias.map((d, i) => [`${DIA_CURTO[i]} ${dm(d)}`, d]));
-  const chips = (d) => {
-    const l = t.mapa[d] || [];
-    if (!l.length) return '';
-    return String(html`<div class="ag-cab-tarefas">${l.slice(0, MAX_DIA).map((p) => cartaozinho(p, ctx))}${l.length > MAX_DIA ? html`<details class="ag-mais"><summary>+${l.length - MAX_DIA}</summary>${l.slice(MAX_DIA).map((p) => cartaozinho(p, ctx))}</details>` : ''}</div>`);
-  };
-  let n = 0;
-  const comChips = base.replace(/(<div class="fq-cab[^"]*">\s*<b>((?:Seg|Ter|Qua|Qui|Sex|Sáb) \d\d\/\d\d)<\/b>(?:\s*<small>[^<]*<\/small>)?)/g, (m, ini, rot) => {
-    const d = porRotulo.get(rot); if (!d) return m; n++; return `${ini.replace('<div class="fq-cab', `<div data-ag-dia="${d}" class="fq-cab`)}${chips(d)}`;
+  const base = String(meudia.render({ ...opts, soFuncoes: true, aba: 'funcoes', semFuncoes: true, pendencias: opts.pendencias || [], eu: opts.eu }));
+  return html.seguro(base);
+}
+
+// Arrastar o cartão da tarefa na grade (e puxar a borda de baixo): muda dia, horário e duração. Clicar (sem arrastar) abre a tarefa.
+export function instalarTarefasNaGrade(mover) {
+  const ALT = 44; const PASSO = 30; const INI = 7 * 60; const FAIXAS = 20;
+  let a = null;
+  const limitar = (v, x, y) => Math.max(x, Math.min(y, v));
+  const reset = () => { if (a) { a.card.classList.remove('arrastando'); a.card.style.transform = ''; a = null; } };
+  document.addEventListener('pointerdown', (e) => {
+    if (e.button || a) return;
+    const card = e.target.closest && e.target.closest('.ag-tcard'); if (!card || e.target.closest('button, a')) return;
+    const r = card.getBoundingClientRect();
+    a = { card, trilho: card.parentElement, alca: !!e.target.closest('.ag-alca'), x0: e.clientX, y0: e.clientY, moveu: false, h0: r.height, desloc: e.clientY - r.top, id: card.dataset.tcard, span: Number(card.dataset.span) };
+    if (a.alca) e.preventDefault();
   });
-  const total = t.dias.reduce((s, d) => s + (t.mapa[d] || []).filter((p) => p.status === 'aberta').length, 0);
-  const venc = t.dias.reduce((n, d) => n + (t.mapa[d] || []).filter((p) => p.status === 'aberta' && p.prazo < t.hoje).length, 0);
-  const resumo = String(html`<div class="ag-resumo"><span><b>Tarefas</b> ${total ? `${total} em aberto nesta semana${venc ? `, ${venc} ${venc === 1 ? 'vencida' : 'vencidas'} (reprograme pelo ↻)` : ''}` : 'nenhuma tarefa com prazo nesta semana'}</span>
-    <span class="legenda-semana"><span class="lg ag-lg-venc"></span> vencida <span class="lg ag-lg-hoje"></span> de hoje <span class="lg ag-lg-futura"></span> próximos dias <span class="lg ag-lg-feita"></span> concluída</span>
-    <a class="link" href="#/atas">Abrir Tarefas →</a></div>`);
-  if (n) {
-    const i = comChips.indexOf('<section class="fn-painel');
-    return html.seguro(i >= 0 ? `${comChips.slice(0, i)}${resumo}${comChips.slice(i)}` : `${resumo}${comChips}`);
-  }
-  // grade não encontrada (ex.: sem funções): cai na faixa separada
-  const faixa = String(faixaTarefas({ pendencias: opts.pendencias || [], eu: opts.eu, ref: opts.semanaRef || opts.dia, nomeDe: opts.nomeDe }));
-  const marca = '<section class="fn-painel';
-  const i = base.indexOf(marca);
-  if (i >= 0) return html.seguro(`${base.slice(0, i)}${faixa}${base.slice(i)}`);
-  const j = base.lastIndexOf('</div>');
-  return html.seguro(j >= 0 ? `${base.slice(0, j)}${faixa}${base.slice(j)}` : `${base}${faixa}`);
+  document.addEventListener('pointermove', (e) => {
+    if (!a) return;
+    const dx = e.clientX - a.x0; const dy = e.clientY - a.y0;
+    if (!a.moveu && Math.hypot(dx, dy) < 5) return;
+    if (!a.moveu) { a.moveu = true; a.card.classList.add('arrastando'); a.card.dataset.arrastou = '1'; }
+    e.preventDefault();
+    if (a.alca) a.card.style.height = `${Math.max(ALT - 2, a.h0 + dy)}px`; else a.card.style.transform = `translate(${dx}px, ${dy}px)`;
+  });
+  document.addEventListener('pointerup', (e) => {
+    if (!a) return;
+    const x = a;
+    if (!x.moveu) { reset(); return; }
+    setTimeout(() => { delete x.card.dataset.arrastou; }, 80);   // o clique que vem logo depois do arraste não abre a tarefa
+    const trilhos = [...document.querySelectorAll('.fq-trilho')];
+    const alvo = x.alca ? x.trilho : (trilhos.find((t) => { const r = t.getBoundingClientRect(); return e.clientX >= r.left && e.clientX < r.right; }) || x.trilho);
+    const r = alvo.getBoundingClientRect();
+    let span = x.span; let faixa = Math.round((x.card.getBoundingClientRect().top - r.top) / ALT);
+    if (x.alca) { span = Math.max(1, Math.round((x.h0 + (e.clientY - x.y0) + 2) / ALT)); faixa = Math.round((parseFloat(x.card.style.top) || 0) / ALT); }
+    else faixa = Math.round((e.clientY - x.desloc - r.top) / ALT);
+    faixa = limitar(faixa, 0, FAIXAS - span); span = limitar(span, 1, FAIXAS - faixa);
+    const min = INI + faixa * PASSO; const hora = `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
+    const id = x.id; reset();
+    mover(id, { prazo: alvo.dataset.trilho, hora, duracao: span * PASSO });
+  });
+  document.addEventListener('pointercancel', reset);
 }
