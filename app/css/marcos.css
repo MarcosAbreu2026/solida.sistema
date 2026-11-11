@@ -718,3 +718,7 @@ body.nav-recolhido nav::after { display: none; }
 .ag-t-det { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 3px; font-size: 12.5px; color: #4B5560; }
 .ag-t-det > span { background: rgba(0,0,0,.06); border-radius: 999px; padding: 0 8px; }
 .ag-t-urg.ag-u-alta { background: #FBE4E1 !important; color: #B3261E; } .ag-t-urg.ag-u-media { background: #FFF1D6 !important; color: #9A6200; } .ag-t-urg.ag-u-baixa { background: #E3F3EA !important; color: #1B7F4B; }
+
+/* foto do menu: clicável para trocar */
+.nav-foto { cursor: pointer; display: inline-flex; border-radius: 50%; position: relative; }
+.nav-foto:hover { outline: 2px solid #F5A524; outline-offset: 1px; }

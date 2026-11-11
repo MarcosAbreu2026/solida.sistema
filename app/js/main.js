@@ -391,7 +391,7 @@ function desenharNav(sel) {
   // acesso restrito (por enquanto, quase todo mundo): só Minhas funções e Treinamentos
   if (soMinhasFuncoes(f)) {
     $('#nav').innerHTML = botaoRecolher() + `<div class="marca"><img src="img/logo.png" alt="Sólida"><span>Painel da empresa</span></div>`
-      + `<div class="nav-perfil">${perfil.avatar(s.nome, 38)}<span><b>${esc(s.nome)}</b><small>${esc(f.nome)}</small></span></div>`
+      + `<div class="nav-perfil"><span class="nav-foto" data-nav-foto title="Clique para trocar a sua foto">${perfil.avatar(s.nome, 38)}</span><span><b>${esc(s.nome)}</b><small>${esc(f.nome)}</small></span></div>`
       // pedido do Felipe (04/11): Meu trabalho (Agenda, Tarefas, Atas) e Equipe (Treinamentos, Feed)
       + '<div class="nav-grupo">Meu trabalho</div>' + item('agenda', 'Agenda')
       + (f.porObra ? obrasDaPessoa().map((o) => `<a class="nav-item nav-celular${location.hash.startsWith(`#/celular/${o}`) ? ' sel' : ''}" href="#/celular/${encodeURIComponent(o)}"><span>Celular da obra ${esc(o)}</span></a>`).join('') : '')
@@ -419,7 +419,7 @@ function desenharNav(sel) {
   const nTar = atas.minhasAbertas();
   const itemTar = `<a class="nav-item${sel === 'tarefas' ? ' sel' : ''}" href="#/atas"><span>Tarefas</span>${nTar ? `<span class="nav-n">${nTar}</span>` : ''}</a>`;
   $('#nav').innerHTML = botaoRecolher() + `<div class="marca"><img src="img/logo.png" alt="Sólida"><span>Painel da empresa</span></div>`
-    + `<a class="nav-perfil${sel === 'perfil' ? ' sel' : ''}" href="#/perfil" title="Meu perfil">${perfil.avatar(s.nome, 38)}<span><b>${esc(s.nome)}</b><small>${esc(f.nome)}</small></span></a>`
+    + `<a class="nav-perfil${sel === 'perfil' ? ' sel' : ''}" href="#/perfil" title="Meu perfil"><span class="nav-foto" data-nav-foto title="Clique para trocar a sua foto">${perfil.avatar(s.nome, 38)}</span><span><b>${esc(s.nome)}</b><small>${esc(f.nome)}</small></span></a>`
     + grupo('Meu trabalho')
     + item('geral', 'Início') + item('agenda', 'Agenda') + (verAtas ? itemTar + `<a class="nav-item${sel === 'atas' ? ' sel' : ''}" href="#/atas?aba=atas"><span>Atas</span></a>` : '')
     + grupo('Departamentos') + deps
@@ -1420,11 +1420,19 @@ function configurar() {
     } catch (err) { alert(`Não foi possível (${err.message || err}).`); }
   });  // foto do perfil: a própria pessoa escolhe a imagem (reduzida para 256 px antes de ir para o servidor)
   document.addEventListener('change', async (e) => {
-    if (!['pf-foto-input', 'pf-foto-input2'].includes(e.target.id) || !e.target.files || !e.target.files[0]) return;
+    if (!['pf-foto-input', 'pf-foto-input2', 'nav-foto-input'].includes(e.target.id) || !e.target.files || !e.target.files[0]) return;
     const msg = $('#pf-foto-msg'); if (msg) msg.textContent = ' enviando…';
     try { await perfil.enviarFoto(sessao().nome, e.target.files[0]); desenhar(); }
     catch (err) { if (msg) msg.textContent = ` não foi possível salvar a foto (${err.message || err})`; }
   });
+  // clicar na foto do menu abre a escolha de imagem (todo mundo troca a própria foto)
+  document.addEventListener('click', (e) => {
+    const f = e.target.closest && e.target.closest('[data-nav-foto]'); if (!f) return;
+    e.preventDefault(); e.stopPropagation();
+    let inp = document.getElementById('nav-foto-input');
+    if (!inp) { inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.id = 'nav-foto-input'; inp.hidden = true; document.body.appendChild(inp); }
+    inp.value = ''; inp.click();
+  }, true);
   document.addEventListener('click', async (e) => {
     if (!e.target.closest('[data-pf-remover-foto]')) return;
     if (!confirm('Remover a sua foto do perfil?')) return;
