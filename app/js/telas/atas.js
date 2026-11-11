@@ -591,7 +591,8 @@ function formNova(obras, revisarId = '') {
 // setor, obra e urgência. A pessoa já está logada: por padrão vê só as dela, e pode escolher ver as do estagiário ou de todos.
 // funções (grupos do quadro) do cargo de quem é o responsável da tarefa; a que já está gravada sempre aparece
 const opcoesFuncaoTarefa = (respId, atual) => {
-  const cargo = respId === souEu() ? funcaoAtual().id : ((dados.pessoas.find((x) => x.id === respId) || {}).funcao || funcaoAtual().id);
+  // "Ver como" (diretoria olhando como outro cargo): tudo vale como esse cargo, inclusive as funções que aparecem para escolher
+  const cargo = simulando() || respId === souEu() ? funcaoAtual().id : ((dados.pessoas.find((x) => x.id === respId) || {}).funcao || funcaoAtual().id);
   const lista = [...funcoesDoCargo(cargo), FUNCAO_OUTRAS]; if (atual && !lista.includes(atual)) lista.unshift(atual);
   return lista.map((g) => html`<option value="${g}" ${g === atual ? html.seguro('selected') : ''}>${g === FUNCAO_OUTRAS ? 'Fora da função' : g}</option>`);
 };
