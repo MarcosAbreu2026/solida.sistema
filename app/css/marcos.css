@@ -377,18 +377,18 @@ body.nav-recolhido nav::after { display: none; }
 .lt-topo h2 { margin: 4px 0 0; font-size: 40px; font-weight: 800; letter-spacing: -.02em; color: #fff; line-height: 1.05; }
 .lt-topo h2 b { color: #F29B4B; }
 .lt-nav { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.lt-nova { background: #F29B4B; color: #2E5C9A; border: 0; border-radius: 10px; padding: 10px 16px; font-weight: 800; font-size: 14px; cursor: pointer; }
+.lt-nova { background: #F29B4B; color: #1B4378; border: 0; border-radius: 10px; padding: 10px 16px; font-weight: 800; font-size: 14px; cursor: pointer; }
 .lt-nova:hover { background: #FFAE66; }
-.lt-seta, .lt-hoje { background: #0F1E3C; border: 1px solid #3A4A70; color: #fff; border-radius: 10px; cursor: pointer; font-weight: 700; }
+.lt-seta, .lt-hoje { background: #4A82C6; border: 1px solid #8FB0E0; color: #fff; border-radius: 10px; cursor: pointer; font-weight: 700; }
 .lt-seta { width: 40px; height: 40px; font-size: 22px; line-height: 1; } .lt-hoje { padding: 0 18px; height: 40px; font-size: 14px; }
 .lt-seta:hover, .lt-hoje:hover { border-color: #F29B4B; }
 .lt-data { text-align: center; min-width: 112px; } .lt-data span { display: block; font-size: 10.5px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: #B7C4DC; } .lt-data b { font-size: 22px; color: #fff; }
 .lt-faixa { height: 10px; background: repeating-linear-gradient(135deg, #F29B4B 0 12px, #2E5C9A 12px 24px); }
 .lt-corpo-geral { padding: 18px 20px 22px; }
-.lt-resumo { display: flex; align-items: center; gap: 18px; background: #2E5C9A; border: 1px solid #4A78B8; border-radius: 14px; padding: 18px 22px; margin-bottom: 14px; }
+.lt-resumo { display: flex; align-items: center; gap: 18px; background: #1B4378; border: 1px solid #3A6DB0; border-radius: 14px; padding: 18px 22px; margin-bottom: 14px; }
 .lt-resumo h3 { margin: 0 0 2px; font-size: 24px; color: #fff; } .lt-resumo p { margin: 0; color: #DCE8F9; font-size: 14px; }
-.lt-anel { --pct: 0; width: 70px; height: 70px; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(#4CC38A calc(var(--pct) * 1%), #5D85BF 0); position: relative; flex: none; }
-.lt-anel::before { content: ''; position: absolute; inset: 8px; background: #2E5C9A; border-radius: 50%; }
+.lt-anel { --pct: 0; width: 70px; height: 70px; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(#4CC38A calc(var(--pct) * 1%), #3A6DB0 0); position: relative; flex: none; }
+.lt-anel::before { content: ''; position: absolute; inset: 8px; background: #1B4378; border-radius: 50%; }
 .lt-anel b { position: relative; font-size: 16px; color: #fff; }
 .lt-urgs { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 .lt-urg { display: inline-flex; align-items: center; gap: 6px; border-radius: 7px; padding: 3px 10px; font-size: 11.5px; font-weight: 800; white-space: nowrap; }
@@ -397,17 +397,17 @@ body.nav-recolhido nav::after { display: none; }
 .lt-filtros { display: flex; flex-direction: column; gap: 10px; margin: 4px 0 14px; }
 .lt-grp { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .lt-grp > span { font-size: 11.5px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: #D6E4F8; margin-right: 4px; }
-.lt-pil { background: #3A6DB0; border: 1px solid #6B93CC; color: #F3F6FB; border-radius: 999px; padding: 8px 18px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.lt-pil { background: #2F66AC; border: 1px solid #5C8AC8; color: #F3F6FB; border-radius: 999px; padding: 8px 18px; font-size: 14px; font-weight: 600; cursor: pointer; }
 .lt-pil:hover { border-color: #F29B4B; } .lt-pil.on { background: #1F4A85; border-color: #9DB9E3; color: #fff; }
 .lt-grp-sel label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #D6E4F8; }
-.lt-grp-sel select, .lt-grp-sel input { background: #3A6DB0; border: 1px solid #6B93CC; color: #F3F6FB; border-radius: 10px; padding: 8px 12px; font-size: 14px; min-width: 150px; }
+.lt-grp-sel select, .lt-grp-sel input { background: #2F66AC; border: 1px solid #5C8AC8; color: #F3F6FB; border-radius: 10px; padding: 8px 12px; font-size: 14px; min-width: 150px; }
 .lt-acoes { margin: 6px 0 12px; }
-.lt-bt { background: #3A6DB0; border: 1px solid #6B93CC; color: #EAF0FA; border-radius: 8px; padding: 6px 12px; font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.lt-bt { background: #2F66AC; border: 1px solid #5C8AC8; color: #EAF0FA; border-radius: 8px; padding: 6px 12px; font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap; }
 .lt-bt:hover { border-color: #F29B4B; color: #fff; } .lt-bt-ex { color: #FF7A6B; border-color: #5A3040; } .lt-bt-grande { padding: 11px 18px; font-size: 14px; background: #2E5C9A; }
-.lt-grupo { background: #2E5C9A; border: 1px solid #4A78B8; border-radius: 14px; margin-bottom: 14px; overflow: hidden; }
-.lt-grupo > header { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-bottom: 1px solid #4A78B8; }
+.lt-grupo { background: #1B4378; border: 1px solid #3A6DB0; border-radius: 14px; margin-bottom: 14px; overflow: hidden; }
+.lt-grupo > header { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-bottom: 1px solid #3A6DB0; }
 .lt-grupo > header h3 { margin: 0; font-size: 26px; font-weight: 800; color: #fff; } .lt-grupo > header span { color: #D6E4F8; font-size: 14px; font-weight: 700; }
-.lt-linha { display: flex; align-items: center; gap: 14px; padding: 14px 20px; border-bottom: 1px solid #4A78B8; flex-wrap: wrap; }
+.lt-linha { display: flex; align-items: center; gap: 14px; padding: 14px 20px; border-bottom: 1px solid #3A6DB0; flex-wrap: wrap; }
 .lt-linha:last-child { border-bottom: 0; }
 .lt-chk { appearance: none; -webkit-appearance: none; width: 26px; height: 26px; flex: none; border-radius: 6px; background: #3A6DB0; border: 1px solid #8FB0E0; cursor: pointer; display: grid; place-items: center; }
 .lt-chk:checked { background: #4CC38A; border-color: #4CC38A; } .lt-chk:checked::after { content: '✓'; color: #2E5C9A; font-weight: 900; font-size: 16px; }
