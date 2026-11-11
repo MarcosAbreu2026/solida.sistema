@@ -450,8 +450,6 @@ export function formAvulsa(obras, prazo, setorPadrao = '', preset = {}) {
           <select name="p_resp" class="pf-sol"><option value="">Pessoa da Sólida…</option>${opcoesPessoas(preset.resp || '')}</select>
           <input name="p_nome" class="pf-ext" list="dl-terceiros" placeholder="Nome da empresa ou pessoa" autocomplete="off" hidden></label>
         <label>Prazo<input type="date" name="p_prazo" value="${prazo || ''}"></label>
-        <label>Horário na Agenda<input type="time" name="p_hora"></label>
-        <label>Duração<select name="p_dur">${DURACOES.map(([v, t]) => html`<option value="${v}" ${v === 60 ? html.seguro('selected') : ''}>${t}</option>`)}</select></label>
         ${caixaObservadores('p_obs', [], '')}
         <label>Função (Agenda)<select name="p_func"><option value="">Nenhuma</option>${opcoesFuncaoTarefa(souEu(), '')}</select></label>
         <label>Urgência<select name="p_urg"><option value="">Sem urgência</option>${Object.entries(URG).map(([v, [t]]) => html`<option value="${v}">${t[0] + t.slice(1).toLocaleLowerCase('pt-BR')}</option>`)}</select></label>
