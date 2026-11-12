@@ -762,3 +762,12 @@ body.nav-recolhido nav::after { display: none; }
 .ag-acoes button { background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .15); }
 .ag-acoes .ag-ok { border-color: #3C9A6B; color: #2E8057; }
 .ag-tcard, .ag-tcaixa { padding-right: 56px; }
+
+.tf-esq .tf-recor input[type="checkbox"] { width: 18px !important; min-width: 18px !important; height: 18px !important; flex: none; padding: 0 !important; }
+.tf-recor-on { opacity: .75; cursor: default; }
+
+/* Recorrente: caixinha + escolha semanal/mensal na mesma linha */
+.tf-recor { display: flex !important; flex-direction: row !important; align-items: center; gap: 10px; flex-wrap: wrap; align-self: end; padding-bottom: 6px; cursor: default; }
+.tf-recor .tf-recor-chk { display: inline-flex !important; flex-direction: row !important; align-items: center; gap: 8px; cursor: pointer; font-size: 13.5px; }
+.tf-recor select { width: auto !important; min-width: 120px; flex: 0 0 auto; }
+.tf-recor small { color: #7A8794; font-size: 12px; }

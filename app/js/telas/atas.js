@@ -237,13 +237,14 @@ export async function criarAta({ titulo, data, tipo, obra, setor, participantes,
   await carregar();
   return nova;
 }
-export async function criarPendencia({ ata_id, descricao, responsavel, externoNome, externoTipo, externoCategoria, prazo, obra, setor, os, urgencia, funcaoTarefa, observadores, hora, duracao, recorrente = false }) {
+export async function criarPendencia({ ata_id, descricao, responsavel, externoNome, externoTipo, externoCategoria, prazo, obra, setor, os, urgencia, funcaoTarefa, observadores, hora, duracao, recorrente = false, frequencia = 'semanal' }) {
   const p = { ata_id: ata_id || null, descricao, responsavel: responsavel || null, responsavel_nome: responsavel ? nomeDe(responsavel) : (externoNome || externoCategoria || (externoTipo === 'cliente' ? 'Cliente' : externoTipo === 'arquitetura' ? 'Arquitetura' : null)), responsavel_tipo: responsavel ? 'solida' : (externoTipo || 'terceirizado'), responsavel_categoria: responsavel ? null : (externoCategoria || null), prazo: prazo || null, status: 'aberta', obra: obra || null, setor: setor || null, os: os || null, urgencia: urgencia || null, funcao_tarefa: funcaoTarefa || null, observadores: observadores || [], hora: hora || null, duracao: duracao ? Number(duracao) : 60 };
   if (ata_id) { const a = dados.atas.find((x) => String(x.id) === String(ata_id)); const ns = [...dados.pendencias.filter((x) => String(x.ata_id) === String(ata_id)).map((x) => Number(x.item) || 0), ...((a && a.informativos) || []).map((x) => (x && x.n) || 0)]; p.item = Math.max(0, ...ns) + 1; }
   // recorrente: repete toda semana, no mesmo dia da semana. Cada ocorrência é uma tarefa; as primeiras ${SEMANAS_INICIAIS} semanas já nascem e o resto é criado aos poucos (renovarRecorrentes)
   if (recorrente && p.prazo && !ata_id) {
     const serie = `s${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`;
-    const lista = Array.from({ length: SEMANAS_INICIAIS }, (_, k) => ({ ...p, prazo: somarDias(p.prazo, 7 * k), serie, recorrente: true }));
+    const freq = frequencia === 'mensal' ? 'mensal' : 'semanal';
+    const lista = Array.from({ length: SEMANAS_INICIAIS }, (_, k) => ({ ...p, prazo: dataDaSerie(p.prazo, freq, k), serie, recorrente: true, frequencia: freq }));
     if (NA_NUVEM) await criarPendenciasNuvemLote(lista);
     else { const l = lerLocal(); for (const x of lista) l.pendencias.push({ id: l.seq++, ...x, criado_por: idPessoa(), criado_em: new Date().toISOString(), concluida_em: null }); gravarLocal(l); }
     await carregar(); return;
@@ -254,6 +255,13 @@ export async function criarPendencia({ ata_id, descricao, responsavel, externoNo
 }
 // ---- tarefas recorrentes (pedido do Felipe, 12/11/2026): como no Google Agenda, mudar ou excluir pergunta "só esta" ou "esta e as próximas"
 const SEMANAS_INICIAIS = 12; const SEMANAS_A_FRENTE = 8;
+// data da k-ésima repetição: semanal = +7 dias; mensal = mesmo dia do mês (nos meses curtos, o último dia)
+export function dataDaSerie(base, freq, k) {
+  if (freq !== 'mensal') return somarDias(base, 7 * k);
+  const [a, m, d] = base.split('-').map(Number); const t = (m - 1) + k; const ano = a + Math.floor(t / 12); const mes = ((t % 12) + 12) % 12;
+  const ult = new Date(ano, mes + 1, 0).getDate();
+  return `${ano}-${String(mes + 1).padStart(2, '0')}-${String(Math.min(d, ult)).padStart(2, '0')}`;
+}
 export const ehRecorrente = (id) => { const p = pendenciaPorId(id); return !!(p && p.serie); };
 const seguintesDe = (p) => dados.pendencias.filter((x) => x.serie && x.serie === p.serie && String(x.id) !== String(p.id) && String(x.prazo || '') >= String(p.prazo || ''));
 async function atualizarVarias(ids, mud) {
@@ -272,11 +280,13 @@ export async function renovarRecorrentes() {
     for (const p of dados.pendencias) if (p.serie && p.recorrente && p.criado_por === eu && p.prazo) { const u = series.get(p.serie); if (!u || p.prazo > u.prazo) series.set(p.serie, p); }
     const novas = [];
     for (const u of series.values()) {
-      if (u.prazo >= limite) continue;
-      let d = somarDias(u.prazo, 7);
-      while (d < somarDias(hoje, 7 * (SEMANAS_INICIAIS))) {
-        if (d >= hoje) novas.push({ descricao: u.descricao, responsavel: u.responsavel, responsavel_nome: u.responsavel_nome, responsavel_tipo: u.responsavel_tipo, responsavel_categoria: u.responsavel_categoria, prazo: d, status: 'aberta', obra: u.obra, setor: u.setor, os: u.os, urgencia: u.urgencia, funcao_tarefa: u.funcao_tarefa, observadores: u.observadores || [], hora: u.hora, duracao: u.duracao, serie: u.serie, recorrente: true });
-        d = somarDias(d, 7);
+      const mensal = u.frequencia === 'mensal';
+      if (u.prazo >= (mensal ? somarDias(hoje, 180) : limite)) continue;
+      const fimGeracao = mensal ? somarDias(hoje, 365) : somarDias(hoje, 7 * SEMANAS_INICIAIS);
+      let d = dataDaSerie(u.prazo, u.frequencia, 1); let k = 1;
+      while (d < fimGeracao) {
+        if (d >= hoje) novas.push({ descricao: u.descricao, responsavel: u.responsavel, responsavel_nome: u.responsavel_nome, responsavel_tipo: u.responsavel_tipo, responsavel_categoria: u.responsavel_categoria, prazo: d, status: 'aberta', obra: u.obra, setor: u.setor, os: u.os, urgencia: u.urgencia, funcao_tarefa: u.funcao_tarefa, observadores: u.observadores || [], hora: u.hora, duracao: u.duracao, serie: u.serie, recorrente: true, frequencia: u.frequencia || 'semanal' });
+        k += 1; d = dataDaSerie(u.prazo, u.frequencia, k);
       }
     }
     if (novas.length) { await criarPendenciasNuvemLote(novas); await carregar(); }
@@ -524,7 +534,7 @@ export function formAvulsa(obras, prazo, setorPadrao = '', preset = {}) {
         <label>Departamento<select name="av_setor" class="tf-req" required><option value="">— escolher —</option>${SETORES_ATA.map((s) => html`<option value="${s}" ${s === setorPadrao ? html.seguro('selected') : ''}>${s}</option>`)}</select></label>
         <label>Obra<select name="av_obra"><option value="">Nenhuma</option>${gruposDeObras(listaObras, preset.obra || '')}</select></label>
         <label>Prazo<input type="date" name="p_prazo" class="tf-req" value="${prazo || ''}"></label>
-        <label class="tf-recor"><input type="checkbox" name="p_recor"> <span>Tarefa recorrente <small>repete toda semana, no mesmo dia</small></span></label>
+        <div class="tf-recor"><label class="tf-recor-chk"><input type="checkbox" name="p_recor"> <span>Tarefa recorrente</span></label><select name="p_freq" title="Como se repete"><option value="semanal">Toda semana</option><option value="mensal">Todo mês</option></select></div>
         <div class="tf-sep"></div>
         <label>Função (Agenda)<select name="p_func"><option value="">Nenhuma</option>${opcoesFuncaoTarefa(souEu(), '')}</select></label>
         <label>Urgência<select name="p_urg"><option value="">Sem urgência</option>${Object.entries(URG).map(([v, [t]]) => html`<option value="${v}">${t[0] + t.slice(1).toLocaleLowerCase('pt-BR')}</option>`)}</select></label>
@@ -872,8 +882,21 @@ export async function salvarTarefa(id, c) {
     const seg = seguintesDe(p); const mapa = Object.fromEntries(seg.map((x) => [x.id, x.prazo]));
     await atualizarVarias(seg.map((x) => x.id), (i) => ({ ...mud, ...(delta ? { prazo: somarDias(mapa[i], delta) } : {}) }));
   }
+  // tarefa que já existia e agora virou recorrente: esta vira a primeira da série e as próximas semanas são criadas
+  let novasDaSerie = [];
+  if (c.recorrente && !p.serie && (c.prazo || p.prazo)) {
+    const serie = `s${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`;
+    const base = c.prazo || p.prazo;
+    const freq = c.frequencia === 'mensal' ? 'mensal' : 'semanal';
+    Object.assign(mud, { serie, recorrente: true, frequencia: freq });
+    novasDaSerie = Array.from({ length: SEMANAS_INICIAIS - 1 }, (_, k) => ({ descricao: mud.descricao, responsavel: mud.responsavel ?? p.responsavel ?? null, responsavel_nome: mud.responsavel_nome ?? p.responsavel_nome ?? null, responsavel_tipo: mud.responsavel_tipo ?? p.responsavel_tipo ?? null, responsavel_categoria: mud.responsavel_categoria ?? p.responsavel_categoria ?? null, prazo: dataDaSerie(base, freq, k + 1), status: 'aberta', obra: p.obra || null, setor: p.setor || null, os: p.os || null, urgencia: mud.urgencia, funcao_tarefa: mud.funcao_tarefa, observadores: mud.observadores || [], hora: mud.hora, duracao: mud.duracao, serie, recorrente: true, frequencia: freq }));
+  }
   if (NA_NUVEM) await atualizarPendenciaNuvem(id, mud);
   else { const l = lerLocal(); const q = l.pendencias.find((x) => String(x.id) === String(id)); if (q) Object.assign(q, mud); gravarLocal(l); }
+  if (novasDaSerie.length) {
+    if (NA_NUVEM) await criarPendenciasNuvemLote(novasDaSerie);
+    else { const l = lerLocal(); for (const x of novasDaSerie) l.pendencias.push({ id: l.seq++, ...x, criado_por: idPessoa(), criado_em: new Date().toISOString(), concluida_em: null }); gravarLocal(l); }
+  }
   await carregar();
   if ((c.prazo || '') !== (p.prazo || '')) await reprogramar(id, c.prazo || '');
 }
@@ -920,6 +943,7 @@ export function detalheTarefa(id, { msg = '' } = {}) {
         <div class="tf-ext" ${ext ? '' : html.seguro('hidden')}><label>Quem é<select name="t_tipo"><option value="terceirizado" ${tipo === 'terceirizado' ? html.seguro('selected') : ''}>Terceirizado</option><option value="cliente" ${tipo === 'cliente' ? html.seguro('selected') : ''}>Cliente</option><option value="arquitetura" ${tipo === 'arquitetura' ? html.seguro('selected') : ''}>Arquitetura</option></select></label>
           <label>Nome<input name="t_nome" value="${ext ? (p.responsavel_nome || '') : ''}" list="dl-terceiros" placeholder="empresa ou pessoa"></label></div>
         <label>Prazo<input type="date" name="t_prazo" value="${p.prazo || ''}"></label>
+        ${p.serie ? html`<div class="tf-recor tf-recor-on"><label class="tf-recor-chk"><input type="checkbox" checked disabled> <span>Tarefa recorrente</span></label><small>${p.frequencia === 'mensal' ? 'todo mês' : 'toda semana'}</small></div>` : html`<div class="tf-recor"><label class="tf-recor-chk"><input type="checkbox" name="t_recor"> <span>Tarefa recorrente</span></label><select name="t_freq" title="Como se repete"><option value="semanal">Toda semana</option><option value="mensal">Todo mês</option></select></div>`}
       </div>
       <div class="tf-sep"></div>
       <div class="tf-grade tf-agenda">

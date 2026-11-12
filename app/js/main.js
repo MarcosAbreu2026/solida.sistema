@@ -1753,7 +1753,7 @@ document.addEventListener('submit', async (e) => {
   e.preventDefault(); const fd = new FormData(f); const id = f.dataset.tf;
   try {
     let escopo = 'uma'; if (atas.ehRecorrente(id)) { escopo = await perguntarEscopo('Salvar tarefa recorrente'); if (!escopo) return; }
-    await atas.salvarTarefa(id, { escopo, hora: fd.get('t_hora'), duracao: fd.get('t_dur'), observadores: fd.getAll('t_obs'), funcaoTarefa: fd.get('t_func'), urgencia: fd.get('t_urg'), assunto: fd.get('t_assunto'), desc: fd.get('t_desc'), resp: fd.get('t_resp'), tipo: fd.get('t_tipo'), nome: fd.get('t_nome'), gestor: fd.get('t_gestor'), prazo: fd.get('t_prazo') });
+    await atas.salvarTarefa(id, { escopo, recorrente: fd.has('t_recor'), frequencia: String(fd.get('t_freq') || 'semanal'), hora: fd.get('t_hora'), duracao: fd.get('t_dur'), observadores: fd.getAll('t_obs'), funcaoTarefa: fd.get('t_func'), urgencia: fd.get('t_urg'), assunto: fd.get('t_assunto'), desc: fd.get('t_desc'), resp: fd.get('t_resp'), tipo: fd.get('t_tipo'), nome: fd.get('t_nome'), gestor: fd.get('t_gestor'), prazo: fd.get('t_prazo') });
     await redesenharTarefas(id, 'Salvo ✓');
   } catch (err) { alert(`Não foi possível salvar (${err.message || err}).`); }
 });
@@ -1995,7 +1995,7 @@ document.addEventListener('submit', async (e) => {
       if (!p.descricao || (p.externoTipo === '' && !p.responsavel) || (p.externoTipo === 'terceirizado' && !p.externoCategoria && !p.externoNome)) { alert('Escreva a pendência e escolha o responsável.'); return; }
       if (g.dataset.avulsa) {
         const setorV = String(new FormData(g).get('av_setor') || ''); if (!setorV) { alert('Escolha o departamento da pendência.'); return; }
-        await atas.criarPendencia({ ata_id: null, ...p, obra: String(new FormData(g).get('av_obra') || ''), setor: setorV, os: g.dataset.os || null, observadores: new FormData(g).getAll('p_obs'), hora: String(new FormData(g).get('p_hora') || ''), duracao: new FormData(g).get('p_dur'), recorrente: new FormData(g).has('p_recor') });
+        await atas.criarPendencia({ ata_id: null, ...p, obra: String(new FormData(g).get('av_obra') || ''), setor: setorV, os: g.dataset.os || null, observadores: new FormData(g).getAll('p_obs'), hora: String(new FormData(g).get('p_hora') || ''), duracao: new FormData(g).get('p_dur'), recorrente: new FormData(g).has('p_recor'), frequencia: String(new FormData(g).get('p_freq') || 'semanal') });
         const mod = document.getElementById('at-modal'); if (mod) mod.remove();
       } else await atas.criarPendencia({ ata_id: Number(g.dataset.ata), ...p, obra: g.dataset.obra, setor: g.dataset.setor });
     }
