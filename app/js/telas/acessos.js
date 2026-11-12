@@ -72,8 +72,17 @@ export function render({ perfis = [], obras = [], posObras = [], obrasCad = [], 
       <details class="caixa ac-lista-obras" ${listaAberta ? html.seguro('open') : ''}>
         <summary><span class="caixa-tit">Todas as obras e pós-obras</span><span class="contador">${obrasCad.length}</span><span class="pequeno">${obrasCad.filter((o) => /^mo/i.test(o.codigo)).length} obras · ${obrasCad.filter((o) => !/^mo/i.test(o.codigo)).length} pós-obras · clique para abrir a lista</span></summary>
         <div class="caixa-corpo">
-          ${[['Obras (em andamento, pausadas e finalizadas)', obrasCad.filter((o) => /^mo/i.test(o.codigo) && ['andamento', 'pausada', 'finalizada'].includes(o.situacao))], ['Obras em orçamento (só o setor ORC Obras Novas e a diretoria veem)', obrasCad.filter((o) => /^mo/i.test(o.codigo) && o.situacao === 'orcamento')], ['Pós-obras', obrasCad.filter((o) => !/^mo/i.test(o.codigo) && o.situacao !== 'nao_fechado')], ['Não fechadas (orçamentos que não viraram obra; ficam fora de todas as listas)', obrasCad.filter((o) => o.situacao === 'nao_fechado')]].filter(([, l]) => l.length).map(([titulo, l]) => html`<h3 class="ac-grupo-obra">${titulo} <span class="pequeno">${l.length}</span></h3>
-            ${l.map((o) => html`<details class="ac-obra-item"><summary><b>${o.codigo}</b><span class="ac-obra-nome">${o.nome || 'sem nome'}</span><span class="ac-sit ac-sit-${o.situacao}">${({ andamento: 'em andamento', pausada: 'pausada', finalizada: 'finalizada', orcamento: 'em orçamento', nao_fechado: 'não fechado' })[o.situacao] || o.situacao}</span>${o.semCadastro ? html`<span class="pequeno pendente">não cadastrada</span>` : ''}</summary>${linhaObra(o)}</details>`)}`)}
+          ${[
+            ['Obras (em andamento e pausadas)', obrasCad.filter((o) => /^mo/i.test(o.codigo) && ['andamento', 'pausada'].includes(o.situacao)), false],
+            ['Obras em orçamento (só o setor ORC Obras Novas e a diretoria veem)', obrasCad.filter((o) => /^mo/i.test(o.codigo) && o.situacao === 'orcamento'), false],
+            ['Pós-obras', obrasCad.filter((o) => !/^mo/i.test(o.codigo) && ['andamento', 'pausada', 'orcamento'].includes(o.situacao)), false],
+            ['Obras finalizadas', obrasCad.filter((o) => /^mo/i.test(o.codigo) && o.situacao === 'finalizada'), true],
+            ['Pós-obras finalizados', obrasCad.filter((o) => !/^mo/i.test(o.codigo) && o.situacao === 'finalizada'), true],
+            ['Não fechadas (orçamentos que não viraram obra; ficam fora de todas as listas)', obrasCad.filter((o) => o.situacao === 'nao_fechado'), true],
+          ].filter(([, l]) => l.length).map(([titulo, l, recolhido]) => {
+            const itens = [...l].sort((a, b) => String(a.codigo).localeCompare(String(b.codigo), 'pt-BR', { numeric: true })).map((o) => html`<details class="ac-obra-item"><summary><b>${o.codigo}</b><span class="ac-obra-nome">${o.nome || 'sem nome'}</span><span class="ac-sit ac-sit-${o.situacao}">${({ andamento: 'em andamento', pausada: 'pausada', finalizada: 'finalizada', orcamento: 'em orçamento', nao_fechado: 'não fechado' })[o.situacao] || o.situacao}</span>${o.semCadastro ? html`<span class="pequeno pendente">não cadastrada</span>` : ''}</summary>${linhaObra(o)}</details>`);
+            return recolhido ? html`<details class="ac-grupo-fechado"><summary class="ac-grupo-obra">${titulo} <span class="pequeno">${l.length} · clique para ver</span></summary>${itens}</details>` : html`<h3 class="ac-grupo-obra">${titulo} <span class="pequeno">${l.length}</span></h3>${itens}`;
+          })}
         </div>
       </details></section>
     <section class="secao"><h2>Setores <span class="pequeno">${SETORES_ORGANOGRAMA.length}</span></h2>

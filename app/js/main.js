@@ -451,8 +451,8 @@ function obrasDoMenu() {
   const CFG = estado.cfg; const f = funcaoAtual();
   const plan = CFG ? ((CFG.areas.find((a) => a.id === 'planejamento') || {}).porObra || []).map((o) => o.obra) : [];
   const cad = (estado.obrasCad || []).filter((c) => c.situacao === 'andamento' && /^Mo\d/i.test(c.codigo)).map((c) => c.codigo);
-  const fin = new Set((estado.obrasCad || []).filter((c) => c.situacao === 'finalizada').map((c) => c.codigo));
-  const todas = [...new Set([...plan, ...cad])].filter((o) => !fin.has(o)).sort();
+  const fin = new Set((estado.obrasCad || []).filter((c) => ['finalizada', 'nao_fechado'].includes(c.situacao)).map((c) => c.codigo));
+  const todas = [...new Set([...plan, ...cad])].filter((o) => !fin.has(o)).sort(numerico);
   return f.porObra ? todas.filter((o) => obrasDaPessoa().includes(o)) : todas;
 }
 

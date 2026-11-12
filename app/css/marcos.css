@@ -802,3 +802,6 @@ body.nav-recolhido nav::after { display: none; }
 .lote-tab .lote-n { color: #7A8794; font-weight: 700; } .lote-falta { border-color: #D9534F !important; }
 .lote-obs { display: block; margin-top: 2px; color: #5B6677; font-size: 11px; }
 .lote-botoes { display: flex; gap: 10px; align-items: center; justify-content: flex-end; margin-top: 12px; }
+
+/* Grupos recolhidos da lista de obras (finalizadas, não fechadas) */
+.ac-grupo-fechado { margin-top: 10px; } .ac-grupo-fechado > summary { cursor: pointer; list-style: revert; }
