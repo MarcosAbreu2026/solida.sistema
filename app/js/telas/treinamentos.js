@@ -14,7 +14,7 @@ export function alternarFeito() { /* os "já li" dos guias antigos não existem 
 const seApplica = (t, funcaoId) => funcaoId === 'socio' || t.funcoes === 'todos' || (Array.isArray(t.funcoes) && t.funcoes.includes(funcaoId));
 // o bloco aparece para quem tem aquele menu: setor nas áreas da função; página geral se a função vê a página
 // quem tem acesso restrito vê só as telas que aparecem no menu dele: Agenda, Tarefas, Atas, Feed, Treinamentos (e o Estoque, se for do galpão)
-const TELAS_RESTRITAS = ['agenda', 'tarefas', 'atas', 'feed', 'treinamentos', 'perfil'];
+const TELAS_RESTRITAS = ['agenda', 'tarefas', 'atas', 'feed', 'treinamentos'];
 const topicoVisivel = (t, f) => {
   if (soMinhasFuncoes(f) && !TELAS_RESTRITAS.includes(t.id) && !(t.id === 'estoque' && temEstoqueRestrito(f))) return false;
   if (t.tipo === 'todos') return true;
@@ -24,7 +24,7 @@ const topicoVisivel = (t, f) => {
 
 // Os blocos seguem os mesmos grupos do menu da esquerda (pedido do Felipe, 04/11): Meu trabalho · Departamentos · Resultados · Equipe · Diretoria
 const GRUPOS = [
-  ['Meu trabalho', ['agenda', 'tarefas', 'atas', 'perfil']],
+  ['Meu trabalho', ['agenda', 'tarefas', 'atas']],
   ['Departamentos', ['operacao', 'posobra', 'transporte', 'suprimentos', 'planejamento', 'projetos', 'comercial', 'orcamentos', 'financeiro', 'rh', 'materiais']],
   ['Resultados', []],
   ['Equipe', ['estoque', 'feed', 'treinamentos', 'marketing']],

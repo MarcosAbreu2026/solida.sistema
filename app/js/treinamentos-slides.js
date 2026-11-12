@@ -12,9 +12,6 @@ export const TOPICOS = [
   { id: 'agenda', nome: 'Agenda', tipo: 'pagina', pagina: 'meudia', icone: '📅' },
   { id: 'tarefas', nome: 'Tarefas', tipo: 'pagina', pagina: 'atas', icone: '✅' },
   { id: 'atas', nome: 'Atas', tipo: 'pagina', pagina: 'atas', icone: '📝' },
-  { id: 'feed', nome: 'Feed', tipo: 'pagina', pagina: 'feed', icone: '💬' },
-  { id: 'treinamentos', nome: 'Treinamentos', tipo: 'pagina', pagina: 'treinamentos', icone: '🎓' },
-  { id: 'perfil', nome: 'Perfil e foto', tipo: 'todos', icone: '🙂' },
   { id: 'materiais', nome: 'Materiais / Vendas', tipo: 'setor', icone: '🧱' },
   { id: 'diretoria', nome: 'Diretoria', tipo: 'diretoria', icone: '🏢' },
   { id: 'operacao', nome: 'Painéis dos departamentos', tipo: 'setor', icone: '🏗️' },
@@ -124,32 +121,6 @@ export const SUBTOPICOS = [
             dica: 'Para dar a pendência como feita, clique no ✓ ao lado da data.' },
           { titulo: 'Acompanhe tudo em Tarefas', texto: 'A tela Tarefas reúne as pendências de todas as atas (veja o treinamento "Como usar as Tarefas"). Você filtra por responsável, setor ou obra e vê o que está vencido, o que vence hoje e o que vem pela frente, na Tabela ou na Lista.',
             dica: 'Excluir uma pendência da lista não apaga o item da ata: a ata só muda por uma revisão.' },
-        ],
-      },
-      {
-        id: 'perfil-foto', topico: 'perfil', funcoes: 'todos', titulo: 'Sua foto de perfil', para: 'Todos',
-        resumo: 'Como colocar a sua própria foto, direto do menu.',
-        slides: [
-          { titulo: 'Clique na foto', texto: 'No alto do menu da esquerda aparece a sua foto (ou as suas iniciais) e o seu nome. Clique na foto para escolher uma imagem do seu computador ou celular. Todo mundo troca a própria foto; ninguém troca a dos outros.' },
-          { titulo: 'Como a foto fica', texto: 'O sistema corta a imagem em quadrado, pelo centro, e a reduz. Ela aparece no menu, no Perfil, no escritório virtual e onde o seu nome aparecer. Para trocar de novo, clique outra vez. Para tirar a foto, abra o Perfil (clicando no seu nome) e use "Remover".' },
-        ],
-      },
-      {
-        id: 'feed-usar', topico: 'feed', funcoes: 'todos', titulo: 'Como usar o Feed', para: 'Todos',
-        resumo: 'Os recados e as novidades da equipe: publicar, comentar e curtir.',
-        slides: [
-          { imagem: img('feed-01'), titulo: 'O Feed da equipe', texto: 'O Feed é o mural da Sólida: recados, avisos e novidades. Qualquer pessoa publica, comenta e curte. A bolinha vermelha ao lado de Feed mostra que há publicação nova que você ainda não viu.',
-            legenda: ['Feed: abra para ler as novidades e publicar.'],
-            dica: 'Para assuntos de trabalho que precisam de responsável e prazo, crie uma tarefa em vez de usar o Feed.' },
-        ],
-      },
-      {
-        id: 'trein-usar', topico: 'treinamentos', funcoes: 'todos', titulo: 'Como usar os Treinamentos', para: 'Todos',
-        resumo: 'Onde achar o passo a passo de cada tela e marcar o que você já viu.',
-        slides: [
-          { imagem: img('trein-01'), titulo: 'Passo a passo de cada tela', texto: 'Em Treinamentos, os blocos seguem o menu: cada tela do sistema tem o seu passo a passo, com prints reais e setas vermelhas. Clique em "abrir" para ver; no último passo, "Concluir treinamento" marca como visto. Dá para rever quando quiser.',
-            legenda: ['Treinamentos: a lista de passo a passo, por tela.', 'Cada bloco: o nome da tela, quantos passos e se você já viu.'],
-            dica: 'Use as setas do teclado (← →) para passar os passos e Esc para fechar.' },
         ],
       },
       {
