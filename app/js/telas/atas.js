@@ -427,7 +427,7 @@ function cartao(p, hoje) {
   const onde2 = p.obra || p.setor || '';   // se tem obra aparece a obra; senão, o setor
   return html`<article class="at-card at-${col}" data-tarefa="${p.id}" draggable="true" title="Clique para ver os detalhes · arraste para mudar o prazo">
     <div class="at-tit">${descRica(p.descricao)}</div>
-    <div class="at-linha2"><span class="at-esq">${prazoBtn(p, rotuloPrazo, `at-prazo at-p-${col}`)}</span><span class="at-dir">${p.urgencia ? chipUrg(p.urgencia) : html`<span class="at-sem-prio">sem prioridade</span>`}</span></div>
+    <div class="at-linha2"><span class="at-esq">${prazoBtn(p, rotuloPrazo, `at-prazo at-p-${col}`)}</span><span class="at-dir">${p.urgencia ? chipUrg(p.urgencia) : ""}</span></div>
     <div class="at-linha3"><span class="at-esq"><span class="at-pessoa">${nomeDe(p.responsavel, p.responsavel_nome)}</span>${p.responsavel_tipo && p.responsavel_tipo !== 'solida' ? html`<span class="at-tipo at-t-${p.responsavel_tipo}">${ROTULO_TIPO[p.responsavel_tipo] || 'Externo'}${p.responsavel_categoria ? ` · ${p.responsavel_categoria}` : ''}</span>` : ''}</span><span class="at-dir">${onde2 ? html`<span class="at-chip">${onde2}</span>` : ''}${p.os ? html`<a class="at-chip at-os" href="#/posobra/os/${encodeURIComponent(p.os)}" title="Abrir a OS desta pendência">${p.os}</a>` : ''}</span></div>
     ${p.gestores_nome || a ? html`<div class="at-linha4">${p.gestores_nome ? html`<span class="at-gestor" title="Gestor da pendência: acompanha o responsável (pelas obras dele)">gestor: ${p.gestores_nome}</span>` : ''}${a ? html`<a class="at-ata" href="#/atas?aba=atas&ata=${a.id}" title="Ata de origem">ata ${dm(a.data).slice(0, 5)}</a>` : ''}</div>` : ''}
     <div class="at-acoes">
