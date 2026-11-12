@@ -805,3 +805,6 @@ body.nav-recolhido nav::after { display: none; }
 
 /* Grupos recolhidos da lista de obras (finalizadas, não fechadas) */
 .ac-grupo-fechado { margin-top: 10px; } .ac-grupo-fechado > summary { cursor: pointer; list-style: revert; }
+
+/* Janela da OS (Quadro de OS): fundo branco, largura confortável (não usa a moldura transparente da janela da tarefa) */
+.at-modal-caixa.osq-caixa { background: #fff; box-shadow: 0 18px 50px rgba(0, 0, 0, .35); padding: 18px 20px; width: min(860px, calc(100vw - 32px)); max-height: calc(100vh - 40px); overflow-y: auto; }

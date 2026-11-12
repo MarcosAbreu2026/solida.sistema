@@ -1531,7 +1531,7 @@ function osqAbrir(html, classe = '') {
   if (!m) { m = document.createElement('div'); m.id = 'at-modal'; m.className = 'at-modal'; document.body.appendChild(m); }
   m.innerHTML = `<div class="at-modal-caixa ${classe}">${String(html)}</div>`;
 }
-const osqDetalhe = (id, msg = '') => osqAbrir(osq.detalhe(id, { podeEditar: podeEditarPos(), clientesPos: posObrasAtivas(), msg }), 'tf-caixa');
+const osqDetalhe = (id, msg = '') => osqAbrir(osq.detalhe(id, { podeEditar: podeEditarPos(), clientesPos: posObrasAtivas(), msg }), 'osq-caixa');
 document.addEventListener('click', (e) => {
   const nova = e.target.closest && e.target.closest('[data-osq-nova]');
   if (nova) { osqAbrir(osq.formNova(nova.dataset.osqNova, posObrasAtivas())); const c = document.querySelector('#osq-form-nova [name="cliente"]'); if (c) c.focus(); return; }
