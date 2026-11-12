@@ -598,7 +598,8 @@ const opcoesFuncaoTarefa = (respId, atual) => {
 };
 // Ligar a tarefa a uma função é opcional ao criar, mas OBRIGATÓRIO ao concluir (senão não conta nas funções da pessoa). "Fora da função" = fora do quadro de funções.
 export const FUNCAO_OUTRAS = 'Fora da função';
-export const precisaFuncao = (id) => { const p = pendenciaPorId(id); return !!p && !!p.responsavel && !p.funcao_tarefa; };
+// a função da tarefa deixou de ser obrigatória ao concluir (pedido do Felipe, 12/11/2026): ela continua opcional na janela da tarefa
+export const precisaFuncao = () => false;
 export async function definirFuncaoTarefa(id, funcao) {
   const mud = { funcao_tarefa: funcao || null };
   if (NA_NUVEM) await atualizarPendenciaNuvem(id, mud);
