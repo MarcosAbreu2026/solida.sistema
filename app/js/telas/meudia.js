@@ -362,7 +362,7 @@ function cartaoTarefa(e, hoje, grande = false) {
   return html`<div class="ag-tcard ag-t-${cls} ${e.semHora ? 'ag-t-semhora' : ''} ${e.n > 1 ? 'fq-estreito' : ''}" style="${estilo}" data-tarefa="${p.id}" data-tcard="${p.id}" data-span="${e.span}"
     title="${ass ? `${ass}: ` : ''}${resto}${p.obra ? ` · ${p.obra}` : ''} — ${hhmm(e.ini)} a ${hhmm(e.ini + e.dur)}${e.semHora ? ' (sem horário definido: está no início do dia; arraste para escolher)' : ''}. Clique para abrir; arraste para mudar o horário ou o dia; puxe a borda de baixo para mudar a duração.">
     ${p.obra ? html`<b class="ag-t-obra">${p.obra}</b>` : ''}<div class="fq-nome">${ass ? `${ass} · ` : ''}${resto}</div>
-    <div class="fn-meta">${e.semHora ? 'sem horário' : `${hhmm(e.ini)}–${hhmm(e.ini + e.dur)}`}${feita ? ' · ✓ concluída' : ''}</div>
+    <div class="fn-meta">${e.semHora ? 'sem horário' : `${hhmm(e.ini)}–${hhmm(e.ini + e.dur)}`}</div>
     ${grande && e.span >= 2 ? html`<div class="ag-t-det">${p.setor ? html`<span>${p.setor}</span>` : ''}${p.responsavel_nome ? html`<span>${p.responsavel_nome}</span>` : ''}${p.urgencia ? html`<span class="ag-t-urg ag-u-${p.urgencia}">${{ alta: 'Alta', media: 'Média', baixa: 'Baixa' }[p.urgencia] || ''}</span>` : ''}</div>` : ''}
     ${acoesCartao(p)}<div class="ag-alca" title="Puxe para mudar a duração"></div></div>`;
 }
