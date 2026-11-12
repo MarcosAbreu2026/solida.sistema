@@ -341,7 +341,8 @@ function ajustarAlturaFuncoes() {
 }
 window.addEventListener('resize', ajustarAlturaFuncoes);
 // obra "em orçamento" ainda não é obra de verdade: não entra nas listas da operação, só nas caixinhas de obra de atas e tarefas (de quem pode ver)
-const cadastroAtivo = () => (estado.obrasCad || []).filter((c) => c.situacao !== 'finalizada' && c.situacao !== 'orcamento').map((c) => c.codigo);
+const SEM_LISTA = ['finalizada', 'orcamento', 'nao_fechado'];   // fora das listas da operação (orçamento e não fechado só aparecem para o setor ORC e a diretoria)
+const cadastroAtivo = () => (estado.obrasCad || []).filter((c) => !SEM_LISTA.includes(c.situacao)).map((c) => c.codigo);
 const cadastroEmOrcamento = () => (estado.obrasCad || []).filter((c) => c.situacao === 'orcamento').map((c) => c.codigo);
 const nomesDasObras = () => Object.fromEntries((estado.obrasCad || []).map((c) => [String(c.codigo).toLowerCase(), c.nome || '']));
 function obrasDeAtas() {
@@ -624,7 +625,7 @@ function desenhar() {
   const CFG = estado.cfg;
   // onde está cada funcionário: só o efetivo de HOJE (zera todo dia); a lista de nomes vem do RH
   // obra cadastrada em Acessos entra na hora nas telas que usam a lista de obras dos dados (efetivo, ferramentas, orçamentos…)
-  if (CFG) { CFG.obrasDados = CFG.obrasDados || [...(CFG.obras || [])]; CFG.obras = [...new Set([...CFG.obrasDados, ...(estado.obrasCad || []).filter((c) => c.situacao !== 'finalizada' && c.situacao !== 'orcamento').map((c) => c.codigo)])]; }
+  if (CFG) { CFG.obrasDados = CFG.obrasDados || [...(CFG.obras || [])]; CFG.obras = [...new Set([...CFG.obrasDados, ...(estado.obrasCad || []).filter((c) => !['finalizada', 'orcamento', 'nao_fechado'].includes(c.situacao)).map((c) => c.codigo)])]; }
   if (CFG) { CFG.funcionariosRH = CFG.funcionariosRH || CFG.funcionarios; CFG.funcionarios = efetivoTela.funcionariosDeHoje(CFG.funcionariosRH, estado.efetivo); }
   let rota = rotaAtual();
   let tela = rota.tela;
@@ -889,10 +890,11 @@ function obrasDisponiveis() {
   // cadastro de obras (aba Cadastros): obras em andamento ou pausadas entram; as finalizadas saem
   const cad = estado.obrasCad || [];
   const fin = new Set(cad.filter((c) => c.situacao === 'finalizada').map((c) => c.codigo));
+  const naoFechadas = new Set(cad.filter((c) => c.situacao === 'nao_fechado').map((c) => c.codigo));
   const plan = CFG ? ((CFG.areas.find((a) => a.id === 'planejamento') || {}).porObra || []) : [];
   const base = CFG ? [...plan.map((o) => o.obra), ...(CFG.obras || []).filter((o) => /^(Mo|Po)/i.test(o))] : [];
   if (!CFG && !cad.length) return [];
-  return [...new Set([...base, ...cad.filter((c) => c.situacao !== 'finalizada' && c.situacao !== 'orcamento').map((c) => c.codigo)])].filter((o) => !fin.has(o));
+  return [...new Set([...base, ...cad.filter((c) => !['finalizada', 'orcamento', 'nao_fechado'].includes(c.situacao)).map((c) => c.codigo)])].filter((o) => !fin.has(o) && !naoFechadas.has(o));
 }
 
 // ---------------------------------------------------------------- dados
@@ -1377,7 +1379,7 @@ function configurar() {
       await nuvem.salvarObra({ codigo, nome: nomeObra, situacao: 'orcamento' });
       await sincronizarCadastros({ forcar: true });
       atas.definirObrasOrcamento(cadastroEmOrcamento(), nomesDasObras());
-      const rotulo = ehPos ? 'Pós-obras em orçamento' : 'Obras em orçamento';
+      const rotulo = ehPos ? 'Pós-obras' : 'Obras em orçamento';
       const g = [...sel.querySelectorAll('optgroup')].find((x) => x.label === rotulo) || Object.assign(document.createElement('optgroup'), { label: rotulo });
       if (!g.parentNode) sel.insertBefore(g, sel.querySelector('optgroup[label="Novo"]'));
       if (![...sel.options].some((o) => o.value === codigo)) { const op = document.createElement('option'); op.value = codigo; op.textContent = codigo; g.appendChild(op); }
@@ -1394,7 +1396,7 @@ function configurar() {
         else { codigo = atas.normalizarCodigoObra(fd.get('codigo')); if (!/^mo\d/i.test(codigo)) { alert('Informe o código da obra, começando com Mo (ex.: Mo461).'); return; } }
         estado.obraOrcMsg = `${codigo} cadastrada em orçamento.`;
       } else { codigo = f.dataset.obraorc; estado.obraOrcMsg = 'Salvo ✓'; }
-      await nuvem.salvarObra({ codigo, nome, situacao: 'orcamento' });
+      await nuvem.salvarObra({ codigo, nome, situacao: f.id === 'obo-novo' ? 'orcamento' : String(fd.get('situacao') || 'orcamento') });
       await sincronizarCadastros({ forcar: true });
     } catch (err) { alert(`Não foi possível salvar (${err.message || err}).`); }
   });

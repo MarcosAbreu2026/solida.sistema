@@ -22,3 +22,18 @@ create policy obras_orcamento_gravar on public.obras_cadastro for all
   with check (situacao = 'orcamento' and public.pode_orcamento_obras());
 
 update public.perfis set setores = array_append(setores, 'ORC Obras Novas') where id = '5cf794ce-30ac-4271-8990-8b36cef1a693' and not ('ORC Obras Novas' = any (setores));
+
+-- Situação "não fechado" (orçamento que não virou obra): some das listas; só o setor ORC Obras Novas e a diretoria veem (aplicado em 13/11/2026).
+alter table public.obras_cadastro drop constraint if exists obras_cadastro_situacao_check;
+alter table public.obras_cadastro add constraint obras_cadastro_situacao_check check (situacao in ('andamento', 'pausada', 'finalizada', 'orcamento', 'nao_fechado'));
+drop policy if exists obras_cadastro_ler on public.obras_cadastro;
+create policy obras_cadastro_ler on public.obras_cadastro for select to authenticated
+  using (public.liberado() and (situacao not in ('orcamento', 'nao_fechado') or public.pode_orcamento_obras()));
+drop policy if exists obras_cadastro_gravar on public.obras_cadastro;
+create policy obras_cadastro_gravar on public.obras_cadastro for all
+  using ((public.pode_mudar_obra() and situacao not in ('orcamento', 'nao_fechado')) or public.eh_diretoria())
+  with check (public.pode_mudar_obra());
+drop policy if exists obras_orcamento_gravar on public.obras_cadastro;
+create policy obras_orcamento_gravar on public.obras_cadastro for all
+  using (situacao in ('orcamento', 'nao_fechado') and public.pode_orcamento_obras())
+  with check (situacao in ('orcamento', 'nao_fechado') and public.pode_orcamento_obras());

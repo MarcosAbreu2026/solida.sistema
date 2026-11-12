@@ -525,8 +525,10 @@ export function gruposDeObras(obras, atual = '', { criar = false } = {}) {
   const opt = (o) => html`<option value="${o}" ${o === atual ? html.seguro('selected') : ''}>${o}</option>`;
   const emOrc = (o) => OBRAS_ORC.has(String(o).toLowerCase());
   const ob = lista.filter((o) => ehObraPura(o) && !emOrc(o)).sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true })); const po = lista.filter((o) => !ehObraPura(o) && !emOrc(o)).sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }));
-  const orc = lista.filter(emOrc).sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true })); const obOrc = orc.filter(ehObraPura); const poOrc = orc.filter((o) => !ehObraPura(o));
-  return html`${ob.length ? html`<optgroup label="Obras">${ob.map(opt)}</optgroup>` : ''}${po.length ? html`<optgroup label="Pós-obras">${po.map(opt)}</optgroup>` : ''}${obOrc.length ? html`<optgroup label="Obras em orçamento">${obOrc.map(opt)}</optgroup>` : ''}${poOrc.length ? html`<optgroup label="Pós-obras em orçamento">${poOrc.map(opt)}</optgroup>` : ''}${criar && podeCriarObraOrcamento() ? html`<optgroup label="Novo"><option value="__nova_orc__">+ Nova obra em orçamento…</option><option value="__novo_po__">+ Novo pós-obra…</option></optgroup>` : ''}`;
+  const orc = lista.filter((o) => emOrc(o) && ehObraPura(o)).sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }));
+  // pós-obra é sempre pós-obra, mesmo que ainda esteja em orçamento; só as obras (Mo…) em orçamento ganham grupo próprio
+  const posTodos = lista.filter((o) => !ehObraPura(o)).sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }));
+  return html`${ob.length ? html`<optgroup label="Obras">${ob.map(opt)}</optgroup>` : ''}${posTodos.length ? html`<optgroup label="Pós-obras">${posTodos.map(opt)}</optgroup>` : ''}${orc.length ? html`<optgroup label="Obras em orçamento">${orc.map(opt)}</optgroup>` : ''}${criar && podeCriarObraOrcamento() ? html`<optgroup label="Novo"><option value="__nova_orc__">+ Nova obra em orçamento…</option><option value="__novo_po__">+ Novo pós-obra…</option></optgroup>` : ''}`;
 }
 const selObra = (obras, atual, todos = 'Todos') => html`<label>Obra<select data-atas-filtro="obra"><option value="">${todos}</option>${gruposDeObras(obras, atual)}</select></label>`;
 // Responsável: as opções de sempre no alto e, embaixo, o grupo "Equipe da Sólida" com cada pessoa (diretoria e administrativo escolhem qualquer uma; os demais, quem podem ver)
