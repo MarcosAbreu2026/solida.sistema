@@ -740,3 +740,7 @@ body.nav-recolhido nav::after { display: none; }
 .esc-ops button { text-align: left; padding: 11px 14px; border: 1px solid #C9D1DA; background: #F6F8FB; border-radius: 10px; font: inherit; font-weight: 700; color: #1F3A56; cursor: pointer; }
 .esc-ops button:hover { border-color: #2F6FA8; background: #EAF2FB; }
 .esc-rod { display: flex; justify-content: flex-end; margin-top: 12px; }
+
+/* Caixinha "recorrente": o checkbox não pode herdar a largura total dos campos do formulário */
+.tf-grade .tf-recor input[type="checkbox"], .tf-nova .tf-grade.pf-linha .tf-recor input[type="checkbox"] { width: 18px !important; min-width: 18px !important; height: 18px !important; flex: none; padding: 0 !important; }
+.tf-recor > span { flex: 1 1 auto; min-width: 0; line-height: 1.25; }
