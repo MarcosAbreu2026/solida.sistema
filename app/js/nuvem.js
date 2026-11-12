@@ -255,7 +255,7 @@ export async function apagarPendenciasNuvem(ids) {
   const { data, error } = await sb.from('pendencias').delete().in('id', ids).select('id');
   if (error) throw new Error(error.message);
   const n = (data || []).length;
-  if (n < ids.length) throw new Error(n ? `só ${n} de ${ids.length} tarefas foram apagadas (as outras são de outra pessoa: só quem criou ou a diretoria apaga)` : 'sem permissão: só quem criou a tarefa ou a diretoria pode apagar');
+  if (n < ids.length) throw new Error(n ? `só ${n} de ${ids.length} tarefas foram apagadas (as outras são de outra pessoa: só quem criou, o responsável ou a diretoria apaga)` : 'sem permissão: só quem criou a tarefa, o responsável ou a diretoria pode apagar');
 }
 export async function atualizarPendenciasNuvem(ids, mudancas) {
   if (!ids.length) return;
