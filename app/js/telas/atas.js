@@ -12,7 +12,7 @@ import { SETORES, SETORES_ORGANOGRAMA, funcoesDoCargo } from '../funcoes.js';
 import { funcaoVe } from '../config.js';
 import { sessao, idPessoa, funcaoReal, funcaoAtual, simulando } from '../sessao.js';
 import { lerPessoasTarefas } from '../armazenamento.js';
-import { analisarAta, lerArquivoAta, acharResponsavel, ehAtaDePendencias, lerAtaDePendencias } from '../ata-leitor.js';
+import { analisarAta, lerArquivoAta, acharResponsavel, ehAtaDePendencias, lerAtaDePendencias, formatoListaPendencias, lerListaPorPessoa } from '../ata-leitor.js';
 import { analisarReuniao, analisarFala, pareceResumoEmTopicos } from '../fala-leitor.js';
 
 export const ABAS = [['pendencias', 'Pendências'], ['atas', 'Atas'], ['pautas', 'Pautas'], ['nova', 'Nova ata']];
@@ -30,8 +30,10 @@ export const temLote = () => !!lote;
 export async function importarListaPendencias(arquivo, obras) {
   if (!dados.pessoas.length) await carregar();
   const r = await lerArquivoAta(arquivo);
-  if (!ehAtaDePendencias(r.texto, r.paginas)) throw new Error('Este PDF não parece uma lista de pendências (a tabela Nº · Obra · Descrição · Responsável · Urgência · Desde · Previsto). Para importar uma ata de reunião, use a aba Atas.');
-  rascunho = null; lote = montarLote(lerAtaDePendencias(r.paginas, r.texto, { pessoas: dados.pessoas, obras, hoje: hojeISO() }), obras);
+  const formato = formatoListaPendencias(r.texto, r.paginas);
+  if (!formato) throw new Error('Este PDF não parece uma lista de pendências (tabela Obra · Pendência · Urgência… ou Nº · Obra · Descrição · Responsável…). Para importar uma ata de reunião, use a aba Atas.');
+  const opc = { pessoas: dados.pessoas, obras, hoje: hojeISO() };
+  rascunho = null; lote = montarLote(formato === 'pessoa' ? lerListaPorPessoa(r.paginas, r.texto, opc) : lerAtaDePendencias(r.paginas, r.texto, opc), obras);
   return lote;
 }
 // lê um arquivo (PDF ou texto) ou texto colado e monta o rascunho da ata
@@ -56,10 +58,29 @@ const NAO_E_OBRA = /^(as built|projetos?|aditivos?|planilha padr[aã]o|or[cç]am
 const CODIGO_OBRA = /^(mo|po)\s*\d+[a-z]*$/i;
 export const normalizarCodigoObra = (txt) => { const s = String(txt || '').trim(); return CODIGO_OBRA.test(s) ? s.replace(/\s+/g, '').replace(/^(mo|po)/i, (m) => m[0].toUpperCase() + m[1].toLowerCase()) : s; };
 // o assunto sai do que tem que ser feito (compatibilizar → COMPATIBILIZAÇÃO, DWG ou planta → PROJETO…); a obra fica só no campo Obra
-const ASSUNTOS = [[/compatibiliz/, 'COMPATIBILIZAÇÃO'], [/as built|asbuilt/, 'AS BUILT'], [/\bdwg\b|planta|projeto/, 'PROJETO'], [/aditivo/, 'ADITIVOS'], [/fornecedor/, 'FORNECEDOR'], [/or[cç]amento/, 'ORÇAMENTO'],
-  [/cobrar|liga[cç][aã]o|ligar|resposta/, 'COBRANÇA'], [/pintura/, 'PINTURA'], [/pasta|arquivo|salvar/, 'ARQUIVO'], [/cliente/, 'CLIENTE'], [/reuni[aã]o/, 'REUNIÃO'], [/planilha|base de/, 'PLANILHA']];
-export const assuntoDoTexto = (txt) => { const t = normTxt(txt); const a = ASSUNTOS.find(([re]) => re.test(t)); return a ? a[1] : 'GERAL'; };
+const ASSUNTOS = [[/compatibiliz/, 'COMPATIBILIZAÇÃO'], [/as built|asbuilt/, 'AS BUILT'], [/\bpop\b/, 'POP'], [/relatorio/, 'RELATÓRIO'], [/\bmetas?\b/, 'METAS'], [/paisagismo/, 'PAISAGISMO'], [/vidros?|espelhos?/, 'VIDROS'],
+  [/mobiliario/, 'MOBILIÁRIO'], [/serralheria/, 'SERRALHERIA'], [/marceneiro|marcenaria/, 'MARCENARIA'], [/acustic/, 'ACÚSTICA'], [/rodape/, 'RODAPÉ'], [/escopo/, 'ESCOPO'], [/resumo/, 'RESUMO'], [/terceiros/, 'TERCEIROS'],
+  [/\bdwg\b|planta|projeto/, 'PROJETO'], [/aditivo/, 'ADITIVOS'], [/fornecedor/, 'FORNECEDOR'], [/or[cç]amento/, 'ORÇAMENTO'], [/pagamento/, 'PAGAMENTO'], [/\+?controle/, 'CONTROLE'],
+  [/cobrar|liga[cç][aã]o|ligar|resposta/, 'COBRANÇA'], [/pintura/, 'PINTURA'], [/pasta|arquivo|salvar/, 'ARQUIVO'], [/cliente/, 'CLIENTE'], [/reuni[aã]o/, 'REUNIÃO'], [/planilha|base de/, 'PLANILHA'], [/listagem|lista de/, 'LISTAGEM']];
+// sem palavra conhecida: a primeira palavra do que tem que ser feito, pulando o verbo no infinitivo ("Ver pedra do topo" → PEDRA)
+export const assuntoDoTexto = (txt) => {
+  const t = normTxt(txt); const a = ASSUNTOS.find(([re]) => re.test(t)); if (a) return a[1];
+  const ps = String(txt || '').trim().split(/\s+/).filter(Boolean); const p = /(ar|er|ir|or)$/i.test(ps[0] || '') && ps[1] ? ps[1] : ps[0];
+  return String(p || 'GERAL').replace(/[^\p{L}\p{N}-]/gu, '').toLocaleUpperCase('pt-BR') || 'GERAL';
+};
 function montarLote(lido, obras) {
+  if (lido.tipo === 'pessoa') {
+    // lista de UMA pessoa (Ata de pendências — Mariana): ela é a responsável de todas; "Com a Julia" na observação põe a Julia como observadora
+    const q = primeiroNomeDe(lido.pessoaNome); const resp = dados.pessoas.find((p) => primeiroNomeDe(p.nome) === q) || {};
+    const itens = lido.itens.map((it) => {
+      const geral = /^geral$/i.test(it.obraTxt); const cod = normalizarCodigoObra(it.obraTxt);
+      const cad = geral ? '' : obras.find((o) => codigoDaObra(o) === codigoDaObra(cod) || normTxt(o) === normTxt(it.obraTxt) || normTxt(NOMES_OBRAS[String(o).toLowerCase()]) === normTxt(it.obraTxt));
+      const obsIds = [...new Set(it.comPessoas.map((n) => { const q2 = primeiroNomeDe(n); return (dados.pessoas.find((p) => primeiroNomeDe(p.nome) === q2) || {}).id; }).filter((id) => id && id !== resp.id))];
+      const notas = [it.obs, it.desde ? `Pendente desde ${dm(it.desde).slice(0, 5)}` : ''].filter(Boolean);
+      return { n: it.n, incluir: true, obra: cad || '', obraPdf: !geral && !cad ? it.obraTxt : '', assunto: assuntoDoTexto(it.titulo), desc: it.titulo, responsavel: resp.id || '', observadores: obsIds, responsaveisTxt: lido.pessoaNome, setor: (resp.setores || [])[0] || '', urgencia: it.urgencia, prazo: it.prazo, hora: it.hora || '', notas };
+    });
+    return { titulo: lido.titulo, data: lido.data, total: lido.total, itens };
+  }
   const setorTerc = SETORES_ATA.find((s) => /terceiriz\w*\s+laranja/i.test(s)) || '';
   const setorPadrao = SETORES_ATA.find((s) => /^orc\s+obras\s+novas$/i.test(s)) || '';
   const itens = lido.itens.map((it) => {
@@ -71,16 +92,16 @@ function montarLote(lido, obras) {
     const notas = [it.nota, it.obraDetalhe && !terc ? `Quadro: ${it.obraDetalhe}` : ''].filter(Boolean);
     // sem obra no cadastro: o que está na coluna Obra é o próprio assunto do quadro (As built, Projetos, Aditivos, Planilha padrão…)
     const assunto = cad || CODIGO_OBRA.test(cod) ? assuntoDoTexto(it.titulo) : principal.toLocaleUpperCase('pt-BR');
-    return { n: it.n, incluir: true, obra: cad || '', assunto, desc: it.titulo, responsavel: ids[0] || '', observadores: ids.slice(1), responsaveisTxt: it.responsaveisTxt, setor: terc && setorTerc ? setorTerc : setorPadrao, urgencia: it.urgencia, prazo: it.prazo, notas };
+    return { n: it.n, incluir: true, obra: cad || '', obraPdf: !cad && CODIGO_OBRA.test(cod) ? principal : '', assunto, desc: it.titulo, responsavel: ids[0] || '', observadores: ids.slice(1), responsaveisTxt: it.responsaveisTxt, setor: terc && setorTerc ? setorTerc : setorPadrao, urgencia: it.urgencia, prazo: it.prazo, notas };
   });
   return { titulo: lido.titulo, data: lido.data, total: lido.total, itens };
 }
 export function painelLote(obras) {
   if (!lote) return '';
   const pessoas = [...dados.pessoas].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
-  const linha = (it) => html`<tr data-lote-i="${it.n}" class="lote-lin">
+  const linha = (it) => html`<tr data-lote-i="${it.n}" data-hora="${it.hora || ''}" class="lote-lin">
     <td><input type="checkbox" data-lote-inc checked title="Criar esta tarefa"></td><td class="lote-n">${it.n}</td>
-    <td><select data-lote-obra><option value="">— sem obra —</option>${gruposDeObras(obras, it.obra, { criar: true })}</select></td>
+    <td><select data-lote-obra><option value="">— sem obra —</option>${gruposDeObras(obras, it.obra, { criar: true })}</select>${it.obraPdf ? html`<small class="lote-obs">no PDF: ${it.obraPdf}</small>` : ''}</td>
     <td><input data-lote-assunto value="${it.assunto}"></td>
     <td><input data-lote-desc value="${it.desc}"></td>
     <td><select data-lote-resp class="${it.responsavel ? '' : 'lote-falta'}"><option value="">— escolher —</option>${pessoas.map((p) => html`<option value="${p.id}" ${p.id === it.responsavel ? html.seguro('selected') : ''}>${p.nome}</option>`)}</select>${it.observadores.length ? html`<small class="lote-obs" data-lote-obs="${it.observadores.join(',')}">+ observa: ${it.observadores.map((id) => nomeDe(id)).join(', ')}</small>` : ''}</td>
@@ -102,7 +123,7 @@ export async function criarTarefasDoLote(linhas) {
   const lista = linhas.map((l) => ({
     ata_id: null, descricao: [String(l.assunto || '').trim().replace(/,/g, ' /').toLocaleUpperCase('pt-BR'), String(l.desc || '').trim()].filter(Boolean).join(', '),
     responsavel: l.responsavel, responsavel_nome: nomeDe(l.responsavel), responsavel_tipo: 'solida', responsavel_categoria: null, prazo: l.prazo || null, status: 'aberta',
-    obra: l.obra || null, setor: l.setor || null, os: null, urgencia: l.urgencia || null, funcao_tarefa: null, observadores: l.observadores || [], hora: null, duracao: 60,
+    obra: l.obra || null, setor: l.setor || null, os: null, urgencia: l.urgencia || null, funcao_tarefa: null, observadores: l.observadores || [], hora: l.hora || null, duracao: 60,
   }));
   let ids = [];
   if (NA_NUVEM) ids = await criarPendenciasNuvemLote(lista);

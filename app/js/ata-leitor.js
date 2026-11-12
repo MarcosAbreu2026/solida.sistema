@@ -442,3 +442,48 @@ export function lerAtaDePendencias(paginas, texto, { pessoas = [], hoje = '' } =
   itens.sort((a, b) => a.n - b.n);
   return { tipo: 'pendencias', titulo, data, itens, total: (/Total de pend[êe]ncias:\s*(\d+)/i.exec(String(texto || '')) || [])[1] ? Number(/Total de pend[êe]ncias:\s*(\d+)/i.exec(String(texto))[1]) : itens.length };
 }
+
+// ---------------------------------------------------------------- "Ata de pendências — Nome" (lista de UMA pessoa)
+// Tabela Obra · Pendência · Urgência · Pendente desde · Observação, de uma pessoa só (o nome vem no título). A célula é alinhada em cima: cada linha começa
+// na célula da coluna Obra, e o que está embaixo dela até a próxima linha (descrição e observação quebradas) é da mesma pendência.
+// Da observação saem: "prazo era dd/mm" ou "Marcada para dd/mm" (prazo), "às 9h" (horário) e "Com a Julia" (quem divide a tarefa).
+export function formatoListaPendencias(texto, paginas) {
+  if (ehAtaDePendencias(texto, paginas)) return 'quadro';
+  const t = String(texto || '');
+  if (!/Ata\s+de\s+pend[êe]ncias/i.test(t) || !paginas) return '';
+  const temCab = (p) => ['obra', 'pendencia', 'urgencia', 'observacao'].every((n) => p.some((it) => norm(it.str.trim()) === n));
+  return paginas.some(temCab) ? 'pessoa' : '';
+}
+const MES_EN = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
+export function lerListaPorPessoa(paginas, texto, { hoje = '' } = {}) {
+  const t = String(texto || '');
+  const pn = /Ata\s+de\s+pend[êe]ncias\s*[—–-]\s*([^\n]+)/i.exec(t); const pessoaNome = pn ? pn[1].trim() : '';
+  const dm = /([A-Za-z]{3})[a-z]*\s+(\d{1,2}),\s+(\d{4})/.exec(t);
+  const data = dm && MES_EN[dm[1].toLowerCase()] ? `${dm[3]}-${String(MES_EN[dm[1].toLowerCase()]).padStart(2, '0')}-${dm[2].padStart(2, '0')}` : (hoje || '');
+  const itens = []; let n = 0;
+  for (const pag of paginas) {
+    const cab = (nome) => pag.find((it) => norm(it.str.trim()) === nome);
+    const hObra = cab('obra'); const hPend = cab('pendencia'); const hUrg = cab('urgencia'); const hDesde = cab('pendente'); const hObs = cab('observacao');
+    if (!hObra || !hPend || !hUrg || !hDesde || !hObs) continue;
+    const b1 = hPend.x - 6; const b2 = hUrg.x - 6; const b3 = hDesde.x - 6; const b4 = hObs.x - 6;
+    const fim = pag.find((it) => /^Pr[óo]ximos dias/i.test(it.str.trim()) && it.y < hObra.y);
+    const area = pag.filter((it) => it.y < hObra.y - 3 && (!fim || it.y > fim.y + 2) && !/^Page\s+\d+\s+of\s+\d+/i.test(it.str.trim()));   // sem o rodapé "Page 1 of 3"
+    const ancoras = area.filter((it) => Math.abs(it.x - hObra.x) <= 4 && it.str.trim()).sort((a, b) => b.y - a.y);
+    const colunaDa = (linhasY, de, ate) => agruparLinhas(area.filter((it) => it.x >= de && it.x < ate && linhasY(it))).map((l) => textoDaLinha(l));
+    ancoras.forEach((a, i) => {
+      const prox = ancoras[i + 1];
+      const nela = (it) => it.y <= a.y + 3 && (!prox || it.y > prox.y + 3);
+      const col = (de, ate) => emendar(colunaDa(nela, de, ate));
+      const obs = col(b4, 1e9); const pend = col(b1, b2); const urg = col(b2, b3); const desde = col(b3, b4);
+      const dBR = (m) => (m ? dataBR([null, m[1], m[2]], data || hoje) : '');
+      const prazoQuando = /prazo era\s+(\d{1,2})\/(\d{1,2})/i.exec(obs) || /marcada para\s+(\d{1,2})\/(\d{1,2})/i.exec(obs);
+      const hr = /[àa]s\s*(\d{1,2})h(?:\s*(\d{2}))?/i.exec(`${pend} ${obs}`);
+      const com = [...obs.matchAll(/(?<!reuni[ãa]o\s)\b[Cc]om\s+(?:a\s+|o\s+|os\s+|as\s+)?([A-ZÀ-Ú][\wÀ-ÿ]+)/g)].map((m) => m[1]);
+      const ds = /(\d{1,2})\/(\d{1,2})/.exec(desde);
+      n += 1;
+      itens.push({ n, obraTxt: col(hObra.x - 4, b1), titulo: pend, urgencia: ({ alta: 'alta', media: 'media', baixa: 'baixa' })[norm(urg)] || '', desde: ds ? dBR(ds) : '', obs,
+        prazo: dBR(prazoQuando) || data || hoje, hora: hr ? `${hr[1].padStart(2, '0')}:${hr[2] || '00'}` : '', comPessoas: com });
+    });
+  }
+  return { tipo: 'pessoa', titulo: `Ata de pendências — ${pessoaNome}`, data, pessoaNome, itens, total: itens.length };
+}

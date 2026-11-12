@@ -2064,7 +2064,7 @@ async function criarTarefasDaAtaDePendencias(botao) {
   document.querySelectorAll('.lote-lin').forEach((tr) => {
     if (!tr.querySelector('[data-lote-inc]').checked) return;
     const v = (s) => String((tr.querySelector(s) || {}).value || '').trim();
-    const l = { n: tr.dataset.loteI, obra: v('[data-lote-obra]'), assunto: v('[data-lote-assunto]'), desc: v('[data-lote-desc]'), responsavel: v('[data-lote-resp]'), setor: v('[data-lote-setor]'), urgencia: v('[data-lote-urg]'), prazo: v('[data-lote-prazo]'), nota: v('[data-lote-nota]'),
+    const l = { n: tr.dataset.loteI, obra: v('[data-lote-obra]'), assunto: v('[data-lote-assunto]'), desc: v('[data-lote-desc]'), responsavel: v('[data-lote-resp]'), setor: v('[data-lote-setor]'), urgencia: v('[data-lote-urg]'), prazo: v('[data-lote-prazo]'), nota: v('[data-lote-nota]'), hora: tr.dataset.hora || '',
       observadores: String(((tr.querySelector('[data-lote-obs]') || {}).dataset || {}).loteObs || '').split(',').filter(Boolean) };
     if (!erro && (!l.desc || !l.responsavel || !l.setor || !l.prazo)) erro = `Na linha ${l.n}, falta o que fazer, o responsável, o setor ou o prazo.`;
     linhas.push(l);
