@@ -1666,7 +1666,7 @@ document.addEventListener('drop', (e) => {
 });
 
 meudia.instalarQuadro(() => desenhar());
-agendaSemana.instalarTarefasNaGrade(async (id, mud) => { try { await atas.definirHorarioTarefa(id, mud); } catch (err) { alert(`Não foi possível mudar o horário (${err.message || err}).`); } desenhar(); });
+agendaSemana.instalarTarefasNaGrade(async (id, mud) => { try { let esc = 'uma'; if (atas.ehRecorrente(id)) { esc = await perguntarEscopo('Mudar tarefa recorrente'); if (!esc) { desenhar(); return; } } await atas.definirHorarioTarefa(id, mud, esc); } catch (err) { alert(`Não foi possível mudar o horário (${err.message || err}).`); } desenhar(); });
 ordenar.instalar();
 
 // Reposição › rota: dia e horário de saída (a rota em texto se refaz)
@@ -1752,7 +1752,8 @@ document.addEventListener('submit', async (e) => {
   const f = e.target.closest && e.target.closest('#tf-form'); if (!f) return;
   e.preventDefault(); const fd = new FormData(f); const id = f.dataset.tf;
   try {
-    await atas.salvarTarefa(id, { hora: fd.get('t_hora'), duracao: fd.get('t_dur'), observadores: fd.getAll('t_obs'), funcaoTarefa: fd.get('t_func'), urgencia: fd.get('t_urg'), assunto: fd.get('t_assunto'), desc: fd.get('t_desc'), resp: fd.get('t_resp'), tipo: fd.get('t_tipo'), nome: fd.get('t_nome'), gestor: fd.get('t_gestor'), prazo: fd.get('t_prazo') });
+    let escopo = 'uma'; if (atas.ehRecorrente(id)) { escopo = await perguntarEscopo('Salvar tarefa recorrente'); if (!escopo) return; }
+    await atas.salvarTarefa(id, { escopo, hora: fd.get('t_hora'), duracao: fd.get('t_dur'), observadores: fd.getAll('t_obs'), funcaoTarefa: fd.get('t_func'), urgencia: fd.get('t_urg'), assunto: fd.get('t_assunto'), desc: fd.get('t_desc'), resp: fd.get('t_resp'), tipo: fd.get('t_tipo'), nome: fd.get('t_nome'), gestor: fd.get('t_gestor'), prazo: fd.get('t_prazo') });
     await redesenharTarefas(id, 'Salvo ✓');
   } catch (err) { alert(`Não foi possível salvar (${err.message || err}).`); }
 });
@@ -1771,8 +1772,10 @@ document.addEventListener('click', async (e) => {
   const del = e.target.closest && e.target.closest('[data-tf-del]');
   if (del) {
     const p = atas.pendenciaPorId(del.dataset.tfDel);
-    if (!confirm(p && p.ata_id ? 'Tirar esta tarefa da lista? O item continua na ata.' : 'Excluir esta tarefa? Não dá para desfazer.')) return;
-    try { await atas.apagarPendencia(del.dataset.tfDel); const m = document.getElementById('at-modal'); if (m) m.remove(); await redesenharTarefas(); } catch (err) { alert(`Não foi possível excluir (${err.message || err}).`); }
+    let esc = 'uma';
+    if (p && p.serie && !p.ata_id) { esc = await perguntarEscopo('Excluir tarefa recorrente'); if (!esc) return; }
+    else if (!confirm(p && p.ata_id ? 'Tirar esta tarefa da lista? O item continua na ata.' : 'Excluir esta tarefa? Não dá para desfazer.')) return;
+    try { await atas.apagarPendencia(del.dataset.tfDel, esc); const m = document.getElementById('at-modal'); if (m) m.remove(); await redesenharTarefas(); } catch (err) { alert(`Não foi possível excluir (${err.message || err}).`); }
     return;
   }
   const nd = e.target.closest && e.target.closest('[data-tf-nota-del]');
@@ -1837,6 +1840,20 @@ document.addEventListener('click', async (e) => {
   const r = e.target.closest && e.target.closest('[data-cfg-reset]');
   if (r) { try { await restaurarConfig(r.dataset.cfgReset); estado.cfgMsg = 'Voltou ao padrão ✓'; desenhar(); } catch (err) { alert(`Não foi possível restaurar (${err.message || err}).`); } }
 });
+// Tarefa recorrente: pergunta (como no Google Agenda) se a mudança vale só para esta ou para esta e as próximas. Devolve 'uma', 'seguintes' ou null (cancelou).
+function perguntarEscopo(titulo) {
+  return new Promise((ok) => {
+    const m = document.createElement('div'); m.className = 'esc-modal';
+    m.innerHTML = `<div class="esc-caixa" role="dialog" aria-modal="true"><h3>${esc(titulo)}</h3><p>Esta tarefa se repete toda semana. O que você quer alterar?</p>
+      <div class="esc-ops"><button type="button" data-esc="uma">Só esta tarefa</button><button type="button" data-esc="seguintes">Esta e as próximas</button></div>
+      <div class="esc-rod"><button type="button" class="botao" data-esc="">Cancelar</button></div></div>`;
+    const fim = (v) => { m.remove(); document.removeEventListener('keydown', tecla, true); ok(v || null); };
+    const tecla = (e) => { if (e.key === 'Escape') { e.stopPropagation(); fim(null); } };
+    m.addEventListener('click', (e) => { const b = e.target.closest('[data-esc]'); if (b) fim(b.dataset.esc); else if (e.target === m) fim(null); });
+    document.addEventListener('keydown', tecla, true);
+    document.body.appendChild(m);
+  });
+}
 // Impressão: moldura com 0,5 cm de margem em todas as bordas, em cada folha (ver @page em estilo.css). Monta antes de imprimir e desmonta depois.
 window.addEventListener('beforeprint', () => {
   const c = document.getElementById('conteudo'); if (!c || c.querySelector(':scope > .imp-moldura')) return;
@@ -1926,8 +1943,10 @@ document.addEventListener('click', async (e) => {
   if (pd) {
     const dePendencia = atas.pendenciaPorId(pd.dataset.pendDel);
     const daAta = dePendencia && dePendencia.ata_id;
-    if (!confirm(daAta ? 'Tirar esta pendência da sua lista de pendências? O item continua na ata, que não muda.' : 'Excluir esta pendência?')) return;
-    try { await atas.apagarPendencia(pd.dataset.pendDel); desenhar(); } catch (err) { alert(`Não foi possível ${daAta ? 'tirar da lista' : 'excluir'} (${err.message || err}).`); }
+    let esc = 'uma';
+    if (dePendencia && dePendencia.serie && !daAta) { esc = await perguntarEscopo('Excluir tarefa recorrente'); if (!esc) return; }
+    else if (!confirm(daAta ? 'Tirar esta pendência da sua lista de pendências? O item continua na ata, que não muda.' : 'Excluir esta pendência?')) return;
+    try { await atas.apagarPendencia(pd.dataset.pendDel, esc); desenhar(); } catch (err) { alert(`Não foi possível ${daAta ? 'tirar da lista' : 'excluir'} (${err.message || err}).`); }
     return;
   }
   const volta = e.target.closest('[data-pend-lista]');
@@ -1976,7 +1995,7 @@ document.addEventListener('submit', async (e) => {
       if (!p.descricao || (p.externoTipo === '' && !p.responsavel) || (p.externoTipo === 'terceirizado' && !p.externoCategoria && !p.externoNome)) { alert('Escreva a pendência e escolha o responsável.'); return; }
       if (g.dataset.avulsa) {
         const setorV = String(new FormData(g).get('av_setor') || ''); if (!setorV) { alert('Escolha o departamento da pendência.'); return; }
-        await atas.criarPendencia({ ata_id: null, ...p, obra: String(new FormData(g).get('av_obra') || ''), setor: setorV, os: g.dataset.os || null, observadores: new FormData(g).getAll('p_obs'), hora: String(new FormData(g).get('p_hora') || ''), duracao: new FormData(g).get('p_dur') });
+        await atas.criarPendencia({ ata_id: null, ...p, obra: String(new FormData(g).get('av_obra') || ''), setor: setorV, os: g.dataset.os || null, observadores: new FormData(g).getAll('p_obs'), hora: String(new FormData(g).get('p_hora') || ''), duracao: new FormData(g).get('p_dur'), recorrente: new FormData(g).has('p_recor') });
         const mod = document.getElementById('at-modal'); if (mod) mod.remove();
       } else await atas.criarPendencia({ ata_id: Number(g.dataset.ata), ...p, obra: g.dataset.obra, setor: g.dataset.setor });
     }

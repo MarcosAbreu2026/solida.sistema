@@ -7,7 +7,7 @@
 
 import { html, data as fmtData } from '../formato.js';
 import { hojeISO, somarDias, inicioDaSemana, diasEntre, ehData } from '../datas.js';
-import { NA_NUVEM, perfilAtual, listarAtasPendencias, criarAtaNuvem, criarPendenciaNuvem, atualizarPendenciaNuvem, atualizarAtaNuvem, apagarPendenciaNuvem, apagarAtaNuvem, listarNotasPend, criarNotaPend, apagarNotaPend } from '../nuvem.js';
+import { NA_NUVEM, perfilAtual, listarAtasPendencias, criarAtaNuvem, criarPendenciaNuvem, criarPendenciasNuvemLote, atualizarPendenciaNuvem, atualizarAtaNuvem, apagarPendenciaNuvem, apagarAtaNuvem, listarNotasPend, criarNotaPend, apagarNotaPend } from '../nuvem.js';
 import { SETORES, SETORES_ORGANOGRAMA, funcoesDoCargo } from '../funcoes.js';
 import { funcaoVe } from '../config.js';
 import { sessao, idPessoa, funcaoReal, funcaoAtual, simulando } from '../sessao.js';
@@ -67,8 +67,14 @@ const caixaObservadores = (nome, marcados, respId, gestoresNome = '') => {
 };
 export const DURACOES = [[30, '30 min'], [60, '1 hora'], [90, '1h30'], [120, '2 horas'], [180, '3 horas'], [240, '4 horas']];
 // arrastar o cartão da tarefa na Agenda: muda o dia (prazo), o horário e a duração; guarda o prazo original como qualquer reprogramação
-export async function definirHorarioTarefa(id, { prazo, hora, duracao }) {
+export async function definirHorarioTarefa(id, { prazo, hora, duracao }, escopo = 'uma') {
   const p = pendenciaPorId(id); if (!p) return;
+  if (escopo === 'seguintes' && p.serie) {
+    const delta = prazo && p.prazo ? diasEntre(p.prazo, prazo) : 0;
+    const seg = seguintesDe(p);
+    const mapa = Object.fromEntries(seg.map((x) => [x.id, x.prazo]));
+    await atualizarVarias(seg.map((x) => x.id), (i) => ({ hora: hora || null, duracao: duracao ? Number(duracao) : null, ...(delta ? { prazo: somarDias(mapa[i], delta) } : {}) }));
+  }
   if (prazo && prazo !== p.prazo) await reprogramar(id, prazo);
   const mud = { hora: hora || null, duracao: duracao ? Number(duracao) : null };
   if (NA_NUVEM) await atualizarPendenciaNuvem(id, mud);
@@ -109,6 +115,7 @@ export async function carregar() {
     const todasPend = dados.pendencias;
     dados = { ...dados, pendencias: todasPend.filter((p) => visivelParaMim(p, false, [])), atas: dados.atas.filter((a) => visivelParaMim(a, true, todasPend)) };
   } catch (e) { dados = { ...dados, erro: String(e.message || e) }; }
+  renovarRecorrentes();
   return dados;
 }
 const nomeDe = (id, reserva) => ((dados.pessoas.find((p) => p.id === id) || {}).nome) || reserva || '—';
@@ -230,12 +237,50 @@ export async function criarAta({ titulo, data, tipo, obra, setor, participantes,
   await carregar();
   return nova;
 }
-export async function criarPendencia({ ata_id, descricao, responsavel, externoNome, externoTipo, externoCategoria, prazo, obra, setor, os, urgencia, funcaoTarefa, observadores, hora, duracao }) {
+export async function criarPendencia({ ata_id, descricao, responsavel, externoNome, externoTipo, externoCategoria, prazo, obra, setor, os, urgencia, funcaoTarefa, observadores, hora, duracao, recorrente = false }) {
   const p = { ata_id: ata_id || null, descricao, responsavel: responsavel || null, responsavel_nome: responsavel ? nomeDe(responsavel) : (externoNome || externoCategoria || (externoTipo === 'cliente' ? 'Cliente' : externoTipo === 'arquitetura' ? 'Arquitetura' : null)), responsavel_tipo: responsavel ? 'solida' : (externoTipo || 'terceirizado'), responsavel_categoria: responsavel ? null : (externoCategoria || null), prazo: prazo || null, status: 'aberta', obra: obra || null, setor: setor || null, os: os || null, urgencia: urgencia || null, funcao_tarefa: funcaoTarefa || null, observadores: observadores || [], hora: hora || null, duracao: duracao ? Number(duracao) : 60 };
   if (ata_id) { const a = dados.atas.find((x) => String(x.id) === String(ata_id)); const ns = [...dados.pendencias.filter((x) => String(x.ata_id) === String(ata_id)).map((x) => Number(x.item) || 0), ...((a && a.informativos) || []).map((x) => (x && x.n) || 0)]; p.item = Math.max(0, ...ns) + 1; }
+  // recorrente: repete toda semana, no mesmo dia da semana. Cada ocorrência é uma tarefa; as primeiras ${SEMANAS_INICIAIS} semanas já nascem e o resto é criado aos poucos (renovarRecorrentes)
+  if (recorrente && p.prazo && !ata_id) {
+    const serie = `s${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`;
+    const lista = Array.from({ length: SEMANAS_INICIAIS }, (_, k) => ({ ...p, prazo: somarDias(p.prazo, 7 * k), serie, recorrente: true }));
+    if (NA_NUVEM) await criarPendenciasNuvemLote(lista);
+    else { const l = lerLocal(); for (const x of lista) l.pendencias.push({ id: l.seq++, ...x, criado_por: idPessoa(), criado_em: new Date().toISOString(), concluida_em: null }); gravarLocal(l); }
+    await carregar(); return;
+  }
   if (NA_NUVEM) await criarPendenciaNuvem(p);
   else { const l = lerLocal(); l.pendencias.push({ id: l.seq++, ...p, criado_por: idPessoa(), criado_em: new Date().toISOString(), concluida_em: null }); gravarLocal(l); }
   await carregar();
+}
+// ---- tarefas recorrentes (pedido do Felipe, 12/11/2026): como no Google Agenda, mudar ou excluir pergunta "só esta" ou "esta e as próximas"
+const SEMANAS_INICIAIS = 12; const SEMANAS_A_FRENTE = 8;
+export const ehRecorrente = (id) => { const p = pendenciaPorId(id); return !!(p && p.serie); };
+const seguintesDe = (p) => dados.pendencias.filter((x) => x.serie && x.serie === p.serie && String(x.id) !== String(p.id) && String(x.prazo || '') >= String(p.prazo || ''));
+async function atualizarVarias(ids, mud) {
+  if (!ids.length) return;
+  if (NA_NUVEM) { for (const i of ids) await atualizarPendenciaNuvem(i, typeof mud === 'function' ? mud(i) : mud); }
+  else { const l = lerLocal(); for (const x of l.pendencias) if (ids.some((i) => String(i) === String(x.id))) Object.assign(x, typeof mud === 'function' ? mud(x.id) : mud); gravarLocal(l); }
+}
+// mantém as séries sempre com ocorrências nas próximas semanas (só o criador da tarefa renova, para não duplicar)
+let renovando = false; let ultimaRenovacao = 0;
+export async function renovarRecorrentes() {
+  if (!NA_NUVEM || renovando || Date.now() - ultimaRenovacao < 5 * 60 * 1000) return;
+  renovando = true; ultimaRenovacao = Date.now();
+  try {
+    const eu = souEu(); const hoje = hojeISO(); const limite = somarDias(hoje, 7 * SEMANAS_A_FRENTE);
+    const series = new Map();
+    for (const p of dados.pendencias) if (p.serie && p.recorrente && p.criado_por === eu && p.prazo) { const u = series.get(p.serie); if (!u || p.prazo > u.prazo) series.set(p.serie, p); }
+    const novas = [];
+    for (const u of series.values()) {
+      if (u.prazo >= limite) continue;
+      let d = somarDias(u.prazo, 7);
+      while (d < somarDias(hoje, 7 * (SEMANAS_INICIAIS))) {
+        if (d >= hoje) novas.push({ descricao: u.descricao, responsavel: u.responsavel, responsavel_nome: u.responsavel_nome, responsavel_tipo: u.responsavel_tipo, responsavel_categoria: u.responsavel_categoria, prazo: d, status: 'aberta', obra: u.obra, setor: u.setor, os: u.os, urgencia: u.urgencia, funcao_tarefa: u.funcao_tarefa, observadores: u.observadores || [], hora: u.hora, duracao: u.duracao, serie: u.serie, recorrente: true });
+        d = somarDias(d, 7);
+      }
+    }
+    if (novas.length) { await criarPendenciasNuvemLote(novas); await carregar(); }
+  } catch { /* tenta de novo mais tarde */ } finally { renovando = false; }
 }
 export async function mudarStatus(id, status) {
   const mud = { status, concluida_em: status === 'feita' ? new Date().toISOString() : null };
@@ -245,10 +290,18 @@ export async function mudarStatus(id, status) {
 }
 // "Excluir" na lista de pendências NÃO mexe na ata: se a pendência veio de uma ata, só sai da lista (continua no item da ata);
 // só a pendência avulsa (sem ata) é apagada de verdade. Para tirar um item da ata, é pela revisão da ata.
-export async function apagarPendencia(id) {
+export async function apagarPendencia(id, escopo = 'uma') {
   const p = pendenciaPorId(id);
   if (p && p.ata_id) await mudarNaLista(id, false);
   else {
+    if (p && p.serie && escopo === 'seguintes') {
+      // exclui esta e as próximas; as anteriores deixam de se renovar
+      const seg = seguintesDe(p).map((x) => x.id);
+      const antes = dados.pendencias.filter((x) => x.serie === p.serie && String(x.prazo || '') < String(p.prazo || '')).map((x) => x.id);
+      await atualizarVarias(antes, { recorrente: false });
+      if (NA_NUVEM) for (const i of seg) await apagarPendenciaNuvem(i);
+      else { const l = lerLocal(); l.pendencias = l.pendencias.filter((x) => !seg.some((i) => String(i) === String(x.id))); gravarLocal(l); }
+    }
     if (NA_NUVEM) await apagarPendenciaNuvem(id);
     else { const l = lerLocal(); l.pendencias = l.pendencias.filter((x) => String(x.id) !== String(id)); gravarLocal(l); }
     await carregar();
@@ -471,6 +524,7 @@ export function formAvulsa(obras, prazo, setorPadrao = '', preset = {}) {
         <label>Departamento<select name="av_setor" class="tf-req" required><option value="">— escolher —</option>${SETORES_ATA.map((s) => html`<option value="${s}" ${s === setorPadrao ? html.seguro('selected') : ''}>${s}</option>`)}</select></label>
         <label>Obra<select name="av_obra"><option value="">Nenhuma</option>${gruposDeObras(listaObras, preset.obra || '')}</select></label>
         <label>Prazo<input type="date" name="p_prazo" class="tf-req" value="${prazo || ''}"></label>
+        <label class="tf-recor"><input type="checkbox" name="p_recor"> <span>Tarefa recorrente <small>repete toda semana, no mesmo dia</small></span></label>
         <div class="tf-sep"></div>
         <label>Função (Agenda)<select name="p_func"><option value="">Nenhuma</option>${opcoesFuncaoTarefa(souEu(), '')}</select></label>
         <label>Urgência<select name="p_urg"><option value="">Sem urgência</option>${Object.entries(URG).map(([v, [t]]) => html`<option value="${v}">${t[0] + t.slice(1).toLocaleLowerCase('pt-BR')}</option>`)}</select></label>
@@ -813,6 +867,11 @@ export async function salvarTarefa(id, c) {
   // gestor: "automático" volta ao cálculo pelas obras e setores (o responsavel no pacote faz o banco recalcular)
   if (c.gestor) { const g = dados.pessoas.find((x) => x.id === c.gestor); Object.assign(mud, { gestores: [c.gestor], gestores_nome: g ? g.nome : '', gestores_manual: true }); }
   else if (c.gestor === '' && p.gestores_manual) Object.assign(mud, { gestores_manual: false, responsavel: mud.responsavel === undefined ? p.responsavel : mud.responsavel });
+  if (c.escopo === 'seguintes' && p.serie) {
+    const delta = c.prazo && p.prazo ? diasEntre(p.prazo, c.prazo) : 0;
+    const seg = seguintesDe(p); const mapa = Object.fromEntries(seg.map((x) => [x.id, x.prazo]));
+    await atualizarVarias(seg.map((x) => x.id), (i) => ({ ...mud, ...(delta ? { prazo: somarDias(mapa[i], delta) } : {}) }));
+  }
   if (NA_NUVEM) await atualizarPendenciaNuvem(id, mud);
   else { const l = lerLocal(); const q = l.pendencias.find((x) => String(x.id) === String(id)); if (q) Object.assign(q, mud); gravarLocal(l); }
   await carregar();
