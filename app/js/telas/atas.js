@@ -48,29 +48,32 @@ const primeiroNomeDe = (n) => normTxt(String(n || '').replace(/\(.*?\)/g, ' ')).
 const NAO_E_OBRA = /^(as built|projetos?|aditivos?|planilha padr[aã]o|or[cç]amento cliente novo)$|\s·\s/i;
 const CODIGO_OBRA = /^(mo|po)\s*\d+[a-z]*$/i;
 export const normalizarCodigoObra = (txt) => { const s = String(txt || '').trim(); return CODIGO_OBRA.test(s) ? s.replace(/\s+/g, '').replace(/^(mo|po)/i, (m) => m[0].toUpperCase() + m[1].toLowerCase()) : s; };
+// o assunto sai do que tem que ser feito (compatibilizar → COMPATIBILIZAÇÃO, DWG ou planta → PROJETO…); a obra fica só no campo Obra
+const ASSUNTOS = [[/compatibiliz/, 'COMPATIBILIZAÇÃO'], [/as built|asbuilt/, 'AS BUILT'], [/\bdwg\b|planta|projeto/, 'PROJETO'], [/aditivo/, 'ADITIVOS'], [/fornecedor/, 'FORNECEDOR'], [/or[cç]amento/, 'ORÇAMENTO'],
+  [/cobrar|liga[cç][aã]o|ligar|resposta/, 'COBRANÇA'], [/pintura/, 'PINTURA'], [/pasta|arquivo|salvar/, 'ARQUIVO'], [/cliente/, 'CLIENTE'], [/reuni[aã]o/, 'REUNIÃO'], [/planilha|base de/, 'PLANILHA']];
+export const assuntoDoTexto = (txt) => { const t = normTxt(txt); const a = ASSUNTOS.find(([re]) => re.test(t)); return a ? a[1] : 'GERAL'; };
 function montarLote(lido, obras) {
-  const pode = podeCriarObraOrcamento();
   const setorTerc = SETORES_ATA.find((s) => /terceiriz\w*\s+laranja/i.test(s)) || '';
   const setorPadrao = SETORES_ATA.find((s) => /^orc\s+obras\s+novas$/i.test(s)) || '';
   const itens = lido.itens.map((it) => {
     const ids = it.responsaveis.map((nome) => { const q = primeiroNomeDe(nome); const ach = dados.pessoas.filter((p) => primeiroNomeDe(p.nome) === q); return (ach.find((p) => normTxt(p.nome) === normTxt(nome)) || ach[0] || {}).id || ''; }).filter(Boolean);
-    const principal = it.obraTxt; const cod = normalizarCodigoObra(principal);
-    const cad = obras.find((o) => codigoDaObra(o) === codigoDaObra(cod) || normTxt(o) === normTxt(principal));
-    const candidata = !NAO_E_OBRA.test(principal) && principal.length > 2;
-    const obra = cad || (candidata && pode ? `__novo__:${cod}` : '');
+    const principal = it.obraTxt; const alvo = principal.replace(/^p[oó]s-obra\s*·\s*/i, ''); const cod = normalizarCodigoObra(alvo);
+    // a obra do PDF (código ou nome) é procurada no cadastro, inclusive pelo nome (Sinagoga Leblon = Mo461)
+    const cad = obras.find((o) => codigoDaObra(o) === codigoDaObra(cod) || normTxt(o) === normTxt(alvo) || normTxt(NOMES_OBRAS[String(o).toLowerCase()]) === normTxt(alvo));
     const terc = /terceiriz\w*\s+laranja/i.test(it.obraDetalhe);
     const notas = [it.nota, it.obraDetalhe && !terc ? `Quadro: ${it.obraDetalhe}` : ''].filter(Boolean);
-    return { n: it.n, incluir: true, obra, assunto: String(cod || principal).toLocaleUpperCase('pt-BR'), desc: it.titulo, responsavel: ids[0] || '', observadores: ids.slice(1), responsaveisTxt: it.responsaveisTxt, setor: terc && setorTerc ? setorTerc : setorPadrao, urgencia: it.urgencia, prazo: it.prazo, notas };
+    // sem obra no cadastro: o que está na coluna Obra é o próprio assunto do quadro (As built, Projetos, Aditivos, Planilha padrão…)
+    const assunto = cad || CODIGO_OBRA.test(cod) ? assuntoDoTexto(it.titulo) : principal.toLocaleUpperCase('pt-BR');
+    return { n: it.n, incluir: true, obra: cad || '', assunto, desc: it.titulo, responsavel: ids[0] || '', observadores: ids.slice(1), responsaveisTxt: it.responsaveisTxt, setor: terc && setorTerc ? setorTerc : setorPadrao, urgencia: it.urgencia, prazo: it.prazo, notas };
   });
   return { titulo: lido.titulo, data: lido.data, total: lido.total, itens };
 }
 export function painelLote(obras) {
   if (!lote) return '';
   const pessoas = [...dados.pessoas].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
-  const novas = [...new Set(lote.itens.map((i) => i.obra).filter((o) => String(o).startsWith('__novo__:')).map((o) => o.slice(9)))];
   const linha = (it) => html`<tr data-lote-i="${it.n}" class="lote-lin">
     <td><input type="checkbox" data-lote-inc checked title="Criar esta tarefa"></td><td class="lote-n">${it.n}</td>
-    <td><select data-lote-obra><option value="">— sem obra —</option>${String(it.obra).startsWith('__novo__:') ? html`<option value="${it.obra}" selected>${it.obra.slice(9)} (nova, em orçamento)</option>` : ''}${gruposDeObras(obras, String(it.obra).startsWith('__novo__:') ? '' : it.obra, { criar: true })}</select></td>
+    <td><select data-lote-obra><option value="">— sem obra —</option>${gruposDeObras(obras, it.obra, { criar: true })}</select></td>
     <td><input data-lote-assunto value="${it.assunto}"></td>
     <td><input data-lote-desc value="${it.desc}"></td>
     <td><select data-lote-resp class="${it.responsavel ? '' : 'lote-falta'}"><option value="">— escolher —</option>${pessoas.map((p) => html`<option value="${p.id}" ${p.id === it.responsavel ? html.seguro('selected') : ''}>${p.nome}</option>`)}</select>${it.observadores.length ? html`<small class="lote-obs" data-lote-obs="${it.observadores.join(',')}">+ observa: ${it.observadores.map((id) => nomeDe(id)).join(', ')}</small>` : ''}</td>
@@ -81,7 +84,7 @@ export function painelLote(obras) {
   return html`<section class="lote">
     <h2>Ata de pendências lida: ${lote.itens.length} ${lote.itens.length === 1 ? 'tarefa' : 'tarefas'}</h2>
     <p class="pequeno">${lote.titulo}${lote.data ? ` · ${dm(lote.data)}` : ''}. Cada linha vira uma <b>tarefa</b>, com o responsável, a prioridade e o prazo da ata. Confira, corrija o que precisar, desmarque o que não quiser criar e clique em "Criar tarefas".</p>
-    ${novas.length ? html`<p class="lote-aviso">Obras que ainda não existem e serão criadas <b>em orçamento</b> (só você, o setor ORC Obras Novas e a diretoria veem): <b>${novas.join(', ')}</b>. Para não criar uma delas, troque a obra na linha.</p>` : ''}
+    <p class="pequeno">Obra que ainda não está na lista: escolha "+ Nova obra em orçamento…" ou "+ Novo pós-obra…" na própria caixinha da linha.</p>
     <div class="tabela-rolagem"><table class="lote-tab"><thead><tr><th></th><th>Nº</th><th>Obra</th><th>Assunto</th><th>O que fazer</th><th>Responsável</th><th>Setor</th><th>Prioridade</th><th>Prazo</th><th>Anotação</th></tr></thead>
     <tbody>${lote.itens.map(linha)}</tbody></table></div>
     <div class="lote-botoes"><button type="button" class="botao" data-lote-descartar>Descartar</button><button type="button" class="botao on" data-lote-criar>Criar tarefas</button><span class="pequeno lote-msg"></span></div>
@@ -510,8 +513,8 @@ export function obrasForaDoCadastro(codigos) {
 }
 const ehObraPura = ehObraNormal;
 // Obras "em orçamento" (setor ORC Obras Novas e diretoria): ficam num grupo próprio na caixinha de obra e podem ser criadas ali mesmo
-let OBRAS_ORC = new Set();
-export const definirObrasOrcamento = (codigos) => { OBRAS_ORC = new Set((codigos || []).map((c) => String(c).toLowerCase())); };
+let OBRAS_ORC = new Set(); let NOMES_OBRAS = {};
+export const definirObrasOrcamento = (codigos, nomes) => { OBRAS_ORC = new Set((codigos || []).map((c) => String(c).toLowerCase())); if (nomes) NOMES_OBRAS = nomes; };
 export const podeCriarObraOrcamento = () => NA_NUVEM && (funcaoAtual().id === 'socio' || meusSetores().includes('ORC Obras Novas'));
 export function gruposDeObras(obras, atual = '', { criar = false } = {}) {
   // sem repetir a mesma obra escrita de dois jeitos (Po577 / PO577 / PO577 - nome): vale a primeira
@@ -522,8 +525,8 @@ export function gruposDeObras(obras, atual = '', { criar = false } = {}) {
   const opt = (o) => html`<option value="${o}" ${o === atual ? html.seguro('selected') : ''}>${o}</option>`;
   const emOrc = (o) => OBRAS_ORC.has(String(o).toLowerCase());
   const ob = lista.filter((o) => ehObraPura(o) && !emOrc(o)).sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true })); const po = lista.filter((o) => !ehObraPura(o) && !emOrc(o)).sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }));
-  const orc = lista.filter(emOrc).sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }));
-  return html`${ob.length ? html`<optgroup label="Obras">${ob.map(opt)}</optgroup>` : ''}${po.length ? html`<optgroup label="Pós-obras">${po.map(opt)}</optgroup>` : ''}${orc.length ? html`<optgroup label="Em orçamento">${orc.map(opt)}</optgroup>` : ''}${criar && podeCriarObraOrcamento() ? html`<optgroup label="Novo"><option value="__nova_orc__">+ Nova obra em orçamento…</option></optgroup>` : ''}`;
+  const orc = lista.filter(emOrc).sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true })); const obOrc = orc.filter(ehObraPura); const poOrc = orc.filter((o) => !ehObraPura(o));
+  return html`${ob.length ? html`<optgroup label="Obras">${ob.map(opt)}</optgroup>` : ''}${po.length ? html`<optgroup label="Pós-obras">${po.map(opt)}</optgroup>` : ''}${obOrc.length ? html`<optgroup label="Obras em orçamento">${obOrc.map(opt)}</optgroup>` : ''}${poOrc.length ? html`<optgroup label="Pós-obras em orçamento">${poOrc.map(opt)}</optgroup>` : ''}${criar && podeCriarObraOrcamento() ? html`<optgroup label="Novo"><option value="__nova_orc__">+ Nova obra em orçamento…</option><option value="__novo_po__">+ Novo pós-obra…</option></optgroup>` : ''}`;
 }
 const selObra = (obras, atual, todos = 'Todos') => html`<label>Obra<select data-atas-filtro="obra"><option value="">${todos}</option>${gruposDeObras(obras, atual)}</select></label>`;
 // Responsável: as opções de sempre no alto e, embaixo, o grupo "Equipe da Sólida" com cada pessoa (diretoria e administrativo escolhem qualquer uma; os demais, quem podem ver)

@@ -42,6 +42,7 @@ import * as agendaPos from './agenda-pos.js';
 import * as svPos from './servicos-pos.js';
 import * as osq from './os-quadro.js';
 import * as configTela from './telas/configuracoes.js';
+import * as obrasOrc from './telas/obras-orcamento.js';
 import { carregarConfig, definirConfig, restaurarConfig, snapshotConfig, listaConfig } from './config.js';
 import * as tvSlides from './treinamentos-slides.js';
 import * as obrasPos from './obras-pos.js';
@@ -342,9 +343,10 @@ window.addEventListener('resize', ajustarAlturaFuncoes);
 // obra "em orçamento" ainda não é obra de verdade: não entra nas listas da operação, só nas caixinhas de obra de atas e tarefas (de quem pode ver)
 const cadastroAtivo = () => (estado.obrasCad || []).filter((c) => c.situacao !== 'finalizada' && c.situacao !== 'orcamento').map((c) => c.codigo);
 const cadastroEmOrcamento = () => (estado.obrasCad || []).filter((c) => c.situacao === 'orcamento').map((c) => c.codigo);
+const nomesDasObras = () => Object.fromEntries((estado.obrasCad || []).map((c) => [String(c.codigo).toLowerCase(), c.nome || '']));
 function obrasDeAtas() {
   if (funcaoAtual().porObra) return obrasDaPessoa();
-  if ((estado.obrasCad || []).length) { atas.definirObrasOrcamento(cadastroEmOrcamento()); return [...cadastroAtivo().sort(numerico), ...cadastroEmOrcamento().sort(numerico), ...atas.obrasForaDoCadastro(estado.obrasCad.map((c) => c.codigo)).sort(numerico)]; }
+  if ((estado.obrasCad || []).length) { atas.definirObrasOrcamento(cadastroEmOrcamento(), nomesDasObras()); return [...cadastroAtivo().sort(numerico), ...cadastroEmOrcamento().sort(numerico), ...atas.obrasForaDoCadastro(estado.obrasCad.map((c) => c.codigo)).sort(numerico)]; }
   return [...obrasDeAcesso(), ...obrasDisponiveis().filter((o) => /^po/i.test(o)), ...((estado.base && estado.base.obras) || []).filter((o) => !['Concluído', 'Cancelado', 'Sem OS', 'Sem situação'].includes(o.situacao)).map((o) => o.obra)];
 }
 
@@ -390,6 +392,7 @@ function desenharNav(sel) {
   const itemAtas = () => { const n = atas.minhasAbertas(); return `<a class="nav-item${sel === 'atas' ? ' sel' : ''}" href="#/atas"><span>Atas e pendências</span>${n ? `<span class="nav-n">${n}</span>` : ''}</a>`; };
   const item =(id, nome, status) => `<a class="nav-item${id === sel ? ' sel' : ''}" href="#/${esc(id)}"${id === sel ? ' aria-current="page"' : ''}><span>${esc(nome)}</span>${status ? pt(status) : ''}</a>`;
   const s = sessao();
+  const itemObrasOrc = () => (atas.podeCriarObraOrcamento() && funcaoReal().id !== 'socio' ? item('obrasorc', 'Obras em orçamento') : '');
   // acesso restrito (por enquanto, quase todo mundo): só Minhas funções e Treinamentos
   if (soMinhasFuncoes(f)) {
     $('#nav').innerHTML = botaoRecolher() + `<div class="marca"><img src="img/logo.png" alt="Sólida"><span>Painel da empresa</span></div>`
@@ -397,7 +400,7 @@ function desenharNav(sel) {
       // pedido do Felipe (04/11): Meu trabalho (Agenda, Tarefas, Atas) e Equipe (Treinamentos, Feed)
       + '<div class="nav-grupo">Meu trabalho</div>' + item('agenda', 'Agenda')
       + (f.porObra ? obrasDaPessoa().map((o) => `<a class="nav-item nav-celular${location.hash.startsWith(`#/celular/${o}`) ? ' sel' : ''}" href="#/celular/${encodeURIComponent(o)}"><span>Celular da obra ${esc(o)}</span></a>`).join('') : '')
-      + (paginaVisivel(f, 'atas') ? itemTarefasRestrito(sel) + `<a class="nav-item${sel === 'atas' ? ' sel' : ''}" href="#/atas?aba=atas"><span>Atas</span></a>` : '')
+      + (paginaVisivel(f, 'atas') ? itemTarefasRestrito(sel) + `<a class="nav-item${sel === 'atas' ? ' sel' : ''}" href="#/atas?aba=atas"><span>Atas</span></a>` : '') + itemObrasOrc()
       + '<div class="nav-grupo">Equipe</div>'
       + (temEstoqueRestrito(f) && paginaVisivel(f, 'estoque') ? item('estoque', 'Estoque') : '') + item('treinamentos', 'Treinamentos')
       + (paginaVisivel(f, 'escritorio') ? item('escritorio', 'Escritório virtual') : '')
@@ -423,7 +426,7 @@ function desenharNav(sel) {
   $('#nav').innerHTML = botaoRecolher() + `<div class="marca"><img src="img/logo.png" alt="Sólida"><span>Painel da empresa</span></div>`
     + `<a class="nav-perfil${sel === 'perfil' ? ' sel' : ''}" href="#/perfil" title="Meu perfil"><span class="nav-foto" data-nav-foto title="Clique para trocar a sua foto">${perfil.avatar(s.nome, 38)}</span><span><b>${esc(s.nome)}</b><small>${esc(f.nome)}</small></span></a>`
     + grupo('Meu trabalho')
-    + item('geral', 'Início') + item('agenda', 'Agenda') + (verAtas ? itemTar + `<a class="nav-item${sel === 'atas' ? ' sel' : ''}" href="#/atas?aba=atas"><span>Atas</span></a>` : '')
+    + item('geral', 'Início') + item('agenda', 'Agenda') + (verAtas ? itemTar + `<a class="nav-item${sel === 'atas' ? ' sel' : ''}" href="#/atas?aba=atas"><span>Atas</span></a>` : '') + itemObrasOrc()
     + grupo('Departamentos') + deps
     + (f.id === 'socio' ? grupo('Resultados') + item('equipe', 'Ranking') : '')   // ranking, funcionário do mês e recompensas: só a diretoria
     + grupo('Equipe')
@@ -633,9 +636,10 @@ function desenhar() {
   if (tela === 'meudia' && f.semMinhaSemana) tela = 'geral';
   if (tela === 'meudia' && !f.editaProdutividade) tela = 'agenda';   // quem não lança produtividade só tem a agenda
   if (tela === 'agenda' && !paginaVisivel(f, 'meudia') && f.id !== 'socio') tela = 'geral';
+  if (tela === 'obrasorc' && !atas.podeCriarObraOrcamento()) tela = 'geral';
   if (['meudia', 'feed', 'estoque', 'escritorio', 'treinamentos', 'atas', 'tarefas', 'marketing'].includes(tela) && !paginaVisivel(f, tela === 'tarefas' ? 'atas' : tela)) tela = 'geral';   // aba que a diretoria tirou desta função
   // acesso restrito (por enquanto, quase todo mundo): Agenda, Tarefas, Atas, Treinamentos e Feed (o resto é da diretoria e do Administrativo)
-  if (soMinhasFuncoes(f)) tela = (['treinamentos', 'atas', 'tarefas', 'feed', 'escritorio'].includes(tela) || (tela === 'celular' && f.porObra) || (tela === 'estoque' && temEstoqueRestrito(f)) || liberadoExtra(f, (depPorId(tela) || {}).id || tela)) ? tela : 'agenda';
+  if (soMinhasFuncoes(f)) tela = (['treinamentos', 'atas', 'tarefas', 'feed', 'escritorio', 'obrasorc'].includes(tela) || (tela === 'celular' && f.porObra) || (tela === 'estoque' && temEstoqueRestrito(f)) || liberadoExtra(f, (depPorId(tela) || {}).id || tela)) ? tela : 'agenda';
 
   // departamento do organograma (Painel no desenho do Marcos + Detalhes = a tela que já existia)
   let dep = depPorId(tela);
@@ -646,7 +650,7 @@ function desenhar() {
   const ehPainel = (dep || tela === 'geral') && (!temLegado || ((!rota.sub || rota.sub === 'painel') && ![...rota.params.keys()].length));
   if ((dep || tela === 'geral') && !ehPainel && rota.sub === 'detalhe') rota = { ...rota, sub: '' };
   const ehObraPlan = tela === 'planejamento' && rota.sub === 'obra';
-  const fixas = ['agentes', 'meudia', 'agenda', 'quadro', 'estoque', 'escritorio', 'perfil', 'feed', 'treinamentos', 'acessos', 'configuracoes', 'atas', 'tarefas', 'marketing', 'equipe', 'obra', 'celular'];
+  const fixas = ['obrasorc', 'agentes', 'meudia', 'agenda', 'quadro', 'estoque', 'escritorio', 'perfil', 'feed', 'treinamentos', 'acessos', 'configuracoes', 'atas', 'tarefas', 'marketing', 'equipe', 'obra', 'celular'];
   const abaAtas = rota.params.get('aba');
   const sel = tela === 'funcionarios' ? 'rh' : tela === 'tarefas' || (tela === 'atas' && !['atas', 'nova', 'pautas'].includes(abaAtas)) ? 'tarefas' : (dep || area || fixas.includes(tela)) ? tela : 'geral';
   desenharNav(sel);
@@ -660,7 +664,7 @@ function desenhar() {
     : dep ? (dep.titulo || dep.nome)
     : tela === 'obra' ? rota.sub
     : area ? area.nome
-    : ({ configuracoes: 'Configurações', agentes: 'Agentes', funcionarios: 'Funcionários por obra', meudia: 'Minha semana', agenda: 'Agenda', quadro: 'Quadro de funções', estoque: 'Estoque', escritorio: 'Escritório virtual', perfil: 'Perfil', feed: 'Feed', treinamentos: 'Treinamentos', acessos: 'Cadastros', atas: ['atas', 'nova', 'pautas'].includes(abaAtas) ? 'Atas' : 'Tarefas', tarefas: 'Tarefas', marketing: 'Marketing', equipe: 'Ranking', celular: 'Celular da obra' }[tela] || (f.id === 'socio' ? 'Início · visão do CEO' : 'Início'));
+    : ({ obrasorc: 'Obras em orçamento', configuracoes: 'Configurações', agentes: 'Agentes', funcionarios: 'Funcionários por obra', meudia: 'Minha semana', agenda: 'Agenda', quadro: 'Quadro de funções', estoque: 'Estoque', escritorio: 'Escritório virtual', perfil: 'Perfil', feed: 'Feed', treinamentos: 'Treinamentos', acessos: 'Cadastros', atas: ['atas', 'nova', 'pautas'].includes(abaAtas) ? 'Atas' : 'Tarefas', tarefas: 'Tarefas', marketing: 'Marketing', equipe: 'Ranking', celular: 'Celular da obra' }[tela] || (f.id === 'socio' ? 'Início · visão do CEO' : 'Início'));
   $('#titulo').textContent = titulo;
   document.title = `${titulo} · Sólida`;
 
@@ -679,6 +683,10 @@ function desenhar() {
     feed.marcarVisto();
     $('#conteudo').innerHTML = `<div>${feed.render({ eu: { nome: sessao().nome }, diretoria: f.id === 'socio', msg: estado.feedMsg || '' })}</div>`;
     estado.feedMsg = '';
+    return;
+  }
+  if (tela === 'obrasorc') {
+    $('#conteudo').innerHTML = `<div>${obrasOrc.render({ obrasCad: estado.obrasCad || [], msg: estado.obraOrcMsg || '' })}</div>`; estado.obraOrcMsg = '';
     return;
   }
   if (tela === 'configuracoes') {
@@ -1361,20 +1369,39 @@ function configurar() {
   });
   // "+ Nova obra em orçamento…" na caixinha de obra: o setor ORC Obras Novas (e a diretoria) cria a obra na hora; ela só aparece para eles
   document.addEventListener('change', async (e) => {
-    const sel = e.target.closest && e.target.closest('select'); if (!sel || sel.value !== '__nova_orc__') return;
-    const nome = (prompt('Nome ou código da obra em orçamento (ex.: Sinagoga Leblon ou Mo606):') || '').trim();
-    if (!nome) { sel.value = ''; return; }
-    const codigo = /^(mo|po)\s*\d/i.test(nome) ? codigoObra(nome) : nome;
+    const sel = e.target.closest && e.target.closest('select'); if (!sel || !['__nova_orc__', '__novo_po__'].includes(sel.value)) return;
+    const ehPos = sel.value === '__novo_po__'; let codigo; let nomeObra = '';
+    if (ehPos) { nomeObra = (prompt('Nome do pós-obra (ex.: Sogra do Thiago):') || '').trim(); if (!nomeObra) { sel.value = ''; return; } codigo = `PO - ${nomeObra}`; }
+    else { codigo = atas.normalizarCodigoObra(prompt('Código da obra em orçamento (ex.: Mo461):') || ''); if (!codigo) { sel.value = ''; return; } if (!/^mo\d/i.test(codigo)) { alert('O código da obra começa com Mo e o número (ex.: Mo461).'); sel.value = ''; return; } nomeObra = (prompt('Nome da obra (opcional, ex.: Sinagoga Leblon):') || '').trim(); }
     try {
-      await nuvem.salvarObra({ codigo, nome: '', situacao: 'orcamento' });
+      await nuvem.salvarObra({ codigo, nome: nomeObra, situacao: 'orcamento' });
       await sincronizarCadastros({ forcar: true });
-      atas.definirObrasOrcamento(cadastroEmOrcamento());
-      const op = document.createElement('option'); op.value = codigo; op.textContent = codigo;
-      const g = [...sel.querySelectorAll('optgroup')].find((x) => x.label === 'Em orçamento') || Object.assign(document.createElement('optgroup'), { label: 'Em orçamento' });
+      atas.definirObrasOrcamento(cadastroEmOrcamento(), nomesDasObras());
+      const rotulo = ehPos ? 'Pós-obras em orçamento' : 'Obras em orçamento';
+      const g = [...sel.querySelectorAll('optgroup')].find((x) => x.label === rotulo) || Object.assign(document.createElement('optgroup'), { label: rotulo });
       if (!g.parentNode) sel.insertBefore(g, sel.querySelector('optgroup[label="Novo"]'));
-      if (![...sel.options].some((o) => o.value === codigo)) g.appendChild(op);
+      if (![...sel.options].some((o) => o.value === codigo)) { const op = document.createElement('option'); op.value = codigo; op.textContent = codigo; g.appendChild(op); }
       sel.value = codigo;
-    } catch (err) { sel.value = ''; alert(`Não foi possível criar a obra em orçamento (${err.message || err}).`); }
+    } catch (err) { sel.value = ''; alert(`Não foi possível criar (${err.message || err}).`); }
+  });
+  document.addEventListener('submit', async (e) => {
+    const f = e.target.closest && e.target.closest('#obo-novo, [data-obraorc]'); if (!f) return;
+    e.preventDefault(); const fd = new FormData(f);
+    try {
+      let codigo; let nome = String(fd.get('nome') || '').trim();
+      if (f.id === 'obo-novo') {
+        if (fd.get('tipo') === 'pos') codigo = `PO - ${nome}`;
+        else { codigo = atas.normalizarCodigoObra(fd.get('codigo')); if (!/^mo\d/i.test(codigo)) { alert('Informe o código da obra, começando com Mo (ex.: Mo461).'); return; } }
+        estado.obraOrcMsg = `${codigo} cadastrada em orçamento.`;
+      } else { codigo = f.dataset.obraorc; estado.obraOrcMsg = 'Salvo ✓'; }
+      await nuvem.salvarObra({ codigo, nome, situacao: 'orcamento' });
+      await sincronizarCadastros({ forcar: true });
+    } catch (err) { alert(`Não foi possível salvar (${err.message || err}).`); }
+  });
+  document.addEventListener('click', async (e) => {
+    const b = e.target.closest && e.target.closest('[data-excluir-obraorc]'); if (!b) return;
+    const codigo = b.dataset.excluirObraorc; if (!confirm(`Tirar ${codigo} da lista de obras em orçamento?`)) return;
+    try { await nuvem.excluirObra(codigo); estado.obraOrcMsg = `${codigo} removida.`; await sincronizarCadastros({ forcar: true }); } catch (err) { alert(`Não foi possível excluir (${err.message || err}).`); }
   });
   // a lista de obras do Cadastro lembra se estava aberta (para não fechar ao salvar uma obra)
   document.addEventListener('toggle', (e) => { if (e.target.matches && e.target.matches('.ac-lista-obras')) estado.listaObrasAberta = e.target.open; }, true);
@@ -2037,12 +2064,8 @@ async function criarTarefasDaAtaDePendencias(botao) {
   if (erro) { alert(erro); return; }
   botao.disabled = true; if (msg) msg.textContent = 'Criando…';
   try {
-    const novas = [...new Set(linhas.map((l) => l.obra).filter((o) => o.startsWith('__novo__:')).map((o) => o.slice(9)))];
-    for (const cod of novas) await nuvem.salvarObra({ codigo: cod, nome: '', situacao: 'orcamento' });
-    if (novas.length) { await sincronizarCadastros({ forcar: true }); atas.definirObrasOrcamento((estado.obrasCad || []).filter((c) => c.situacao === 'orcamento').map((c) => c.codigo)); }
-    linhas.forEach((l) => { if (l.obra.startsWith('__novo__:')) l.obra = l.obra.slice(9); });
     const n = await atas.criarTarefasDoLote(linhas);
-    estado.atasMsg = `${n} ${n === 1 ? 'tarefa criada' : 'tarefas criadas'} a partir da ata de pendências${novas.length ? ` e ${novas.length} ${novas.length === 1 ? 'obra criada' : 'obras criadas'} em orçamento` : ''}.`;
+    estado.atasMsg = `${n} ${n === 1 ? 'tarefa criada' : 'tarefas criadas'} a partir da ata de pendências.`;
     location.hash = '#/tarefas'; desenhar();
   } catch (err) { botao.disabled = false; if (msg) msg.textContent = ''; alert(`Não foi possível criar as tarefas (${err.message || err}).`); }
 }
