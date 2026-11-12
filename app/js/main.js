@@ -672,7 +672,7 @@ function desenhar() {
   // Tarefas: modo de visualização (Tabela | Lista) no topo, à esquerda de "Atualizado às…"
   { const mv = $('#modoVis'); const abaP = rota.params.get('aba'); const naTarefas = (tela === 'atas' || tela === 'tarefas') && (!abaP || abaP === 'pendencias');
     if (mv && tela === 'agenda') { const m = rota.params.get('modo') === 'dia' ? 'dia' : 'semana'; mv.hidden = false; mv.innerHTML = `<span class="mv-rot">Modo de visualização</span><span class="mv-seg"><button type="button" data-mva="semana" class="${m === 'semana' ? 'on' : ''}">Semana</button><button type="button" data-mva="dia" class="${m === 'dia' ? 'on' : ''}">Dia</button></span>`; }
-    else if (mv) { mv.hidden = !naTarefas; if (naTarefas) { const m = rota.params.get('modo') === 'lista' ? 'lista' : 'tabela'; mv.innerHTML = `<span class="mv-rot">Modo de visualização</span><span class="mv-seg"><button type="button" data-mv="" class="${m === 'tabela' ? 'on' : ''}">Tabela</button><button type="button" data-mv="lista" class="${m === 'lista' ? 'on' : ''}">Lista</button></span><button type="button" class="mv-imp" data-imprimir="" title="Imprimir as tarefas (ou salvar em PDF)">🖨 Imprimir</button>`; } } }
+    else if (mv) { mv.hidden = !naTarefas; if (naTarefas) { const m = rota.params.get('modo') === 'lista' ? 'lista' : 'tabela'; mv.innerHTML = `<span class="mv-rot">Modo de visualização</span><span class="mv-seg"><button type="button" data-mv="" class="${m === 'tabela' ? 'on' : ''}">Tabela</button><button type="button" data-mv="lista" class="${m === 'lista' ? 'on' : ''}">Lista</button></span><button type="button" class="mv-imp" data-lista-importar="" title="Importar uma lista de pendências em PDF: cada linha vira uma tarefa">⬆ Importar lista</button><button type="button" class="mv-imp" data-imprimir="" title="Imprimir as tarefas (ou salvar em PDF)">🖨 Imprimir</button>`; } } }
   const sc = $('#sinc');
   const sy = estado.sync;
   if (sy.erro) { sc.textContent = 'Sem conexão, mostrando os últimos dados'; sc.className = 'sinc err'; sc.title = sy.erro; }
@@ -2071,6 +2071,19 @@ async function criarTarefasDaAtaDePendencias(botao) {
     location.hash = '#/tarefas'; desenhar();
   } catch (err) { botao.disabled = false; if (msg) msg.textContent = ''; alert(`Não foi possível criar as tarefas (${err.message || err}).`); }
 }
+// Tarefas: importar uma lista de pendências em PDF (cada linha vira uma tarefa)
+async function importarListaDePendencias(arquivo) {
+  const mv = document.getElementById('modoVis'); const bt = mv && mv.querySelector('[data-lista-importar]'); if (bt) { bt.disabled = true; bt.textContent = 'Lendo…'; }
+  try { await atas.importarListaPendencias(arquivo, obrasDeAtas()); desenhar(); }
+  catch (err) { alert(err.message || String(err)); desenhar(); }
+}
+document.addEventListener('click', (e) => {
+  if (!(e.target.closest && e.target.closest('[data-lista-importar]'))) return;
+  let inp = document.getElementById('lista-pend-arquivo');
+  if (!inp) { inp = document.createElement('input'); inp.type = 'file'; inp.id = 'lista-pend-arquivo'; inp.accept = '.pdf,application/pdf'; inp.hidden = true; document.body.appendChild(inp); }
+  inp.value = ''; inp.click();
+});
+document.addEventListener('change', (e) => { if (e.target && e.target.id === 'lista-pend-arquivo' && e.target.files && e.target.files[0]) importarListaDePendencias(e.target.files[0]); });
 // Atas: importar um PDF ou texto e montar o rascunho com as pendências
 async function importarAta(dados) {
   const msg = document.querySelector('.at-imp-msg'); if (msg) msg.textContent = 'Lendo a ata…';

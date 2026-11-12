@@ -25,6 +25,15 @@ export const temRascunho = () => !!rascunho;
 export function descartarRascunho() { rascunho = null; lote = null; }
 let lote = null;   // "ata de pendências" lida: cada linha vira uma tarefa, esperando conferência
 export const temLote = () => !!lote;
+// Importar LISTA DE PENDÊNCIAS (aba Tarefas): PDF com a tabela Nº · Obra · Descrição · Responsável · Urgência · Desde · Previsto, em que cada linha é uma tarefa
+// (com a obra, o responsável, a prioridade e o prazo da própria linha). Fica separado da importação de ata (aba Atas), que monta uma ata de uma reunião só.
+export async function importarListaPendencias(arquivo, obras) {
+  if (!dados.pessoas.length) await carregar();
+  const r = await lerArquivoAta(arquivo);
+  if (!ehAtaDePendencias(r.texto, r.paginas)) throw new Error('Este PDF não parece uma lista de pendências (a tabela Nº · Obra · Descrição · Responsável · Urgência · Desde · Previsto). Para importar uma ata de reunião, use a aba Atas.');
+  rascunho = null; lote = montarLote(lerAtaDePendencias(r.paginas, r.texto, { pessoas: dados.pessoas, obras, hoje: hojeISO() }), obras);
+  return lote;
+}
 // lê um arquivo (PDF ou texto) ou texto colado e monta o rascunho da ata
 export async function importar({ arquivo = null, texto = '', fala = false }, obras) {
   if (!dados.pessoas.length) await carregar();
@@ -32,8 +41,6 @@ export async function importar({ arquivo = null, texto = '', fala = false }, obr
   if (arquivo) { const r = await lerArquivoAta(arquivo); t = r.texto; paginas = r.paginas; nome = String(arquivo.name || '').replace(/\.[^.]+$/, ''); }
   if (!String(t).trim()) throw new Error('Não há texto para ler.');
   const opc = { pessoas: dados.pessoas, obras, hoje: hojeISO() };
-  // PDF "ATA DE PENDÊNCIAS" (quadro de metas do dia): cada linha é uma tarefa, com obra, responsável, prioridade e prazo próprios
-  if (arquivo && ehAtaDePendencias(t, paginas)) { rascunho = null; lote = montarLote(lerAtaDePendencias(paginas, t, opc), obras); return lote; }
   // transcrição de reunião (gravada) ou resumo em tópicos: leitor de reunião; ata pronta (PDF, texto): leitor de ata
   if (fala) rascunho = analisarFala(t, opc);
   else if (!arquivo && pareceResumoEmTopicos(t)) rascunho = analisarReuniao(t, opc);
@@ -874,6 +881,7 @@ function cabecalhoImpressao(params, modo, hoje, setorFixo = '') {
 }
 export function renderPendencias({ params, obras = [], setorFixo = '', base = '#/atas', sugestoes = [] }) {
   definirSugestoes(sugestoes);
+  if (lote) return painelLote(obras);   // lista de pendências importada: conferir antes de criar as tarefas
   const hoje = hojeISO();
   const doSetor = dados.pendencias.filter((p) => naLista(p) && doEscopo(p, setorFixo));
   const abertas = doSetor.filter((p) => p.status === 'aberta');
@@ -903,7 +911,7 @@ export function render({ params, obras = [], msg = '', sugestoes = [] }) {
     : aba === 'nova' ? html`<div class="at-topo-bt"><a class="link" href="#/atas?aba=atas">← Atas</a></div>` : '';
   void abertas;
   let corpo;
-  if (aba === 'nova') corpo = lote && !params.get('revisar') ? painelLote(obras) : formNova(obras, params.get('revisar') || '');
+  if (aba === 'nova') corpo = formNova(obras, params.get('revisar') || '');
   else if (aba === 'pautas') corpo = renderPautas(params, obras);
   else if (aba === 'atas') corpo = params.get('ata') ? detalheAta(params.get('ata'), hoje, obras) : html`${barraFiltros(params, obras, 'atas')}${listaAtas(params, obras)}`;
   else corpo = renderPendencias({ params, obras });
