@@ -362,7 +362,7 @@ async function lerPdf(buffer) {
   const paginas = [];
   for (let n = 1; n <= pdf.numPages; n++) {
     const tc = await (await pdf.getPage(n)).getTextContent();
-    paginas.push(tc.items.filter((it) => it.str && it.str.trim()).map((it) => ({ str: it.str, x: it.transform[4], y: it.transform[5], w: it.width })));
+    paginas.push(tc.items.filter((it) => it.str && it.str.trim()).map((it) => ({ str: it.str, x: it.transform[4], y: it.transform[5], w: it.width, h: it.height })));
   }
   const texto = paginas.map((p) => agruparLinhas(p).map((l) => textoDaLinha(l)).join('\n')).join('\n\n');
   return { texto, paginas };
@@ -380,3 +380,65 @@ export async function lerArquivoAta(arquivo) {
   throw new Error(`Não sei ler arquivo .${ext || 'desse tipo'} aqui. Use PDF ou texto, ou copie o conteúdo e cole na caixa.`);
 }
 export const textoDoArquivo = async (arquivo) => (await lerArquivoAta(arquivo)).texto;
+
+// ---------------------------------------------------------------- "ATA DE PENDÊNCIAS" (quadro de metas do dia exportado em PDF)
+// Tabela Nº · OBRA · DESCRIÇÃO · RESPONSÁVEL · URGÊNCIA · DESDE · PREVISTO. Cada linha vira uma TAREFA (não uma ata): a obra e o responsável
+// são de cada linha. Lê pela posição das colunas no PDF (como a tabela das atas da Sólida). Dentro da célula, a letra menor é o detalhe da obra (coluna OBRA)
+// ou uma observação (coluna DESCRIÇÃO); linha de descrição quebrada (com hífen no fim) é emendada.
+export function ehAtaDePendencias(texto, paginas) {
+  if (!/ATA\s+DE\s+PEND[ÊE]NCIAS/i.test(String(texto || ''))) return false;
+  return !!paginas && paginas.some((p) => p.some((it) => /^DESCRI[ÇC][ÃA]O$/i.test(it.str.trim())) && p.some((it) => /^PREVISTO$/i.test(it.str.trim())));
+}
+const MESES = { janeiro: 1, fevereiro: 2, marco: 3, abril: 4, maio: 5, junho: 6, julho: 7, agosto: 8, setembro: 9, outubro: 10, novembro: 11, dezembro: 12 };
+const emendar = (linhas) => linhas.reduce((t, l) => (!t ? l : /[-‐‑]$/.test(t) ? `${t}${l}` : `${t} ${l}`), '').replace(/\s+/g, ' ').trim();
+
+// distribui as linhas de uma coluna entre as linhas da tabela: cada linha da tabela fica no centro do que escreveu (programação dinâmica, custo = desvio do centro)
+function repartir(linhas, centros) {
+  const n = linhas.length; const m = centros.length; const INF = 1e9;
+  const custo = (j, k, i) => { if (k === 0) return 25; const ys = linhas.slice(j, j + k).map((l) => l.y); return Math.abs((Math.max(...ys) + Math.min(...ys)) / 2 - centros[i]); };
+  const f = Array.from({ length: m + 1 }, () => Array(n + 1).fill(INF)); const vem = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+  f[0][0] = 0;
+  for (let i = 1; i <= m; i++) for (let j = 0; j <= n; j++) for (let k = 0; k <= Math.min(j, 14); k++) {
+    if (f[i - 1][j - k] >= INF) continue;
+    const c = f[i - 1][j - k] + custo(j - k, k, i - 1);
+    if (c < f[i][j]) { f[i][j] = c; vem[i][j] = k; }
+  }
+  const out = Array.from({ length: m }, () => []); let j = n;
+  for (let i = m; i >= 1; i--) { const k = vem[i][j]; out[i - 1] = linhas.slice(j - k, j); j -= k; }
+  return out;
+}
+
+export function lerAtaDePendencias(paginas, texto, { pessoas = [], hoje = '' } = {}) {
+  const dm = /Data:\s*(\d{1,2})\s+de\s+([A-Za-zçÇãÃ]+)\s+de\s+(\d{4})/i.exec(String(texto || '').replace(/\n/g, ' '));
+  const data = dm && MESES[norm(dm[2])] ? `${dm[3]}-${String(MESES[norm(dm[2])]).padStart(2, '0')}-${dm[1].padStart(2, '0')}` : (hoje || '');
+  const tm = /Metas do dia[^\n]*/i.exec(String(texto || '')); const titulo = tm ? tm[0].trim() : 'Ata de pendências';
+  const itens = [];
+  for (const pag of paginas) {
+    const cab = (nome) => pag.find((it) => norm(it.str.trim()) === nome);
+    const hNum = cab('n\u00ba') || pag.find((it) => /^N[º°o]$/i.test(it.str.trim())); const hDesc = cab('descricao'); const hResp = cab('responsavel'); const hUrg = cab('urgencia'); const hDesde = cab('desde'); const hPrev = cab('previsto');
+    if (!hNum || !hDesc || !hResp || !hUrg || !hDesde || !hPrev) continue;
+    const b0 = hNum.x + 14; const b1 = hDesc.x - 54; const b2 = hResp.x - 9; const b3 = hUrg.x - 5; const b4 = hDesde.x - 4; const b5 = (hDesde.x + hPrev.x) / 2;
+    const corpo = pag.filter((it) => it.y < hNum.y - 3);
+    const fim = corpo.find((it) => /^OBSERVA[ÇC][ÕO]ES/i.test(it.str.trim())); const area = fim ? corpo.filter((it) => it.y > fim.y + 2) : corpo;
+    const nums = area.filter((it) => it.x < b0 && /^\d{1,3}$/.test(it.str.trim())).sort((a, b) => b.y - a.y);
+    if (!nums.length) continue;
+    const colunaLinhas = (de, ate) => agruparLinhas(area.filter((it) => it.x >= de && it.x < ate)).map((l) => ({ y: l.y, h: Math.max(...l.itens.map((i) => i.h || 0)), txt: textoDaLinha(l) }));
+    const ys = nums.map((n) => n.y);
+    const obraL = repartir(colunaLinhas(b0, b1), ys); const descL = repartir(colunaLinhas(b1, b2), ys);
+    const simples = (de, ate, i) => area.filter((it) => it.x >= de && it.x < ate && Math.abs(it.y - ys[i]) <= 4).sort((a, b) => a.x - b.x).map((it) => it.str.trim()).join(' ').trim();
+    nums.forEach((n, i) => {
+      const separa = (ls) => { const mx = Math.max(0, ...ls.map((l) => l.h)); return { principal: ls.filter((l) => l.h >= mx - 0.4).map((l) => l.txt), pequeno: ls.filter((l) => l.h < mx - 0.4).map((l) => l.txt) }; };
+      const o = separa(obraL[i]); const d = separa(descL[i]);
+      const respTxt = simples(b2, b3, i); const urgTxt = simples(b3, b4, i); const desdeTxt = simples(b4, b5, i); const prevTxt = simples(b5, 1e9, i);
+      const pr = /(\d{1,2})\/(\d{1,2})/.exec(prevTxt); const ds = /(\d{1,2})\/(\d{1,2})/.exec(desdeTxt);
+      itens.push({
+        n: Number(n.str), obraTxt: emendar(o.principal), obraDetalhe: emendar(o.pequeno), titulo: emendar(d.principal), nota: emendar(d.pequeno),
+        responsaveisTxt: respTxt, responsaveis: respTxt.split(/\s+e\s+|,|\//i).map((x) => x.trim()).filter(Boolean),
+        urgencia: ({ alta: 'alta', media: 'media', baixa: 'baixa' })[norm(urgTxt)] || '',
+        prazo: pr ? dataBR([null, pr[1], pr[2]], data || hoje) : '', desde: ds ? dataBR([null, ds[1], ds[2]], data || hoje) : '',
+      });
+    });
+  }
+  itens.sort((a, b) => a.n - b.n);
+  return { tipo: 'pendencias', titulo, data, itens, total: (/Total de pend[êe]ncias:\s*(\d+)/i.exec(String(texto || '')) || [])[1] ? Number(/Total de pend[êe]ncias:\s*(\d+)/i.exec(String(texto))[1]) : itens.length };
+}

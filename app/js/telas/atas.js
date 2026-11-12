@@ -12,7 +12,7 @@ import { SETORES, SETORES_ORGANOGRAMA, funcoesDoCargo } from '../funcoes.js';
 import { funcaoVe } from '../config.js';
 import { sessao, idPessoa, funcaoReal, funcaoAtual, simulando } from '../sessao.js';
 import { lerPessoasTarefas } from '../armazenamento.js';
-import { analisarAta, lerArquivoAta, acharResponsavel } from '../ata-leitor.js';
+import { analisarAta, lerArquivoAta, acharResponsavel, ehAtaDePendencias, lerAtaDePendencias } from '../ata-leitor.js';
 import { analisarReuniao, analisarFala, pareceResumoEmTopicos } from '../fala-leitor.js';
 
 export const ABAS = [['pendencias', 'Pendências'], ['atas', 'Atas'], ['pautas', 'Pautas'], ['nova', 'Nova ata']];
@@ -22,7 +22,9 @@ let dados = { atas: [], pendencias: [], pessoas: [], erro: '' };
 let rascunho = null;   // ata lida de um arquivo/texto, esperando conferência
 
 export const temRascunho = () => !!rascunho;
-export function descartarRascunho() { rascunho = null; }
+export function descartarRascunho() { rascunho = null; lote = null; }
+let lote = null;   // "ata de pendências" lida: cada linha vira uma tarefa, esperando conferência
+export const temLote = () => !!lote;
 // lê um arquivo (PDF ou texto) ou texto colado e monta o rascunho da ata
 export async function importar({ arquivo = null, texto = '', fala = false }, obras) {
   if (!dados.pessoas.length) await carregar();
@@ -30,11 +32,75 @@ export async function importar({ arquivo = null, texto = '', fala = false }, obr
   if (arquivo) { const r = await lerArquivoAta(arquivo); t = r.texto; paginas = r.paginas; nome = String(arquivo.name || '').replace(/\.[^.]+$/, ''); }
   if (!String(t).trim()) throw new Error('Não há texto para ler.');
   const opc = { pessoas: dados.pessoas, obras, hoje: hojeISO() };
+  // PDF "ATA DE PENDÊNCIAS" (quadro de metas do dia): cada linha é uma tarefa, com obra, responsável, prioridade e prazo próprios
+  if (arquivo && ehAtaDePendencias(t, paginas)) { rascunho = null; lote = montarLote(lerAtaDePendencias(paginas, t, opc), obras); return lote; }
   // transcrição de reunião (gravada) ou resumo em tópicos: leitor de reunião; ata pronta (PDF, texto): leitor de ata
   if (fala) rascunho = analisarFala(t, opc);
   else if (!arquivo && pareceResumoEmTopicos(t)) rascunho = analisarReuniao(t, opc);
   else rascunho = analisarAta(t, { ...opc, setores: SETORES_ATA, nomeArquivo: nome, paginas });
   return rascunho;
+}
+
+// ---------------------------------------------------------------- ata de pendências → tarefas
+const normTxt = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+const primeiroNomeDe = (n) => normTxt(String(n || '').replace(/\(.*?\)/g, ' ')).split(/[\s.]+/).filter(Boolean)[0] || '';
+// quadros que não são uma obra (categorias do quadro de metas): não viram obra em orçamento
+const NAO_E_OBRA = /^(as built|projetos?|aditivos?|planilha padr[aã]o|or[cç]amento cliente novo)$|\s·\s/i;
+const CODIGO_OBRA = /^(mo|po)\s*\d+[a-z]*$/i;
+export const normalizarCodigoObra = (txt) => { const s = String(txt || '').trim(); return CODIGO_OBRA.test(s) ? s.replace(/\s+/g, '').replace(/^(mo|po)/i, (m) => m[0].toUpperCase() + m[1].toLowerCase()) : s; };
+function montarLote(lido, obras) {
+  const pode = podeCriarObraOrcamento();
+  const setorTerc = SETORES_ATA.find((s) => /terceiriz\w*\s+laranja/i.test(s)) || '';
+  const setorPadrao = SETORES_ATA.find((s) => /^orc\s+obras\s+novas$/i.test(s)) || '';
+  const itens = lido.itens.map((it) => {
+    const ids = it.responsaveis.map((nome) => { const q = primeiroNomeDe(nome); const ach = dados.pessoas.filter((p) => primeiroNomeDe(p.nome) === q); return (ach.find((p) => normTxt(p.nome) === normTxt(nome)) || ach[0] || {}).id || ''; }).filter(Boolean);
+    const principal = it.obraTxt; const cod = normalizarCodigoObra(principal);
+    const cad = obras.find((o) => codigoDaObra(o) === codigoDaObra(cod) || normTxt(o) === normTxt(principal));
+    const candidata = !NAO_E_OBRA.test(principal) && principal.length > 2;
+    const obra = cad || (candidata && pode ? `__novo__:${cod}` : '');
+    const terc = /terceiriz\w*\s+laranja/i.test(it.obraDetalhe);
+    const notas = [it.nota, it.obraDetalhe && !terc ? `Quadro: ${it.obraDetalhe}` : ''].filter(Boolean);
+    return { n: it.n, incluir: true, obra, assunto: String(cod || principal).toLocaleUpperCase('pt-BR'), desc: it.titulo, responsavel: ids[0] || '', observadores: ids.slice(1), responsaveisTxt: it.responsaveisTxt, setor: terc && setorTerc ? setorTerc : setorPadrao, urgencia: it.urgencia, prazo: it.prazo, notas };
+  });
+  return { titulo: lido.titulo, data: lido.data, total: lido.total, itens };
+}
+export function painelLote(obras) {
+  if (!lote) return '';
+  const pessoas = [...dados.pessoas].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  const novas = [...new Set(lote.itens.map((i) => i.obra).filter((o) => String(o).startsWith('__novo__:')).map((o) => o.slice(9)))];
+  const linha = (it) => html`<tr data-lote-i="${it.n}" class="lote-lin">
+    <td><input type="checkbox" data-lote-inc checked title="Criar esta tarefa"></td><td class="lote-n">${it.n}</td>
+    <td><select data-lote-obra><option value="">— sem obra —</option>${String(it.obra).startsWith('__novo__:') ? html`<option value="${it.obra}" selected>${it.obra.slice(9)} (nova, em orçamento)</option>` : ''}${gruposDeObras(obras, String(it.obra).startsWith('__novo__:') ? '' : it.obra, { criar: true })}</select></td>
+    <td><input data-lote-assunto value="${it.assunto}"></td>
+    <td><input data-lote-desc value="${it.desc}"></td>
+    <td><select data-lote-resp class="${it.responsavel ? '' : 'lote-falta'}"><option value="">— escolher —</option>${pessoas.map((p) => html`<option value="${p.id}" ${p.id === it.responsavel ? html.seguro('selected') : ''}>${p.nome}</option>`)}</select>${it.observadores.length ? html`<small class="lote-obs" data-lote-obs="${it.observadores.join(',')}">+ observa: ${it.observadores.map((id) => nomeDe(id)).join(', ')}</small>` : ''}</td>
+    <td><select data-lote-setor><option value="">— escolher —</option>${SETORES_ATA.map((s) => html`<option value="${s}" ${s === it.setor ? html.seguro('selected') : ''}>${s}</option>`)}</select></td>
+    <td><select data-lote-urg><option value="">—</option>${Object.entries(URG).map(([v, [t]]) => html`<option value="${v}" ${v === it.urgencia ? html.seguro('selected') : ''}>${t[0] + t.slice(1).toLocaleLowerCase('pt-BR')}</option>`)}</select></td>
+    <td><input type="date" data-lote-prazo value="${it.prazo || ''}"></td>
+    <td><input data-lote-nota value="${it.notas.join(' · ')}" placeholder="vai para as anotações"></td></tr>`;
+  return html`<section class="lote">
+    <h2>Ata de pendências lida: ${lote.itens.length} ${lote.itens.length === 1 ? 'tarefa' : 'tarefas'}</h2>
+    <p class="pequeno">${lote.titulo}${lote.data ? ` · ${dm(lote.data)}` : ''}. Cada linha vira uma <b>tarefa</b>, com o responsável, a prioridade e o prazo da ata. Confira, corrija o que precisar, desmarque o que não quiser criar e clique em "Criar tarefas".</p>
+    ${novas.length ? html`<p class="lote-aviso">Obras que ainda não existem e serão criadas <b>em orçamento</b> (só você, o setor ORC Obras Novas e a diretoria veem): <b>${novas.join(', ')}</b>. Para não criar uma delas, troque a obra na linha.</p>` : ''}
+    <div class="tabela-rolagem"><table class="lote-tab"><thead><tr><th></th><th>Nº</th><th>Obra</th><th>Assunto</th><th>O que fazer</th><th>Responsável</th><th>Setor</th><th>Prioridade</th><th>Prazo</th><th>Anotação</th></tr></thead>
+    <tbody>${lote.itens.map(linha)}</tbody></table></div>
+    <div class="lote-botoes"><button type="button" class="botao" data-lote-descartar>Descartar</button><button type="button" class="botao on" data-lote-criar>Criar tarefas</button><span class="pequeno lote-msg"></span></div>
+  </section>`;
+}
+// cria as tarefas conferidas (e as obras em orçamento novas, antes). linhas = [{ obra, assunto, desc, responsavel, observadores, setor, urgencia, prazo, nota }]
+export async function criarTarefasDoLote(linhas) {
+  const lista = linhas.map((l) => ({
+    ata_id: null, descricao: [String(l.assunto || '').trim().replace(/,/g, ' /').toLocaleUpperCase('pt-BR'), String(l.desc || '').trim()].filter(Boolean).join(', '),
+    responsavel: l.responsavel, responsavel_nome: nomeDe(l.responsavel), responsavel_tipo: 'solida', responsavel_categoria: null, prazo: l.prazo || null, status: 'aberta',
+    obra: l.obra || null, setor: l.setor || null, os: null, urgencia: l.urgencia || null, funcao_tarefa: null, observadores: l.observadores || [], hora: null, duracao: 60,
+  }));
+  let ids = [];
+  if (NA_NUVEM) ids = await criarPendenciasNuvemLote(lista);
+  else { const lc = lerLocal(); for (const x of lista) { const id = lc.seq++; ids.push(id); lc.pendencias.push({ id, ...x, criado_por: idPessoa(), criado_em: new Date().toISOString(), concluida_em: null }); } gravarLocal(lc); }
+  for (let i = 0; i < linhas.length; i++) if (linhas[i].nota && ids[i] != null) { try { await anotar(ids[i], linhas[i].nota); } catch { /* a tarefa já foi criada; a anotação pode ser refeita na janela da tarefa */ } }
+  lote = null;
+  await carregar();
+  return ids.length;
 }
 
 // ---------------------------------------------------------------- armazenamento
@@ -443,15 +509,21 @@ export function obrasForaDoCadastro(codigos) {
   return [...fora.values()];
 }
 const ehObraPura = ehObraNormal;
-export function gruposDeObras(obras, atual = '') {
+// Obras "em orçamento" (setor ORC Obras Novas e diretoria): ficam num grupo próprio na caixinha de obra e podem ser criadas ali mesmo
+let OBRAS_ORC = new Set();
+export const definirObrasOrcamento = (codigos) => { OBRAS_ORC = new Set((codigos || []).map((c) => String(c).toLowerCase())); };
+export const podeCriarObraOrcamento = () => NA_NUVEM && (funcaoAtual().id === 'socio' || meusSetores().includes('ORC Obras Novas'));
+export function gruposDeObras(obras, atual = '', { criar = false } = {}) {
   // sem repetir a mesma obra escrita de dois jeitos (Po577 / PO577 / PO577 - nome): vale a primeira
   const vistos = new Set(); const lista = [];
   for (const o of obras.filter(Boolean)) { const k = codigoDaObra(o); if (!vistos.has(k)) { vistos.add(k); lista.push(o); } }
   if (atual && !vistos.has(codigoDaObra(atual))) lista.push(atual);
   atual = lista.find((o) => codigoDaObra(o) === codigoDaObra(atual)) || atual;
   const opt = (o) => html`<option value="${o}" ${o === atual ? html.seguro('selected') : ''}>${o}</option>`;
-  const ob = lista.filter(ehObraPura).sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true })); const po = lista.filter((o) => !ehObraPura(o)).sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }));
-  return html`${ob.length ? html`<optgroup label="Obras">${ob.map(opt)}</optgroup>` : ''}${po.length ? html`<optgroup label="Pós-obras">${po.map(opt)}</optgroup>` : ''}`;
+  const emOrc = (o) => OBRAS_ORC.has(String(o).toLowerCase());
+  const ob = lista.filter((o) => ehObraPura(o) && !emOrc(o)).sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true })); const po = lista.filter((o) => !ehObraPura(o) && !emOrc(o)).sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }));
+  const orc = lista.filter(emOrc).sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }));
+  return html`${ob.length ? html`<optgroup label="Obras">${ob.map(opt)}</optgroup>` : ''}${po.length ? html`<optgroup label="Pós-obras">${po.map(opt)}</optgroup>` : ''}${orc.length ? html`<optgroup label="Em orçamento">${orc.map(opt)}</optgroup>` : ''}${criar && podeCriarObraOrcamento() ? html`<optgroup label="Novo"><option value="__nova_orc__">+ Nova obra em orçamento…</option></optgroup>` : ''}`;
 }
 const selObra = (obras, atual, todos = 'Todos') => html`<label>Obra<select data-atas-filtro="obra"><option value="">${todos}</option>${gruposDeObras(obras, atual)}</select></label>`;
 // Responsável: as opções de sempre no alto e, embaixo, o grupo "Equipe da Sólida" com cada pessoa (diretoria e administrativo escolhem qualquer uma; os demais, quem podem ver)
@@ -532,7 +604,7 @@ export function formAvulsa(obras, prazo, setorPadrao = '', preset = {}) {
           <select name="p_resp" class="pf-sol tf-req"><option value="">Pessoa da Sólida…</option>${opcoesPessoas(preset.resp || '')}</select>
           <input name="p_nome" class="pf-ext tf-req" list="dl-terceiros" placeholder="Nome da empresa ou pessoa" autocomplete="off" hidden></label>
         <label>Departamento<select name="av_setor" class="tf-req" required><option value="">— escolher —</option>${SETORES_ATA.map((s) => html`<option value="${s}" ${s === setorPadrao ? html.seguro('selected') : ''}>${s}</option>`)}</select></label>
-        <label>Obra<select name="av_obra"><option value="">Nenhuma</option>${gruposDeObras(listaObras, preset.obra || '')}</select></label>
+        <label>Obra<select name="av_obra"><option value="">Nenhuma</option>${gruposDeObras(listaObras, preset.obra || '', { criar: true })}</select></label>
         <label>Prazo<input type="date" name="p_prazo" class="tf-req" value="${prazo || ''}"></label>
         <div class="tf-recor"><label class="tf-recor-chk"><input type="checkbox" name="p_recor"> <span>Tarefa recorrente</span></label><select name="p_freq" title="Como se repete"><option value="semanal">Toda semana</option><option value="mensal">Todo mês</option></select></div>
         <div class="tf-sep"></div>
@@ -644,7 +716,7 @@ function formNova(obras, revisarId = '') {
       <label>Data<input type="date" name="data" value="${r ? r.data : hoje}" required></label>
       <label>Tipo da reunião<select name="tipo_reuniao">${TIPOS_REUNIAO.map((x) => html`<option ${(r && r.tipoReuniao ? r.tipoReuniao : 'REUNIÃO') === x ? html.seguro('selected') : ''}>${x}</option>`)}</select></label>
       <input name="revisao" type="hidden" value="${proxRev}">
-      <label>Obra<select name="obra" required><option value="">— escolher —</option><option value="-" ${ataRev && !ataRev.obra ? html.seguro('selected') : ''}>Nenhuma</option>${gruposDeObras(obras, (r && r.obra) || '')}</select></label>
+      <label>Obra<select name="obra" required><option value="">— escolher —</option><option value="-" ${ataRev && !ataRev.obra ? html.seguro('selected') : ''}>Nenhuma</option>${gruposDeObras(obras, (r && r.obra) || '', { criar: true })}</select></label>
       <label>Departamento<select name="setor" required><option value="">— escolher —</option>${SETORES_ATA.map((s) => html`<option value="${s}" ${r && r.setor === s ? html.seguro('selected') : ''}>${s}</option>`)}</select></label>
     </div>
     <p class="at-nome-linha">Nome da ata: <b id="ata-nome">escolha a data</b> <span class="pequeno" id="ata-destino"></span></p>
@@ -826,7 +898,7 @@ export function render({ params, obras = [], msg = '', sugestoes = [] }) {
     : aba === 'nova' ? html`<div class="at-topo-bt"><a class="link" href="#/atas?aba=atas">← Atas</a></div>` : '';
   void abertas;
   let corpo;
-  if (aba === 'nova') corpo = formNova(obras, params.get('revisar') || '');
+  if (aba === 'nova') corpo = lote && !params.get('revisar') ? painelLote(obras) : formNova(obras, params.get('revisar') || '');
   else if (aba === 'pautas') corpo = renderPautas(params, obras);
   else if (aba === 'atas') corpo = params.get('ata') ? detalheAta(params.get('ata'), hoje, obras) : html`${barraFiltros(params, obras, 'atas')}${listaAtas(params, obras)}`;
   else corpo = renderPendencias({ params, obras });

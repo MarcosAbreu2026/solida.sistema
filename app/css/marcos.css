@@ -790,3 +790,15 @@ body.nav-recolhido nav::after { display: none; }
 .at-cab-imp img.ci-logo { flex: none; width: 150px; height: auto; max-height: 48px; object-fit: contain; object-position: left center; background: none; -webkit-mask: none; mask: none; filter: brightness(0) saturate(100%) invert(17%) sepia(30%) saturate(1400%) hue-rotate(178deg) brightness(92%); }
 @media print { .imp-moldura > thead > tr > td { padding: 0 5mm !important; } }
 .at-cab-imp .ci-filtros:empty { display: none; }
+
+/* Ata de pendências lida: conferência das tarefas antes de criar */
+.lote h2 { margin: 0 0 4px; }
+.lote-aviso { background: #FFF6E3; border: 1px solid #E8C984; border-radius: 8px; padding: 8px 12px; font-size: 13px; }
+.lote-tab { border-collapse: collapse; font-size: 12.5px; min-width: 1180px; }
+.lote-tab th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #5B6677; padding: 6px 6px; border-bottom: 2px solid #D5DCE4; white-space: nowrap; }
+.lote-tab td { padding: 5px 6px; border-bottom: 1px solid #E6EBF0; vertical-align: top; }
+.lote-tab input:not([type="checkbox"]), .lote-tab select { width: 100%; min-width: 0; padding: 5px 6px; font: inherit; font-size: 12.5px; border: 1px solid #C9D1DA; border-radius: 6px; background: #fff; }
+.lote-tab td:nth-child(3) { min-width: 150px; } .lote-tab td:nth-child(4) { min-width: 130px; } .lote-tab td:nth-child(5) { min-width: 260px; } .lote-tab td:nth-child(6), .lote-tab td:nth-child(7) { min-width: 140px; } .lote-tab td:nth-child(8) { min-width: 90px; } .lote-tab td:nth-child(9) { min-width: 118px; } .lote-tab td:nth-child(10) { min-width: 200px; }
+.lote-tab .lote-n { color: #7A8794; font-weight: 700; } .lote-falta { border-color: #D9534F !important; }
+.lote-obs { display: block; margin-top: 2px; color: #5B6677; font-size: 11px; }
+.lote-botoes { display: flex; gap: 10px; align-items: center; justify-content: flex-end; margin-top: 12px; }

@@ -237,9 +237,10 @@ export async function atualizarAtaNuvem(id, mudancas) {
   if (error) throw new Error(error.message);
 }
 export async function criarPendenciasNuvemLote(lista) {
-  if (!lista.length) return;
-  const { error } = await sb.from('pendencias').insert(lista.map((p) => ({ ...p, criado_por: perfil.id })));
+  if (!lista.length) return [];
+  const { data, error } = await sb.from('pendencias').insert(lista.map((p) => ({ ...p, criado_por: perfil.id }))).select('id');
   if (error) throw new Error(error.message);
+  return (data || []).map((x) => x.id);
 }
 export async function atualizarPendenciaNuvem(id, mudancas) {
   const { error } = await sb.from('pendencias').update(mudancas).eq('id', id);

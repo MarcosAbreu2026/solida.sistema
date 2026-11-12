@@ -339,10 +339,12 @@ function ajustarAlturaFuncoes() {
   f.style.maxHeight = `${Math.max(240, c.clientHeight - 24)}px`;
 }
 window.addEventListener('resize', ajustarAlturaFuncoes);
-const cadastroAtivo = () => (estado.obrasCad || []).filter((c) => c.situacao !== 'finalizada').map((c) => c.codigo);
+// obra "em orçamento" ainda não é obra de verdade: não entra nas listas da operação, só nas caixinhas de obra de atas e tarefas (de quem pode ver)
+const cadastroAtivo = () => (estado.obrasCad || []).filter((c) => c.situacao !== 'finalizada' && c.situacao !== 'orcamento').map((c) => c.codigo);
+const cadastroEmOrcamento = () => (estado.obrasCad || []).filter((c) => c.situacao === 'orcamento').map((c) => c.codigo);
 function obrasDeAtas() {
   if (funcaoAtual().porObra) return obrasDaPessoa();
-  if ((estado.obrasCad || []).length) return [...cadastroAtivo().sort(numerico), ...atas.obrasForaDoCadastro(estado.obrasCad.map((c) => c.codigo)).sort(numerico)];
+  if ((estado.obrasCad || []).length) { atas.definirObrasOrcamento(cadastroEmOrcamento()); return [...cadastroAtivo().sort(numerico), ...cadastroEmOrcamento().sort(numerico), ...atas.obrasForaDoCadastro(estado.obrasCad.map((c) => c.codigo)).sort(numerico)]; }
   return [...obrasDeAcesso(), ...obrasDisponiveis().filter((o) => /^po/i.test(o)), ...((estado.base && estado.base.obras) || []).filter((o) => !['Concluído', 'Cancelado', 'Sem OS', 'Sem situação'].includes(o.situacao)).map((o) => o.obra)];
 }
 
@@ -619,7 +621,7 @@ function desenhar() {
   const CFG = estado.cfg;
   // onde está cada funcionário: só o efetivo de HOJE (zera todo dia); a lista de nomes vem do RH
   // obra cadastrada em Acessos entra na hora nas telas que usam a lista de obras dos dados (efetivo, ferramentas, orçamentos…)
-  if (CFG) { CFG.obrasDados = CFG.obrasDados || [...(CFG.obras || [])]; CFG.obras = [...new Set([...CFG.obrasDados, ...(estado.obrasCad || []).filter((c) => c.situacao !== 'finalizada').map((c) => c.codigo)])]; }
+  if (CFG) { CFG.obrasDados = CFG.obrasDados || [...(CFG.obras || [])]; CFG.obras = [...new Set([...CFG.obrasDados, ...(estado.obrasCad || []).filter((c) => c.situacao !== 'finalizada' && c.situacao !== 'orcamento').map((c) => c.codigo)])]; }
   if (CFG) { CFG.funcionariosRH = CFG.funcionariosRH || CFG.funcionarios; CFG.funcionarios = efetivoTela.funcionariosDeHoje(CFG.funcionariosRH, estado.efetivo); }
   let rota = rotaAtual();
   let tela = rota.tela;
@@ -882,7 +884,7 @@ function obrasDisponiveis() {
   const plan = CFG ? ((CFG.areas.find((a) => a.id === 'planejamento') || {}).porObra || []) : [];
   const base = CFG ? [...plan.map((o) => o.obra), ...(CFG.obras || []).filter((o) => /^(Mo|Po)/i.test(o))] : [];
   if (!CFG && !cad.length) return [];
-  return [...new Set([...base, ...cad.filter((c) => c.situacao !== 'finalizada').map((c) => c.codigo)])].filter((o) => !fin.has(o));
+  return [...new Set([...base, ...cad.filter((c) => c.situacao !== 'finalizada' && c.situacao !== 'orcamento').map((c) => c.codigo)])].filter((o) => !fin.has(o));
 }
 
 // ---------------------------------------------------------------- dados
@@ -1356,6 +1358,23 @@ function configurar() {
     if (!codigo) { alert('Digite o código da obra (ex.: Mo565).'); return; }
     try { await nuvem.salvarObra({ codigo, nome: String(fd.get('nome') || '').trim(), situacao: fd.get('situacao') || 'andamento' }); estado.acessosMsg = `Obra ${codigo} salva.`; await sincronizarCadastros({ forcar: true }); }
     catch (err) { alert(`Não foi possível salvar a obra (${err.message || err}).`); }
+  });
+  // "+ Nova obra em orçamento…" na caixinha de obra: o setor ORC Obras Novas (e a diretoria) cria a obra na hora; ela só aparece para eles
+  document.addEventListener('change', async (e) => {
+    const sel = e.target.closest && e.target.closest('select'); if (!sel || sel.value !== '__nova_orc__') return;
+    const nome = (prompt('Nome ou código da obra em orçamento (ex.: Sinagoga Leblon ou Mo606):') || '').trim();
+    if (!nome) { sel.value = ''; return; }
+    const codigo = /^(mo|po)\s*\d/i.test(nome) ? codigoObra(nome) : nome;
+    try {
+      await nuvem.salvarObra({ codigo, nome: '', situacao: 'orcamento' });
+      await sincronizarCadastros({ forcar: true });
+      atas.definirObrasOrcamento(cadastroEmOrcamento());
+      const op = document.createElement('option'); op.value = codigo; op.textContent = codigo;
+      const g = [...sel.querySelectorAll('optgroup')].find((x) => x.label === 'Em orçamento') || Object.assign(document.createElement('optgroup'), { label: 'Em orçamento' });
+      if (!g.parentNode) sel.insertBefore(g, sel.querySelector('optgroup[label="Novo"]'));
+      if (![...sel.options].some((o) => o.value === codigo)) g.appendChild(op);
+      sel.value = codigo;
+    } catch (err) { sel.value = ''; alert(`Não foi possível criar a obra em orçamento (${err.message || err}).`); }
   });
   // a lista de obras do Cadastro lembra se estava aberta (para não fechar ao salvar uma obra)
   document.addEventListener('toggle', (e) => { if (e.target.matches && e.target.matches('.ac-lista-obras')) estado.listaObrasAberta = e.target.open; }, true);
@@ -2003,6 +2022,30 @@ document.addEventListener('submit', async (e) => {
   } catch (err) { alert(`Não foi possível salvar (${err.message || err}).`); }
 });
 
+// Ata de pendências (quadro de metas do dia): cria as obras em orçamento que faltam e depois as tarefas conferidas
+async function criarTarefasDaAtaDePendencias(botao) {
+  const msg = document.querySelector('.lote-msg'); const linhas = []; let erro = '';
+  document.querySelectorAll('.lote-lin').forEach((tr) => {
+    if (!tr.querySelector('[data-lote-inc]').checked) return;
+    const v = (s) => String((tr.querySelector(s) || {}).value || '').trim();
+    const l = { n: tr.dataset.loteI, obra: v('[data-lote-obra]'), assunto: v('[data-lote-assunto]'), desc: v('[data-lote-desc]'), responsavel: v('[data-lote-resp]'), setor: v('[data-lote-setor]'), urgencia: v('[data-lote-urg]'), prazo: v('[data-lote-prazo]'), nota: v('[data-lote-nota]'),
+      observadores: String(((tr.querySelector('[data-lote-obs]') || {}).dataset || {}).loteObs || '').split(',').filter(Boolean) };
+    if (!erro && (!l.desc || !l.responsavel || !l.setor || !l.prazo)) erro = `Na linha ${l.n}, falta o que fazer, o responsável, o setor ou o prazo.`;
+    linhas.push(l);
+  });
+  if (!linhas.length) { alert('Nenhuma tarefa marcada para criar.'); return; }
+  if (erro) { alert(erro); return; }
+  botao.disabled = true; if (msg) msg.textContent = 'Criando…';
+  try {
+    const novas = [...new Set(linhas.map((l) => l.obra).filter((o) => o.startsWith('__novo__:')).map((o) => o.slice(9)))];
+    for (const cod of novas) await nuvem.salvarObra({ codigo: cod, nome: '', situacao: 'orcamento' });
+    if (novas.length) { await sincronizarCadastros({ forcar: true }); atas.definirObrasOrcamento((estado.obrasCad || []).filter((c) => c.situacao === 'orcamento').map((c) => c.codigo)); }
+    linhas.forEach((l) => { if (l.obra.startsWith('__novo__:')) l.obra = l.obra.slice(9); });
+    const n = await atas.criarTarefasDoLote(linhas);
+    estado.atasMsg = `${n} ${n === 1 ? 'tarefa criada' : 'tarefas criadas'} a partir da ata de pendências${novas.length ? ` e ${novas.length} ${novas.length === 1 ? 'obra criada' : 'obras criadas'} em orçamento` : ''}.`;
+    location.hash = '#/tarefas'; desenhar();
+  } catch (err) { botao.disabled = false; if (msg) msg.textContent = ''; alert(`Não foi possível criar as tarefas (${err.message || err}).`); }
+}
 // Atas: importar um PDF ou texto e montar o rascunho com as pendências
 async function importarAta(dados) {
   const msg = document.querySelector('.at-imp-msg'); if (msg) msg.textContent = 'Lendo a ata…';
@@ -2015,6 +2058,8 @@ document.addEventListener('change', (e) => {
 document.addEventListener('click', (e) => {
   if (e.target.closest && e.target.closest('[data-ata-ler]')) { importarAta({ texto: (document.getElementById('ata-colada') || {}).value || '' }); return; }
   if (e.target.closest && e.target.closest('[data-ata-ler-fala]')) { importarAta({ texto: (document.getElementById('ata-fala') || {}).value || '', fala: true }); return; }
+  if (e.target.closest && e.target.closest('[data-lote-descartar]')) { if (confirm('Descartar a ata lida?')) { atas.descartarRascunho(); desenhar(); } return; }
+  if (e.target.closest && e.target.closest('[data-lote-criar]')) { criarTarefasDaAtaDePendencias(e.target.closest('[data-lote-criar]')); return; }
   if (e.target.closest && e.target.closest('[data-ata-descartar]')) { if (confirm('Descartar a ata lida e começar do zero?')) { atas.descartarRascunho(); desenhar(); } }
 });
 
