@@ -353,7 +353,7 @@ export function instalarQuadro(aoMudar) {
 const hm = (txt) => { const m = String(txt || '').match(/^(\d{1,2}):(\d{2})/); return m ? Number(m[1]) * 60 + Number(m[2]) : null; };
 const assuntoDe = (t) => { const s = String(t || ''); const i = s.indexOf(','); return i > 0 && i < 60 ? [s.slice(0, i).trim(), s.slice(i + 1).trim()] : ['', s.trim()]; };
 // botões do cartão da Agenda: concluir (ou reabrir) e excluir; quem trata o clique é o main.js (data-pend / data-pend-del)
-const acoesCartao = (p) => html`<span class="ag-acoes">${p.status === 'feita' ? html`<button type="button" data-pend="${p.id}|aberta" title="Reabrir a tarefa">↺</button>` : html`<button type="button" class="ag-ok" data-pend="${p.id}|feita" title="Concluir a tarefa">✓</button>`}<button type="button" class="ag-del" data-pend-del="${p.id}" title="${p.ata_id ? 'Tirar da lista (continua na ata)' : 'Excluir a tarefa'}">×</button></span>`;
+const acoesCartao = (p) => html`<span class="ag-acoes"><button type="button" class="ag-del" data-pend-del="${p.id}" title="${p.ata_id ? 'Tirar da lista (continua na ata)' : 'Excluir a tarefa'}">×</button>${p.status === 'feita' ? html`<button type="button" data-pend="${p.id}|aberta" title="Reabrir a tarefa">↺</button>` : html`<button type="button" class="ag-ok" data-pend="${p.id}|feita" title="Concluir a tarefa">✓</button>`}</span>`;
 function cartaoTarefa(e, hoje, grande = false) {
   const p = e.p; const feita = p.status === 'feita'; const venc = !feita && p.prazo < hoje;
   const cls = feita ? 'ok' : venc ? 'venc' : p.prazo === hoje ? 'hoje' : 'futura';

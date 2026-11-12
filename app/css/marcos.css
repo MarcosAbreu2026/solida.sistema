@@ -755,3 +755,10 @@ body.nav-recolhido nav::after { display: none; }
 .ag-acoes .ag-ok:hover { background: #3C9A6B; border-color: #3C9A6B; color: #fff; }
 .ag-acoes .ag-del:hover { background: #C0392B; border-color: #C0392B; color: #fff; }
 .ag-lcard .ag-acoes { top: 50%; transform: translateY(-50%); } .ag-lcard .ag-acoes button { width: 20px; height: 20px; }
+
+/* Agenda: botões sempre à vista, no canto de baixo à direita do cartão, com o concluir (✓) na ponta direita */
+.ag-acoes { top: auto !important; bottom: 3px !important; right: 4px !important; transform: none !important; opacity: 1 !important; }
+.ag-lcard .ag-acoes { top: 50% !important; bottom: auto !important; transform: translateY(-50%) !important; }
+.ag-acoes button { background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .15); }
+.ag-acoes .ag-ok { border-color: #3C9A6B; color: #2E8057; }
+.ag-tcard, .ag-tcaixa { padding-right: 56px; }
