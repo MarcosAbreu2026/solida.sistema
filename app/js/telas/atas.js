@@ -391,14 +391,13 @@ export function gruposDeObras(obras, atual = '') {
   return html`${ob.length ? html`<optgroup label="Obras">${ob.map(opt)}</optgroup>` : ''}${po.length ? html`<optgroup label="Pós-obras">${po.map(opt)}</optgroup>` : ''}`;
 }
 const selObra = (obras, atual, todos = 'Todos') => html`<label>Obra<select data-atas-filtro="obra"><option value="">${todos}</option>${gruposDeObras(obras, atual)}</select></label>`;
-// Responsável: os grupos de sempre e, embaixo de "Equipe da Sólida", cada pessoa da Sólida (a diretoria e o administrativo escolhem qualquer uma; os demais, quem podem ver)
+// Responsável: as opções de sempre no alto e, embaixo, o grupo "Equipe da Sólida" com cada pessoa (diretoria e administrativo escolhem qualquer uma; os demais, quem podem ver)
 function seletorResponsavel(atual) {
   const op = ([v, t]) => html`<option value="${v}" ${atual === v ? html.seguro('selected') : ''}>${t}</option>`;
   const pessoas = pessoasParaVer();
   return html`<label>Responsável<select data-atas-filtro="pessoa"><option value="">Todos</option>
-    ${[['eu', 'Só as minhas'], ['tipo:solida', 'Equipe da Sólida (todos)']].map(op)}
-    ${pessoas.length ? html`<optgroup label="Pessoas da Sólida">${pessoas.map((x) => op([x.id, x.nome]))}</optgroup>` : ''}
-    <optgroup label="Externos">${[['tipo:terceirizado', 'Terceirizados (todos)'], ['tipo:cliente', 'Clientes'], ['tipo:arquitetura', 'Arquitetura']].map(op)}</optgroup></select></label>`;
+    ${[['eu', 'Só as minhas'], ['tipo:terceirizado', 'Terceirizados (todos)'], ['tipo:cliente', 'Clientes'], ['tipo:arquitetura', 'Arquitetura']].map(op)}
+    <optgroup label="Equipe da Sólida">${op(['tipo:solida', 'Equipe da Sólida (todos)'])}${pessoas.map((x) => op([x.id, x.nome]))}</optgroup></select></label>`;
 }
 function barraFiltros(params, obras, aba, ctx = {}) {
   const base = ctx.base || '#/atas';
