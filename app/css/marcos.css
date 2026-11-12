@@ -724,3 +724,6 @@ body.nav-recolhido nav::after { display: none; }
 .at-cab-imp .ci-canto small { font-size: 9px; letter-spacing: .08em; font-weight: 700; color: #555; }
 .at-cab-imp .sd-linha { grid-column: 2 / -1; font-size: 12px; padding: 4px 12px; }
 @media print { .at-cab-imp { margin: 0 0 10px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; } .at-cab-imp .sd-tit { font-size: 20px; } }
+
+/* O logo do cabeçalho da impressão sempre sai (cor de fundo é o que desenha o logo) */
+@media print { .at-cab-imp, .at-cab-imp * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } .imp-moldura thead .at-cab-imp { margin: 0 0 6px !important; } }

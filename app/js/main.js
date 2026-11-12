@@ -1843,6 +1843,9 @@ window.addEventListener('beforeprint', () => {
   const t = document.createElement('table'); t.className = 'imp-moldura';
   t.innerHTML = '<thead><tr><td><div class="imp-esp"></div></td></tr></thead><tfoot><tr><td><div class="imp-esp"></div></td></tr></tfoot><tbody><tr><td></td></tr></tbody>';
   const td = t.querySelector('tbody td');
+  // cabeçalho da impressão das tarefas: vai para o topo da moldura, que se repete em todas as folhas
+  const cab = c.querySelector('.at-cab-imp');
+  if (cab) { t._cab = { pai: cab.parentNode, prox: cab.nextSibling, el: cab }; const th = t.querySelector('thead td'); th.appendChild(cab); }
   while (c.firstChild) td.appendChild(c.firstChild);
   c.appendChild(t);
 });
@@ -1850,6 +1853,7 @@ window.addEventListener('afterprint', () => {
   const c = document.getElementById('conteudo'); const t = c && c.querySelector(':scope > .imp-moldura'); if (!t) return;
   const td = t.querySelector('tbody td');
   while (td.firstChild) c.insertBefore(td.firstChild, t);
+  if (t._cab) { const { pai, prox, el } = t._cab; if (prox && prox.parentNode === pai) pai.insertBefore(el, prox); else if (pai && pai.isConnected) pai.appendChild(el); else c.insertBefore(el, c.firstChild); }
   t.remove();
 });
 // Tarefas › modo Lista: trocar o dia, passar a tarefa para o dia seguinte, abrir a tarefa, passar as pendências atrasadas
