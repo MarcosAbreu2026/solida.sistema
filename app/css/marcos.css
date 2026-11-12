@@ -771,3 +771,17 @@ body.nav-recolhido nav::after { display: none; }
 .tf-recor .tf-recor-chk { display: inline-flex !important; flex-direction: row !important; align-items: center; gap: 8px; cursor: pointer; font-size: 13.5px; }
 .tf-recor select { width: auto !important; min-width: 120px; flex: 0 0 auto; }
 .tf-recor small { color: #7A8794; font-size: 12px; }
+
+/* Cabeçalho da impressão das tarefas (visual novo): logo, título e data no centro, obra ou departamento em destaque à direita, filtros embaixo */
+.at-cab-imp { margin: 0 0 12px; }
+.at-cab-imp .ci-linha { display: flex; align-items: center; gap: 18px; padding-bottom: 10px; border-bottom: 2px solid #1F3A56; }
+.at-cab-imp .ci-logo { flex: none; width: 150px; height: 44px; background-color: #1F3A56; -webkit-mask: url(../img/logo.png) no-repeat left center / contain; mask: url(../img/logo.png) no-repeat left center / contain; }
+.at-cab-imp .ci-meio { flex: 1; text-align: center; }
+.at-cab-imp .ci-tit { font-size: 26px; font-weight: 800; letter-spacing: .12em; color: #14283C; line-height: 1.05; }
+.at-cab-imp .ci-data { margin-top: 3px; font-size: 13px; color: #5B6677; font-weight: 600; }
+.at-cab-imp .ci-canto { flex: none; min-width: 120px; max-width: 230px; text-align: center; border: 1.5px solid #1F3A56; border-radius: 8px; padding: 5px 14px 6px; }
+.at-cab-imp .ci-canto small { display: block; font-size: 9px; letter-spacing: .14em; font-weight: 800; color: #5B6677; }
+.at-cab-imp .ci-canto b { display: block; font-size: 18px; font-weight: 800; color: #14283C; line-height: 1.15; }
+.at-cab-imp .ci-filtros { display: flex; gap: 6px 22px; flex-wrap: wrap; margin-top: 8px; font-size: 12px; color: #333; }
+.at-cab-imp .ci-filtros b { color: #14283C; }
+@media print { .at-cab-imp .ci-linha { gap: 14px; } .at-cab-imp .ci-tit { font-size: 22px; } }
