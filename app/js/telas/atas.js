@@ -703,6 +703,24 @@ function vistaDia(params, obras, setorFixo) {
     </div>
   </section>`;
 }
+// Cabeçalho que só aparece na impressão das tarefas (Tabela e Lista), no mesmo desenho da ata: logo, título e, no canto de cima à direita, a OBRA ou o DEPARTAMENTO filtrado.
+// Embaixo, uma linha por filtro ativo, para quem lê o papel saber o que está vendo.
+function cabecalhoImpressao(params, modo, hoje, setorFixo = '') {
+  const obra = params.get('obra') || ''; const setor = params.get('setor') || setorFixo || '';
+  const canto = obra ? (setor ? `${obra} · ${setor}` : obra) : setor || 'TODAS AS OBRAS';
+  const rotCanto = obra ? 'OBRA' : setor ? 'DEPARTAMENTO' : '';
+  const pes = params.get('pessoa') || (modo === 'lista' ? 'eu' : '');
+  const quem = !pes || pes === 'todos' ? 'Todos' : pes === 'eu' ? (sessao().nome || 'Eu') : pes === 'sup' ? 'Quem tenho como gestor' : pes.startsWith('cat:') ? pes.slice(4) : pes.startsWith('tipo:') ? (ROTULO_TIPO[pes.slice(5)] || pes.slice(5)) : nomeDe(pes, '');
+  const urg = params.get('urg') || ''; const q = (params.get('q') || '').trim();
+  const dia = modo === 'lista' && ehData(params.get('dia')) ? params.get('dia') : hoje;
+  return html`<div class="at-cab-imp"><div class="sd-cab">
+    <div class="sd-logo"></div>
+    <div class="sd-tit">TAREFAS · ${modo === 'lista' ? 'LISTA' : 'TABELA'} ${dm(dia).replace(/\//g, '.')}</div>
+    <div class="sd-cod ci-canto">${rotCanto ? html`<small>${rotCanto}</small>` : ''}${canto}</div>
+    <div class="sd-linha"><b>TAREFAS DE:</b> ${quem}${urg ? html` · <b>PRIORIDADE:</b> ${urg === 'sem' ? 'sem prioridade' : ({ alta: 'alta', media: 'média', baixa: 'baixa' }[urg] || urg)}` : ''}${q ? html` · <b>BUSCA:</b> ${q}` : ''}</div>
+    <div class="sd-linha"><b>IMPRESSO POR:</b> ${sessao().nome || ''} · ${fmtData(hoje)}</div>
+  </div></div>`;
+}
 export function renderPendencias({ params, obras = [], setorFixo = '', base = '#/atas', sugestoes = [] }) {
   definirSugestoes(sugestoes);
   const hoje = hojeISO();
@@ -713,7 +731,7 @@ export function renderPendencias({ params, obras = [], setorFixo = '', base = '#
   let lista = filtrar(params, setorFixo);
   const cmpTab = comparador(params.get('ord') || ''); if (cmpTab) lista = [...lista].sort(cmpTab);
   const modo = modoDe(params);
-  const cabImp = html`<div class="at-cab-imp"><b>Tarefas</b> · ${sessao().nome || ''} · ${fmtData(hoje)}</div>`;
+  const cabImp = cabecalhoImpressao(params, modo, hoje, setorFixo);
   if (modo === 'lista') return html`${cabImp}${datalistTerceiros()}${dados.erro ? html`<p class="erro">Não consegui carregar: ${dados.erro}</p>` : ''}${vistaDia(params, obras, setorFixo)}`;
   return html`${cabImp}${datalistTerceiros()}${dados.erro ? html`<p class="erro">Não consegui carregar: ${dados.erro}</p>` : ''}
     <div class="cards at-cards"><div class="card"><div class="card-valor">${abertas.length}</div><div class="card-rotulo">Pendências abertas</div></div>

@@ -722,3 +722,10 @@ body.nav-recolhido nav::after { display: none; }
 /* foto do menu: clicável para trocar */
 .nav-foto { cursor: pointer; display: inline-flex; border-radius: 50%; position: relative; }
 .nav-foto:hover { outline: 2px solid #F5A524; outline-offset: 1px; }
+
+/* Cabeçalho da impressão das tarefas (igual ao da ata): logo, título e a obra/departamento no canto de cima à direita */
+.at-cab-imp .sd-cab { grid-template-columns: 150px 1fr 190px; border: 1px solid #8C98A6; background: #fff; }
+.at-cab-imp .ci-canto { display: flex; flex-direction: column; font-size: 15px; line-height: 1.2; }
+.at-cab-imp .ci-canto small { font-size: 9px; letter-spacing: .08em; font-weight: 700; color: #555; }
+.at-cab-imp .sd-linha { grid-column: 2 / -1; font-size: 12px; padding: 4px 12px; }
+@media print { .at-cab-imp { margin: 0 0 10px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; } .at-cab-imp .sd-tit { font-size: 20px; } }
