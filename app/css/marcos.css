@@ -744,3 +744,14 @@ body.nav-recolhido nav::after { display: none; }
 /* Caixinha "recorrente": o checkbox não pode herdar a largura total dos campos do formulário */
 .tf-grade .tf-recor input[type="checkbox"], .tf-nova .tf-grade.pf-linha .tf-recor input[type="checkbox"] { width: 18px !important; min-width: 18px !important; height: 18px !important; flex: none; padding: 0 !important; }
 .tf-recor > span { flex: 1 1 auto; min-width: 0; line-height: 1.25; }
+
+/* Agenda: concluir e excluir direto no cartão (aparecem ao passar o mouse; no celular ficam sempre à vista) */
+.ag-lcard, .ag-tcaixa { position: relative; }
+.ag-acoes { position: absolute; top: 2px; right: 3px; display: inline-flex; gap: 3px; opacity: 0; transition: opacity .12s; z-index: 3; }
+.ag-tcard:hover .ag-acoes, .ag-lcard:hover .ag-acoes, .ag-tcaixa:hover .ag-acoes, .ag-acoes:focus-within { opacity: 1; }
+@media (hover: none) { .ag-acoes { opacity: 1; } }
+.ag-dia .ag-acoes { opacity: 1; }
+.ag-acoes button { width: 22px; height: 22px; padding: 0; border: 1px solid #B8C3CF; border-radius: 6px; background: #fff; color: #1F3A56; font-size: 14px; line-height: 1; font-weight: 800; cursor: pointer; }
+.ag-acoes .ag-ok:hover { background: #3C9A6B; border-color: #3C9A6B; color: #fff; }
+.ag-acoes .ag-del:hover { background: #C0392B; border-color: #C0392B; color: #fff; }
+.ag-lcard .ag-acoes { top: 50%; transform: translateY(-50%); } .ag-lcard .ag-acoes button { width: 20px; height: 20px; }

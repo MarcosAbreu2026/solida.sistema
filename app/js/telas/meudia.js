@@ -352,6 +352,8 @@ export function instalarQuadro(aoMudar) {
 // muda a duração; clicar abre a tarefa. Vencida = vermelho · de hoje = azul · dos próximos dias = cinza · concluída = verde.
 const hm = (txt) => { const m = String(txt || '').match(/^(\d{1,2}):(\d{2})/); return m ? Number(m[1]) * 60 + Number(m[2]) : null; };
 const assuntoDe = (t) => { const s = String(t || ''); const i = s.indexOf(','); return i > 0 && i < 60 ? [s.slice(0, i).trim(), s.slice(i + 1).trim()] : ['', s.trim()]; };
+// botões do cartão da Agenda: concluir (ou reabrir) e excluir; quem trata o clique é o main.js (data-pend / data-pend-del)
+const acoesCartao = (p) => html`<span class="ag-acoes">${p.status === 'feita' ? html`<button type="button" data-pend="${p.id}|aberta" title="Reabrir a tarefa">↺</button>` : html`<button type="button" class="ag-ok" data-pend="${p.id}|feita" title="Concluir a tarefa">✓</button>`}<button type="button" class="ag-del" data-pend-del="${p.id}" title="${p.ata_id ? 'Tirar da lista (continua na ata)' : 'Excluir a tarefa'}">×</button></span>`;
 function cartaoTarefa(e, hoje, grande = false) {
   const p = e.p; const feita = p.status === 'feita'; const venc = !feita && p.prazo < hoje;
   const cls = feita ? 'ok' : venc ? 'venc' : p.prazo === hoje ? 'hoje' : 'futura';
@@ -362,7 +364,7 @@ function cartaoTarefa(e, hoje, grande = false) {
     ${p.obra ? html`<b class="ag-t-obra">${p.obra}</b>` : ''}<div class="fq-nome">${ass ? `${ass} · ` : ''}${resto}</div>
     <div class="fn-meta">${e.semHora ? 'sem horário' : `${hhmm(e.ini)}–${hhmm(e.ini + e.dur)}`}${feita ? ' · ✓ concluída' : ''}</div>
     ${grande && e.span >= 2 ? html`<div class="ag-t-det">${p.setor ? html`<span>${p.setor}</span>` : ''}${p.responsavel_nome ? html`<span>${p.responsavel_nome}</span>` : ''}${p.urgencia ? html`<span class="ag-t-urg ag-u-${p.urgencia}">${{ alta: 'Alta', media: 'Média', baixa: 'Baixa' }[p.urgencia] || ''}</span>` : ''}</div>` : ''}
-    <div class="ag-alca" title="Puxe para mudar a duração"></div></div>`;
+    ${acoesCartao(p)}<div class="ag-alca" title="Puxe para mudar a duração"></div></div>`;
 }
 function agendaDeTarefas(ref, { pendencias = [], eu, modo = 'semana', diaRef = null }) {
   const hoje = hojeISO(); const ini = inicioDaSemana(ref);
@@ -399,13 +401,13 @@ function agendaDeTarefas(ref, { pendencias = [], eu, modo = 'semana', diaRef = n
   const resumoDia = (total, fe, c) => (feriado(c) ? 'feriado' : total ? `${fe} de ${total} feitas` : 'sem tarefas');
   const cabecas = colunas.map(({ c, total, fe }, i) => html`<div class="fq-cab ${c === hoje ? 'hoje' : ''}"><b>${modoDia ? nomeDia(c) : DIA_CURTO[i]} ${c.slice(8, 10)}/${c.slice(5, 7)}</b><small>${resumoDia(total, fe, c)}</small></div>`);
   const cartaoLivre = (e) => { const p = e.p; const feita = p.status === 'feita'; const cls = feita ? 'ok' : p.prazo < hoje ? 'venc' : p.prazo === hoje ? 'hoje' : 'futura'; const [ass, resto] = assuntoDe(p.descricao);
-    return html`<div class="ag-lcard ag-t-${cls}" data-tarefa="${p.id}" data-tcard="${p.id}" data-livre="1" title="${ass ? `${ass}: ` : ''}${resto}${p.obra ? ` · ${p.obra}` : ''} — sem horário (dia todo). Arraste para um horário do dia; clique para abrir.">${p.obra ? html`<b>${p.obra}</b> ` : ''}${ass ? `${ass} · ` : ''}${resto}</div>`; };
+    return html`<div class="ag-lcard ag-t-${cls}" data-tarefa="${p.id}" data-tcard="${p.id}" data-livre="1" title="${ass ? `${ass}: ` : ''}${resto}${p.obra ? ` · ${p.obra}` : ''} — sem horário (dia todo). Arraste para um horário do dia; clique para abrir.">${p.obra ? html`<b>${p.obra}</b> ` : ''}${ass ? `${ass} · ` : ''}${resto}${acoesCartao(p)}</div>`; };
   const livres = colunas.map(({ c, livres: l }) => html`<div class="ag-livres ${c === hoje ? 'hoje' : ''}" data-livres="${c}">${l.map(cartaoLivre)}</div>`);
   const trilhos = colunas.map(({ c, l }) => html`<div class="fq-trilho ${c === hoje ? 'hoje' : ''}" data-trilho="${c}" style="height:${altTotal}px">${l.map((e) => cartaoTarefa(e, hoje, modoDia))}</div>`);
   const colsCss = `52px repeat(${colunas.length}, minmax(0, 1fr))`;   // todos os dias com a mesma largura: o que se achata são os cartões que caem no mesmo horário, não a coluna
   const vistaQuadro = html`<div class="fq-quadro" style="grid-template-columns:${colsCss}"><div class="fq-canto"></div>${cabecas}<div class="ag-livre-rot">dia todo</div>${livres}<div class="fq-horas" style="height:${altTotal}px">${horas}</div>${trilhos}</div>`;
   const caixa = (e) => { const [ass, resto] = assuntoDe(e.p.descricao); const cls = e.p.status === 'feita' ? 'ok' : e.p.prazo < hoje ? 'venc' : e.p.prazo === hoje ? 'hoje' : 'futura';
-    return html`<div class="ag-tcaixa ag-t-${cls}" data-tarefa="${e.p.id}"><b>${e.p.obra || ''}</b> ${ass ? `${ass} · ` : ''}${resto}<small>${e.semHora ? 'sem horário (dia todo)' : hhmm(e.ini)}</small></div>`; };
+    return html`<div class="ag-tcaixa ag-t-${cls}" data-tarefa="${e.p.id}"><b>${e.p.obra || ''}</b> ${ass ? `${ass} · ` : ''}${resto}<small>${e.semHora ? 'sem horário (dia todo)' : hhmm(e.ini)}</small>${acoesCartao(e.p)}</div>`; };
   const vistaLista = html`<div class="fl-lista" style="--nd:${colunas.length}">${colunas.map(({ c, l, livres: lv, fe, total }, i) => html`<div class="fl-col ${c === hoje ? 'hoje' : ''}">
       <div class="fq-cab ${c === hoje ? 'hoje' : ''}"><b>${modoDia ? nomeDia(c) : DIA_CURTO[i]} ${c.slice(8, 10)}/${c.slice(5, 7)}</b><small>${resumoDia(total, fe, c)}</small></div>
       ${lv.map(caixa)}${[...l].sort((a, b) => a.faixa - b.faixa).map(caixa)}</div>`)}</div>`;
