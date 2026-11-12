@@ -391,12 +391,21 @@ export function gruposDeObras(obras, atual = '') {
   return html`${ob.length ? html`<optgroup label="Obras">${ob.map(opt)}</optgroup>` : ''}${po.length ? html`<optgroup label="Pós-obras">${po.map(opt)}</optgroup>` : ''}`;
 }
 const selObra = (obras, atual, todos = 'Todos') => html`<label>Obra<select data-atas-filtro="obra"><option value="">${todos}</option>${gruposDeObras(obras, atual)}</select></label>`;
+// Responsável: os grupos de sempre e, embaixo de "Equipe da Sólida", cada pessoa da Sólida (a diretoria e o administrativo escolhem qualquer uma; os demais, quem podem ver)
+function seletorResponsavel(atual) {
+  const op = ([v, t]) => html`<option value="${v}" ${atual === v ? html.seguro('selected') : ''}>${t}</option>`;
+  const pessoas = pessoasParaVer();
+  return html`<label>Responsável<select data-atas-filtro="pessoa"><option value="">Todos</option>
+    ${[['eu', 'Só as minhas'], ['tipo:solida', 'Equipe da Sólida (todos)']].map(op)}
+    ${pessoas.length ? html`<optgroup label="Pessoas da Sólida">${pessoas.map((x) => op([x.id, x.nome]))}</optgroup>` : ''}
+    <optgroup label="Externos">${[['tipo:terceirizado', 'Terceirizados (todos)'], ['tipo:cliente', 'Clientes'], ['tipo:arquitetura', 'Arquitetura']].map(op)}</optgroup></select></label>`;
+}
 function barraFiltros(params, obras, aba, ctx = {}) {
   const base = ctx.base || '#/atas';
   const sel = (nome, rotulo, opcoes, atual) => html`<label>${rotulo}<select data-atas-filtro="${nome}"><option value="">Todos</option>${opcoes.map(([v, t]) => html`<option value="${v}" ${atual === v ? html.seguro('selected') : ''}>${t}</option>`)}</select></label>`;
   const vista = params.get('vista') === 'lista' ? 'lista' : 'prazo';
   return html`<div class="at-filtros">
-    ${aba === 'atas' ? '' : sel('pessoa', 'Responsável', [['eu', 'Só as minhas'], ['tipo:solida', 'Equipe da Sólida'], ['tipo:terceirizado', 'Terceirizados (todos)'], ['tipo:cliente', 'Clientes'], ['tipo:arquitetura', 'Arquitetura']], params.get('pessoa') || '')}
+    ${aba === 'atas' ? '' : seletorResponsavel(params.get('pessoa') || '')}
     ${ctx.setorFixo ? '' : sel('setor', 'Setor', SETORES_ATA.map((s) => [s, s]), params.get('setor') || '')}
     ${selObra(obras, params.get('obra') || '')}
     <label>Procurar<input type="search" data-atas-filtro="q" value="${params.get('q') || ''}" placeholder="texto…"></label>
