@@ -43,6 +43,7 @@ import * as svPos from './servicos-pos.js';
 import * as osq from './os-quadro.js';
 import * as configTela from './telas/configuracoes.js';
 import * as obrasOrc from './telas/obras-orcamento.js';
+import * as posControle from './telas/posobra-controle.js';
 import { carregarConfig, definirConfig, restaurarConfig, snapshotConfig, listaConfig } from './config.js';
 import * as tvSlides from './treinamentos-slides.js';
 import * as obrasPos from './obras-pos.js';
@@ -75,6 +76,7 @@ const ATUALIZAR_A_CADA_MS = 5 * 60 * 1000;
 // Painel, Obras e Serviços (planilha) continuam existindo, mas escondidos (links no rodapé de Pós-obras).
 const SUB = [
   { id: '', nome: 'Pós-obras', escondida: true },
+  { id: 'controle', nome: 'Controle de obras', nova: true },
   { id: 'quadro-os', nome: 'Quadro de OS', escondida: true },
   { id: 'datas-os', nome: 'Datas das OS', nova: true },
   { id: 'servicos', nome: 'Serviços', escondida: true },
@@ -199,6 +201,11 @@ function telaPosObraPlanilha(rota) {
     if (!estado.base) return semBase();
     garantirAtasCarregadas();
     return { abas, conteudo: `<div class="pagina" style="margin-top:26px">${String(posGeral.renderOS({ base: estado.base, os: rota.arg, atualizacoes: svPos.atualizacoesDa(rota.arg), pendencias: atas.todasPendencias(), podeEditar: podeEditarPos(), veValores: veValores() }))}</div>` };
+  }
+  // Controle de obras do pós-obra: a lista do Controle Operacional (planilha), montada com os pós-obras cadastrados e as OS do quadro
+  if (rota.sub === 'controle') {
+    garantirOsCarregadas(); garantirAtasCarregadas();
+    return { abas, conteudo: `<div class="pagina" style="margin-top:26px">${String(posControle.render({ params: rota.params, obrasCad: estado.obrasCad || [], pendencias: atas.todasPendencias(), hoje: hojeISO() }))}</div>` };
   }
   // Quadro de OS (solicitação > análise > orçamento > falta agendar > agendado > em execução > concluído) e o quadro de datas das mesmas OS
   if (rota.sub === 'quadro-os' || rota.sub === 'datas-os') {

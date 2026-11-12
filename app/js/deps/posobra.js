@@ -103,6 +103,7 @@ export function painel(ctx) {
     ${avisoFonte(base)}
     ${pd.secao('Solicitações: do pedido ao serviço concluído', 'Situações como estão no controle operacional. O mapeamento para solicitado, orçamento, a agendar, agendado e finalizado precisa ser confirmado.', fases)}
     ${pd.secao('Outros estados no controle', 'Fonte: Controle Operacional Pós-Obra', outros)}
+    ${pd.secao('Controle de obras', 'A lista do Controle Operacional (planilha) com os pós-obras e as OS do sistema: situação, relato, responsável, prazo e tarefas abertas', html`<a class="botao on" href="#/posobra/controle">Abrir o controle de obras →</a>`)}
     ${pd.secao('Quadro de OS', 'Cada cartão é uma OS: arraste para a coluna certa ou clique para abrir (problema, solução, fotos, responsável e data limite)', ctx.quadroOs ? html.seguro(ctx.quadroOs()) : '')}
     ${pd.secao('Agenda da semana', 'Profissionais de pós-obra por obra e dia · fonte: agenda semanal', ctx.agendaPos ? html.seguro(ctx.agendaPos()) : tabAgenda)}
     ${cobranca}
