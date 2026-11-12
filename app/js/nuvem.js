@@ -249,6 +249,19 @@ export async function apagarPendenciaNuvem(id) {
   const { error } = await sb.from('pendencias').delete().eq('id', id);
   if (error) throw new Error(error.message);
 }
+// vários de uma vez; confere quantos foram mesmo apagados (sem permissão o banco não dá erro, só não apaga)
+export async function apagarPendenciasNuvem(ids) {
+  if (!ids.length) return;
+  const { data, error } = await sb.from('pendencias').delete().in('id', ids).select('id');
+  if (error) throw new Error(error.message);
+  const n = (data || []).length;
+  if (n < ids.length) throw new Error(n ? `só ${n} de ${ids.length} tarefas foram apagadas (as outras são de outra pessoa: só quem criou ou a diretoria apaga)` : 'sem permissão: só quem criou a tarefa ou a diretoria pode apagar');
+}
+export async function atualizarPendenciasNuvem(ids, mudancas) {
+  if (!ids.length) return;
+  const { error } = await sb.from('pendencias').update(mudancas).in('id', ids);
+  if (error) throw new Error(error.message);
+}
 export async function apagarAtaNuvem(id) {
   const { error } = await sb.from('atas').delete().eq('id', id);
   if (error) throw new Error(error.message);

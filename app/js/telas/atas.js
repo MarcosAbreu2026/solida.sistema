@@ -7,7 +7,7 @@
 
 import { html, data as fmtData } from '../formato.js';
 import { hojeISO, somarDias, inicioDaSemana, diasEntre, ehData } from '../datas.js';
-import { NA_NUVEM, perfilAtual, listarAtasPendencias, criarAtaNuvem, criarPendenciaNuvem, criarPendenciasNuvemLote, atualizarPendenciaNuvem, atualizarAtaNuvem, apagarPendenciaNuvem, apagarAtaNuvem, listarNotasPend, criarNotaPend, apagarNotaPend } from '../nuvem.js';
+import { NA_NUVEM, perfilAtual, listarAtasPendencias, criarAtaNuvem, criarPendenciaNuvem, criarPendenciasNuvemLote, atualizarPendenciaNuvem, atualizarAtaNuvem, apagarPendenciaNuvem, apagarPendenciasNuvem, atualizarPendenciasNuvem, apagarAtaNuvem, listarNotasPend, criarNotaPend, apagarNotaPend } from '../nuvem.js';
 import { SETORES, SETORES_ORGANOGRAMA, funcoesDoCargo } from '../funcoes.js';
 import { funcaoVe } from '../config.js';
 import { sessao, idPessoa, funcaoReal, funcaoAtual, simulando } from '../sessao.js';
@@ -308,11 +308,11 @@ export async function apagarPendencia(id, escopo = 'uma') {
       // exclui esta e as próximas; as anteriores deixam de se renovar
       const seg = seguintesDe(p).map((x) => x.id);
       const antes = dados.pendencias.filter((x) => x.serie === p.serie && String(x.prazo || '') < String(p.prazo || '')).map((x) => x.id);
+      if (NA_NUVEM) { await apagarPendenciasNuvem([...seg, p.id]); await atualizarPendenciasNuvem(antes, { recorrente: false }); await carregar(); return; }
       await atualizarVarias(antes, { recorrente: false });
-      if (NA_NUVEM) for (const i of seg) await apagarPendenciaNuvem(i);
-      else { const l = lerLocal(); l.pendencias = l.pendencias.filter((x) => !seg.some((i) => String(i) === String(x.id))); gravarLocal(l); }
+      { const l = lerLocal(); l.pendencias = l.pendencias.filter((x) => !seg.some((i) => String(i) === String(x.id))); gravarLocal(l); }
     }
-    if (NA_NUVEM) await apagarPendenciaNuvem(id);
+    if (NA_NUVEM) await apagarPendenciasNuvem([id]);
     else { const l = lerLocal(); l.pendencias = l.pendencias.filter((x) => String(x.id) !== String(id)); gravarLocal(l); }
     await carregar();
   }
