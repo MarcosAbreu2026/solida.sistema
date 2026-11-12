@@ -715,7 +715,7 @@ function cabecalhoImpressao(params, modo, hoje, setorFixo = '') {
   const dia = modo === 'lista' && ehData(params.get('dia')) ? params.get('dia') : hoje;
   return html`<div class="at-cab-imp"><div class="sd-cab">
     <div class="sd-logo"></div>
-    <div class="sd-tit">TAREFAS · ${modo === 'lista' ? 'LISTA' : 'TABELA'} ${dm(dia).replace(/\//g, '.')}</div>
+    <div class="sd-tit">TAREFAS ${dm(dia).replace(/\//g, '.')}</div>
     <div class="sd-cod ci-canto">${rotCanto ? html`<small>${rotCanto}</small>` : ''}${canto}</div>
     <div class="sd-linha"><b>TAREFAS DE:</b> ${quem}${urg ? html` · <b>PRIORIDADE:</b> ${urg === 'sem' ? 'sem prioridade' : ({ alta: 'alta', media: 'média', baixa: 'baixa' }[urg] || urg)}` : ''}${q ? html` · <b>BUSCA:</b> ${q}` : ''}</div>
   </div></div>`;
