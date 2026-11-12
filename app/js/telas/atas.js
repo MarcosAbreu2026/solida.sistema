@@ -788,7 +788,7 @@ function cabecalhoImpressao(params, modo, hoje, setorFixo = '') {
   const dia = modo === 'lista' && ehData(params.get('dia')) ? params.get('dia') : hoje;
   return html`<div class="at-cab-imp">
     <div class="ci-linha">
-      <div class="ci-logo"></div>
+      <img class="ci-logo" src="img/logo.png" alt="Sólida">
       <div class="ci-meio"><div class="ci-tit">TAREFAS</div><div class="ci-data">${dm(dia)}</div></div>
       <div class="ci-canto">${rotCanto ? html`<small>${rotCanto}</small>` : ''}<b>${canto}</b></div>
     </div>

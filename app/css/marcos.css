@@ -785,3 +785,7 @@ body.nav-recolhido nav::after { display: none; }
 .at-cab-imp .ci-filtros { display: flex; gap: 6px 22px; flex-wrap: wrap; margin-top: 8px; font-size: 12px; color: #333; }
 .at-cab-imp .ci-filtros b { color: #14283C; }
 @media print { .at-cab-imp .ci-linha { gap: 14px; } .at-cab-imp .ci-tit { font-size: 22px; } }
+
+/* Cabeçalho da impressão: logo como imagem (imagem sempre imprime; fundo/máscara pode sumir) e margem lateral igual à do conteúdo */
+.at-cab-imp img.ci-logo { flex: none; width: 150px; height: auto; max-height: 48px; object-fit: contain; object-position: left center; background: none; -webkit-mask: none; mask: none; filter: brightness(0) saturate(100%) invert(17%) sepia(30%) saturate(1400%) hue-rotate(178deg) brightness(92%); }
+@media print { .imp-moldura > thead > tr > td { padding: 0 5mm !important; } }
