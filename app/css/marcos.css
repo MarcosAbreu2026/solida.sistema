@@ -789,3 +789,4 @@ body.nav-recolhido nav::after { display: none; }
 /* Cabeçalho da impressão: logo como imagem (imagem sempre imprime; fundo/máscara pode sumir) e margem lateral igual à do conteúdo */
 .at-cab-imp img.ci-logo { flex: none; width: 150px; height: auto; max-height: 48px; object-fit: contain; object-position: left center; background: none; -webkit-mask: none; mask: none; filter: brightness(0) saturate(100%) invert(17%) sepia(30%) saturate(1400%) hue-rotate(178deg) brightness(92%); }
 @media print { .imp-moldura > thead > tr > td { padding: 0 5mm !important; } }
+.at-cab-imp .ci-filtros:empty { display: none; }

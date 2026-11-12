@@ -792,7 +792,7 @@ function cabecalhoImpressao(params, modo, hoje, setorFixo = '') {
       <div class="ci-meio"><div class="ci-tit">TAREFAS</div><div class="ci-data">${dm(dia)}</div></div>
       <div class="ci-canto">${rotCanto ? html`<small>${rotCanto}</small>` : ''}<b>${canto}</b></div>
     </div>
-    <div class="ci-filtros"><span><b>Tarefas de:</b> ${quem}</span>${urg ? html`<span><b>Prioridade:</b> ${urg === 'sem' ? 'sem prioridade' : ({ alta: 'alta', media: 'média', baixa: 'baixa' }[urg] || urg)}</span>` : ''}${q ? html`<span><b>Busca:</b> ${q}</span>` : ''}</div>
+    <div class="ci-filtros">${urg ? html`<span><b>Prioridade:</b> ${urg === 'sem' ? 'sem prioridade' : ({ alta: 'alta', media: 'média', baixa: 'baixa' }[urg] || urg)}</span>` : ''}${q ? html`<span><b>Busca:</b> ${q}</span>` : ''}</div>
   </div>`;
 }
 export function renderPendencias({ params, obras = [], setorFixo = '', base = '#/atas', sugestoes = [] }) {
