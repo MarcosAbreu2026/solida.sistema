@@ -51,7 +51,7 @@ import * as tvSlides from './treinamentos-slides.js';
 import * as obrasPos from './obras-pos.js';
 import * as financeiro from './telas/financeiro.js';
 import * as meudia from './telas/meudia.js';
-import { abrirCalendario } from './calendario.js';
+import { abrirCalendario, feriados } from './calendario.js';
 import * as quadro from './telas/quadro.js';
 import * as produtividade from './telas/produtividade.js';
 import * as operacao from './telas/operacao.js';
@@ -1402,7 +1402,31 @@ function configurar() {
       await sincronizarCadastros({ forcar: true });
     } catch (err) { alert(`Não foi possível mudar a situação da obra (${err.message || err}).`); desenhar(); }
   });
-  // Equipe (Cadastros): a linha curta da pessoa abre as configurações (função, obras, setores) numa abinha
+  // Prazo de tarefa (nova tarefa, janela da tarefa, linhas da ata, pendência no Controle de obras): em vez do seletor do navegador abre o mini calendário, que mostra os
+// feriados (Brasil e Rio) e os fins de semana; se a data escolhida cair em sábado, domingo ou feriado, aparece o aviso ao lado do campo (pedido do Felipe, 13/11/2026).
+const CAMPOS_PRAZO = '[name="p_prazo"], [name="t_prazo"], [data-pc-pprazo]';
+function textoDoDia(iso) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso || '')) return '';
+  const fer = feriados(Number(iso.slice(0, 4)))[iso]; const dow = new Date(`${iso}T12:00:00`).getDay();
+  return fer ? `Feriado: ${fer}` : dow === 0 ? 'Domingo' : dow === 6 ? 'Sábado' : '';
+}
+function avisoDoPrazo(el) {
+  let a = el.parentElement.querySelector(':scope > .prazo-aviso');
+  const txt = textoDoDia(el.value);
+  if (!txt) { if (a) a.remove(); return; }
+  if (!a) { a = document.createElement('span'); a.className = 'prazo-aviso'; el.insertAdjacentElement('afterend', a); }
+  a.textContent = `⚠ ${txt}`;
+}
+const abrirCalendarioDoPrazo = (e) => {
+  const el = e.target.closest && e.target.closest(CAMPOS_PRAZO); if (!el || el.disabled || el.readOnly) return;
+  e.preventDefault();
+  if (e.type !== 'click') return;   // mousedown só impede o seletor do navegador; o calendário abre no clique
+  abrirCalendario({ ancora: el, valor: el.value, aoEscolher: (novo) => { el.value = novo; avisoDoPrazo(el); el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); } });
+};
+document.addEventListener('mousedown', abrirCalendarioDoPrazo);
+document.addEventListener('click', abrirCalendarioDoPrazo);
+document.addEventListener('change', (e) => { const el = e.target.closest && e.target.closest(CAMPOS_PRAZO); if (el) avisoDoPrazo(el); });
+// Equipe (Cadastros): a linha curta da pessoa abre as configurações (função, obras, setores) numa abinha
   document.addEventListener('click', (e) => {
     const b = e.target.closest && e.target.closest('[data-ac-abrir]'); if (!b) return;
     const corpo = b.closest('form').querySelector('.ac-pessoa-corpo'); if (!corpo) return;
@@ -1748,7 +1772,7 @@ document.addEventListener('click', (e) => {
     const antigo = document.getElementById('at-modal'); if (antigo) antigo.remove();
     const m = document.createElement('div'); m.id = 'at-modal'; m.className = 'at-modal';
     m.innerHTML = `<div class="at-modal-caixa">${String(atas.formAvulsa(obrasDeAtas(), '', 'Pós-obra', { obra: np.dataset.osObra, os: np.dataset.osPend, osFase: np.dataset.osFase || '' }))}</div>`; document.body.appendChild(m);
-    const campo = m.querySelector('[name="p_assunto"]'); if (campo) campo.focus();
+    const campo = m.querySelector('[name="p_desc"]'); if (campo) campo.focus();
   }
 });
 document.addEventListener('change', (e) => {

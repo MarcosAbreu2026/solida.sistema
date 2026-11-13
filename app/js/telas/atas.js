@@ -610,7 +610,7 @@ function cartao(p, hoje) {
   return html`<article class="at-card at-${col}" data-tarefa="${p.id}" draggable="true" title="Clique para ver os detalhes · arraste para mudar o prazo">
     <div class="at-tit">${descRica(p.descricao)}</div>
     <div class="at-linha2"><span class="at-esq">${prazoBtn(p, rotuloPrazo, `at-prazo at-p-${col}`)}</span><span class="at-dir">${p.urgencia ? chipUrg(p.urgencia) : ""}</span></div>
-    <div class="at-linha3"><span class="at-esq"><span class="at-pessoa">${nomeDe(p.responsavel, p.responsavel_nome)}</span>${p.responsavel_tipo && p.responsavel_tipo !== 'solida' ? html`<span class="at-tipo at-t-${p.responsavel_tipo}">${ROTULO_TIPO[p.responsavel_tipo] || 'Externo'}${p.responsavel_categoria ? ` · ${p.responsavel_categoria}` : ''}</span>` : ''}</span><span class="at-dir">${onde2 ? html`<span class="at-chip">${onde2}</span>` : ''}${p.os ? html`<a class="at-chip at-os" href="#/posobra/os/${encodeURIComponent(p.os)}" title="Abrir a OS desta pendência">${p.os}</a>` : ''}</span></div>
+    <div class="at-linha3"><span class="at-esq"><span class="at-pessoa">${nomeDe(p.responsavel, p.responsavel_nome)}</span>${p.responsavel_tipo && p.responsavel_tipo !== 'solida' ? html`<span class="at-tipo at-t-${p.responsavel_tipo}">${ROTULO_TIPO[p.responsavel_tipo] || 'Externo'}${p.responsavel_categoria ? ` · ${p.responsavel_categoria}` : ''}</span>` : ''}</span><span class="at-dir">${onde2 ? html`<span class="at-chip">${onde2}</span>` : ''}</span></div>
     ${a ? html`<div class="at-linha4"><a class="at-ata" href="#/atas?aba=atas&ata=${a.id}" title="Ata de origem">ata ${dm(a.data).slice(0, 5)}</a></div>` : ''}
     <div class="at-acoes">
       ${p.status === 'feita' ? html`<button type="button" class="ac-mini" data-pend="${p.id}|aberta">↺ reabrir</button>` : html`<button type="button" class="ac-mini at-ok" data-pend="${p.id}|feita">✓ concluir</button>`}
@@ -634,10 +634,10 @@ export function formAvulsa(obras, prazo, setorPadrao = '', preset = {}) {
   const listaObras = preset.obra && !obras.includes(preset.obra) ? [preset.obra, ...obras] : obras;
   return html`<div class="tf tf-nova"><div class="tf-corpo">
     <form class="at-nova-pend at-avulsa tf-esq" id="pend-form" data-avulsa="1" data-os="${preset.os || ''}" data-os-fase="${preset.osFase || ''}" autocomplete="off">
-      <div class="tf-cab"><h3>Nova tarefa</h3>${preset.os ? html`<span class="at-chip">${preset.os}</span>` : ''}<span class="pequeno">O que tem a borda vermelha precisa ser preenchido.</span></div>
+      <div class="tf-cab"><h3>${preset.os ? 'Nova pendência da OS' : 'Nova tarefa'}</h3>${preset.os ? html`<span class="at-chip">${preset.os}</span>` : ''}<span class="pequeno">O que tem a borda vermelha precisa ser preenchido.</span></div>
       <div class="tf-grade pf-linha av-linha" data-tipo="solida" data-kind="pendencia">
-        <label class="tf-ass">Assunto / cômodo<input name="p_assunto" class="pf-assunto" placeholder="ex.: ACM" autocomplete="off" value="${preset.assunto || ''}"></label>
-        <label class="tf-desc">Título (o que fazer)<input name="p_desc" class="tf-req" placeholder="ex.: Retirar da área gourmet" autocomplete="off" value="${preset.desc || ''}"></label>
+        <label class="tf-ass">${preset.os ? 'Assunto (a OS)' : 'Assunto / cômodo'}<input name="p_assunto" class="pf-assunto" placeholder="ex.: ACM" autocomplete="off" value="${preset.os || preset.assunto || ''}" ${preset.os ? html.seguro('readonly') : ''}></label>
+        <label class="tf-desc">${preset.os ? 'Descrição (o que fazer)' : 'Título (o que fazer)'}<input name="p_desc" class="tf-req" placeholder="ex.: Retirar da área gourmet" autocomplete="off" value="${preset.desc || ''}"></label>
         <label>Responsável<select name="p_tipo" class="tf-req" data-pf-tipo><option value="solida">Sólida</option><option value="terceirizado">Terceirizado</option><option value="cliente">Cliente</option><option value="arquitetura">Arquitetura</option></select></label>
         <label class="av-quem">Quem
           <select name="p_resp" class="pf-sol tf-req"><option value="">Pessoa da Sólida…</option>${opcoesPessoas(preset.resp || '')}</select>

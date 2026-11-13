@@ -6,6 +6,7 @@
 import { html } from '../formato.js';
 import { lista as osLista, STATUS } from '../os-quadro.js';
 import { pessoasDaEquipe } from './atas.js';
+import { feriados } from '../calendario.js';
 
 const SITUACOES = ['Atrasado', 'Execução', 'Planejamento', 'Orçamento', 'Análise', 'Pausado', 'Sem OS', 'Concluído'];
 const COR = { Atrasado: '#B3261E', Execução: '#2F5F86', Planejamento: '#C0692B', Orçamento: '#B58A1B', Análise: '#7B6AA8', Pausado: '#6E7782', 'Sem OS': '#8A94A0', Concluído: '#4F7D5C' };
@@ -23,6 +24,8 @@ export function rotuloPO(txt) {
   const resto = (m ? m[1] : s).trim();
   return { codigo: `PO - ${resto}`, nome: '', chave: norm(`po - ${resto}`) };
 }
+// sábado, domingo ou feriado: aviso ao lado do prazo
+const avisoDia = (iso) => { if (!/^\d{4}-\d{2}-\d{2}$/.test(iso || '')) return ''; const fer = feriados(Number(iso.slice(0, 4)))[iso]; const dow = new Date(`${iso}T12:00:00`).getDay(); const t = fer ? `Feriado: ${fer}` : dow === 0 ? 'Domingo' : dow === 6 ? 'Sábado' : ''; return t ? html`<span class="prazo-aviso">⚠ ${t}</span>` : ''; };
 const numeroDe = (codigo) => { const m = /^PO(\d+)/.exec(codigo); return m ? Number(m[1]) : null; };
 
 // uma faixa por pós-obra: cadastro + clientes das OS
@@ -81,7 +84,7 @@ export function render({ params, obrasCad = [], pendencias = [], hoje = '', pode
     ? html`<select class="pc-resp ${p.responsavel ? '' : 'pc-sem'}" data-pc-presp="${p.id}" title="Definir o responsável desta pendência"><option value="">[definir]</option>${pessoas.map((x) => html`<option value="${x.id}" ${x.id === p.responsavel ? html.seguro('selected') : ''}>${x.nome}</option>`)}${p.responsavel_nome && !p.responsavel ? html`<option value="" selected hidden>${p.responsavel_nome}</option>` : ''}</select>`
     : (p.responsavel_nome || html`<span class="pc-sem-txt">[definir]</span>`));
   const prazoPend = (p) => (podeEditar && p.status === 'aberta'
-    ? html`<input type="date" class="pc-prazo ${p.prazo && p.prazo < hoje ? 'pc-venc' : ''}" data-pc-pprazo="${p.id}" value="${p.prazo || ''}">`
+    ? html`<input type="date" class="pc-prazo ${p.prazo && p.prazo < hoje ? 'pc-venc' : ''}" data-pc-pprazo="${p.id}" value="${p.prazo || ''}">${avisoDia(p.prazo)}`
     : (p.prazo ? html`<span class="${p.status === 'aberta' && p.prazo < hoje ? 'pc-venc' : ''}">${dBR(p.prazo)}</span>` : html`<span class="muted">—</span>`));
   const linhaPend = (p) => html`<tr class="pc-pend" data-tarefa="${p.id}" title="Clique no texto para abrir a pendência (anotações, prioridade, observadores)">
     <td></td><td><span class="pc-pst ${p.status === 'feita' ? 'ok' : ''}">${(stDe(p.os_fase).nome && p.os_fase) ? stDe(p.os_fase).nome : 'pendência'}${p.status === 'feita' ? ' · feita' : ''}</span></td>
