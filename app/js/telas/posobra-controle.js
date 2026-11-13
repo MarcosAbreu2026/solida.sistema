@@ -43,7 +43,7 @@ export function montarGrupos({ obrasCad = [], pendencias = [], hoje = '' }) {
     const cod = p.os || (String(p.origem || '').startsWith('os:') ? String(p.origem).slice(3) : '');
     const os = cod ? porCodigoOs.get(cod) : null;
     if (os) { (os.__pend || (os.__pend = [])).push(p); continue; }
-    if (p.obra) { const r = rotuloPO(p.obra); const g = grupos.get(r.chave); if (g && p.status === 'aberta') g.soltas.push(p); }
+    if (p.obra && !ehMo(p.obra)) { const r = rotuloPO(p.obra); const g = grupos.get(r.chave); if (g && p.status === 'aberta') g.soltas.push(p); }
   }
   return [...grupos.values()].map((g) => {
     const abertas = g.os.filter((o) => o.status !== 'concluido');
