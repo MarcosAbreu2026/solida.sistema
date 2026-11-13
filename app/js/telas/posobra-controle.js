@@ -77,7 +77,7 @@ export function render({ params, obrasCad = [], pendencias = [], hoje = '', pode
   const linhaOS = (o) => html`<tr class="pc-os">
     <td class="pc-cod"><a href="#" data-osq="${o.id}" title="Abrir a OS">${o.codigo}</a></td>
     <td><span class="pc-sit" style="background:${stDe(o.status).cor}">${stDe(o.status).nome}</span></td>
-    <td class="pc-relato"><b>${o.assunto || ''}</b>${o.problema ? html`<div class="pc-prob"><span>Problema:</span> ${String(o.problema).slice(0, 180)}${String(o.problema).length > 180 ? '…' : ''}</div>` : ''}${o.solucao ? html`<div class="pc-prob"><span>Solução:</span> ${String(o.solucao).slice(0, 180)}${String(o.solucao).length > 180 ? '…' : ''}</div>` : ''}</td>
+    <td class="pc-relato"><b>${o.assunto || ''}</b>${o.problema ? html`<div class="pc-prob"><span>Problema:</span> ${o.problema}</div>` : ''}${o.solucao ? html`<div class="pc-prob"><span>Solução:</span> ${o.solucao}</div>` : ''}</td>
     <td></td><td></td>
     <td>${podeEditar ? html`<button type="button" class="ac-mini" data-os-pend="${o.codigo}" data-os-obra="${o.__po}" data-os-fase="${o.status}" title="Nova pendência desta OS na fase ${stDe(o.status).nome}">+ pendência</button>` : ''}</td></tr>`;
   const quemPend = (p) => (podeEditar
@@ -95,17 +95,17 @@ export function render({ params, obrasCad = [], pendencias = [], hoje = '', pode
     const concl = [...g.os].filter((o) => o.status === 'concluido').sort((a, b) => a.codigo.localeCompare(b.codigo, 'pt-BR', { numeric: true }));
     g.os.forEach((o) => { o.__po = g.codigo; });
     return html`<tbody class="pc-po-grupo">
-      <tr class="pc-po"><td colspan="6"><b>${g.codigo}</b>${g.nome ? html` <span class="pc-nome">${g.nome}</span>` : ''}<span class="pc-sit" style="background:${COR[g.situacao]}">${g.situacao}</span><span class="pc-cont">${abertas.length} ${abertas.length === 1 ? 'OS aberta' : 'OS abertas'}${concl.length ? ` · ${concl.length} concluídas` : ''}</span></td></tr>
+      <tr class="pc-po"><td colspan="6"><div class="pc-po-in"><b>${g.codigo}</b>${g.nome ? html` <span class="pc-nome">${g.nome}</span>` : ''}<span class="pc-sit" style="background:${COR[g.situacao]}">${g.situacao}</span><span class="pc-cont">${abertas.length} ${abertas.length === 1 ? 'OS aberta' : 'OS abertas'}${concl.length ? ` · ${concl.length} concluídas` : ''}</span>${podeEditar ? html`<button type="button" class="ac-mini pc-po-mais" data-pc-nova="${g.codigo}" title="Criar uma OS neste PO">+ OS</button>` : ''}</div></td></tr>
       ${abertas.length ? abertas.map((o) => html`${linhaOS(o)}${(o.__pend || []).filter((p) => p.status === 'aberta').map(linhaPend)}`) : html`<tr class="pc-os"><td></td><td colspan="5"><span class="muted">${g.os.length ? 'Todas as OS concluídas' : 'Nenhuma OS ainda'}</span></td></tr>`}
       ${g.soltas.map((p) => html`<tr class="pc-pend" data-tarefa="${p.id}"><td></td><td><span class="pc-pst">tarefa</span></td><td class="pc-relato">${p.descricao}</td><td>${p.responsavel_nome || html`<span class="pc-sem-txt">[definir]</span>`}</td><td>${p.prazo ? dBR(p.prazo) : ''}</td><td></td></tr>`)}
       ${concl.length ? html`<tr class="pc-conc"><td></td><td colspan="5"><details><summary>${concl.length} ${concl.length === 1 ? 'OS concluída' : 'OS concluídas'}</summary>${concl.map((o) => html`<div><a href="#" data-osq="${o.id}">${o.codigo}</a> · ${o.assunto || ''}</div>`)}</details></td></tr>` : ''}
-      ${podeEditar ? html`<tr class="pc-nova"><td></td><td colspan="5"><input type="text" class="pc-nova-in" data-pc-nova-texto="${g.chave}" placeholder="Nova OS em ${g.codigo}: assunto…"><button type="button" class="ac-mini" data-pc-nova="${g.codigo}" data-pc-nova-chave="${g.chave}">+ Nova OS</button></td></tr>` : ''}
     </tbody>`;
   };
   return html`<section class="pc">
-    <p class="pequeno">Visão geral dos pós-obras no formato do Controle Operacional (planilha), em ordem de número do PO. Cada PO tem as suas OS (uma linha cada, com o status). A OS guarda o problema e a solução; quem faz o quê são as <b>pendências</b> dela, que surgem a partir da fase em que a OS está. ${podeEditar ? 'Use "+ pendência" na OS e defina o responsável e o prazo direto na linha da pendência.' : ''}</p>
+    <p class="pequeno">Visão geral dos pós-obras no formato do Controle Operacional (planilha), em ordem de número do PO. Cada PO tem as suas OS (uma linha cada, com o status). A OS guarda o problema e a solução; quem faz o quê são as <b>pendências</b> dela, que surgem a partir da fase em que a OS está. ${podeEditar ? 'Use "+ OS" no PO para criar uma OS, "+ pendência" na OS e defina o responsável e o prazo direto na linha da pendência.' : ''}</p>
     <div class="pc-cards">${cartoes}</div>
     <div class="at-filtros">
+      ${podeEditar ? html`<button type="button" class="botao on pc-novo-po" data-pc-novo-po title="Cadastrar um pós-obra novo (PO)">+ Novo PO</button>` : ''}
       <label>Situação<select data-atas-filtro="sit"><option value="">Em aberto (sem concluídos)</option><option value="todas" ${sit === 'todas' ? html.seguro('selected') : ''}>Todas</option>${SITUACOES.map((s) => html`<option value="${s}" ${sit === s ? html.seguro('selected') : ''}>${s}</option>`)}</select></label>
       <label>Procurar<input type="search" data-atas-filtro="q" value="${params.get('q') || ''}" placeholder="PO, cliente, OS, responsável…"></label>
     </div>

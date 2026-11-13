@@ -908,3 +908,22 @@ body.imp-ata .at-ata-det .sd-tab td.sd-t-info, body.imp-ata .at-ata-det .sd-tab 
 
 /* Prazo: aviso de sábado, domingo ou feriado ao lado do campo */
 .prazo-aviso { display: block; margin-top: 3px; font-size: 11.5px; font-weight: 700; color: #B3261E; line-height: 1.2; }
+
+/* Controle de obras: lista mais compacta (cabe mais na tela) + botões de criar PO / OS */
+.pc-po-grupo { border-top-width: 4px; }
+.pc-po td { padding: 4px 10px; font-size: 13.5px; }
+.pc-po-in { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pc-po-mais { margin-left: auto; }
+.pc-novo-po { align-self: flex-end; }
+.pc-os td { padding: 3px 10px; }
+.pc-pend td { padding: 2px 10px; }
+.pc-cod { padding-left: 14px !important; }
+.pc-relato { min-width: 280px; }
+.pc-os .pc-relato { line-height: 1.25; }
+.pc-prob { margin-top: 0; display: inline; margin-left: 10px; }
+.pc-prob::before { content: ''; }
+.pc-cards { margin: 4px 0 8px; gap: 6px; }
+.pc-card { padding: 4px 10px; flex-direction: row; align-items: baseline; gap: 8px; }
+.pc-card b { font-size: 18px; }
+.pc-resp, .pc-prazo { padding: 1px 4px; font-size: 12px; }
+.prazo-aviso { margin-top: 1px; }

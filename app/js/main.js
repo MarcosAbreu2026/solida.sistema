@@ -1618,12 +1618,22 @@ document.addEventListener('change', async (e) => {
   if (p) { try { await atas.reprogramar(p.dataset.pcPprazo, p.value); desenhar(); } catch (err) { alert(`Não foi possível mudar o prazo (${err.message || err}).`); } }
 });
 const pcCriarOs = (botao) => {
-  const campo = botao.parentElement.querySelector('[data-pc-nova-texto]'); const assunto = campo ? campo.value.trim() : '';
-  if (!assunto) { if (campo) campo.focus(); return; }
+  const assunto = (prompt(`Nova OS em ${botao.dataset.pcNova} — qual o assunto?`) || '').trim();
+  if (!assunto) return;
   osqFazer(() => osq.criar({ cliente: botao.dataset.pcNova, assunto, status: 'solicitacao' }));
 };
 document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-pc-nova]'); if (b) pcCriarOs(b); });
-document.addEventListener('keydown', (e) => { if (e.key !== 'Enter' || !e.target.matches || !e.target.matches('[data-pc-nova-texto]')) return; e.preventDefault(); const b = e.target.parentElement.querySelector('[data-pc-nova]'); if (b) pcCriarOs(b); });
+// "+ Novo PO" no Controle de obras: cadastra o pós-obra (cliente e endereço obrigatórios) e ele já aparece na lista
+document.addEventListener('click', async (e) => {
+  if (!(e.target.closest && e.target.closest('[data-pc-novo-po]'))) return;
+  const cliente = (prompt('Cliente do pós-obra (ex.: Sogra do Thiago):') || '').trim(); if (!cliente) return;
+  let codigo = (prompt('Código do pós-obra (ex.: PO577) — deixe vazio para usar "PO - cliente":') || '').trim();
+  codigo = codigo ? atas.normalizarCodigoObra(codigo) : `PO - ${cliente}`;
+  if (!/^po/i.test(codigo)) { alert('O código do pós-obra começa com PO.'); return; }
+  const endereco = (prompt('Endereço (obrigatório):') || '').trim(); if (!endereco) { alert('O endereço é obrigatório.'); return; }
+  try { await nuvem.salvarObra({ codigo, tipo: 'pos', cliente, endereco, situacao: 'andamento' }); await sincronizarCadastros({ forcar: true }); desenhar(); }
+  catch (err) { alert(`Não foi possível criar (${err.message || err}).`); }
+});
 document.addEventListener('click', (e) => {
   const nova = e.target.closest && e.target.closest('[data-osq-nova]');
   if (nova) { osqAbrir(osq.formNova(nova.dataset.osqNova, posObrasAtivas())); const c = document.querySelector('#osq-form-nova [name="cliente"]'); if (c) c.focus(); return; }
