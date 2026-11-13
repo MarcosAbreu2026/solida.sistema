@@ -70,23 +70,23 @@ export function render({ params, obrasCad = [], pendencias = [], hoje = '', pode
   const conta = (s) => todos.filter((g) => g.situacao === s).length;
   const cartoes = SITUACOES.map((s) => html`<a class="pc-card" href="#/posobra/controle?sit=${encodeURIComponent(s)}" style="border-top-color:${COR[s]}"><b>${conta(s)}</b><span>${s}</span></a>`);
   const pessoas = [...pessoasDaEquipe()].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
-  const quem = (o) => (podeEditar
-    ? html`<select class="pc-resp ${o.responsavel ? '' : 'pc-sem'}" data-pc-resp="${o.id}" title="Definir o responsável (vira tarefa dele)"><option value="">[definir]</option>${pessoas.map((p) => html`<option value="${p.id}" ${p.id === o.responsavel ? html.seguro('selected') : ''}>${p.nome}</option>`)}</select>`
-    : (o.responsavel_nome || html`<span class="muted">[definir]</span>`));
-  const prazo = (o) => (podeEditar
-    ? html`<input type="date" class="pc-prazo ${o.data_limite && o.data_limite < hoje && o.status !== 'concluido' ? 'pc-venc' : ''}" data-pc-prazo="${o.id}" value="${o.data_limite || ''}">`
-    : (o.data_limite ? html`<span class="${o.data_limite < hoje ? 'pc-venc' : ''}">${dBR(o.data_limite)}</span>` : html`<span class="muted">—</span>`));
+  // a OS não tem responsável nem prazo: ela mostra o problema e a solução; quem faz e quando são das pendências dela
   const linhaOS = (o) => html`<tr class="pc-os">
     <td class="pc-cod"><a href="#" data-osq="${o.id}" title="Abrir a OS">${o.codigo}</a></td>
     <td><span class="pc-sit" style="background:${stDe(o.status).cor}">${stDe(o.status).nome}</span></td>
-    <td class="pc-relato">${o.assunto || ''}${o.problema ? html`<div class="pc-prob">${String(o.problema).slice(0, 140)}${String(o.problema).length > 140 ? '…' : ''}</div>` : ''}</td>
-    <td>${quem(o)}</td><td>${prazo(o)}</td>
-    <td>${podeEditar ? html`<button type="button" class="ac-mini" data-os-pend="${o.codigo}" data-os-obra="${o.__po}" title="Nova pendência (tarefa) desta OS">+ pendência</button>` : ''}</td></tr>`;
-  const linhaPend = (p) => html`<tr class="pc-pend" data-tarefa="${p.id}" title="Clique para abrir a pendência (responsável, prazo e anotações)">
-    <td></td><td><span class="pc-pst ${p.status === 'feita' ? 'ok' : ''}">${p.status === 'feita' ? 'feita' : 'pendência'}</span></td>
+    <td class="pc-relato"><b>${o.assunto || ''}</b>${o.problema ? html`<div class="pc-prob"><span>Problema:</span> ${String(o.problema).slice(0, 180)}${String(o.problema).length > 180 ? '…' : ''}</div>` : ''}${o.solucao ? html`<div class="pc-prob"><span>Solução:</span> ${String(o.solucao).slice(0, 180)}${String(o.solucao).length > 180 ? '…' : ''}</div>` : ''}</td>
+    <td></td><td></td>
+    <td>${podeEditar ? html`<button type="button" class="ac-mini" data-os-pend="${o.codigo}" data-os-obra="${o.__po}" data-os-fase="${o.status}" title="Nova pendência desta OS na fase ${stDe(o.status).nome}">+ pendência</button>` : ''}</td></tr>`;
+  const quemPend = (p) => (podeEditar
+    ? html`<select class="pc-resp ${p.responsavel ? '' : 'pc-sem'}" data-pc-presp="${p.id}" title="Definir o responsável desta pendência"><option value="">[definir]</option>${pessoas.map((x) => html`<option value="${x.id}" ${x.id === p.responsavel ? html.seguro('selected') : ''}>${x.nome}</option>`)}${p.responsavel_nome && !p.responsavel ? html`<option value="" selected hidden>${p.responsavel_nome}</option>` : ''}</select>`
+    : (p.responsavel_nome || html`<span class="pc-sem-txt">[definir]</span>`));
+  const prazoPend = (p) => (podeEditar && p.status === 'aberta'
+    ? html`<input type="date" class="pc-prazo ${p.prazo && p.prazo < hoje ? 'pc-venc' : ''}" data-pc-pprazo="${p.id}" value="${p.prazo || ''}">`
+    : (p.prazo ? html`<span class="${p.status === 'aberta' && p.prazo < hoje ? 'pc-venc' : ''}">${dBR(p.prazo)}</span>` : html`<span class="muted">—</span>`));
+  const linhaPend = (p) => html`<tr class="pc-pend" data-tarefa="${p.id}" title="Clique no texto para abrir a pendência (anotações, prioridade, observadores)">
+    <td></td><td><span class="pc-pst ${p.status === 'feita' ? 'ok' : ''}">${(stDe(p.os_fase).nome && p.os_fase) ? stDe(p.os_fase).nome : 'pendência'}${p.status === 'feita' ? ' · feita' : ''}</span></td>
     <td class="pc-relato">${p.descricao}</td>
-    <td>${p.responsavel_nome ? p.responsavel_nome : html`<span class="pc-sem-txt">[definir]</span>`}</td>
-    <td>${p.prazo ? html`<span class="${p.status === 'aberta' && p.prazo < hoje ? 'pc-venc' : ''}">${dBR(p.prazo)}</span>` : html`<span class="muted">—</span>`}</td><td></td></tr>`;
+    <td>${quemPend(p)}</td><td>${prazoPend(p)}</td><td></td></tr>`;
   const faixa = (g) => {
     const abertas = [...g.os].filter((o) => o.status !== 'concluido').sort((a, b) => a.codigo.localeCompare(b.codigo, 'pt-BR', { numeric: true }));
     const concl = [...g.os].filter((o) => o.status === 'concluido').sort((a, b) => a.codigo.localeCompare(b.codigo, 'pt-BR', { numeric: true }));
@@ -100,14 +100,14 @@ export function render({ params, obrasCad = [], pendencias = [], hoje = '', pode
     </tbody>`;
   };
   return html`<section class="pc">
-    <p class="pequeno">Visão geral dos pós-obras no formato do Controle Operacional (planilha), em ordem de número do PO. Cada PO tem as suas OS (uma linha cada, com o status) e cada OS pode ter várias pendências. ${podeEditar ? 'Defina o responsável e o prazo direto na linha da OS: isso cria a tarefa da pessoa. Clique em uma pendência para abrir.' : ''}</p>
+    <p class="pequeno">Visão geral dos pós-obras no formato do Controle Operacional (planilha), em ordem de número do PO. Cada PO tem as suas OS (uma linha cada, com o status). A OS guarda o problema e a solução; quem faz o quê são as <b>pendências</b> dela, que surgem a partir da fase em que a OS está. ${podeEditar ? 'Use "+ pendência" na OS e defina o responsável e o prazo direto na linha da pendência.' : ''}</p>
     <div class="pc-cards">${cartoes}</div>
     <div class="at-filtros">
       <label>Situação<select data-atas-filtro="sit"><option value="">Em aberto (sem concluídos)</option><option value="todas" ${sit === 'todas' ? html.seguro('selected') : ''}>Todas</option>${SITUACOES.map((s) => html`<option value="${s}" ${sit === s ? html.seguro('selected') : ''}>${s}</option>`)}</select></label>
       <label>Procurar<input type="search" data-atas-filtro="q" value="${params.get('q') || ''}" placeholder="PO, cliente, OS, responsável…"></label>
     </div>
     <div class="pd-tab-caixa"><div class="tabela-rolagem"><table class="pd-tab pc-tab">
-      <thead><tr><th>PO / OS</th><th>Status</th><th>Relato da pendência</th><th>Responsável</th><th>Prazo</th><th></th></tr></thead>
+      <thead><tr><th>PO / OS</th><th>Status / fase</th><th>OS: problema e solução · pendências</th><th>Responsável</th><th>Prazo</th><th></th></tr></thead>
       ${visiveis.length ? visiveis.map(faixa) : html`<tbody><tr><td colspan="6"><p class="pd-vazio">Nenhum pós-obra com esse filtro.</p></td></tr></tbody>`}
     </table></div></div>
     <p class="pequeno">${visiveis.length} de ${todos.length} pós-obras · ${osLista.filter((o) => o.status !== 'concluido').length} OS abertas.</p>

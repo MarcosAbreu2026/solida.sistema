@@ -109,11 +109,9 @@ export function renderQuadro({ params, podeEditar, clientesPos = [], semFiltros 
   const itens = filtrar(params);
   const hoje = hojeISO();
   const cartao = (o) => {
-    const atrasada = o.status !== 'concluido' && o.data_limite && o.data_limite < hoje;
     return html`<article class="at-card osq-card" data-osq="${o.id}" ${podeEditar ? html.seguro('draggable="true"') : ''} title="Clique para abrir${podeEditar ? ' · arraste para mudar o status' : ''}">
       <div class="at-tit"><b>${o.cliente}</b>${o.assunto ? `, ${o.assunto}` : ''}</div>
-      <div class="at-meta"><span class="at-chip">${o.codigo}</span>${o.status !== 'concluido' && o.data_limite ? html`<span class="at-prazo ${atrasada ? 'at-p-vencido' : ''}">até ${dm(o.data_limite)}</span>` : ''}${(o.fotos || []).length ? html`<span class="at-chip">📷 ${o.fotos.length}</span>` : ''}</div>
-      ${o.status !== 'concluido' && o.responsavel_nome ? html`<div class="at-quem"><span class="at-pessoa">${o.responsavel_nome}</span></div>` : ''}</article>`;
+      <div class="at-meta"><span class="at-chip">${o.codigo}</span>${(o.fotos || []).length ? html`<span class="at-chip">📷 ${o.fotos.length}</span>` : ''}</div></article>`;
   };
   return html`<section class="osq">
     ${erro ? html`<p class="erro">${erro}</p>` : ''}
@@ -160,7 +158,7 @@ export function formNova(status, clientesPos = []) {
     <div class="at-av-botoes"><button type="button" class="botao" data-av-fechar>Cancelar</button><button type="submit" class="botao on">Criar OS</button></div></form>`;
 }
 
-export function detalhe(id, { podeEditar, clientesPos = [], msg = '' }) {
+export function detalhe(id, { podeEditar, clientesPos = [], msg = '', pendencias = [] }) {
   const o = porIdOs(id);
   if (!o) return html`<div class="tf"><p class="erro">Não achei esta OS.</p><div class="at-av-botoes"><button type="button" class="botao" data-av-fechar>Fechar</button></div></div>`;
   const dis = podeEditar ? '' : html.seguro('disabled');
@@ -175,10 +173,10 @@ export function detalhe(id, { podeEditar, clientesPos = [], msg = '' }) {
         <label>Status<select name="status" ${dis}>${STATUS.map((s) => html`<option value="${s.id}" ${s.id === o.status ? html.seguro('selected') : ''}>${s.nome}</option>`)}</select></label>
         <label class="osq-largo">Problema<textarea name="problema" rows="3" ${dis}>${o.problema || ''}</textarea></label>
         <label class="osq-largo">Solução<textarea name="solucao" rows="3" ${dis}>${o.solucao || ''}</textarea></label>
-        ${andamento ? html`<label>Responsável<select name="responsavel" ${dis}><option value="">— escolher —</option>${pessoas.map((p) => html`<option value="${p.id}" ${p.id === o.responsavel ? html.seguro('selected') : ''}>${p.nome}</option>`)}</select></label>
-        <label>Data limite<input type="date" name="data_limite" value="${o.data_limite || ''}" ${dis}></label>` : ''}
       </div>
-      ${andamento ? html`<p class="pequeno">Responsável e data limite viram uma pendência dele em Tarefas.</p>` : html`<p class="pequeno">Concluída em ${dBR(o.d_concluido) || '—'}. A pendência dela foi encerrada.</p>`}
+      <p class="pequeno">${andamento ? 'A OS guarda o problema e a solução. Quem faz o quê são as pendências dela, que surgem a partir da fase (status) em que a OS está.' : html`Concluída em ${dBR(o.d_concluido) || '—'}.`}</p>
+      <div class="osq-pends"><h4>Pendências desta OS <span class="pequeno">${pendencias.filter((p) => p.os === o.codigo).length}</span>${podeEditar ? html`<button type="button" class="ac-mini" data-os-pend="${o.codigo}" data-os-obra="${o.cliente}" data-os-fase="${o.status}">+ Nova pendência (${porId[o.status].nome})</button>` : ''}</h4>
+        ${pendencias.filter((p) => p.os === o.codigo).map((p) => html`<div class="osq-pend" data-tarefa="${p.id}"><span class="osq-pend-fase">${(porId[p.os_fase] || {}).nome || ''}</span><span class="osq-pend-txt">${p.descricao}</span><span class="osq-pend-quem">${p.responsavel_nome || html`<span class="pc-sem-txt">[definir]</span>`}</span><span class="osq-pend-st ${p.status === 'feita' ? 'ok' : ''}">${p.status === 'feita' ? 'feita' : 'aberta'}</span></div>`)}</div>
       <div class="osq-fotos"><h4>Fotos <span class="pequeno">${(o.fotos || []).length}</span></h4>
         <div class="osq-galeria">${(o.fotos || []).map((c, i) => html`<figure>${urlFoto(c) ? html`<a href="${urlFoto(c)}" target="_blank" rel="noopener"><img src="${urlFoto(c)}" alt="Foto ${i + 1} da ${o.codigo}"></a>` : html`<span class="pequeno">carregando…</span>`}${podeEditar ? html`<button type="button" class="ac-mini" data-osq-foto-del="${o.id}|${i}">tirar</button>` : ''}</figure>`)}</div>
         ${podeEditar ? html`<label class="botao osq-add">+ Adicionar foto<input type="file" accept="image/*" multiple hidden data-osq-foto="${o.id}"></label>` : ''}</div>

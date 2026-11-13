@@ -1575,13 +1575,13 @@ function osqAbrir(html, classe = '') {
   if (!m) { m = document.createElement('div'); m.id = 'at-modal'; m.className = 'at-modal'; document.body.appendChild(m); }
   m.innerHTML = `<div class="at-modal-caixa ${classe}">${String(html)}</div>`;
 }
-const osqDetalhe = (id, msg = '') => osqAbrir(osq.detalhe(id, { podeEditar: podeEditarPos(), clientesPos: posObrasAtivas(), msg }), 'osq-caixa');
-// Controle de obras do pós-obra: responsável e prazo da OS direto na linha (viram a tarefa da pessoa) e "+ Nova OS" dentro do PO
-document.addEventListener('change', (e) => {
-  const r = e.target.closest && e.target.closest('[data-pc-resp]');
-  if (r) { osqFazer(() => osq.salvar(Number(r.dataset.pcResp) || r.dataset.pcResp, { responsavel: r.value || null })); return; }
-  const p = e.target.closest && e.target.closest('[data-pc-prazo]');
-  if (p) osqFazer(() => osq.salvar(Number(p.dataset.pcPrazo) || p.dataset.pcPrazo, { data_limite: p.value || null }));
+const osqDetalhe = (id, msg = '') => osqAbrir(osq.detalhe(id, { podeEditar: podeEditarPos(), clientesPos: posObrasAtivas(), msg, pendencias: atas.todasPendencias() }), 'osq-caixa');
+// Controle de obras do pós-obra: a OS não tem responsável; quem responde e o prazo são de cada PENDÊNCIA (definidos direto na linha dela); "+ Nova OS" dentro do PO
+document.addEventListener('change', async (e) => {
+  const r = e.target.closest && e.target.closest('[data-pc-presp]');
+  if (r) { try { await atas.definirResponsavelTarefa(r.dataset.pcPresp, r.value); desenhar(); } catch (err) { alert(`Não foi possível definir o responsável (${err.message || err}).`); } return; }
+  const p = e.target.closest && e.target.closest('[data-pc-pprazo]');
+  if (p) { try { await atas.reprogramar(p.dataset.pcPprazo, p.value); desenhar(); } catch (err) { alert(`Não foi possível mudar o prazo (${err.message || err}).`); } }
 });
 const pcCriarOs = (botao) => {
   const campo = botao.parentElement.querySelector('[data-pc-nova-texto]'); const assunto = campo ? campo.value.trim() : '';
@@ -1620,7 +1620,6 @@ document.addEventListener('submit', (e) => {
   if (f) {
     e.preventDefault(); const fd = new FormData(f); const id = f.dataset.osqForm;
     const campos = { cliente: String(fd.get('cliente') || '').trim(), assunto: String(fd.get('assunto') || '').trim(), status: fd.get('status'), problema: fd.get('problema') || null, solucao: fd.get('solucao') || null };
-    if (fd.has('responsavel')) { campos.responsavel = fd.get('responsavel') || null; campos.data_limite = fd.get('data_limite') || null; }
     osqFazer(() => osq.salvar(Number(id) || id, campos), { depois: () => osqDetalhe(id, 'Salvo ✓') });
   }
 });
@@ -1737,7 +1736,7 @@ document.addEventListener('click', (e) => {
   if (np) {
     const antigo = document.getElementById('at-modal'); if (antigo) antigo.remove();
     const m = document.createElement('div'); m.id = 'at-modal'; m.className = 'at-modal';
-    m.innerHTML = `<div class="at-modal-caixa">${String(atas.formAvulsa(obrasDeAtas(), '', 'Pós-obra', { obra: np.dataset.osObra, os: np.dataset.osPend }))}</div>`; document.body.appendChild(m);
+    m.innerHTML = `<div class="at-modal-caixa">${String(atas.formAvulsa(obrasDeAtas(), '', 'Pós-obra', { obra: np.dataset.osObra, os: np.dataset.osPend, osFase: np.dataset.osFase || '' }))}</div>`; document.body.appendChild(m);
     const campo = m.querySelector('[name="p_assunto"]'); if (campo) campo.focus();
   }
 });
@@ -2148,7 +2147,7 @@ document.addEventListener('submit', async (e) => {
       if (!p.descricao || (p.externoTipo === '' && !p.responsavel) || (p.externoTipo === 'terceirizado' && !p.externoCategoria && !p.externoNome)) { alert('Escreva a pendência e escolha o responsável.'); return; }
       if (g.dataset.avulsa) {
         const setorV = String(new FormData(g).get('av_setor') || ''); if (!setorV) { alert('Escolha o departamento da pendência.'); return; }
-        await atas.criarPendencia({ ata_id: null, ...p, obra: String(new FormData(g).get('av_obra') || ''), setor: setorV, os: g.dataset.os || null, observadores: new FormData(g).getAll('p_obs'), hora: String(new FormData(g).get('p_hora') || ''), duracao: new FormData(g).get('p_dur'), recorrente: new FormData(g).has('p_recor'), frequencia: String(new FormData(g).get('p_freq') || 'semanal') });
+        await atas.criarPendencia({ ata_id: null, ...p, obra: String(new FormData(g).get('av_obra') || ''), setor: setorV, os: g.dataset.os || null, osFase: g.dataset.osFase || null, observadores: new FormData(g).getAll('p_obs'), hora: String(new FormData(g).get('p_hora') || ''), duracao: new FormData(g).get('p_dur'), recorrente: new FormData(g).has('p_recor'), frequencia: String(new FormData(g).get('p_freq') || 'semanal') });
         const mod = document.getElementById('at-modal'); if (mod) mod.remove();
       } else await atas.criarPendencia({ ata_id: Number(g.dataset.ata), ...p, obra: g.dataset.obra, setor: g.dataset.setor });
     }

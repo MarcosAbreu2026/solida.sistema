@@ -1,0 +1,1 @@
+-- OS sem responsável (13/11/2026): coluna pendencias.os_fase (fase da OS em que a pendência nasceu); gatilho os_quadro_pendencia removido; renomear_obra sem o gatilho. Aplicado no Supabase.

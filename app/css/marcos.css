@@ -897,3 +897,11 @@ body.imp-ata .at-ata-det .sd-tab td.sd-t-info, body.imp-ata .at-ata-det .sd-tab 
 .ac-obra-item > summary .ac-sit { flex: 0 0 128px; margin-left: auto; text-align: center; box-sizing: border-box; }
 .aoi-falta { color: #B3261E; background: #FBE4E1; border-radius: 999px; padding: 1px 9px; font-size: 11px; font-weight: 700; white-space: nowrap; }
 @media (max-width: 640px) { .ac-obra-item > summary { flex-wrap: wrap; } .ac-obra-item > summary .ac-sit { margin-left: 0; } }
+
+/* OS sem responsável: problema e solução na OS; pendências (com a fase) embaixo */
+.pc-prob span { font-weight: 700; color: #4B5560; }
+.osq-pends { margin-top: 14px; border-top: 1px solid #E1E6EC; padding-top: 10px; }
+.osq-pends h4 { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; font-size: 13px; } .osq-pends h4 .ac-mini { margin-left: auto; }
+.osq-pend { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border: 1px solid #E1E6EC; border-radius: 8px; margin-bottom: 5px; font-size: 12.5px; cursor: pointer; background: #fff; } .osq-pend:hover { background: #F0F6FC; }
+.osq-pend-fase { flex: none; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #4B5560; background: #ECEFF3; border-radius: 4px; padding: 1px 6px; }
+.osq-pend-txt { flex: 1; min-width: 0; } .osq-pend-quem { flex: none; color: #4B5560; } .osq-pend-st { flex: none; font-size: 11px; font-weight: 700; color: #6B7480; } .osq-pend-st.ok { color: #1B7F4B; }

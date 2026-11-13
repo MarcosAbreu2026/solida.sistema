@@ -334,8 +334,8 @@ export async function criarAta({ titulo, data, tipo, obra, setor, participantes,
   await carregar();
   return nova;
 }
-export async function criarPendencia({ ata_id, descricao, responsavel, externoNome, externoTipo, externoCategoria, prazo, obra, setor, os, urgencia, funcaoTarefa, observadores, hora, duracao, recorrente = false, frequencia = 'semanal' }) {
-  const p = { ata_id: ata_id || null, descricao, responsavel: responsavel || null, responsavel_nome: responsavel ? nomeDe(responsavel) : (externoNome || externoCategoria || (externoTipo === 'cliente' ? 'Cliente' : externoTipo === 'arquitetura' ? 'Arquitetura' : null)), responsavel_tipo: responsavel ? 'solida' : (externoTipo || 'terceirizado'), responsavel_categoria: responsavel ? null : (externoCategoria || null), prazo: prazo || null, status: 'aberta', obra: obra || null, setor: setor || null, os: os || null, urgencia: urgencia || null, funcao_tarefa: funcaoTarefa || null, observadores: observadores || [], hora: hora || null, duracao: duracao ? Number(duracao) : 60 };
+export async function criarPendencia({ ata_id, descricao, responsavel, externoNome, externoTipo, externoCategoria, prazo, obra, setor, os, osFase, urgencia, funcaoTarefa, observadores, hora, duracao, recorrente = false, frequencia = 'semanal' }) {
+  const p = { ata_id: ata_id || null, descricao, responsavel: responsavel || null, responsavel_nome: responsavel ? nomeDe(responsavel) : (externoNome || externoCategoria || (externoTipo === 'cliente' ? 'Cliente' : externoTipo === 'arquitetura' ? 'Arquitetura' : null)), responsavel_tipo: responsavel ? 'solida' : (externoTipo || 'terceirizado'), responsavel_categoria: responsavel ? null : (externoCategoria || null), prazo: prazo || null, status: 'aberta', obra: obra || null, setor: setor || null, os: os || null, os_fase: osFase || null, urgencia: urgencia || null, funcao_tarefa: funcaoTarefa || null, observadores: observadores || [], hora: hora || null, duracao: duracao ? Number(duracao) : 60 };
   if (ata_id) { const a = dados.atas.find((x) => String(x.id) === String(ata_id)); const ns = [...dados.pendencias.filter((x) => String(x.ata_id) === String(ata_id)).map((x) => Number(x.item) || 0), ...((a && a.informativos) || []).map((x) => (x && x.n) || 0)]; p.item = Math.max(0, ...ns) + 1; }
   // recorrente: repete toda semana, no mesmo dia da semana. Cada ocorrência é uma tarefa; as primeiras ${SEMANAS_INICIAIS} semanas já nascem e o resto é criado aos poucos (renovarRecorrentes)
   if (recorrente && p.prazo && !ata_id) {
@@ -633,7 +633,7 @@ function prazoDaColuna(id, hoje) {
 export function formAvulsa(obras, prazo, setorPadrao = '', preset = {}) {
   const listaObras = preset.obra && !obras.includes(preset.obra) ? [preset.obra, ...obras] : obras;
   return html`<div class="tf tf-nova"><div class="tf-corpo">
-    <form class="at-nova-pend at-avulsa tf-esq" id="pend-form" data-avulsa="1" data-os="${preset.os || ''}" autocomplete="off">
+    <form class="at-nova-pend at-avulsa tf-esq" id="pend-form" data-avulsa="1" data-os="${preset.os || ''}" data-os-fase="${preset.osFase || ''}" autocomplete="off">
       <div class="tf-cab"><h3>Nova tarefa</h3>${preset.os ? html`<span class="at-chip">${preset.os}</span>` : ''}<span class="pequeno">O que tem a borda vermelha precisa ser preenchido.</span></div>
       <div class="tf-grade pf-linha av-linha" data-tipo="solida" data-kind="pendencia">
         <label class="tf-ass">Assunto / cômodo<input name="p_assunto" class="pf-assunto" placeholder="ex.: ACM" autocomplete="off" value="${preset.assunto || ''}"></label>
@@ -990,6 +990,13 @@ export async function duplicarTarefa(id) {
   else { const l = lerLocal(); novo = l.seq++; l.pendencias.push({ id: novo, ...copia, criado_por: idPessoa(), criado_em: new Date().toISOString(), concluida_em: null }); gravarLocal(l); }
   await carregar();
   return novo;
+}
+// define (ou tira) o responsável da Sólida de uma tarefa, direto de uma lista (ex.: Controle de obras do pós-obra)
+export async function definirResponsavelTarefa(id, pessoaId) {
+  const mud = pessoaId ? { responsavel: pessoaId, responsavel_nome: nomeDe(pessoaId), responsavel_tipo: 'solida', responsavel_categoria: null } : { responsavel: null };
+  if (NA_NUVEM) await atualizarPendenciaNuvem(id, mud);
+  else { const l = lerLocal(); const q = l.pendencias.find((x) => String(x.id) === String(id)); if (q) Object.assign(q, mud); gravarLocal(l); }
+  await carregar();
 }
 export async function salvarTarefa(id, c) {
   const p = pendenciaPorId(id); if (!p) throw new Error('Tarefa não encontrada.');
