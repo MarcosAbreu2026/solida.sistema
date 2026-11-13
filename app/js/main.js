@@ -1954,7 +1954,17 @@ function perguntarEscopo(titulo) {
   });
 }
 // Impressão: moldura com 0,5 cm de margem em todas as bordas, em cada folha (ver @page em estilo.css). Monta antes de imprimir e desmonta depois.
+// Nome do arquivo ao salvar em PDF / imprimir: o navegador usa o título da página. Ata aberta = o nome definido quando a ata foi criada; tarefas = "Tarefas dd.mm.aaaa".
+let tituloAntesDeImprimir = null;
+function tituloParaImprimir() {
+  const r = rotaAtual();
+  if (r.tela === 'atas' && r.params.get('ata')) { const x = atas.ataPorId(r.params.get('ata')); if (x && x.titulo) return String(x.titulo); }
+  const aba = r.params.get('aba');
+  if ((r.tela === 'tarefas' || r.tela === 'atas') && (!aba || aba === 'pendencias')) { const d = ehData(r.params.get('dia')) ? r.params.get('dia') : hojeISO(); return `Tarefas ${d.split('-').reverse().join('.')}`; }
+  return '';
+}
 window.addEventListener('beforeprint', () => {
+  const nomeArquivo = tituloParaImprimir(); if (nomeArquivo) { if (tituloAntesDeImprimir === null) tituloAntesDeImprimir = document.title; document.title = nomeArquivo; }
   const c = document.getElementById('conteudo'); if (!c || c.querySelector(':scope > .imp-moldura')) return;
   const t = document.createElement('table'); t.className = 'imp-moldura';
   t.innerHTML = '<thead><tr><td><div class="imp-esp"></div></td></tr></thead><tfoot><tr><td><div class="imp-esp"></div></td></tr></tfoot><tbody><tr><td></td></tr></tbody>';
@@ -1966,6 +1976,7 @@ window.addEventListener('beforeprint', () => {
   c.appendChild(t);
 });
 window.addEventListener('afterprint', () => {
+  if (tituloAntesDeImprimir !== null) { document.title = tituloAntesDeImprimir; tituloAntesDeImprimir = null; }
   const c = document.getElementById('conteudo'); const t = c && c.querySelector(':scope > .imp-moldura'); if (!t) return;
   const td = t.querySelector('tbody td');
   while (td.firstChild) c.insertBefore(td.firstChild, t);
