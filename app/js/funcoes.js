@@ -45,6 +45,9 @@ export const FUNCOES = [
     areas: ['transporte', 'suprimentos'] },
   { id: 'posobra', nome: 'Gestor do pós-obra', pop: 'ENIO', veValores: false, porObra: false, geral: GESTAO,
     areas: ['posobra', 'transporte', 'suprimentos'] },
+  // Pedro: estagiário do pós-obra, sob o Ênio (pedido do Marcos, 13/11/2026)
+  { id: 'estagiario_posobra', nome: 'Estagiário do pós-obra', pop: 'PEDRO', veValores: false, porObra: false, geral: OBRA,
+    areas: ['posobra'] },
   { id: 'financeiro', nome: 'Gestor do financeiro', pop: 'LETICIA', veValores: true, porObra: false,
     areas: ['financeiro', 'comercial', 'suprimentos', 'rh'] },
   { id: 'administrativo', nome: 'Administrativo', pop: 'ISABELLE', veValores: false, porObra: false, geral: OBRA,

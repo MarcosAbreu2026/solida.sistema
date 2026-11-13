@@ -21,7 +21,7 @@ export const DEPARTAMENTOS = [
   { id: 'posobra', nome: 'Pós-Obra', cfg: 'posobra', setor: 'Pós-obra',
     resp: 'Diretor: Márcio · Gestor: Ênio · Executores: Pedro, Nascimento e Cleviano',
     pergunta: 'Quais solicitações estão abertas, em que fase estão e o que precisa ser cobrado ou agendado?',
-    funcoes: ['posobra', 'tecnico', 'coord_operacoes', 'ferramentas', 'financeiro'] },
+    funcoes: ['posobra', 'estagiario_posobra', 'tecnico', 'coord_operacoes', 'ferramentas', 'financeiro'] },
   { id: 'tecnico', nome: 'Técnico e Qualidade', setor: 'Técnico / qualidade',
     resp: 'Supervisor: Márcio',
     pergunta: 'Cada serviço foi verificado nas duas conferências antes de seguir para a próxima etapa?',
