@@ -1963,7 +1963,23 @@ function tituloParaImprimir() {
   if ((r.tela === 'tarefas' || r.tela === 'atas') && (!aba || aba === 'pendencias')) { const d = ehData(r.params.get('dia')) ? r.params.get('dia') : hojeISO(); return `Tarefas ${d.split('-').reverse().join('.')}`; }
   return '';
 }
+// Ata impressa: letra pequena e, se ainda passar de uma folha, a folha encolhe para caber em 1 página (no mínimo 50%). A classe imp-ata vale só entre beforeprint e afterprint,
+// assim a medida é feita com o mesmo tamanho de letra da impressão.
+function ajustarAtaNaFolha() {
+  const folha = document.querySelector('#conteudo .sd-folha'); if (!folha) return;
+  document.body.classList.add('imp-ata');
+  folha.style.zoom = ''; folha.style.width = '718px';   // largura útil da folha A4 (190 mm)
+  const h = folha.getBoundingClientRect().height;
+  folha.style.width = '';
+  const z = Math.max(0.5, Math.min(1, 1035 / (h || 1)));
+  if (z < 1) folha.style.zoom = String(z);
+}
+function desfazerAtaNaFolha() {
+  document.body.classList.remove('imp-ata');
+  const folha = document.querySelector('#conteudo .sd-folha'); if (folha) { folha.style.zoom = ''; folha.style.width = ''; }
+}
 window.addEventListener('beforeprint', () => {
+  ajustarAtaNaFolha();
   const nomeArquivo = tituloParaImprimir(); if (nomeArquivo) { if (tituloAntesDeImprimir === null) tituloAntesDeImprimir = document.title; document.title = nomeArquivo; }
   const c = document.getElementById('conteudo'); if (!c || c.querySelector(':scope > .imp-moldura')) return;
   const t = document.createElement('table'); t.className = 'imp-moldura';
@@ -1976,6 +1992,7 @@ window.addEventListener('beforeprint', () => {
   c.appendChild(t);
 });
 window.addEventListener('afterprint', () => {
+  desfazerAtaNaFolha();
   if (tituloAntesDeImprimir !== null) { document.title = tituloAntesDeImprimir; tituloAntesDeImprimir = null; }
   const c = document.getElementById('conteudo'); const t = c && c.querySelector(':scope > .imp-moldura'); if (!t) return;
   const td = t.querySelector('tbody td');

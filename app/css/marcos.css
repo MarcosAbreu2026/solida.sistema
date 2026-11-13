@@ -849,3 +849,20 @@ body.nav-recolhido nav::after { display: none; }
 .aviso-versao .aviso-x { background: transparent; color: #fff; padding: 2px 8px; font-size: 18px; }
 
 .tf-botoes .tf-dup { margin-right: auto; }
+
+/* Ata impressa: o mínimo de tamanho, para caber em UMA página (a classe imp-ata é posta só durante a impressão; ver ajustarAtaNaFolha em main.js) */
+body.imp-ata .msg, body.imp-ata .at-voltar, body.imp-ata .at-drive, body.imp-ata .at-acomp { display: none !important; }
+body.imp-ata .at-ata-det .sd-folha { margin: 0 !important; border-radius: 0 !important; }
+body.imp-ata .at-ata-det .sd-cab { grid-template-columns: 110px 1fr 84px 44px !important; }
+body.imp-ata .at-ata-det .sd-cab > div { padding: 3px 8px !important; }
+body.imp-ata .at-ata-det .sd-logo { min-height: 30px !important; margin: 3px 4px !important; -webkit-mask-size: 88px auto !important; mask-size: 88px auto !important; }
+body.imp-ata .at-ata-det .sd-tit { font-size: 15px !important; } body.imp-ata .at-ata-det .sd-cod { font-size: 10.5px !important; }
+body.imp-ata .at-ata-det .sd-linha { font-size: 9.5px !important; line-height: 1.25 !important; }
+body.imp-ata .at-ata-det .sd-tab { font-size: 10px !important; line-height: 1.22 !important; }
+body.imp-ata .at-ata-det .sd-tab th { font-size: 8.5px !important; padding: 3px 5px !important; }
+body.imp-ata .at-ata-det .sd-tab td { padding: 2.5px 6px !important; }
+body.imp-ata .at-ata-det .sd-tab td small { font-size: 7.5px !important; }
+body.imp-ata .at-ata-det .sd-tab th:nth-child(1), body.imp-ata .at-ata-det .sd-tab td:nth-child(1) { width: 30px !important; min-width: 0 !important; }
+body.imp-ata .at-ata-det .sd-tab th:nth-child(2), body.imp-ata .at-ata-det .sd-tab td:nth-child(2) { width: 78px !important; min-width: 78px !important; }
+body.imp-ata .at-ata-det .sd-tab th:nth-child(4) { width: 92px !important; } body.imp-ata .at-ata-det .sd-tab th:nth-child(5) { width: 64px !important; }
+body.imp-ata .at-ata-det .sd-tab td.sd-t-info, body.imp-ata .at-ata-det .sd-tab td.sd-t-pend { font-size: 8px !important; letter-spacing: 0 !important; white-space: nowrap !important; }

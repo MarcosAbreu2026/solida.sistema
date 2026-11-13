@@ -98,7 +98,7 @@ function montarLote(lido, obras) {
 }
 export function painelLote(obras) {
   if (!lote) return '';
-  const pessoas = [...dados.pessoas].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  const pessoas = pessoasSelecionaveis();
   const linha = (it) => html`<tr data-lote-i="${it.n}" data-hora="${it.hora || ''}" class="lote-lin">
     <td><input type="checkbox" data-lote-inc checked title="Criar esta tarefa"></td><td class="lote-n">${it.n}</td>
     <td><select data-lote-obra><option value="">— sem obra —</option>${gruposDeObras(obras, it.obra, { criar: true })}</select>${it.obraPdf ? html`<small class="lote-obs">no PDF: ${it.obraPdf}</small>` : ''}</td>
@@ -154,7 +154,7 @@ const souEu = () => (NA_NUVEM ? perfilAtual() && perfilAtual().id : idPessoa());
 const chipObs = (nome, id, nomePessoa) => html`<span class="obs-chip" data-obs-chip="${id}">${nomePessoa}<button type="button" data-obs-del="${id}" title="Tirar">×</button><input type="hidden" name="${nome}" value="${id}"></span>`;
 // Observadores (opcional): clique nos nomes da lista para acrescentar; o clique no × do nome tira. O gestor automático (pelas obras e setores) já aparece como observador, travado.
 const caixaObservadores = (nome, marcados, respId, gestoresNome = '') => {
-  const pessoas = dados.pessoas.filter((x) => x.id !== respId).sort((x, y) => x.nome.localeCompare(y.nome, 'pt-BR'));
+  const pessoas = pessoasSelecionaveis().filter((x) => x.id !== respId);
   return html`<div class="obs" data-obs="${nome}">
     <span class="obs-rot">Observadores <small>(opcional)</small></span>
     <div class="obs-chips">${String(gestoresNome || '').split(', ').filter(Boolean).map((n) => html`<span class="obs-chip obs-fixo" title="Gestor automático: acompanha a tarefa e não dá para tirar">🔒 ${n} <small>gestor</small></span>`)}${pessoas.filter((x) => marcados.includes(x.id)).map((x) => chipObs(nome, x.id, x.nome))}</div>
@@ -457,7 +457,11 @@ const COLUNAS = [
 // a descrição é guardada como Assunto, o que fazer; no formulário são duas caixinhas
 export const dividirDescricao = (t) => { const s = String(t || ''); const i = s.indexOf(','); return i > 0 && i < 60 ? [s.slice(0, i).trim().toLocaleUpperCase('pt-BR'), s.slice(i + 1).trim()] : ['', s]; };
 const descRica = (t) => { const s = String(t || ''); const i = s.indexOf(','); return i > 0 && i < 60 ? html`<b>${s.slice(0, i).toLocaleUpperCase('pt-BR')}</b>${s.slice(i)}` : s; };
-const opcoesPessoas = (sel = '') => dados.pessoas.map((p) => html`<option value="${p.id}" ${p.id === sel ? html.seguro('selected') : ''}>${p.nome}</option>`);
+// Pessoas para escolher (responsável, observador, filtro): em ordem alfabética e sem as contas de administração (ex.: "Felipe Paiva (admin)"); quem já é responsável de uma tarefa continua aparecendo nela.
+const ehConta = (p) => /\(admin\)/i.test(String(p.nome || ''));
+const porNome = (a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR', { sensitivity: 'base' });
+export const pessoasSelecionaveis = () => dados.pessoas.filter((p) => !ehConta(p)).sort(porNome);
+const opcoesPessoas = (sel = '') => [...pessoasSelecionaveis(), ...dados.pessoas.filter((p) => ehConta(p) && p.id === sel)].map((p) => html`<option value="${p.id}" ${p.id === sel ? html.seguro('selected') : ''}>${p.nome}</option>`);
 
 export const CATEGORIAS_TERC = ['Arquitetura', 'Ar-condicionado', 'Automação', 'ACM / fachada', 'Elétrica', 'Hidráulica', 'Iluminação', 'Esquadrias / vidros', 'Gesso / forro', 'Impermeabilização', 'Marcenaria', 'Marmoraria / pedras', 'Paisagismo', 'Pintura', 'Piscina', 'Revestimentos', 'Serralheria', 'Limpeza', 'Outro'];
 const ROTULO_TIPO = { terceirizado: 'Terceirizado', cliente: 'Cliente', arquitetura: 'Arquitetura', outro: 'Externo' };
@@ -509,12 +513,12 @@ function filtrar(params, setorFixo = '') {
 const pessoasParaVer = () => {
   const f = funcaoAtual(); const eu = souEu();
   // diretoria e administrativo: todas as pessoas, tenham tarefa ou não
-  if (['socio', 'administrativo'].includes(f.id)) return dados.pessoas.filter((x) => x.id !== eu).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  if (['socio', 'administrativo'].includes(f.id)) return pessoasSelecionaveis().filter((x) => x.id !== eu);
   // os demais: quem responde a mim (gestores), quem eu observo e as pessoas do meu setor que são do meu cargo ou de cargo abaixo; nunca o cargo acima
   const ids = new Set(dados.pendencias.filter((p) => p.responsavel && p.responsavel !== eu && ((p.gestores || []).includes(eu) || (p.observadores || []).includes(eu))).map((p) => p.responsavel));
   const meus = meusSetores(); const meuNivel = NIVEL[f.id] ?? 3;
   for (const p of dados.pessoas) if (p.id !== eu && (NIVEL[p.funcao] ?? 3) >= meuNivel && (p.setores || []).some((s) => meus.includes(s))) ids.add(p.id);
-  return dados.pessoas.filter((p) => ids.has(p.id)).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  return pessoasSelecionaveis().filter((p) => ids.has(p.id));
 };
 // nível do cargo (0 = mais alto): quem é de nível abaixo não vê as tarefas do nível acima
 const NIVEL = { socio: 0, administrativo: 1, coord_operacoes: 1, tecnico: 2, planejamento: 2, projetos: 2, compras: 2, ferramentas: 2, financeiro: 2, rh: 2, marketing: 3, gestor_obra: 3, posobra: 3, orc_terceirizado: 4, estagiario_compras: 4, executor_ferramentas: 4, estagiario: 4, encarregado: 5, ajudante: 6 };
@@ -1156,7 +1160,7 @@ export const pautaPorNome = (nome, params) => montarPautas(params).lista.find((g
 void ataDe;
 
 // pessoas da Sólida (para escolher responsável em outras telas, como o Quadro de OS do pós-obra)
-export const pessoasDaEquipe = () => dados.pessoas;
+export const pessoasDaEquipe = () => pessoasSelecionaveis();
 
 // refaz a lista de departamentos das atas/pendências depois que um setor é criado ou excluído
 export const atualizarSetoresAta = () => { SETORES_ATA.splice(0, SETORES_ATA.length, ...SETORES_ORGANOGRAMA, 'Diretoria / geral'); };
