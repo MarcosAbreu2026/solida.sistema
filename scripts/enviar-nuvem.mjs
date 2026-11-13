@@ -75,7 +75,7 @@ async function enviar(caminho, obj) {
 const pasta = join(raiz, 'dados', 'json');
 const arquivos = {
   obras: 'obras.json', servicos: 'servicos.json', equipe: 'equipe.json', agenda: 'agenda.json', financeiro: 'financeiro.json', listas: 'listas.json',
-  produtividade: 'produtividade.json', 'medicoes-mc': 'medicoes-mc.json', 'posobra-estado': 'posobra-estado.json', orcamentos: 'orcamentos.json', projetos: 'projetos.json', estoque: 'estoque.json', 'equipe-programada': 'equipe-programada.json', 'rotas-semana': 'rotas-semana.json', evidencias: 'evidencias.json', 'ferramentas-checklist': 'ferramentas-checklist.json', terceirizados: 'terceirizados.json', efetivo: 'efetivo.json',
+  produtividade: 'produtividade.json', 'medicoes-mc': 'medicoes-mc.json', 'posobra-estado': 'posobra-estado.json', orcamentos: 'orcamentos.json', projetos: 'projetos.json', estoque: 'estoque.json', 'equipe-programada': 'equipe-programada.json', 'rotas-semana': 'rotas-semana.json', caixinha: 'caixinha.json', evidencias: 'evidencias.json', 'ferramentas-checklist': 'ferramentas-checklist.json', terceirizados: 'terceirizados.json', efetivo: 'efetivo.json',
 };
 const SO_VALORES = new Set(['financeiro']);   // não vai para todos/
 

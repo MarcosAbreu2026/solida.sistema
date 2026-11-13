@@ -8,6 +8,7 @@ import { NA_NUVEM, sb, perfilAtual, listarPerfis } from '../nuvem.js';
 import { sessao } from '../sessao.js';
 import { FUNCOES } from '../funcoes.js';
 import { lerXlsx } from '../xlsx-leitor.js';
+import { carregarCaixinhaLeitura } from '../dados.js';
 import { CAMPOS, MAPEAMENTO_PADRAO, acharCabecalho, adivinhar, analisar, comImpressao, hashDoArquivo, sugerirUsuario } from '../caixinha.js';
 
 export const podeVer = (f) => !!f && ['socio', 'administrativo', 'financeiro'].includes(f.id);
@@ -18,6 +19,7 @@ let dados = { cartoes: [], gastos: [], importacoes: [], log: [], mapeamento: MAP
 let pronto = false; let erroBanco = '';
 const imp = { arquivo: null, nome: '', hash: '', linhas: null, planilhas: [], plan: 0, cab: 0, mapa: null, cartao: '', novoId: '', novoNome: '', resultado: null, msg: '', erro: '', ocupado: false };
 let aviso = ''; let avisoEm = 0; let erroGeral = '';
+let leitura = null;   // saldos lidos no Bee Vale e no Mais Controle (dados/json/caixinha.json), só para consulta
 const dizer = (t) => { aviso = t; avisoEm = Date.now(); };   // a mensagem de sucesso fica uns segundos (a tela se redesenha duas vezes ao mudar de aba)
 
 export const carregado = () => pronto;
@@ -49,6 +51,7 @@ export async function carregar() {
       dados = { cartoes, gastos, importacoes, log, mapeamento: (cfg[0] && cfg[0].valor) || MAPEAMENTO_PADRAO, usuarios: perfis.filter((p) => p.ativo !== false && p.funcao).map((p) => ({ id: p.id, nome: p.nome || p.email })) };
     } catch (e) { erroBanco = /cx_|relation|does not exist|schema cache/i.test(String(e.message)) ? 'As tabelas da Caixinha ainda não existem no banco. Rode o arquivo supabase/29-caixinha.sql no Supabase (SQL Editor).' : `Não foi possível ler a Caixinha (${e.message}).`; }
   }
+  try { leitura = await carregarCaixinhaLeitura(); } catch { leitura = null; }
   pronto = true;
   return dados;
 }
@@ -226,12 +229,35 @@ function registro() {
     dados.log.map((l) => [new Date(l.em).toLocaleString('pt-BR'), l.usuario_nome || '—', ROTULO_ACAO[l.acao] || l.acao, resumo(l.detalhe)]), { vazio: 'Nenhuma ação registrada ainda.' }));
 }
 
+// Conferência: saldo de cada cartão no Bee Vale × contas "Bee Vale" e "Caixinha (dinheiro)" no Mais Controle (leitura automática, só consulta)
+function conferencia() {
+  const mc = leitura && leitura.maisControle; const bv = leitura && leitura.beevale;
+  if (!mc && !bv) return pd.aviso('Ainda sem leitura: a rotina lê o Bee Vale e o Mais Controle no Chrome do escritório e grava aqui.', 'info');
+  const arred = (v) => Math.round(v * 100) / 100;
+  const conta = (n) => ((mc && mc.contas) || []).find((c) => c.nome === n);
+  const mcBee = conta('Bee Vale'); const mcCx = conta('Caixinha (dinheiro)');
+  const cartoesBv = (bv && bv.cartoes) || [];
+  const comSaldo = cartoesBv.filter((c) => c.saldo > 0).sort((a, b) => b.saldo - a.saldo);
+  const totalBee = bv ? arred(cartoesBv.reduce((s, c) => s + (c.saldo || 0), 0) + (bv.saldoCorporativo || 0)) : null;
+  const dif = bv && mcBee ? arred(totalBee - mcBee.saldo) : null;
+  const quando = (x) => (x && x.lidoEm ? `${x.lidoEm.slice(8, 10)}/${x.lidoEm.slice(5, 7)} às ${x.lidoEm.slice(11, 16)}` : '—');
+  const cards = pd.cartoes([
+    { rotulo: 'Bee Vale: saldo nos cartões', valor: totalBee == null ? '—' : reais(totalBee), sub: `${comSaldo.length} de ${cartoesBv.length} cartões com saldo` },
+    { rotulo: 'Mais Controle: conta Bee Vale', valor: mcBee ? reais(mcBee.saldo) : '—', sub: 'valor atual da conta', nivel: mcBee && mcBee.saldo < 0 ? 'atencao' : '' },
+    { rotulo: 'Diferença a conferir', valor: dif == null ? '—' : reais(dif), sub: 'Bee Vale menos Mais Controle', nivel: dif ? 'atencao' : 'ok' },
+    { rotulo: 'Mais Controle: Caixinha (dinheiro)', valor: mcCx ? reais(mcCx.saldo) : '—', sub: 'valor atual da conta', nivel: mcCx && mcCx.saldo < 0 ? 'atencao' : '' },
+  ], { colunas: 4 });
+  return html`${pd.secao('Conferência Bee Vale × Mais Controle', `Bee Vale lido em ${quando(bv)} · Mais Controle lido em ${quando(mc)} · só consulta`, cards)}
+    ${pd.secao('Cartões Bee Vale com saldo', `${cartoesBv.length} cartões, ${cartoesBv.length - comSaldo.length} zerados`, pd.tabela(['Cartão', 'Saldo no Bee Vale'], comSaldo.map((c) => [c.nome, reais(c.saldo)]), { vazio: 'Nenhum cartão com saldo.' }))}
+    ${pd.aviso('A diferença pode ser recarga ou gasto ainda sem lançamento no Mais Controle: conferir antes de ajustar. Nada é alterado nos dois sites.', 'info')}`;
+}
+
 export function render({ f, sub = '' }) {
   if (!pronto) return String(html`<div class="carregando">Carregando a Caixinha…</div>`);
   const edita = podeEditar(f);
-  const abas = [{ id: '', nome: 'Painel' }, edita && { id: 'importar', nome: 'Importação' }, { id: 'cartoes', nome: 'Cartões e responsáveis' }, { id: 'log', nome: 'Registro de ações' }].filter(Boolean).map((a) => ({ ...a, href: `#/caixinha${a.id ? `/${a.id}` : ''}` }));
+  const abas = [{ id: '', nome: 'Painel' }, edita && { id: 'importar', nome: 'Importação' }, { id: 'cartoes', nome: 'Cartões e responsáveis' }, { id: 'conferencia', nome: 'Conferência' }, { id: 'log', nome: 'Registro de ações' }].filter(Boolean).map((a) => ({ ...a, href: `#/caixinha${a.id ? `/${a.id}` : ''}` }));
   const ativa = abas.some((a) => a.id === sub) ? sub : '';
-  const corpo = { importar: () => importacao(f), cartoes: () => cartoes(f), log: registro }[ativa] || painel;
+  const corpo = { importar: () => importacao(f), cartoes: () => cartoes(f), conferencia, log: registro }[ativa] || painel;
   const msg = html`${aviso && Date.now() - avisoEm < 10000 ? html`<p class="msg ok">${aviso}</p>` : ''}${erroGeral ? html`<p class="msg err">${erroGeral}</p>` : ''}`;
   erroGeral = '';
   return String(html`<div class="pd">${pd.cabecalho({ rotulo: 'Administrativo · Caixinha BeeVale', resp: 'POP ADM 11.11 · o sistema prepara e confere; a aprovação da recarga continua humana' })}${pd.abas(abas, ativa)}

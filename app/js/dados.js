@@ -87,6 +87,15 @@ export async function carregarRotas() {
   } catch { return { semanas: [] }; }
 }
 
+// Saldos lidos no Bee Vale e no Mais Controle (Chrome do escritório, só leitura): aba Caixinha › Conferência.
+export async function carregarCaixinhaLeitura() {
+  try {
+    if (NA_NUVEM) return (await baixar('caixinha')) || null;
+    const r = await fetch(`${PASTA}caixinha.json`, { cache: 'no-store' });
+    return r.ok ? await r.json() : null;
+  } catch { return null; }
+}
+
 // Orçamentos (SL_ORÇAMENTOS<ano>) e projetos/as-built/cronograma por obra, lidos no Google Drive por
 // scripts/exportar-drive.ps1 (o servidor roda em segundo plano, no máximo a cada 10 minutos).
 export async function carregarDrive() {
