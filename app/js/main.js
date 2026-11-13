@@ -340,7 +340,8 @@ document.addEventListener('click', (e) => {
       const v = (await r.json()).v; if (!v) return;
       if (versaoAbriu === null) { versaoAbriu = v; return; }
       if (v === versaoAbriu) return;
-      if (emEdicao()) avisoVersaoNova(); else location.reload();
+      // nunca recarrega sozinho (a pessoa perdia o que estava fazendo): só o escritório virtual atualiza sozinho; nas outras telas, aviso com botão
+      if (rotaAtual().tela === 'escritorio' && !emEdicao()) location.reload(); else avisoVersaoNova();
     } catch { /* sem conexão ou ambiente local: ignora */ }
   };
   setTimeout(checar, 3000); setInterval(checar, 2 * 60 * 1000);
@@ -361,7 +362,8 @@ async function sincronizarCadastros({ forcar = false } = {}) {
     if (chavePessoas() !== antesPessoas) mudou = true;
     const a = document.activeElement;
     const digitando = !forcar && emEdicao();   // não redesenha por cima de ata, tarefa ou OS que a pessoa está preenchendo
-    if (mudou && !digitando) desenhar();
+    // só redesenha quando a própria pessoa criou/excluiu algo (forcar); a rodada automática atualiza os dados sem mexer na tela (a próxima navegação já mostra)
+    if (mudou && !digitando && forcar) desenhar();
   } finally { sincronizandoCad = false; }
 }
 setInterval(() => sincronizarCadastros(), 60 * 1000);
@@ -1036,7 +1038,9 @@ async function atualizar() {
   }
   const ativo = document.activeElement;
   const ocupado = ativo && ativo.matches('input, select, textarea');
-  if (!ocupado && !(escritorio.ativo() && rotaAtual().tela === 'escritorio')) desenhar();
+  // a rodada automática (a cada 5 min) não redesenha mais a tela: os dados novos aparecem na próxima navegação. Só a primeira carga desenha.
+  if (!ocupado && !estado.primeiraCargaFeita && !(escritorio.ativo() && rotaAtual().tela === 'escritorio')) desenhar();
+  estado.primeiraCargaFeita = true;
   atualizarPedidos();   // status dos pedidos de alteração (o Claude marca como feito)
 }
 
