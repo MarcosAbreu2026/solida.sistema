@@ -847,3 +847,5 @@ body.nav-recolhido nav::after { display: none; }
 .aviso-versao { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 4000; display: flex; align-items: center; gap: 12px; background: #1F3A56; color: #fff; padding: 10px 14px; border-radius: 12px; box-shadow: 0 8px 28px rgba(0, 0, 0, .35); font-size: 13.5px; max-width: calc(100vw - 24px); }
 .aviso-versao button { border: 0; border-radius: 8px; padding: 6px 12px; font: inherit; font-weight: 700; cursor: pointer; background: #F29B4B; color: #0F2347; }
 .aviso-versao .aviso-x { background: transparent; color: #fff; padding: 2px 8px; font-size: 18px; }
+
+.tf-botoes .tf-dup { margin-right: auto; }

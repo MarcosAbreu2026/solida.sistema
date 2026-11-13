@@ -1861,6 +1861,13 @@ document.addEventListener('keydown', (e) => {
 document.addEventListener('click', async (e) => {
   const st = e.target.closest && e.target.closest('[data-tf-status]');
   if (st) { const [id, status] = st.dataset.tfStatus.split('|'); if (status === 'feita' && atas.precisaFuncao(id)) { pedirFuncao(id, () => redesenharTarefas(id, 'Concluída ✓')); return; } try { await atas.mudarStatus(id, status); await redesenharTarefas(id, status === 'feita' ? 'Concluída ✓' : 'Reaberta'); } catch (err) { alert(`Não foi possível mudar (${err.message || err}).`); } return; }
+  const dup = e.target.closest && e.target.closest('[data-tf-dup]');
+  if (dup) {
+    dup.disabled = true;
+    try { const novo = await atas.duplicarTarefa(dup.dataset.tfDup); await redesenharTarefas(novo, 'Cópia criada ✓ — ajuste o que precisar e salve'); }
+    catch (err) { dup.disabled = false; alert(`Não foi possível duplicar (${err.message || err}).`); }
+    return;
+  }
   const del = e.target.closest && e.target.closest('[data-tf-del]');
   if (del) {
     const p = atas.pendenciaPorId(del.dataset.tfDel);

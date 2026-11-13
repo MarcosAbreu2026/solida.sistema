@@ -972,6 +972,19 @@ export async function apagarNota(notaId, pendId) {
 }
 
 // c = { assunto, desc, resp ('ext' | id da pessoa), tipo, nome, gestor ('' = automático | id), prazo }
+// Duplicar: cria uma cópia aberta da tarefa (mesmo título, responsável, obra, setor, prazo, prioridade, observadores, horário e OS), sem as anotações, sem a ata
+// de origem e sem a recorrência. Devolve o id da cópia para a janela abrir nela.
+export async function duplicarTarefa(id) {
+  const p = pendenciaPorId(id); if (!p) throw new Error('Tarefa não encontrada.');
+  const copia = { ata_id: null, descricao: p.descricao, responsavel: p.responsavel || null, responsavel_nome: p.responsavel_nome || null, responsavel_tipo: p.responsavel_tipo || 'solida', responsavel_categoria: p.responsavel_categoria || null,
+    prazo: p.prazo || null, status: 'aberta', obra: p.obra || null, setor: p.setor || null, os: p.os || null, urgencia: p.urgencia || null, funcao_tarefa: p.funcao_tarefa || null,
+    observadores: p.observadores || [], hora: p.hora || null, duracao: p.duracao || 60 };
+  let novo;
+  if (NA_NUVEM) [novo] = await criarPendenciasNuvemLote([copia]);
+  else { const l = lerLocal(); novo = l.seq++; l.pendencias.push({ id: novo, ...copia, criado_por: idPessoa(), criado_em: new Date().toISOString(), concluida_em: null }); gravarLocal(l); }
+  await carregar();
+  return novo;
+}
 export async function salvarTarefa(id, c) {
   const p = pendenciaPorId(id); if (!p) throw new Error('Tarefa não encontrada.');
   const desc = String(c.desc || '').trim(); const ass = String(c.assunto || '').trim();
@@ -1065,6 +1078,7 @@ export function detalheTarefa(id, { msg = '' } = {}) {
       ${reprogramada(p) ? html`<p class="pequeno">↻ ${tituloRepro(p)}</p>` : ''}
       <div class="tf-botoes">
         ${msg ? html`<span class="tf-msg">${msg}</span>` : ''}
+        <button type="button" class="botao tf-dup" data-tf-dup="${p.id}" title="Cria uma cópia desta tarefa (sem as anotações) para você ajustar">⧉ Duplicar tarefa</button>
         <button type="button" class="botao" data-av-fechar>Fechar</button>
         <button type="submit" class="botao on">Salvar alterações</button>
       </div>
