@@ -160,6 +160,8 @@ export const SUBTOPICOS = [
           { titulo: 'O quadro', texto: 'No Pós-obra e na página Início do pós-obra fica o Quadro de OS. Cada cartão é uma OS e cada coluna é uma etapa, da esquerda para a direita: Solicitação, Análise, Orçamento, Falta agendar, Agendado, Em execução e Concluído. Todas as colunas aparecem ao mesmo tempo.',
             dica: 'A coluna é a situação real da OS: uma OS "em execução" não pode estar com orçamento pendente. Se algo estiver errado, confira o cadastro da OS.' },
           { titulo: 'Abrir e mover uma OS', texto: 'Arraste o cartão para a coluna certa ou clique nele para abrir: problema, solução, fotos, responsável e datas. As fotos da OS ficam guardadas no próprio sistema.' },
+          { titulo: 'Controle de obras: a visão geral dos pós-obras', texto: 'Em Pós-Obra › Detalhes › "Controle de obras" fica a lista do Controle Operacional (planilha), feita com os dados do sistema e em ordem de número do PO. Cada PO é uma faixa e embaixo dela vêm as suas OS, uma linha por OS, com o status em coluna própria (Solicitação, Análise, Orçamento, Falta agendar, Agendado, Em execução), o relato, o responsável e o prazo. Defina o responsável e o prazo direto na linha da OS: isso cria a tarefa da pessoa. Embaixo de cada OS aparecem as pendências dela e o botão "+ pendência"; embaixo de cada PO, o campo "Nova OS". Tudo o que é pós-obra é PO (nada de MO).',
+            dica: 'Clique numa pendência com [definir] em vermelho para abrir a tarefa e escolher quem vai fazer. Os cartões do alto contam os pós-obras por situação e filtram a lista.' },
         ],
       },
       {

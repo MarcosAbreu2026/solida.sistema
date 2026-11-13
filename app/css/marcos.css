@@ -819,3 +819,21 @@ body.nav-recolhido nav::after { display: none; }
 .pc-relato { min-width: 320px; } .pc-relato > div { margin-bottom: 3px; } .pc-st { font-size: 11px; font-weight: 700; }
 .pc-obs { min-width: 220px; font-size: 12px; color: #4B5560; } .pc-obs > div { margin-top: 2px; }
 .pc-venc { color: #B3261E; font-weight: 700; }
+
+/* Controle de obras (pós-obra): faixa do PO, linha por OS, pendências embaixo */
+.pc-tab { min-width: 980px; border-collapse: collapse; }
+.pc-po-grupo { border-top: 8px solid transparent; }
+.pc-po td { background: #E9EEF5; border-top: 2px solid #1F3A56; padding: 8px 10px; font-size: 14px; }
+.pc-po .pc-nome { color: #4B5560; margin: 0 10px 0 6px; } .pc-po .pc-sit { margin-left: 8px; } .pc-po .pc-cont { margin-left: 12px; color: #5B6677; font-size: 12px; }
+.pc-os td { padding: 6px 10px; border-bottom: 1px solid #E6EBF0; vertical-align: top; }
+.pc-cod { white-space: nowrap; padding-left: 22px !important; font-weight: 700; }
+.pc-prob { color: #6B7480; font-size: 12px; margin-top: 2px; }
+.pc-pend { cursor: pointer; background: #FAFBFC; } .pc-pend:hover { background: #F0F6FC; }
+.pc-pend td { padding: 4px 10px; border-bottom: 1px dashed #E1E6EC; font-size: 12.5px; vertical-align: top; }
+.pc-pend .pc-relato { padding-left: 14px; color: #3B4652; }
+.pc-pst { display: inline-block; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #6B7480; background: #ECEFF3; border-radius: 4px; padding: 1px 6px; } .pc-pst.ok { color: #1B7F4B; background: #E3F3EA; }
+.pc-sem-txt { color: #B3261E; font-weight: 700; }
+.pc-resp, .pc-prazo { font: inherit; font-size: 12.5px; padding: 3px 6px; border: 1px solid #C9D1DA; border-radius: 6px; background: #fff; max-width: 150px; }
+.pc-resp.pc-sem { border-color: #D9534F; color: #B3261E; font-weight: 700; }
+.pc-nova td { padding: 5px 10px 10px; } .pc-nova-in { width: min(420px, 70%); padding: 5px 8px; border: 1px dashed #A9B4C2; border-radius: 6px; font: inherit; font-size: 12.5px; margin-right: 8px; }
+.pc-conc td { padding: 4px 10px; font-size: 12px; color: #6B7480; } .pc-conc summary { cursor: pointer; } .pc-conc details > div { padding: 2px 0 2px 14px; }

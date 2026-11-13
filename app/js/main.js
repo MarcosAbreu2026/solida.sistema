@@ -205,7 +205,7 @@ function telaPosObraPlanilha(rota) {
   // Controle de obras do pós-obra: a lista do Controle Operacional (planilha), montada com os pós-obras cadastrados e as OS do quadro
   if (rota.sub === 'controle') {
     garantirOsCarregadas(); garantirAtasCarregadas();
-    return { abas, conteudo: `<div class="pagina" style="margin-top:26px">${String(posControle.render({ params: rota.params, obrasCad: estado.obrasCad || [], pendencias: atas.todasPendencias(), hoje: hojeISO() }))}</div>` };
+    return { abas, conteudo: `<div class="pagina" style="margin-top:26px">${String(posControle.render({ params: rota.params, obrasCad: estado.obrasCad || [], pendencias: atas.todasPendencias(), hoje: hojeISO(), podeEditar: podeEditarPos() }))}</div>` };
   }
   // Quadro de OS (solicitação > análise > orçamento > falta agendar > agendado > em execução > concluído) e o quadro de datas das mesmas OS
   if (rota.sub === 'quadro-os' || rota.sub === 'datas-os') {
@@ -1539,6 +1539,20 @@ function osqAbrir(html, classe = '') {
   m.innerHTML = `<div class="at-modal-caixa ${classe}">${String(html)}</div>`;
 }
 const osqDetalhe = (id, msg = '') => osqAbrir(osq.detalhe(id, { podeEditar: podeEditarPos(), clientesPos: posObrasAtivas(), msg }), 'osq-caixa');
+// Controle de obras do pós-obra: responsável e prazo da OS direto na linha (viram a tarefa da pessoa) e "+ Nova OS" dentro do PO
+document.addEventListener('change', (e) => {
+  const r = e.target.closest && e.target.closest('[data-pc-resp]');
+  if (r) { osqFazer(() => osq.salvar(Number(r.dataset.pcResp) || r.dataset.pcResp, { responsavel: r.value || null })); return; }
+  const p = e.target.closest && e.target.closest('[data-pc-prazo]');
+  if (p) osqFazer(() => osq.salvar(Number(p.dataset.pcPrazo) || p.dataset.pcPrazo, { data_limite: p.value || null }));
+});
+const pcCriarOs = (botao) => {
+  const campo = botao.parentElement.querySelector('[data-pc-nova-texto]'); const assunto = campo ? campo.value.trim() : '';
+  if (!assunto) { if (campo) campo.focus(); return; }
+  osqFazer(() => osq.criar({ cliente: botao.dataset.pcNova, assunto, status: 'solicitacao' }));
+};
+document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-pc-nova]'); if (b) pcCriarOs(b); });
+document.addEventListener('keydown', (e) => { if (e.key !== 'Enter' || !e.target.matches || !e.target.matches('[data-pc-nova-texto]')) return; e.preventDefault(); const b = e.target.parentElement.querySelector('[data-pc-nova]'); if (b) pcCriarOs(b); });
 document.addEventListener('click', (e) => {
   const nova = e.target.closest && e.target.closest('[data-osq-nova]');
   if (nova) { osqAbrir(osq.formNova(nova.dataset.osqNova, posObrasAtivas())); const c = document.querySelector('#osq-form-nova [name="cliente"]'); if (c) c.focus(); return; }

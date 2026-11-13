@@ -1,0 +1,2 @@
+-- Pós-obra é sempre PO (13/11/2026): OS com código Mo viraram PO; OS-006 virou 'PO - Liessin' e OS-007 'PO - Liessin quadra'. Gatilho os_quadro_pendencia desligado só durante a correção.
+-- (aplicado direto no Supabase; ver migração os_quadro_tudo_po)
