@@ -547,7 +547,9 @@ const ehObraPura = ehObraNormal;
 // Obras "em orçamento" (setor ORC Obras Novas e diretoria): ficam num grupo próprio na caixinha de obra e podem ser criadas ali mesmo
 let OBRAS_ORC = new Set(); let NOMES_OBRAS = {};
 export const definirObrasOrcamento = (codigos, nomes) => { OBRAS_ORC = new Set((codigos || []).map((c) => String(c).toLowerCase())); if (nomes) NOMES_OBRAS = nomes; };
-export const podeCriarObraOrcamento = () => NA_NUVEM && (funcaoAtual().id === 'socio' || meusSetores().includes('ORC Obras Novas'));
+// quem cadastra e edita obras: a diretoria e os setores ORC Obras Novas, Pós-obra e ORC Terceirizado Laranja (só a diretoria exclui)
+export const SETORES_CADASTRO_OBRAS = ['ORC Obras Novas', 'Pós-obra', 'ORC Terceirizado Laranja'];
+export const podeCriarObraOrcamento = () => NA_NUVEM && (funcaoAtual().id === 'socio' || meusSetores().some((s) => SETORES_CADASTRO_OBRAS.includes(s)));
 export function gruposDeObras(obras, atual = '', { criar = false } = {}) {
   // sem repetir a mesma obra escrita de dois jeitos (Po577 / PO577 / PO577 - nome): vale a primeira
   const vistos = new Set(); const lista = [];

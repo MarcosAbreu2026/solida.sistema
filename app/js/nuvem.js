@@ -83,12 +83,25 @@ export async function salvarAbas(gravar, apagar) {
 }
 // Cadastro de obras (diretoria): código, nome e situação (andamento · pausada · finalizada). Todos leem; só a diretoria grava.
 export async function listarObras() {
-  const { data, error } = await sb.from('obras_cadastro').select('codigo, nome, situacao').order('codigo');
+  const { data, error } = await sb.from('obras_cadastro').select('*').order('codigo');
   if (error) throw new Error(error.message);
   return data || [];
 }
-export async function salvarObra({ codigo, nome, situacao }) {
-  const { error } = await sb.from('obras_cadastro').upsert({ codigo, nome: nome || null, situacao, atualizado_em: new Date().toISOString() });
+// Grava (ou muda) um cadastro de obra: código, tipo (obra · orcamento · pos), cliente, endereço, arquitetura e situação. Só os campos informados são gravados.
+// Sem as colunas novas no banco (SQL ainda não rodado), grava só código, nome e situação.
+export async function salvarObra({ codigo, nome, situacao, tipo, cliente, endereco, arquitetura }) {
+  const base = { codigo, atualizado_em: new Date().toISOString() };
+  if (situacao !== undefined) base.situacao = situacao;
+  const novos = {};
+  if (tipo !== undefined) novos.tipo = tipo;
+  if (cliente !== undefined) { novos.cliente = cliente || null; novos.nome = cliente || null; } else if (nome !== undefined) novos.nome = nome || null;
+  if (endereco !== undefined) novos.endereco = endereco || null;
+  if (arquitetura !== undefined) novos.arquitetura = arquitetura || null;
+  let { error } = await sb.from('obras_cadastro').upsert({ ...base, ...novos });
+  if (error && /column|schema cache/i.test(error.message)) {
+    const { tipo: _t, cliente: _c, endereco: _e, arquitetura: _a, ...antigos } = novos;
+    ({ error } = await sb.from('obras_cadastro').upsert({ ...base, ...antigos }));
+  }
   if (error) throw new Error(error.message);
 }
 export async function excluirObra(codigo) {

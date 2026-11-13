@@ -43,6 +43,7 @@ import * as svPos from './servicos-pos.js';
 import * as osq from './os-quadro.js';
 import * as configTela from './telas/configuracoes.js';
 import * as obrasOrc from './telas/obras-orcamento.js';
+import { ativaNasListas, orcamentoAberto, SITUACOES_POR_TIPO } from './obras-tipos.js';
 import * as posControle from './telas/posobra-controle.js';
 import { carregarConfig, definirConfig, restaurarConfig, snapshotConfig, listaConfig } from './config.js';
 import * as tvSlides from './treinamentos-slides.js';
@@ -371,9 +372,9 @@ function ajustarAlturaFuncoes() {
 }
 window.addEventListener('resize', ajustarAlturaFuncoes);
 // obra "em orçamento" ainda não é obra de verdade: não entra nas listas da operação, só nas caixinhas de obra de atas e tarefas (de quem pode ver)
-const SEM_LISTA = ['finalizada', 'orcamento', 'nao_fechado'];   // fora das listas da operação (orçamento e não fechado só aparecem para o setor ORC e a diretoria)
-const cadastroAtivo = () => (estado.obrasCad || []).filter((c) => !SEM_LISTA.includes(c.situacao)).map((c) => c.codigo);
-const cadastroEmOrcamento = () => (estado.obrasCad || []).filter((c) => c.situacao === 'orcamento').map((c) => c.codigo);
+// obra em andamento ou pausada e pós-obra em andamento ou pausado entram nas listas; obra em orçamento só nas caixinhas de obra (de quem pode ver); finalizada e não fechada ficam de fora
+const cadastroAtivo = () => (estado.obrasCad || []).filter(ativaNasListas).map((c) => c.codigo);
+const cadastroEmOrcamento = () => (estado.obrasCad || []).filter(orcamentoAberto).map((c) => c.codigo);
 const nomesDasObras = () => Object.fromEntries((estado.obrasCad || []).map((c) => [String(c.codigo).toLowerCase(), c.nome || '']));
 function obrasDeAtas() {
   if (funcaoAtual().porObra) return obrasDaPessoa();
@@ -423,7 +424,7 @@ function desenharNav(sel) {
   const itemAtas = () => { const n = atas.minhasAbertas(); return `<a class="nav-item${sel === 'atas' ? ' sel' : ''}" href="#/atas"><span>Atas e pendências</span>${n ? `<span class="nav-n">${n}</span>` : ''}</a>`; };
   const item =(id, nome, status) => `<a class="nav-item${id === sel ? ' sel' : ''}" href="#/${esc(id)}"${id === sel ? ' aria-current="page"' : ''}><span>${esc(nome)}</span>${status ? pt(status) : ''}</a>`;
   const s = sessao();
-  const itemObrasOrc = () => (atas.podeCriarObraOrcamento() && funcaoReal().id !== 'socio' ? item('obrasorc', 'Obras em orçamento') : '');
+  const itemObrasOrc = () => (atas.podeCriarObraOrcamento() && funcaoReal().id !== 'socio' ? item('obrasorc', 'Cadastro de obras') : '');
   // acesso restrito (por enquanto, quase todo mundo): só Minhas funções e Treinamentos
   if (soMinhasFuncoes(f)) {
     $('#nav').innerHTML = botaoRecolher() + `<div class="marca"><img src="img/logo.png" alt="Sólida"><span>Painel da empresa</span></div>`
@@ -655,7 +656,7 @@ function desenhar() {
   const CFG = estado.cfg;
   // onde está cada funcionário: só o efetivo de HOJE (zera todo dia); a lista de nomes vem do RH
   // obra cadastrada em Acessos entra na hora nas telas que usam a lista de obras dos dados (efetivo, ferramentas, orçamentos…)
-  if (CFG) { CFG.obrasDados = CFG.obrasDados || [...(CFG.obras || [])]; CFG.obras = [...new Set([...CFG.obrasDados, ...(estado.obrasCad || []).filter((c) => !['finalizada', 'orcamento', 'nao_fechado'].includes(c.situacao)).map((c) => c.codigo)])]; }
+  if (CFG) { CFG.obrasDados = CFG.obrasDados || [...(CFG.obras || [])]; CFG.obras = [...new Set([...CFG.obrasDados, ...(estado.obrasCad || []).filter(ativaNasListas).map((c) => c.codigo)])]; }
   if (CFG) { CFG.funcionariosRH = CFG.funcionariosRH || CFG.funcionarios; CFG.funcionarios = efetivoTela.funcionariosDeHoje(CFG.funcionariosRH, estado.efetivo); }
   let rota = rotaAtual();
   let tela = rota.tela;
@@ -695,7 +696,7 @@ function desenhar() {
     : dep ? (dep.titulo || dep.nome)
     : tela === 'obra' ? rota.sub
     : area ? area.nome
-    : ({ obrasorc: 'Obras em orçamento', configuracoes: 'Configurações', agentes: 'Agentes', funcionarios: 'Funcionários por obra', meudia: 'Minha semana', agenda: 'Agenda', quadro: 'Quadro de funções', estoque: 'Estoque', escritorio: 'Escritório virtual', perfil: 'Perfil', feed: 'Feed', treinamentos: 'Treinamentos', acessos: 'Cadastros', atas: ['atas', 'nova', 'pautas'].includes(abaAtas) ? 'Atas' : 'Tarefas', tarefas: 'Tarefas', marketing: 'Marketing', equipe: 'Ranking', celular: 'Celular da obra' }[tela] || (f.id === 'socio' ? 'Início · visão do CEO' : 'Início'));
+    : ({ obrasorc: 'Cadastro de obras', configuracoes: 'Configurações', agentes: 'Agentes', funcionarios: 'Funcionários por obra', meudia: 'Minha semana', agenda: 'Agenda', quadro: 'Quadro de funções', estoque: 'Estoque', escritorio: 'Escritório virtual', perfil: 'Perfil', feed: 'Feed', treinamentos: 'Treinamentos', acessos: 'Cadastros', atas: ['atas', 'nova', 'pautas'].includes(abaAtas) ? 'Atas' : 'Tarefas', tarefas: 'Tarefas', marketing: 'Marketing', equipe: 'Ranking', celular: 'Celular da obra' }[tela] || (f.id === 'socio' ? 'Início · visão do CEO' : 'Início'));
   $('#titulo').textContent = titulo;
   document.title = `${titulo} · Sólida`;
 
@@ -717,7 +718,7 @@ function desenhar() {
     return;
   }
   if (tela === 'obrasorc') {
-    $('#conteudo').innerHTML = `<div>${obrasOrc.render({ obrasCad: estado.obrasCad || [], msg: estado.obraOrcMsg || '' })}</div>`; estado.obraOrcMsg = '';
+    $('#conteudo').innerHTML = `<div>${obrasOrc.render({ obrasCad: estado.obrasCad || [], msg: estado.acessosMsg || '', listaAberta: estado.listaObrasAberta !== false })}</div>`; estado.acessosMsg = '';
     return;
   }
   if (tela === 'configuracoes') {
@@ -924,7 +925,7 @@ function obrasDisponiveis() {
   const plan = CFG ? ((CFG.areas.find((a) => a.id === 'planejamento') || {}).porObra || []) : [];
   const base = CFG ? [...plan.map((o) => o.obra), ...(CFG.obras || []).filter((o) => /^(Mo|Po)/i.test(o))] : [];
   if (!CFG && !cad.length) return [];
-  return [...new Set([...base, ...cad.filter((c) => !['finalizada', 'orcamento', 'nao_fechado'].includes(c.situacao)).map((c) => c.codigo)])].filter((o) => !fin.has(o) && !naoFechadas.has(o));
+  return [...new Set([...base, ...cad.filter(ativaNasListas).map((c) => c.codigo)])].filter((o) => !fin.has(o) && !naoFechadas.has(o));
 }
 
 // ---------------------------------------------------------------- dados
@@ -1385,28 +1386,42 @@ function configurar() {
     const codigo = sel.dataset.situacaoObra; const situacao = sel.value;
     if (!nuvem.NA_NUVEM) { alert('Mudar a situação da obra só funciona no sistema na nuvem (com login).'); desenhar(); return; }
     try {
-      const cad = (estado.obrasCad || []).find((o) => o.codigo === codigo);
-      await nuvem.salvarObra({ codigo, nome: (cad && cad.nome) || '', situacao });
+      await nuvem.salvarObra({ codigo, situacao });
       await sincronizarCadastros({ forcar: true });
     } catch (err) { alert(`Não foi possível mudar a situação da obra (${err.message || err}).`); desenhar(); }
   });
+  // tipo escolhido → as situações daquele tipo (obra e pós-obra: andamento, pausada, finalizada; orçamento: solicitação, em orçamento, com arquitetura, com fornecedor, não fechado)
+  document.addEventListener('change', (e) => {
+    const t = e.target.closest && e.target.closest('[data-ob-tipo]'); if (!t) return;
+    const f = t.closest('form'); const s = f && f.querySelector('[data-ob-situacao]'); if (!s) return;
+    const atual = s.value; const lista = SITUACOES_POR_TIPO[t.value] || SITUACOES_POR_TIPO.obra;
+    s.innerHTML = lista.map(([v, n]) => `<option value="${esc(v)}">${esc(n)}</option>`).join('');
+    if (lista.some(([v]) => v === atual)) s.value = atual;
+  });
+  // cadastro de obra: novo (tipo, código, cliente e endereço obrigatórios, arquitetura opcional, situação) ou edição de uma existente
   document.addEventListener('submit', async (e) => {
     const f = e.target.closest('#ob-novo, [data-obra-cad]'); if (!f) return;
     e.preventDefault();
-    const fd = new FormData(f);
-    const codigo = f.id === 'ob-novo' ? codigoObra(fd.get('codigo')) : f.dataset.obraCad;
-    if (!codigo) { alert('Digite o código da obra (ex.: Mo565).'); return; }
-    try { await nuvem.salvarObra({ codigo, nome: String(fd.get('nome') || '').trim(), situacao: fd.get('situacao') || 'andamento' }); estado.acessosMsg = `Obra ${codigo} salva.`; await sincronizarCadastros({ forcar: true }); }
-    catch (err) { alert(`Não foi possível salvar a obra (${err.message || err}).`); }
+    const fd = new FormData(f); const novo = f.id === 'ob-novo';
+    const tipo = String(fd.get('tipo') || 'obra'); const cliente = String(fd.get('cliente') || '').trim(); const endereco = String(fd.get('endereco') || '').trim(); const arquitetura = String(fd.get('arquitetura') || '').trim();
+    let codigo = novo ? atas.normalizarCodigoObra(fd.get('codigo')) : f.dataset.obraCad;
+    if (novo && !cliente) { alert('Preencha o cliente.'); return; }
+    if (novo && !endereco) { alert('Preencha o endereço.'); return; }
+    if (novo && tipo === 'pos') { if (!codigo) codigo = `PO - ${cliente}`; else if (!/^po/i.test(codigo)) { alert('O código do pós-obra começa com PO (ex.: PO577), ou deixe vazio para usar "PO - cliente".'); return; } }
+    if (novo && tipo !== 'pos' && !/^mo\d/i.test(codigo)) { alert('O código da obra começa com Mo e o número (ex.: Mo565).'); return; }
+    if (!codigo) { alert('Digite o código da obra.'); return; }
+    try { await nuvem.salvarObra({ codigo, tipo, cliente, endereco, arquitetura, situacao: String(fd.get('situacao') || 'andamento') }); estado.acessosMsg = `${codigo} salva.`; await sincronizarCadastros({ forcar: true }); }
+    catch (err) { alert(`Não foi possível salvar (${err.message || err}). Se o aviso falar de coluna ou restrição, falta rodar o SQL novo do cadastro de obras no Supabase.`); }
   });
   // "+ Nova obra em orçamento…" na caixinha de obra: o setor ORC Obras Novas (e a diretoria) cria a obra na hora; ela só aparece para eles
   document.addEventListener('change', async (e) => {
     const sel = e.target.closest && e.target.closest('select'); if (!sel || !['__nova_orc__', '__novo_po__'].includes(sel.value)) return;
-    const ehPos = sel.value === '__novo_po__'; let codigo; let nomeObra = '';
-    if (ehPos) { nomeObra = (prompt('Nome do pós-obra (ex.: Sogra do Thiago):') || '').trim(); if (!nomeObra) { sel.value = ''; return; } codigo = `PO - ${nomeObra}`; }
-    else { codigo = atas.normalizarCodigoObra(prompt('Código da obra em orçamento (ex.: Mo461):') || ''); if (!codigo) { sel.value = ''; return; } if (!/^mo\d/i.test(codigo)) { alert('O código da obra começa com Mo e o número (ex.: Mo461).'); sel.value = ''; return; } nomeObra = (prompt('Nome da obra (opcional, ex.: Sinagoga Leblon):') || '').trim(); }
+    const ehPos = sel.value === '__novo_po__'; let codigo; let cliente = ''; let endereco = '';
+    if (ehPos) { cliente = (prompt('Cliente do pós-obra (ex.: Sogra do Thiago):') || '').trim(); if (!cliente) { sel.value = ''; return; } codigo = (prompt('Código do pós-obra (ex.: PO577) — deixe vazio para usar "PO - cliente":') || '').trim(); codigo = codigo ? atas.normalizarCodigoObra(codigo) : `PO - ${cliente}`; if (!/^po/i.test(codigo)) { alert('O código do pós-obra começa com PO.'); sel.value = ''; return; } }
+    else { codigo = atas.normalizarCodigoObra(prompt('Código da obra em orçamento (ex.: Mo461):') || ''); if (!codigo) { sel.value = ''; return; } if (!/^mo\d/i.test(codigo)) { alert('O código da obra começa com Mo e o número (ex.: Mo461).'); sel.value = ''; return; } cliente = (prompt('Cliente (obrigatório):') || '').trim(); if (!cliente) { sel.value = ''; return; } }
+    endereco = (prompt('Endereço (obrigatório):') || '').trim(); if (!endereco) { alert('O endereço é obrigatório.'); sel.value = ''; return; }
     try {
-      await nuvem.salvarObra({ codigo, nome: nomeObra, situacao: 'orcamento' });
+      await nuvem.salvarObra({ codigo, tipo: ehPos ? 'pos' : 'orcamento', cliente, endereco, situacao: ehPos ? 'andamento' : 'solicitacao' });
       await sincronizarCadastros({ forcar: true });
       atas.definirObrasOrcamento(cadastroEmOrcamento(), nomesDasObras());
       const rotulo = ehPos ? 'Pós-obras' : 'Obras em orçamento';
@@ -1415,25 +1430,6 @@ function configurar() {
       if (![...sel.options].some((o) => o.value === codigo)) { const op = document.createElement('option'); op.value = codigo; op.textContent = codigo; g.appendChild(op); }
       sel.value = codigo;
     } catch (err) { sel.value = ''; alert(`Não foi possível criar (${err.message || err}).`); }
-  });
-  document.addEventListener('submit', async (e) => {
-    const f = e.target.closest && e.target.closest('#obo-novo, [data-obraorc]'); if (!f) return;
-    e.preventDefault(); const fd = new FormData(f);
-    try {
-      let codigo; let nome = String(fd.get('nome') || '').trim();
-      if (f.id === 'obo-novo') {
-        if (fd.get('tipo') === 'pos') codigo = `PO - ${nome}`;
-        else { codigo = atas.normalizarCodigoObra(fd.get('codigo')); if (!/^mo\d/i.test(codigo)) { alert('Informe o código da obra, começando com Mo (ex.: Mo461).'); return; } }
-        estado.obraOrcMsg = `${codigo} cadastrada em orçamento.`;
-      } else { codigo = f.dataset.obraorc; estado.obraOrcMsg = 'Salvo ✓'; }
-      await nuvem.salvarObra({ codigo, nome, situacao: f.id === 'obo-novo' ? 'orcamento' : String(fd.get('situacao') || 'orcamento') });
-      await sincronizarCadastros({ forcar: true });
-    } catch (err) { alert(`Não foi possível salvar (${err.message || err}).`); }
-  });
-  document.addEventListener('click', async (e) => {
-    const b = e.target.closest && e.target.closest('[data-excluir-obraorc]'); if (!b) return;
-    const codigo = b.dataset.excluirObraorc; if (!confirm(`Tirar ${codigo} da lista de obras em orçamento?`)) return;
-    try { await nuvem.excluirObra(codigo); estado.obraOrcMsg = `${codigo} removida.`; await sincronizarCadastros({ forcar: true }); } catch (err) { alert(`Não foi possível excluir (${err.message || err}).`); }
   });
   // a lista de obras do Cadastro lembra se estava aberta (para não fechar ao salvar uma obra)
   document.addEventListener('toggle', (e) => { if (e.target.matches && e.target.matches('.ac-lista-obras')) estado.listaObrasAberta = e.target.open; }, true);
