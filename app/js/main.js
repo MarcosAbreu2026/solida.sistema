@@ -278,12 +278,12 @@ function ctxPosObra() {
 function garantirOsCarregadas() {
   if (estado.osVisitada) return;
   estado.osVisitada = true;
-  osq.carregar().then(() => { const r = rotaAtual(); const a = document.activeElement; if (a && a.closest && a.closest('#at-modal')) return; if (r.tela === 'posobra') desenhar(); });
+  osq.carregar().then(() => { const r = rotaAtual(); if (emEdicao()) return; if (r.tela === 'posobra') desenhar(); });
 }
 function garantirAtasCarregadas(chave = '#posobra') {
   if (estado.atasVisitada === chave) return;
   estado.atasVisitada = chave;
-  atas.carregar().then(() => { const r = rotaAtual(); const a = document.activeElement; if (a && a.closest && a.closest('#pend-form, #at-modal')) return; if ((r.tela === 'posobra' && r.sub === 'pendencias') || (chave !== '#posobra' && r.tela !== 'atas')) desenhar(); });
+  atas.carregar().then(() => { const r = rotaAtual(); if (emEdicao()) return; if ((r.tela === 'posobra' && r.sub === 'pendencias') || (chave !== '#posobra' && r.tela !== 'atas')) desenhar(); });
 }
 // ---------------------------------------------------------------- desenho
 
@@ -303,7 +303,32 @@ const numerico = (a, b) => String(a).localeCompare(String(b), 'pt-BR', { numeric
 // Tudo o que é criado ou excluído (obra, setor, login/pessoa) aparece em todas as telas: depois de cada criação/exclusão, de minuto em minuto e ao voltar para a aba,
 // recarrega os cadastros e redesenha (sem atrapalhar quem está digitando). Regra do Felipe, 10/11/2026: listas nunca fixas no código.
 // Versão nova do sistema: quem deixa o sistema aberto o dia todo continuava com o código antigo (e, por exemplo, não aparecia no escritório virtual).
-// A cada 2 min vê se saiu versão nova (versao.json, gerado a cada publicação) e, quando não está digitando, recarrega a página.
+// A cada 2 min vê se saiu versão nova (versao.json, gerado a cada publicação) e, quando NÃO há nada sendo preenchido, recarrega a página.
+// Com formulário em edição (ata, tarefa, OS…) nunca recarrega: mostra um aviso "Atualizar agora" e a pessoa escolhe quando (pedido do Felipe, 13/11/2026: perdia a ata).
+// emEdicao(): janela aberta, campo com o cursor ou qualquer campo de formulário já mexido (valor diferente do que veio na tela).
+function emEdicao() {
+  if (document.getElementById('at-modal')) return true;
+  const a = document.activeElement;
+  if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.closest('#conteudo, #at-modal')) return true;
+  return [...document.querySelectorAll('#conteudo form input, #conteudo form textarea, #conteudo form select')].some((el) => {
+    if (el.type === 'hidden' || el.type === 'file' || el.type === 'submit' || el.type === 'button') return false;
+    if (el.type === 'checkbox' || el.type === 'radio') return el.checked !== el.defaultChecked;
+    if (el.tagName === 'SELECT') { const pad = [...el.options].findIndex((o) => o.defaultSelected); return el.selectedIndex !== (pad < 0 ? 0 : pad); }
+    return el.value !== el.defaultValue;
+  });
+}
+function avisoVersaoNova() {
+  if (document.getElementById('aviso-versao')) return;
+  const d = document.createElement('div'); d.id = 'aviso-versao'; d.className = 'aviso-versao';
+  d.innerHTML = '<span>Saiu uma versão nova do sistema. Termine o que está fazendo e atualize quando quiser.</span><button type="button" data-atualizar-versao>Atualizar agora</button><button type="button" class="aviso-x" data-fechar-aviso-versao title="Lembrar depois">×</button>';
+  document.body.appendChild(d);
+}
+document.addEventListener('click', (e) => {
+  if (e.target.closest && e.target.closest('[data-atualizar-versao]')) location.reload();
+  if (e.target.closest && e.target.closest('[data-fechar-aviso-versao]')) { const d = document.getElementById('aviso-versao'); if (d) d.remove(); }
+  const ver = e.target.closest && e.target.closest('[data-senha-ver]');
+  if (ver) { e.preventDefault(); const campo = ver.parentElement.querySelector('input'); const mostrar = campo.type === 'password'; campo.type = mostrar ? 'text' : 'password'; ver.textContent = mostrar ? 'Ocultar' : 'Mostrar'; ver.setAttribute('aria-label', mostrar ? 'Ocultar a senha' : 'Mostrar a senha'); campo.focus(); }
+});
 {
   let versaoAbriu = null;
   const checar = async () => {
@@ -312,9 +337,7 @@ const numerico = (a, b) => String(a).localeCompare(String(b), 'pt-BR', { numeric
       const v = (await r.json()).v; if (!v) return;
       if (versaoAbriu === null) { versaoAbriu = v; return; }
       if (v === versaoAbriu) return;
-      const a = document.activeElement;
-      const ocupado = document.getElementById('at-modal') || (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.closest('#conteudo, #at-modal'));
-      if (!ocupado) location.reload();
+      if (emEdicao()) avisoVersaoNova(); else location.reload();
     } catch { /* sem conexão ou ambiente local: ignora */ }
   };
   setTimeout(checar, 3000); setInterval(checar, 2 * 60 * 1000);
@@ -334,7 +357,7 @@ async function sincronizarCadastros({ forcar = false } = {}) {
     if (st && st.length && JSON.stringify(st) !== JSON.stringify(SETORES_ORGANOGRAMA)) { aplicarSetores(st); atas.atualizarSetoresAta(); mudou = true; }
     if (chavePessoas() !== antesPessoas) mudou = true;
     const a = document.activeElement;
-    const digitando = !forcar && a && a.closest && a.closest('#conteudo form, #at-modal') && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName);
+    const digitando = !forcar && emEdicao();   // não redesenha por cima de ata, tarefa ou OS que a pessoa está preenchendo
     if (mudou && !digitando) desenhar();
   } finally { sincronizandoCad = false; }
 }

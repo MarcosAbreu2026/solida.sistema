@@ -15,7 +15,7 @@ export function render({ obras = [], ultimo = {}, erro = '' }) {
         <h1>Entrar</h1>
         <p class="pequeno">Use o seu usuário e senha da Sólida.</p>
         <label>Usuário<input type="search" name="usuario" value="${ultimo.usuario || ''}" autocapitalize="none" spellcheck="false" required></label>
-        <label>Senha<input type="password" name="senha" autocomplete="current-password" required></label>
+        <label>Senha<span class="senha-wrap"><input type="password" name="senha" autocomplete="current-password" required><button type="button" class="senha-ver" data-senha-ver aria-label="Mostrar a senha" title="Mostrar a senha">Mostrar</button></span></label>
 
         <fieldset class="teste-caixa">
           <legend>Modo teste</legend>
@@ -45,8 +45,8 @@ export function renderNuvem({ modo = 'entrar', erro = '', info = '', usuario = '
   if (modo === 'nova-senha') {
     corpo = html`<form class="login-form" data-modo="nova-senha" novalidate><h1>Crie a sua senha</h1>
       <p class="pequeno">Primeiro acesso: troque a senha provisória por uma só sua (8 caracteres ou mais).</p>
-      <label>Nova senha<input type="password" name="senha" autocomplete="new-password" minlength="8" required></label>
-      <label>Repita a senha<input type="password" name="senha2" autocomplete="new-password" minlength="8" required></label>
+      <label>Nova senha<span class="senha-wrap"><input type="password" name="senha" autocomplete="new-password" minlength="8" required><button type="button" class="senha-ver" data-senha-ver aria-label="Mostrar a senha" title="Mostrar a senha">Mostrar</button></span></label>
+      <label>Repita a senha<span class="senha-wrap"><input type="password" name="senha2" autocomplete="new-password" minlength="8" required><button type="button" class="senha-ver" data-senha-ver aria-label="Mostrar a senha" title="Mostrar a senha">Mostrar</button></span></label>
       ${msg}<button type="submit" class="btn">Salvar e entrar</button><p>${link('sair', 'Sair')}</p></form>`;
   } else if (modo === 'esqueci') {
     corpo = html`<div class="login-form"><h1>Esqueci a senha</h1>
@@ -56,7 +56,7 @@ export function renderNuvem({ modo = 'entrar', erro = '', info = '', usuario = '
     corpo = html`<form class="login-form" data-modo="entrar" novalidate><h1>Entrar</h1>
       <p class="pequeno">Use o usuário e a senha que a diretoria passou para você.</p>
       <label>Usuário<input type="text" name="usuario" value="${usuario}" placeholder="ex.: mariana" autocapitalize="none" spellcheck="false" autocomplete="username" required></label>
-      <label>Senha<input type="password" name="senha" autocomplete="current-password" required></label>
+      <label>Senha<span class="senha-wrap"><input type="password" name="senha" autocomplete="current-password" required><button type="button" class="senha-ver" data-senha-ver aria-label="Mostrar a senha" title="Mostrar a senha">Mostrar</button></span></label>
       ${msg}<button type="submit" class="btn">Entrar</button>
       <p class="login-links">${link('esqueci', 'Esqueci a senha')}</p></form>`;
   }
