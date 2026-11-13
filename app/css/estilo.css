@@ -2288,3 +2288,14 @@ body.nav-recolhido .fq-card.fq-estreito { font-size: 11.5px; line-height: 14px; 
 .na-x:hover { color: #fff; }
 @keyframes na-entra { from { opacity: 0; transform: translate(-50%, -10px); } to { opacity: 1; transform: translate(-50%, 0); } }
 @media (max-width: 680px) { .notif-painel { right: -60px; } }
+
+/* Caixinha BeeVale (POP ADM 11.11) */
+.cx-form, .cx-mapa { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: flex-end; margin: 0 0 18px; }
+.cx-form label, .cx-mapa label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--muted); min-width: 200px; }
+.cx-form input, .cx-form select, .cx-mapa input, .cx-mapa select { font: inherit; font-size: 13.5px; padding: 8px 10px; border: 1px solid var(--linha); border-radius: 6px; background: var(--gesso); color: var(--grafite); }
+.cx-passos { margin: 0 0 18px; padding-left: 20px; font-size: 13.5px; line-height: 1.6; color: var(--grafite); }
+.cx-resumo { font-size: 14px; margin-bottom: 12px; }
+.cx-avisos { margin: 8px 0; padding-left: 18px; font-size: 13px; color: var(--muted); }
+.msg.err { color: var(--cr); }
+.msg.err ul { margin: 6px 0 0; padding-left: 18px; }
+td select[data-cx-usuario] { font: inherit; font-size: 13px; padding: 5px 8px; border: 1px solid var(--linha); border-radius: 6px; background: var(--gesso); max-width: 220px; }

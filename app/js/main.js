@@ -59,6 +59,7 @@ import * as comercial from './telas/comercial.js';
 import * as projetos from './telas/projetos.js';
 import * as estoque from './telas/estoque.js';
 import * as movimentacao from './movimentacao.js';
+import * as caixinha from './telas/caixinha.js';
 import * as contagem from './contagem.js';
 import * as analiseMed from './telas/analise-medicoes.js';
 import * as pedidos from './telas/pedidos.js';
@@ -434,6 +435,7 @@ function desenharNav(sel) {
       + '<div class="nav-grupo">Meu trabalho</div>' + item('agenda', 'Agenda')
       + (f.porObra ? obrasDaPessoa().map((o) => `<a class="nav-item nav-celular${location.hash.startsWith(`#/celular/${o}`) ? ' sel' : ''}" href="#/celular/${encodeURIComponent(o)}"><span>Celular da obra ${esc(o)}</span></a>`).join('') : '')
       + (paginaVisivel(f, 'atas') ? itemTarefasRestrito(sel) + `<a class="nav-item${sel === 'atas' ? ' sel' : ''}" href="#/atas?aba=atas"><span>Atas</span></a>` : '') + itemObrasOrc()
+      + (caixinha.podeVer(f) ? '<div class="nav-grupo">Administrativo</div>' + item('caixinha', 'Caixinha') : '')   // Financeiro consulta a Caixinha (POP 11.11)
       + '<div class="nav-grupo">Equipe</div>'
       + (temEstoqueRestrito(f) && paginaVisivel(f, 'estoque') ? item('estoque', 'Estoque') : '') + item('treinamentos', 'Treinamentos')
       + (paginaVisivel(f, 'escritorio') ? item('escritorio', 'Escritório virtual') : '')
@@ -452,7 +454,9 @@ function desenharNav(sel) {
   const obrasMenu = obrasDoMenu();
   const deps = DEPARTAMENTOS.filter((d) => podeVerDep(d, f)).map((d) => item(d.id, d.nome, statusDep(d))
     + (d.comObras ? obrasMenu.map((o) => sub(`#/obra/${encodeURIComponent(o)}`, o, r.tela === 'obra' && r.sub === o)).join('') : '')
-    + (d.id === 'transporte' && paginaVisivel(f, 'estoque') ? item('estoque', 'Estoque') : '')).join('');
+    + (d.id === 'transporte' && paginaVisivel(f, 'estoque') ? item('estoque', 'Estoque') : '')
+    + (d.id === 'administrativo' && caixinha.podeVer(f) ? sub('#/caixinha', 'Caixinha', sel === 'caixinha') : '')).join('')
+    + (caixinha.podeVer(f) && !DEPARTAMENTOS.some((d) => d.id === 'administrativo' && podeVerDep(d, f)) ? item('caixinha', 'Caixinha') : '');
   const verAtas = paginaVisivel(f, 'atas');
   const nTar = atas.minhasAbertas();
   const itemTar = `<a class="nav-item${sel === 'tarefas' ? ' sel' : ''}" href="#/atas"><span>Tarefas</span>${nTar ? `<span class="nav-n">${nTar}</span>` : ''}</a>`;
@@ -665,6 +669,7 @@ function desenhar() {
   if (tela === 'funcoes') tela = 'agenda';   // "Minhas funções" virou a Agenda (desenho do Marcos)
   if (tela === 'agentes' && !f.veAgentes) tela = 'geral';
   if (tela === 'equipe' && f.id !== 'socio') tela = 'geral';
+  if (tela === 'caixinha' && !caixinha.podeVer(f)) tela = 'geral';
   if (tela === 'quadro' && !f.veQuadro) tela = 'agenda';
   if (tela === 'meudia' && f.semMinhaSemana) tela = 'geral';
   if (tela === 'meudia' && !f.editaProdutividade) tela = 'agenda';   // quem não lança produtividade só tem a agenda
@@ -672,7 +677,7 @@ function desenhar() {
   if (tela === 'obrasorc' && !atas.podeCriarObraOrcamento()) tela = 'geral';
   if (['meudia', 'feed', 'estoque', 'escritorio', 'treinamentos', 'atas', 'tarefas', 'marketing'].includes(tela) && !paginaVisivel(f, tela === 'tarefas' ? 'atas' : tela)) tela = 'geral';   // aba que a diretoria tirou desta função
   // acesso restrito (por enquanto, quase todo mundo): Agenda, Tarefas, Atas, Treinamentos e Feed (o resto é da diretoria e do Administrativo)
-  if (soMinhasFuncoes(f)) tela = (['treinamentos', 'atas', 'tarefas', 'feed', 'escritorio', 'obrasorc'].includes(tela) || (tela === 'celular' && f.porObra) || (tela === 'estoque' && temEstoqueRestrito(f)) || liberadoExtra(f, (depPorId(tela) || {}).id || tela)) ? tela : 'agenda';
+  if (soMinhasFuncoes(f)) tela = (['treinamentos', 'atas', 'tarefas', 'feed', 'escritorio', 'obrasorc'].includes(tela) || (tela === 'caixinha' && caixinha.podeVer(f)) || (tela === 'celular' && f.porObra) || (tela === 'estoque' && temEstoqueRestrito(f)) || liberadoExtra(f, (depPorId(tela) || {}).id || tela)) ? tela : 'agenda';
 
   // departamento do organograma (Painel no desenho do Marcos + Detalhes = a tela que já existia)
   let dep = depPorId(tela);
@@ -683,7 +688,7 @@ function desenhar() {
   const ehPainel = (dep || tela === 'geral') && (!temLegado || ((!rota.sub || rota.sub === 'painel') && ![...rota.params.keys()].length));
   if ((dep || tela === 'geral') && !ehPainel && rota.sub === 'detalhe') rota = { ...rota, sub: '' };
   const ehObraPlan = tela === 'planejamento' && rota.sub === 'obra';
-  const fixas = ['obrasorc', 'agentes', 'meudia', 'agenda', 'quadro', 'estoque', 'escritorio', 'perfil', 'feed', 'treinamentos', 'acessos', 'configuracoes', 'atas', 'tarefas', 'marketing', 'equipe', 'obra', 'celular'];
+  const fixas = ['caixinha', 'obrasorc', 'agentes', 'meudia', 'agenda', 'quadro', 'estoque', 'escritorio', 'perfil', 'feed', 'treinamentos', 'acessos', 'configuracoes', 'atas', 'tarefas', 'marketing', 'equipe', 'obra', 'celular'];
   const abaAtas = rota.params.get('aba');
   const sel = tela === 'funcionarios' ? 'rh' : tela === 'tarefas' || (tela === 'atas' && !['atas', 'nova', 'pautas'].includes(abaAtas)) ? 'tarefas' : (dep || area || fixas.includes(tela)) ? tela : 'geral';
   desenharNav(sel);
@@ -698,7 +703,7 @@ function desenhar() {
     : dep ? (dep.titulo || dep.nome)
     : tela === 'obra' ? rota.sub
     : area ? area.nome
-    : ({ obrasorc: 'Cadastro de obras', configuracoes: 'Configurações', agentes: 'Agentes', funcionarios: 'Funcionários por obra', meudia: 'Minha semana', agenda: 'Agenda', quadro: 'Quadro de funções', estoque: 'Estoque', escritorio: 'Escritório virtual', perfil: 'Perfil', feed: 'Feed', treinamentos: 'Treinamentos', acessos: 'Cadastros', atas: ['atas', 'nova', 'pautas'].includes(abaAtas) ? 'Atas' : 'Tarefas', tarefas: 'Tarefas', marketing: 'Marketing', equipe: 'Ranking', celular: 'Celular da obra' }[tela] || (f.id === 'socio' ? 'Início · visão do CEO' : 'Início'));
+    : ({ caixinha: 'Caixinha', obrasorc: 'Cadastro de obras', configuracoes: 'Configurações', agentes: 'Agentes', funcionarios: 'Funcionários por obra', meudia: 'Minha semana', agenda: 'Agenda', quadro: 'Quadro de funções', estoque: 'Estoque', escritorio: 'Escritório virtual', perfil: 'Perfil', feed: 'Feed', treinamentos: 'Treinamentos', acessos: 'Cadastros', atas: ['atas', 'nova', 'pautas'].includes(abaAtas) ? 'Atas' : 'Tarefas', tarefas: 'Tarefas', marketing: 'Marketing', equipe: 'Ranking', celular: 'Celular da obra' }[tela] || (f.id === 'socio' ? 'Início · visão do CEO' : 'Início'));
   $('#titulo').textContent = titulo;
   document.title = `${titulo} · Sólida`;
 
@@ -770,6 +775,11 @@ function desenhar() {
   if (tela === 'escritorio') {
     $('#conteudo').innerHTML = `<div id="esc-raiz">${escritorio.render()}</div>`;
     escritorio.iniciar($('#esc-raiz'));
+    return;
+  }
+  if (tela === 'caixinha') {
+    if (!caixinha.carregado()) caixinha.carregar().then(() => desenhar());
+    $('#conteudo').innerHTML = caixinha.render({ f, sub: rota.sub });
     return;
   }
   if (tela === 'estoque') {
@@ -1655,6 +1665,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) chec
 
 configurar();
 movimentacao.ligar(() => desenhar());
+caixinha.ligar(() => desenhar());
 contagem.ligar(() => desenhar());
 celularObra.ligar(() => desenhar());   // celular da obra: executado do dia, efetivo e diário
 if (nuvem.NA_NUVEM) {
