@@ -178,7 +178,7 @@ export async function definirHorarioTarefa(id, { prazo, hora, duracao }, escopo 
   else { const l = lerLocal(); const q = l.pendencias.find((x) => String(x.id) === String(id)); if (q) Object.assign(q, mud); gravarLocal(l); }
   await carregar();
 }
-const ABAIXO_DA_OBRA = ['estagiario', 'encarregado', 'ajudante', 'gestor_obra', 'posobra', 'estagiario_posobra', 'executor_ferramentas', 'estagiario_compras', 'orc_terceirizado'];
+const ABAIXO_DA_OBRA = ['estagiario', 'encarregado', 'ajudante', 'gestor_obra', 'posobra', 'estagiario_posobra', 'executor_ferramentas', 'estagiario_compras', 'orc_terceirizado', 'orc_obras_novas'];
 function meusSetores() {
   const f = funcaoAtual();
   if (NA_NUVEM && !simulando() && perfilAtual() && Array.isArray(perfilAtual().setores) && perfilAtual().setores.length) return perfilAtual().setores;
@@ -521,7 +521,7 @@ const pessoasParaVer = () => {
   return pessoasSelecionaveis().filter((p) => ids.has(p.id));
 };
 // nível do cargo (0 = mais alto): quem é de nível abaixo não vê as tarefas do nível acima
-const NIVEL = { socio: 0, administrativo: 1, coord_operacoes: 1, tecnico: 2, planejamento: 2, projetos: 2, compras: 2, ferramentas: 2, financeiro: 2, rh: 2, marketing: 3, gestor_obra: 3, posobra: 3, orc_terceirizado: 4, estagiario_compras: 4, estagiario_posobra: 4, executor_ferramentas: 4, estagiario: 4, encarregado: 5, ajudante: 6 };
+const NIVEL = { socio: 0, administrativo: 1, coord_operacoes: 1, tecnico: 2, planejamento: 2, projetos: 2, compras: 2, ferramentas: 2, financeiro: 2, rh: 2, marketing: 3, gestor_obra: 3, posobra: 3, orc_terceirizado: 4, orc_obras_novas: 4, estagiario_compras: 4, estagiario_posobra: 4, executor_ferramentas: 4, estagiario: 4, encarregado: 5, ajudante: 6 };
 const pessoasComPendencia = () => { const ids = new Set(dados.pendencias.filter((p) => naLista(p) && p.status !== 'cancelada' && p.responsavel).map((p) => p.responsavel)); return dados.pessoas.filter((p) => ids.has(p.id)).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')); };
 // o campo "Terceirizado" aparece depois de escolher "Terceirizados (todos)" em Responsável: só nomes de empresa ou pessoa
 // (sem tipo de serviço, para a lista não ficar enorme)

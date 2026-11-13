@@ -889,3 +889,11 @@ body.imp-ata .at-ata-det .sd-tab td.sd-t-info, body.imp-ata .at-ata-det .sd-tab 
 .ac-pessoa-corpo { border-top: 1px solid #E1E6EC; background: #F6F8FB; border-radius: 0 0 12px 12px; padding: 14px 16px 16px; display: grid; gap: 14px; }
 .ac-pessoa-corpo[hidden] { display: none; }
 .ac-pessoa-func select { max-width: 320px; } .ac-pessoa-salvar { display: flex; justify-content: flex-end; }
+
+/* Lista de obras: código, cliente e endereço à esquerda; "falta o endereço" junto do cliente; o status sempre alinhado na direita */
+.ac-obra-item > summary { flex-wrap: nowrap; gap: 14px; }
+.ac-obra-item > summary .aoi-cod { flex: 0 0 82px; min-width: 82px; }
+.ac-obra-item > summary .ac-obra-nome { flex: 1 1 auto; min-width: 0; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.ac-obra-item > summary .ac-sit { flex: 0 0 128px; margin-left: auto; text-align: center; box-sizing: border-box; }
+.aoi-falta { color: #B3261E; background: #FBE4E1; border-radius: 999px; padding: 1px 9px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+@media (max-width: 640px) { .ac-obra-item > summary { flex-wrap: wrap; } .ac-obra-item > summary .ac-sit { margin-left: 0; } }

@@ -23,7 +23,7 @@ export function secaoObras({ obrasCad = [], podeExcluir = false, listaAberta = f
       <span class="aof-btns">${podeExcluir ? html`<button type="button" class="botao ac-excluir" data-excluir-obra="${o.codigo}">Remover</button>` : ''}<button type="submit" class="botao on">Salvar</button></span>
     </div>
   </form>`; };
-  const item = (o) => { const s = situacaoDe(o); return html`<details class="ac-obra-item"><summary><b>${o.codigo}</b><span class="ac-obra-nome">${clienteDe(o) || 'sem cliente'}${o.endereco ? html` <span class="pequeno">· ${o.endereco}</span>` : ''}</span><span class="ac-sit ac-sit-${s}">${ROTULO_SITUACAO[s] || s}</span>${!o.endereco && !o.semCadastro ? html`<span class="pequeno pendente">falta o endereço</span>` : ''}</summary>${linhaObra(o)}</details>`; };
+  const item = (o) => { const s = situacaoDe(o); const semEnd = !o.endereco && !o.semCadastro; return html`<details class="ac-obra-item"><summary><b class="aoi-cod">${o.codigo}</b><span class="ac-obra-nome">${clienteDe(o) || 'sem cliente'}${o.endereco ? html` <span class="pequeno">· ${o.endereco}</span>` : ''}${semEnd ? html` <span class="aoi-falta">falta o endereço</span>` : ''}</span><span class="ac-sit ac-sit-${s}">${ROTULO_SITUACAO[s] || s}</span></summary>${linhaObra(o)}</details>`; };
   const grupos = [
     ['Obras (em andamento e pausadas)', obrasCad.filter((o) => tipoDe(o) === 'obra' && situacaoDe(o) !== 'finalizada'), false],
     ['Obras em orçamento (só os setores de orçamento, o pós-obra e a diretoria veem)', obrasCad.filter((o) => tipoDe(o) === 'orcamento' && situacaoDe(o) !== 'nao_fechado'), false],

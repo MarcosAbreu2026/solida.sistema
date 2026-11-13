@@ -32,6 +32,8 @@ export const FUNCOES = [
     areas: ['operacao', 'planejamento', 'projetos', 'suprimentos', 'comercial'] },
   { id: 'orc_terceirizado', nome: 'Orçamento terceirizado (estagiária)', pop: 'JULIA', veValores: false, porObra: false, geral: OBRA,
     areas: ['planejamento', 'projetos', 'suprimentos', 'comercial'] },
+  { id: 'orc_obras_novas', nome: 'Estagiário de orçamentos obras novas', pop: 'LEANDRO', veValores: false, porObra: false, geral: OBRA,
+    areas: ['planejamento', 'projetos', 'suprimentos', 'comercial'] },
   { id: 'projetos', nome: 'Projeto + orçamento', pop: 'ISABEL', veValores: false, porObra: false, geral: [...GESTAO, 'Comparativo'],
     areas: ['operacao', 'planejamento', 'projetos', 'comercial'] },
   { id: 'compras', nome: 'Compras + materiais', pop: 'MARCOS H.', veValores: false, porObra: false, geral: OBRA,
@@ -202,6 +204,17 @@ export const TAREFAS = [
   t('planejamento', 'planejamento', 'Reunião planejamento / coordenação / técnico', [5], '11h', FIXO),
 
   // ---------------------------------------------------------------- Orçamento terceirizado (JULIA, estagiária)
+  // Estagiário de orçamentos obras novas (Leandro Azevedo): funções passadas pelo Felipe em 13/11/2026 (sem dia e horário definidos: todos os dias úteis)
+  t('orc_obras_novas', 'comercial', 'Atualizar status na planilha geral de orçamentos', 'uteis'),
+  t('orc_obras_novas', 'comercial', 'Atualizar status no CRM (Bitrix)', 'uteis'),
+  t('orc_obras_novas', 'comercial', 'Orçamento de obra nova: fazer a partir dos ícones', 'uteis'),
+  t('orc_obras_novas', 'comercial', 'Montagem dos ícones para orçamento', 'uteis'),
+  t('orc_obras_novas', 'comercial', 'Reunião de estratégia e aprovação (orçamentos novos)', 'uteis'),
+  t('orc_obras_novas', 'comercial', 'Salvar projetos para orçamentos novos', 'uteis'),
+  t('orc_obras_novas', 'comercial', 'Criar pasta no Drive com os arquivos padrão para orçamentos novos', 'uteis'),
+  t('orc_obras_novas', 'comercial', 'Listar terceirizados laranja', 'uteis'),
+  t('orc_obras_novas', 'comercial', 'Pedir cotações de terceirizados laranja', 'uteis'),
+  t('orc_obras_novas', 'comercial', 'Salvar cotações recebidas', 'uteis'),
   t('orc_terceirizado', 'operacao', 'Terc. laranja: atualizar planilha', 'uteis', '8h'),
   t('orc_terceirizado', 'operacao', 'Terceirizados: solicitar orçamentos', 'uteis', '9h–11h e 15h · ter a qui também 14h'),
   t('orc_terceirizado', 'operacao', 'Terceirizados: negociar desconto (com Mariana)', 'uteis', '11h'),
