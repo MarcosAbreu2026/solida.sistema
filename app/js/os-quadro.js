@@ -126,24 +126,29 @@ export function renderQuadro({ params, podeEditar, clientesPos = [], semFiltros 
     ${opcoesCliente(clientesDe(clientesPos))}</section>`;
 }
 
-// quadro de datas: uma linha por OS, uma coluna por etapa
+// quadro de datas: o PO vem primeiro (em ordem de número) e as OS dele embaixo, uma linha por OS, com todas as etapas visíveis, sem rolar para o lado
+const chavePO = (cliente) => { const m = /^(?:mo|po)\s*[-_]?\s*(\d+)([a-z]?)\b/i.exec(String(cliente || '').trim()); return m ? { n: Number(m[1]), rot: `PO${m[1]}${m[2].toUpperCase()}` } : { n: Infinity, rot: String(cliente || 'Sem PO').trim() || 'Sem PO' }; };
 export function renderDatas({ params, podeEditar, clientesPos = [] }) {
   const itens = filtrar(params);
   const hoje = hojeISO();
   const dias = (a, b) => (a && b ? Math.round((new Date(b) - new Date(a)) / 86400000) : null);
+  const mapa = new Map();
+  for (const o of itens) { const k = chavePO(o.cliente); if (!mapa.has(k.rot)) mapa.set(k.rot, { n: k.n, os: [] }); mapa.get(k.rot).os.push(o); }
+  const grupos = [...mapa.entries()].sort(([ra, a], [rb, b]) => (a.n === b.n ? ra.localeCompare(rb, 'pt-BR', { numeric: true }) : a.n - b.n)).map(([rot, g]) => [rot, g.os.sort((a, b) => String(a.codigo).localeCompare(String(b.codigo), 'pt-BR', { numeric: true }))]);
+  const linhaData = (o) => html`<tr>
+    <td class="pd-t1"><a href="#" data-osq="${o.id}">${o.codigo}</a></td>
+    <td class="osq-ass">${o.assunto || ''}</td>
+    <td><span class="osq-st" style="background:${(porId[o.status] || {}).cor}">${(porId[o.status] || {}).nome}</span></td>
+    ${DATAS.map(([campo]) => html`<td>${podeEditar ? html`<input type="date" data-osq-data="${o.id}|${campo}" value="${o[campo] || ''}">` : (dBR(o[campo]) || html`<span class="muted">—</span>`)}</td>`)}
+    <td class="n">${(() => { const t = dias(o.d_solicitacao, o.d_concluido || hoje); return t == null ? '—' : `${t} d`; })()}</td></tr>`;
   return html`<section class="osq">
     ${erro ? html`<p class="erro">${erro}</p>` : ''}
     ${filtros(params, clientesPos)}
     <p class="pequeno">A data de cada etapa é preenchida sozinha quando a OS entra na coluna do quadro${podeEditar ? ' (dá para corrigir aqui)' : ''}. "Total" = dias da solicitação até a conclusão (ou até hoje, se ainda aberta).</p>
-    <div class="pd-tab-caixa"><div class="tabela-rolagem"><table class="pd-tab osq-datas">
-      <thead><tr><th>OS</th><th>PO / cliente — assunto</th><th>Status</th>${DATAS.map(([, n]) => html`<th>Data de ${n.toLocaleLowerCase('pt-BR')}</th>`)}<th>Total</th></tr></thead>
-      <tbody>${itens.length ? itens.map((o) => html`<tr>
-        <td class="pd-t1"><a href="#" data-osq="${o.id}">${o.codigo}</a></td>
-        <td><b>${o.cliente}</b>${o.assunto ? `, ${o.assunto}` : ''}</td>
-        <td><span class="osq-st" style="background:${(porId[o.status] || {}).cor}">${(porId[o.status] || {}).nome}</span></td>
-        ${DATAS.map(([campo]) => html`<td>${podeEditar ? html`<input type="date" data-osq-data="${o.id}|${campo}" value="${o[campo] || ''}">` : (dBR(o[campo]) || html`<span class="muted">—</span>`)}</td>`)}
-        <td class="n">${(() => { const t = dias(o.d_solicitacao, o.d_concluido || hoje); return t == null ? '—' : `${t} d`; })()}</td></tr>`) : html`<tr><td colspan="10"><p class="pd-vazio">Nenhuma OS ainda. Crie a primeira no Quadro de OS.</p></td></tr>`}</tbody>
-    </table></div></div></section>`;
+    <div class="pd-tab-caixa"><table class="pd-tab osq-datas">
+      <thead><tr><th>OS</th><th>Assunto</th><th>Status</th>${DATAS.map(([, n]) => html`<th>${n}</th>`)}<th>Total</th></tr></thead>
+      ${grupos.length ? grupos.map(([po, os]) => html`<tbody class="osq-po-grupo"><tr class="osq-po"><td colspan="${DATAS.length + 4}"><b>${po}</b> <span class="pequeno">${os.length} OS</span></td></tr>${os.map(linhaData)}</tbody>`) : html`<tbody><tr><td colspan="${DATAS.length + 4}"><p class="pd-vazio">Nenhuma OS ainda. Crie a primeira no Quadro de OS.</p></td></tr></tbody>`}
+    </table></div></section>`;
 }
 
 export function formNova(status, clientesPos = []) {

@@ -487,16 +487,17 @@ export function linhaForm(v = {}) {
     <input type="date" name="p_prazo" title="Prazo" value="${v.prazo || ''}"><button type="button" class="pf-x" data-pf-del title="Tirar esta linha">×</button><button type="button" class="pf-arrastar" draggable="true" data-pf-mover aria-label="Mudar a ordem desta linha" title="Arraste para mudar a ordem (ou use as setas ↑ ↓ do teclado)">⇅</button></div>`);
 }
 export const datalistTerceiros = () => html`<datalist id="dl-terceiros">${nomesConhecidos().map((n) => html`<option value="${n}">`)}</datalist>`;
-const doEscopo = (p, setorFixo) => !setorFixo || p.setor === setorFixo || /^po/i.test(p.obra || '');   // escopo fixo (ex.: tela do Pós-obra): o setor, ou obras Po…
+const doEscopo = (p, setorFixo) => !setorFixo || /^po/i.test(p.obra || '') || (p.setor === setorFixo && !/^mo/i.test(p.obra || ''));   // escopo fixo (ex.: tela do Pós-obra): o setor, ou obras Po…
 function filtrar(params, setorFixo = '') {
   const q = (params.get('q') || '').trim().toLocaleLowerCase('pt-BR');
-  const pessoa = params.get('pessoa') || ''; const setor = params.get('setor') || ''; const obra = params.get('obra') || '';
+  const pessoa = params.get('pessoa') || 'eu'; const setor = params.get('setor') || ''; const obra = params.get('obra') || '';
   const eu = souEu();
   return dados.pendencias.filter((p) => {
     if (p.status === 'cancelada' || !naLista(p) || !doEscopo(p, setorFixo)) return false;
     if (pessoa.startsWith('cat:')) { if (p.responsavel_categoria !== pessoa.slice(4)) return false; }
     else if (pessoa.startsWith('tipo:')) { if ((p.responsavel_tipo || 'solida') !== pessoa.slice(5)) return false; }
     else if (pessoa === 'sup') { if (!(p.gestores || []).includes(eu)) return false; }
+    else if (pessoa === 'todos') { /* sem filtro de pessoa */ }
     else if (pessoa === 'eu' ? p.responsavel !== eu : pessoa && p.responsavel !== pessoa) return false;
     const terc = params.get('terc') || '';
     if (terc && (p.responsavel || (terc.startsWith('cat:') ? p.responsavel_categoria !== terc.slice(4) : p.responsavel_nome !== terc.slice(5)))) return false;
@@ -569,7 +570,7 @@ const selObra = (obras, atual, todos = 'Todos') => html`<label>Obra<select data-
 function seletorResponsavel(atual) {
   const op = ([v, t]) => html`<option value="${v}" ${atual === v ? html.seguro('selected') : ''}>${t}</option>`;
   const pessoas = pessoasParaVer();
-  return html`<label>Responsável<select data-atas-filtro="pessoa"><option value="">Todos</option>
+  return html`<label>Responsável<select data-atas-filtro="pessoa"><option value="todos" ${atual === 'todos' ? html.seguro('selected') : ''}>Todos</option>
     ${[['eu', 'Só as minhas'], ['tipo:terceirizado', 'Terceirizados (todos)'], ['tipo:cliente', 'Clientes'], ['tipo:arquitetura', 'Arquitetura']].map(op)}
     <optgroup label="Equipe da Sólida">${op(['tipo:solida', 'Equipe da Sólida (todos)'])}${pessoas.map((x) => op([x.id, x.nome]))}</optgroup></select></label>`;
 }
@@ -578,7 +579,7 @@ function barraFiltros(params, obras, aba, ctx = {}) {
   const sel = (nome, rotulo, opcoes, atual) => html`<label>${rotulo}<select data-atas-filtro="${nome}"><option value="">Todos</option>${opcoes.map(([v, t]) => html`<option value="${v}" ${atual === v ? html.seguro('selected') : ''}>${t}</option>`)}</select></label>`;
   const vista = params.get('vista') === 'lista' ? 'lista' : 'prazo';
   return html`<div class="at-filtros">
-    ${aba === 'atas' ? '' : seletorResponsavel(params.get('pessoa') || '')}
+    ${aba === 'atas' ? '' : seletorResponsavel(params.get('pessoa') || 'eu')}
     ${ctx.setorFixo ? '' : sel('setor', 'Setor', SETORES_ATA.map((s) => [s, s]), params.get('setor') || '')}
     ${selObra(obras, params.get('obra') || '')}
     <label>Procurar<input type="search" data-atas-filtro="q" value="${params.get('q') || ''}" placeholder="texto…"></label>
@@ -893,7 +894,7 @@ function cabecalhoImpressao(params, modo, hoje, setorFixo = '') {
   const obra = params.get('obra') || ''; const setor = params.get('setor') || setorFixo || '';
   const canto = obra ? (setor ? `${obra} · ${setor}` : obra) : setor || 'TODAS AS OBRAS';
   const rotCanto = obra ? 'OBRA' : setor ? 'DEPARTAMENTO' : '';
-  const pes = params.get('pessoa') || (modo === 'lista' ? 'eu' : '');
+  const pes = params.get('pessoa') || 'eu';
   const quem = !pes || pes === 'todos' ? 'Todos' : pes === 'eu' ? (sessao().nome || 'Eu') : pes === 'sup' ? 'Quem tenho como gestor' : pes.startsWith('cat:') ? pes.slice(4) : pes.startsWith('tipo:') ? (ROTULO_TIPO[pes.slice(5)] || pes.slice(5)) : nomeDe(pes, '');
   const urg = params.get('urg') || ''; const q = (params.get('q') || '').trim();
   const dia = modo === 'lista' && ehData(params.get('dia')) ? params.get('dia') : hoje;

@@ -927,3 +927,20 @@ body.imp-ata .at-ata-det .sd-tab td.sd-t-info, body.imp-ata .at-ata-det .sd-tab 
 .pc-card b { font-size: 18px; }
 .pc-resp, .pc-prazo { padding: 1px 4px; font-size: 12px; }
 .prazo-aviso { margin-top: 1px; }
+
+/* Quadro de datas das OS: PO em faixa, OS embaixo, todas as colunas à vista (sem rolar para o lado) */
+.osq-datas { width: 100%; table-layout: auto; font-size: 12px; border-collapse: collapse; }
+.osq-datas th, .osq-datas td { white-space: normal; padding: 3px 6px; }
+.osq-datas th { font-size: 11px; }
+.osq-datas input[type="date"] { font-size: 11px; padding: 1px 2px; width: 104px; }
+.osq-datas .osq-ass { min-width: 140px; }
+.osq-datas .osq-st { font-size: 11px; padding: 0 8px; }
+.osq-po td { background: #E9EEF5; border-top: 2px solid #1F3A56; padding: 4px 8px; font-size: 13px; }
+.osq-po-grupo { border-top: 4px solid transparent; }
+.osq-datas th, .osq-datas td { padding: 2px 4px; }
+.osq-datas input[type="date"] { font-size: 10px; width: 92px; padding: 1px 0; }
+.osq-datas .osq-ass { min-width: 110px; }
+.osq-datas th { font-size: 10.5px; line-height: 1.1; }
+.osq-datas .osq-st { font-size: 10.5px; padding: 0 6px; }
+.osq-datas input[type="date"] { width: 92px !important; min-width: 0 !important; max-width: 92px; box-sizing: border-box; }
+.pd-tab-caixa:has(.osq-datas) { padding: 4px 8px; }
