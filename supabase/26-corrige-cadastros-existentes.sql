@@ -1,0 +1,2 @@
+-- Correção dos cadastros de obras já existentes (13/11/2026): cliente, endereço e arquitetura a partir das planilhas do Drive (Controle Operacional Pós-Obra R12, SL_OBRAS LISTAGEM GERAL, SL_ORÇAMENTOS 2023-2026) e dos nomes das pastas de projeto.
+-- Aplicado direto no Supabase (59 cadastros). Ex.: Mo531 era 'Ivan · Lúcio Costa' -> cliente 'Ivan Drummond', endereço 'Av. Lúcio Costa, 2960, apto 201'.
