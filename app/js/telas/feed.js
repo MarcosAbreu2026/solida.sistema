@@ -7,10 +7,12 @@ import { avatar } from './perfil.js';
 import { NA_NUVEM, eventosFeed, acaoFeed } from '../nuvem.js';
 
 let eventos = [];
+let jaLeu = false;   // o sino só compara depois da primeira leitura de verdade (senão tudo antigo viraria novidade)
+export const feedLido = () => jaLeu;
 
 export async function carregar() {
-  if (NA_NUVEM) { try { eventos = await eventosFeed(); } catch { /* sem conexão */ } return eventos; }
-  try { const r = await fetch('/api/feed', { cache: 'no-store' }); if (r.ok) { const j = await r.json(); eventos = Array.isArray(j) ? j : []; } } catch { /* sem servidor */ }
+  if (NA_NUVEM) { try { eventos = await eventosFeed(); jaLeu = true; } catch { /* sem conexão */ } return eventos; }
+  try { const r = await fetch('/api/feed', { cache: 'no-store' }); if (r.ok) { const j = await r.json(); eventos = Array.isArray(j) ? j : []; jaLeu = true; } } catch { /* sem servidor */ }
   return eventos;
 }
 
@@ -40,7 +42,16 @@ export function publicacoes() {
 export function novas(nome) {
   let visto = '';
   try { visto = localStorage.getItem('solida.feed.visto') || ''; } catch { /* nada */ }
-  return publicacoes().filter((p) => p.em > visto && p.autor !== nome).length;
+  return publicacoes().filter((p) => Date.parse(p.em) > Date.parse(visto || 0) && p.autor !== nome).length;
+}
+// publicações e comentários de outras pessoas, do mais novo para o mais antigo (alimenta o sino do topo)
+export function novidades(nome) {
+  const itens = [];
+  for (const p of publicacoes()) {
+    itens.push({ id: `p${p.id}`, tipo: 'post', post: p.id, autor: p.autor, texto: p.texto, em: p.em });
+    for (const c of p.comentarios) itens.push({ id: `c${c.id}`, tipo: 'comentario', post: p.id, autor: c.autor, texto: c.texto, em: c.em });
+  }
+  return itens.filter((i) => i.autor !== nome).sort((a, b) => Date.parse(b.em) - Date.parse(a.em));
 }
 export function marcarVisto() { try { localStorage.setItem('solida.feed.visto', new Date().toISOString()); } catch { /* nada */ } }
 

@@ -28,6 +28,7 @@ import * as perfil from './telas/perfil.js';
 import * as nuvem from './nuvem.js';
 import * as acessos from './telas/acessos.js';
 import * as feed from './telas/feed.js';
+import * as notificacoes from './notificacoes.js';
 import * as evidencias from './evidencias.js';
 import * as treinamentos from './telas/treinamentos.js';
 import { desenharBoneco } from './escritorio/desenho.js';
@@ -686,6 +687,7 @@ function desenhar() {
   const abaAtas = rota.params.get('aba');
   const sel = tela === 'funcionarios' ? 'rh' : tela === 'tarefas' || (tela === 'atas' && !['atas', 'nova', 'pautas'].includes(abaAtas)) ? 'tarefas' : (dep || area || fixas.includes(tela)) ? tela : 'geral';
   desenharNav(sel);
+  notificacoes.atualizar(sessao().nome);
   desenharPerfil();
   desenharVerComo();
   if (tela !== 'escritorio') escritorio.parar();   // saiu do escritório virtual: para a animação e a presença
@@ -1639,6 +1641,18 @@ document.addEventListener('click', (e) => {   // RH › Programado × realizado:
   const b = e.target.closest('[data-ep-sem]'); if (!b) return;
   mudarSemanaEP(Number(b.dataset.epSem)); desenhar();
 });
+// notificações: o feed é lido a cada 30 s (o resto do painel, a cada 5 min); só o sino e o menu se mexem, a tela aberta não é redesenhada
+notificacoes.iniciar({ ir: () => { if (location.hash === '#/feed') desenhar(); else location.hash = '#/feed'; } });
+async function checarFeed() {
+  if (!logado() || document.hidden) return;
+  await feed.carregar();
+  notificacoes.atualizar(sessao().nome);
+  const n = rotaAtual().tela === 'feed' ? 0 : feed.novas(sessao().nome);
+  const item = document.querySelector('#nav a[href="#/feed"]');
+  if (item) { item.querySelector('.nav-n')?.remove(); if (n) item.insertAdjacentHTML('beforeend', `<span class="nav-n">${n}</span>`); }
+}
+setInterval(checarFeed, 30 * 1000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checarFeed(); });
 
 configurar();
 movimentacao.ligar(() => desenhar());

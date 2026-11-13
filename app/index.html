@@ -19,12 +19,20 @@
     <div class="hdir">
       <div class="modo-vis" id="modoVis" hidden></div>
       <span class="sinc" id="sinc">Carregando…</span>
+      <span class="notif-caixa">
+        <button type="button" class="notif" id="bNotif" aria-label="Notificações" title="Notificações" hidden>
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10.3 20a1.9 1.9 0 0 0 3.4 0"/></svg>
+          <span class="nav-n" hidden>0</span>
+        </button>
+        <div class="notif-painel" id="notif-painel" hidden></div>
+      </span>
       <span class="quem" id="bPerfil"></span>
       <button type="button" class="sair" id="bSair">Sair</button>
     </div>
   </header>
   <div class="conteudo" id="conteudo"><div class="carregando">Carregando dados…</div></div>
 </main>
+<div id="notif-aviso" class="notif-aviso" role="status" aria-live="polite" hidden></div>
 <div id="dica" class="dica" hidden></div>
 <div id="login" class="login" hidden></div>
 <script type="module" src="js/main.js"></script>
