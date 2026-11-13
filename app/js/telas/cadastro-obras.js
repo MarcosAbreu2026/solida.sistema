@@ -11,6 +11,7 @@ const ordem = (a, b) => String(a.codigo).localeCompare(String(b.codigo), 'pt-BR'
 export function secaoObras({ obrasCad = [], podeExcluir = false, listaAberta = false }) {
   const linhaObra = (o) => { const t = tipoDe(o); const s = situacaoDe(o); return html`<form class="ac-linha ${s === 'finalizada' || s === 'nao_fechado' ? 'ac-bloq' : ''}" data-obra-cad="${o.codigo}">
     <div class="ac-quem"><b>${o.codigo}</b>${o.semCadastro ? html`<span class="pequeno pendente">ainda não cadastrada (vem dos dados): clique em Salvar para cadastrar</span>` : ''}</div>
+    <label>Código <span class="pequeno">(dá para mudar o número)</span><input name="codigo_novo" value="${o.codigo}" autocapitalize="none" spellcheck="false" required></label>
     <label>Tipo<select name="tipo" data-ob-tipo>${opcoesTipo(t)}</select></label>
     <label>Cliente<input name="cliente" value="${clienteDe(o)}" placeholder="ex.: Residencial X"></label>
     <label>Endereço<input name="endereco" value="${o.endereco || ''}" placeholder="rua, número, bairro"></label>

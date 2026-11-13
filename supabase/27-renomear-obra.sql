@@ -1,0 +1,1 @@
+-- renomear_obra(antigo, novo): muda o código da obra no cadastro e em tudo que a usa (pendencias, atas, agenda_pos, efetivo_diario, lancamentos, registros_obra, obras_pos, servicos_pos, movimentacoes_galpao, contagens_estoque, perfis.obras e os_quadro.cliente). Quem pode: pode_cadastro_obras(). Aplicado no Supabase em 13/11/2026 (migração renomear_obra).

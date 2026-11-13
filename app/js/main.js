@@ -1410,7 +1410,16 @@ function configurar() {
     if (novo && tipo === 'pos') { if (!codigo) codigo = `PO - ${cliente}`; else if (!/^po/i.test(codigo)) { alert('O código do pós-obra começa com PO (ex.: PO577), ou deixe vazio para usar "PO - cliente".'); return; } }
     if (novo && tipo !== 'pos' && !/^mo\d/i.test(codigo)) { alert('O código da obra começa com Mo e o número (ex.: Mo565).'); return; }
     if (!codigo) { alert('Digite o código da obra.'); return; }
-    try { await nuvem.salvarObra({ codigo, tipo, cliente, endereco, arquitetura, situacao: String(fd.get('situacao') || 'andamento') }); estado.acessosMsg = `${codigo} salva.`; await sincronizarCadastros({ forcar: true }); }
+    try {
+      // mudar o número da obra: o banco troca o código no cadastro e em tudo que usa (tarefas, atas, OS, logins…)
+      if (!novo) {
+        const cn = atas.normalizarCodigoObra(fd.get('codigo_novo'));
+        if (cn && cn !== codigo) {
+          if (tipo === 'pos' ? !/^po/i.test(cn) : !/^mo\d/i.test(cn)) { alert(tipo === 'pos' ? 'O código do pós-obra começa com PO.' : 'O código da obra começa com Mo e o número (ex.: Mo565).'); return; }
+          await nuvem.renomearObra(codigo, cn); codigo = cn;
+        }
+      }
+      await nuvem.salvarObra({ codigo, tipo, cliente, endereco, arquitetura, situacao: String(fd.get('situacao') || 'andamento') }); estado.acessosMsg = `${codigo} salva.`; await sincronizarCadastros({ forcar: true }); }
     catch (err) { alert(`Não foi possível salvar (${err.message || err}). Se o aviso falar de coluna ou restrição, falta rodar o SQL novo do cadastro de obras no Supabase.`); }
   });
   // "+ Nova obra em orçamento…" na caixinha de obra: o setor ORC Obras Novas (e a diretoria) cria a obra na hora; ela só aparece para eles

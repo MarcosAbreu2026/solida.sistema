@@ -104,6 +104,11 @@ export async function salvarObra({ codigo, nome, situacao, tipo, cliente, endere
   }
   if (error) throw new Error(error.message);
 }
+// Muda o código (número) da obra no cadastro e em tudo que a usa (tarefas, atas, OS, logins, agenda do pós-obra…): função renomear_obra do banco
+export async function renomearObra(antigo, novo) {
+  const { error } = await sb.rpc('renomear_obra', { p_antigo: antigo, p_novo: novo });
+  if (error) throw new Error(error.message);
+}
 export async function excluirObra(codigo) {
   const { error } = await sb.from('obras_cadastro').delete().eq('codigo', codigo);
   if (error) throw new Error(error.message);
