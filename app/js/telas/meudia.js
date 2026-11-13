@@ -371,7 +371,7 @@ function agendaDeTarefas(ref, { pendencias = [], eu, modo = 'semana', diaRef = n
   const modoDia = modo === 'dia'; const diaVis = diaRef || hoje;
   const dias = modoDia ? [diaVis] : [0, 1, 2, 3, 4, 5].map((i) => somarDias(ini, i));
   const SEMANA7 = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']; const nomeDia = (d) => SEMANA7[new Date(`${d}T12:00:00`).getDay()];
-  const minhas = pendencias.filter((p) => p.prazo && p.na_lista !== false && ['aberta', 'feita'].includes(p.status) && eu && (p.responsavel === eu || (p.gestores || []).includes(eu)) && dias.includes(p.prazo));
+  const minhas = pendencias.filter((p) => p.prazo && p.na_lista !== false && ['aberta', 'feita'].includes(p.status) && eu && (p.responsavel === eu || (p.gestores || []).includes(eu) || (p.observadores || []).includes(eu)) && dias.includes(p.prazo));
   const entradas = minhas.map((p) => {
     const m = hm(p.hora); const dur = limitar(Number(p.duracao) || 60, GRADE.passo, GRADE.faixas * GRADE.passo);
     const span = Math.round(dur / GRADE.passo);
@@ -385,7 +385,7 @@ function agendaDeTarefas(ref, { pendencias = [], eu, modo = 'semana', diaRef = n
     ${diaVis !== hoje ? html`<button type="button" class="botao" data-ag-dia="${hoje}">Hoje</button>` : ''}
     <button type="button" class="botao" data-ag-dia="${somarDias(diaVis, 1)}">Próximo dia →</button>
   </div>
-  <div class="ag-chips-dia">${[0, 1, 2, 3, 4, 5].map((i) => { const d = somarDias(iniDaVis, i); const n = pendencias.filter((p) => p.prazo === d && p.na_lista !== false && ['aberta', 'feita'].includes(p.status) && eu && (p.responsavel === eu || (p.gestores || []).includes(eu))).length; return html`<button type="button" class="ag-chip-dia ${d === diaVis ? 'on' : ''} ${d === hoje ? 'hj' : ''}" data-ag-dia="${d}">${SEMANA7[(i + 1) % 7]} ${d.slice(8, 10)}${n ? html`<small>${n}</small>` : ''}</button>`; })}</div>`;
+  <div class="ag-chips-dia">${[0, 1, 2, 3, 4, 5].map((i) => { const d = somarDias(iniDaVis, i); const n = pendencias.filter((p) => p.prazo === d && p.na_lista !== false && ['aberta', 'feita'].includes(p.status) && eu && (p.responsavel === eu || (p.gestores || []).includes(eu) || (p.observadores || []).includes(eu))).length; return html`<button type="button" class="ag-chip-dia ${d === diaVis ? 'on' : ''} ${d === hoje ? 'hj' : ''}" data-ag-dia="${d}">${SEMANA7[(i + 1) % 7]} ${d.slice(8, 10)}${n ? html`<small>${n}</small>` : ''}</button>`; })}</div>`;
   const nav = modoDia ? navDia : html`<div class="periodo">
     <button type="button" class="botao" data-semana-md="${somarDias(ini, -7)}">← Semana anterior</button>
     <div class="atual"><span>Semana</span><b>${fmtData(ini).slice(0, 5)} a ${fmtData(somarDias(ini, entradas.some((e) => e.dia === dias[5]) ? 5 : 4)).slice(0, 5)}</b></div>

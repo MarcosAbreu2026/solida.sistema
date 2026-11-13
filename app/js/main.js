@@ -1800,7 +1800,7 @@ async function abrirTarefa(id, msg = '') {
   let m = document.getElementById('at-modal');
   if (!m) { m = document.createElement('div'); m.id = 'at-modal'; m.className = 'at-modal'; document.body.appendChild(m); }
   const antes = m.querySelector('.tf-notas'); const rolagem = antes ? antes.scrollTop : 0;
-  m.innerHTML = `<div class="at-modal-caixa tf-caixa">${String(atas.detalheTarefa(id, { msg }))}</div>`;
+  m.innerHTML = `<div class="at-modal-caixa tf-caixa">${String(atas.detalheTarefa(id, { msg, obras: obrasDeAtas() }))}</div>`;
   const notas = m.querySelector('.tf-notas'); if (notas) notas.scrollTop = rolagem || notas.scrollHeight;
 }
 async function abrirTarefaComNotas(id) {
@@ -1845,7 +1845,7 @@ document.addEventListener('submit', async (e) => {
   e.preventDefault(); const fd = new FormData(f); const id = f.dataset.tf;
   try {
     let escopo = 'uma'; if (atas.ehRecorrente(id)) { escopo = await perguntarEscopo('Salvar tarefa recorrente'); if (!escopo) return; }
-    await atas.salvarTarefa(id, { escopo, recorrente: fd.has('t_recor'), frequencia: String(fd.get('t_freq') || 'semanal'), hora: fd.get('t_hora'), duracao: fd.get('t_dur'), observadores: fd.getAll('t_obs'), funcaoTarefa: fd.get('t_func'), urgencia: fd.get('t_urg'), assunto: fd.get('t_assunto'), desc: fd.get('t_desc'), resp: fd.get('t_resp'), tipo: fd.get('t_tipo'), nome: fd.get('t_nome'), gestor: fd.get('t_gestor'), prazo: fd.get('t_prazo') });
+    await atas.salvarTarefa(id, { escopo, obra: fd.get('t_obra'), recorrente: fd.has('t_recor'), frequencia: String(fd.get('t_freq') || 'semanal'), hora: fd.get('t_hora'), duracao: fd.get('t_dur'), observadores: fd.getAll('t_obs'), funcaoTarefa: fd.get('t_func'), urgencia: fd.get('t_urg'), assunto: fd.get('t_assunto'), desc: fd.get('t_desc'), resp: fd.get('t_resp'), tipo: fd.get('t_tipo'), nome: fd.get('t_nome'), gestor: fd.get('t_gestor'), prazo: fd.get('t_prazo') });
     await redesenharTarefas(id, 'Salvo ✓');
   } catch (err) { alert(`Não foi possível salvar (${err.message || err}).`); }
 });

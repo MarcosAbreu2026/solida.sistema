@@ -993,7 +993,7 @@ export async function salvarTarefa(id, c) {
   const p = pendenciaPorId(id); if (!p) throw new Error('Tarefa não encontrada.');
   const desc = String(c.desc || '').trim(); const ass = String(c.assunto || '').trim();
   if (!desc && !ass) throw new Error('Escreva o título da tarefa.');
-  const mud = { descricao: ass ? `${ass}, ${desc}` : desc, urgencia: c.urgencia || null, funcao_tarefa: c.funcaoTarefa || null, observadores: c.observadores || [], hora: c.hora || null, duracao: c.duracao ? Number(c.duracao) : null };
+  const mud = { obra: c.obra === undefined ? p.obra : (c.obra || null), descricao: ass ? `${ass}, ${desc}` : desc, urgencia: c.urgencia || null, funcao_tarefa: c.funcaoTarefa || null, observadores: c.observadores || [], hora: c.hora || null, duracao: c.duracao ? Number(c.duracao) : null };
   if (c.resp === 'ext') {
     const tipo = c.tipo || 'terceirizado';
     Object.assign(mud, { responsavel: null, responsavel_nome: String(c.nome || '').trim() || (tipo === 'cliente' ? 'Cliente' : tipo === 'arquitetura' ? 'Arquitetura' : null), responsavel_tipo: tipo, responsavel_categoria: null });
@@ -1049,7 +1049,7 @@ export async function moverParaColuna(id, col) {
 }
 
 const quando = (iso) => { try { return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch { return ''; } };
-export function detalheTarefa(id, { msg = '' } = {}) {
+export function detalheTarefa(id, { msg = '', obras = [] } = {}) {
   const p = pendenciaPorId(id);
   if (!p) return html`<div class="tf"><p class="erro">Não achei esta tarefa (talvez outra pessoa a tenha excluído).</p><div class="at-av-botoes"><button type="button" class="botao" data-av-fechar>Fechar</button></div></div>`;
   const [ass, resto] = dividirDescricao(p.descricao);
@@ -1067,6 +1067,7 @@ export function detalheTarefa(id, { msg = '' } = {}) {
         <label>Responsável<select name="t_resp" data-tf-resp><option value="ext" ${ext ? html.seguro('selected') : ''}>Outro: terceirizado, cliente, arquitetura…</option>${opcoesPessoas(p.responsavel || '')}</select></label>
         <div class="tf-ext" ${ext ? '' : html.seguro('hidden')}><label>Quem é<select name="t_tipo"><option value="terceirizado" ${tipo === 'terceirizado' ? html.seguro('selected') : ''}>Terceirizado</option><option value="cliente" ${tipo === 'cliente' ? html.seguro('selected') : ''}>Cliente</option><option value="arquitetura" ${tipo === 'arquitetura' ? html.seguro('selected') : ''}>Arquitetura</option></select></label>
           <label>Nome<input name="t_nome" value="${ext ? (p.responsavel_nome || '') : ''}" list="dl-terceiros" placeholder="empresa ou pessoa"></label></div>
+        <label>Obra<select name="t_obra"><option value="">Nenhuma</option>${gruposDeObras(obras, p.obra || '', { criar: true })}</select></label>
         <label>Prazo<input type="date" name="t_prazo" value="${p.prazo || ''}"></label>
         ${p.serie ? html`<div class="tf-recor tf-recor-on"><label class="tf-recor-chk"><input type="checkbox" checked disabled> <span>Tarefa recorrente</span></label><small>${p.frequencia === 'mensal' ? 'todo mês' : 'toda semana'}</small></div>` : html`<div class="tf-recor"><label class="tf-recor-chk"><input type="checkbox" name="t_recor"> <span>Tarefa recorrente</span></label><select name="t_freq" title="Como se repete"><option value="semanal">Toda semana</option><option value="mensal">Todo mês</option></select></div>`}
       </div>
