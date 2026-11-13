@@ -22,24 +22,57 @@ const dm = (iso) => (!iso ? '' : iso.slice(0, 4) === hojeISO().slice(0, 4) ? fmt
 const SEM_DEMOLICAO = /demol|retir|desmont|ensacar|entulho|^DEM\b/i;
 // linhas do cronograma que não são o serviço em si (o próprio projeto, contratação, medição)
 const NAO_E_SERVICO = /^projeto\b|contrata[çc]|or[çc]amento|aprova[çc]|medi[çc][ãa]o|levantamento/i;
+// documentos, seguro, limpeza: não são serviço que dependa de projeto
+const SEM_REGRA_IGNORAR = /^(atividade|doc)$|rrt|responsabilidade t[ée]cnica|seguro|transporte|descarte|limpeza|entulho|mobiliza|desmobiliza/i;
+// serviço que começou há mais de 3 semanas e sem projeto na pasta: não afirmo que falta (o arquivo pode ter outro nome); vai para "verificar manualmente"
+const RETRO_DIAS = 21;
 
-// Projetos que a Sólida considera imprescindíveis para tocar a obra.
-// arquivo: como o projeto aparece na pasta/listagem; atividade: o serviço do cronograma que depende dele.
+// Matriz de regras do agente de Controle de Projetos: serviço do cronograma → projeto exigido → antecedência mínima (dias antes do início do serviço).
+// confirmado: true = regra confirmada pela diretoria; false = SUGESTÃO que ainda precisa de confirmação (aparece marcada na tela).
+// arquivo: como o projeto aparece na pasta ("DISCIPLINA nome do arquivo") · generico: nome ambíguo (conta como recebido, mas pede "verificar manualmente")
+// atividade: o serviço do cronograma que depende dele (texto = sigla do grupo + nome da linha) · fora: linhas que parecem o serviço mas não são
+const PAREDE_GRUPO = /^(PAR|PAREDES?)$/i;
+const gp = (a) => String(a.grupo || '');
 export const IMPRESCINDIVEIS = [
-  { id: 'paginacao', nome: 'Paginação de piso', arquivo: /pagina[çc]|revestiment|\bpisos?\b/i,
-    atividade: /porcelanato|cer[âa]mica|\bpisos?\b|pedra|m[áa]rmore|granito|assoalho|vin[íi]lico|soleira/i, fora: /contrapiso|imperm|enchimento|regulariza|esquadria|parede/i },
-  { id: 'eletrica', nome: 'Elétrica', arquivo: /el[ée]tric|pontos de instala|\bELE\b|\bINST\b/i,
-    atividade: /el[ée]tric|condu[íi]te|caixinha|fia[çc]|tomada|quadro de|infra.*(el[ée]|dados)/i },
-  { id: 'hidraulica', nome: 'Hidráulica', arquivo: /hidr[áa]ul|hidross|esgoto|\bHID/i,
-    atividade: /hidr|esgoto|tubula|[áa]gua (fria|quente)|ralo|registro/i },
-  { id: 'forro', nome: 'Forro', arquivo: /forro|teto|gesso/i,
-    atividade: /forro|gesso|teto|sanca|cortineiro|tabica/i, fora: /lixar|massa|pintura|selar/i },
-  { id: 'acabamentos', nome: 'Acabamentos', arquivo: /acabament|memorial|especifica[çc]|lou[çc]as e metais|revestiment/i,
-    atividade: /revest|cer[âa]mica|porcelanato|pintura|rodap|lou[çc]a|metais|bancada/i, fora: /massa|lixar|selar/i },
-  { id: 'iluminacao', nome: 'Iluminação', arquivo: /ilumina|lumino|\bLUM\b/i,
-    atividade: /lumin|ilumina|spot|perfil de led|\bled\b|pendente/i },
+  { id: 'paginacao', nome: 'Paginação de piso', dias: 14, confirmado: true,
+    arquivo: /pagina[çc][ãa]o.{0,15}piso|piso.{0,15}pagina/i, generico: /pagina[çc][ãa]o|revestiment/i,
+    casa: (a, t) => !PAREDE_GRUPO.test(gp(a)) && !/parede|rodap/i.test(a.nome) && /porcelanato|cer[âa]mica|\bpisos?\b|pedra|m[áa]rmore|granito|assoalho|vin[íi]lico|soleira|tentos?/i.test(t) && !/contrapiso|imperm|enchimento|regulariza|esquadria|rejunte/i.test(a.nome) },
+  { id: 'parede', nome: 'Paginação de parede', dias: 14, confirmado: true,
+    arquivo: /pagina[çc][ãa]o.{0,15}(parede|revest)|(parede|revest).{0,15}pagina/i, generico: /pagina[çc][ãa]o|revestiment/i,
+    casa: (a) => (PAREDE_GRUPO.test(gp(a)) || /parede/i.test(a.nome)) && /cer[âa]mica|porcelanato|revestimento|painel|azulejo|pastilha|pedra|m[áa]rmore/i.test(a.nome) && !/rejunte|imperm|arremate|rodap|prepar/i.test(a.nome) },
+  { id: 'marcenaria', nome: 'Marcenaria', dias: 30, confirmado: false,
+    arquivo: /marcenaria|caderno executivo/i,
+    casa: (a, t) => /marcenaria|arm[áa]rio|roupeiro|closet|louceiro|painel (ripado|de madeira)/i.test(t) },
+  { id: 'eletrica', nome: 'Elétrica e iluminação', dias: 14, confirmado: false,
+    arquivo: /el[ée]tric|pontos de instala|ilumina|lumino|\bELE\b|\bLUM\b|\bILU\b/i,
+    casa: (a, t) => /el[ée]tric|condu[íi]te|caixinha|fia[çc][ãa]o|tomada|quadro de|infra.*(el[ée]|dados)|lumin|ilumina|spot|\bled\b|pendente/i.test(t) },
+  { id: 'hidraulica', nome: 'Hidrossanitário', dias: 14, confirmado: false,
+    arquivo: /hidr[áa]ul|hidross|esgoto|sanit|\bHID|\bESG\b|\bHEP\b/i,
+    casa: (a, t) => /hidr|esgoto|tubula|[áa]gua (fria|quente)|ralo|registro|\bHEP\b|\bHID\b/i.test(t) },
+  { id: 'arcondicionado', nome: 'Ar-condicionado', dias: 21, confirmado: false,
+    arquivo: /ar.?condicionado|climatiza|\bAC\b|hvac/i,
+    casa: (a, t) => /ar.?condicionado|climatiza|\bAC\b/i.test(t) },
+  { id: 'forro', nome: 'Forro e gesso', dias: 14, confirmado: false,
+    arquivo: /forro|\bteto|gesso/i,
+    casa: (a, t) => /forro|gesso|\bteto|sanca|cortineiro|tabica/i.test(t) && !/lixar|massa|pintura|selar/i.test(a.nome) },
+  { id: 'marmoraria', nome: 'Marmoraria e bancadas', dias: 21, confirmado: false,
+    arquivo: /marmoraria|bancada|m[áa]rmore|granito/i,
+    casa: (a, t) => /marmoraria|bancada|tampo/i.test(t) },
+  { id: 'esquadrias', nome: 'Esquadrias e vidraçaria', dias: 30, confirmado: false,
+    arquivo: /esquadria|vidra[çc]aria|vidro|caixilh|\bbox\b/i,
+    casa: (a, t) => /esquadria|vidra[çc]aria|vidro|caixilh|janela|\bbox\b|guarda.?corpo/i.test(t) },
+  { id: 'impermeabilizacao', nome: 'Impermeabilização', dias: 7, confirmado: false,
+    arquivo: /imperm/i,
+    casa: (a, t) => /imperm/i.test(t) },
+  { id: 'automacao', nome: 'Automação', dias: 21, confirmado: false,
+    arquivo: /automa[çc]|\bAUT\b/i,
+    casa: (a, t) => /automa[çc]/i.test(t) },
 ];
-const ANTECEDENCIA = 14;   // o projeto precisa chegar pelo menos 2 semanas antes do serviço começar
+const ANTECEDENCIA = 14;   // referência da legenda: o projeto precisa chegar pelo menos 2 semanas antes do serviço (piso e parede)
+// arquivo que não conta como projeto liberado para obra
+const NAO_LIBERADO = /rascunho|estudo|anteprojeto|obsolet|antigo|\bold\b|\.bak$/i;
+// linhas de compra/entrega/orçamento do cronograma não são o serviço
+const COMPRA = /^(compra|or[çc]amento|entrega)\b/i;
 
 // Obras ativas (as do Planejamento, sem as concluídas) com o que foi lido da pasta delas
 export function obrasComProjeto(CFG, proj, visiveis) {
@@ -66,50 +99,74 @@ const chaveDisciplina = (d) => {
 function documentos(p) {
   const docs = [];
   for (const i of ((p.listagem && p.listagem.itens) || [])) {
-    docs.push({ texto: `${i.especialidade} ${i.prancha} ${i.arquivo || ''}`, data: i.recebido || i.data, rev: i.rev, disciplina: chaveDisciplina(i.especialidade), fonte: 'listagem', nome: i.prancha });
+    docs.push({ texto: `${i.especialidade} ${i.prancha} ${i.arquivo || ''}`, data: i.recebido || i.data, rev: i.rev, disciplina: chaveDisciplina(i.especialidade), fonte: 'listagem', nome: i.prancha, liberado: !NAO_LIBERADO.test(`${i.prancha} ${i.arquivo || ''}`) });
   }
   for (const a of (p.arquivos || [])) {
     if (/listagem projetos|capa caderno|controle de projetos/i.test(a.nome)) continue;
-    docs.push({ texto: `${a.disciplina} ${a.nome}`, data: a.data, rev: a.rev, disciplina: a.disciplina ? chaveDisciplina(a.disciplina) : 'GERAL', fonte: 'pasta', nome: a.nome, antigo: a.antigo });
+    docs.push({ texto: `${a.disciplina} ${a.nome}`, data: a.data, rev: a.rev, disciplina: a.disciplina ? chaveDisciplina(a.disciplina) : 'GERAL', fonte: 'pasta', nome: a.nome, antigo: a.antigo, liberado: !a.antigo && !NAO_LIBERADO.test(a.nome) });
   }
   return docs;
 }
 
-// Quando o cronograma começa o serviço que depende do projeto
+// Quando o cronograma começa o serviço que depende do projeto (a data mais cedo entre as linhas que casam com o serviço)
 function inicioNoCronograma(p, item) {
   // casa pelo nome da atividade; o grupo só conta quando é sigla (ELE, HID…), não "T01 - LOUÇAS E METAIS - BASES E REGISTROS"
   const texto = (a) => (/^[A-Z]{2,4}$/.test(a.grupo || '') ? `${a.grupo} ${a.nome}` : a.nome);
   const ativ = ((p.cronograma && p.cronograma.atividades) || [])
-    .filter((a) => a.inicio && !SEM_DEMOLICAO.test(`${a.grupo} ${a.nome}`) && !NAO_E_SERVICO.test(a.nome)
-      && item.atividade.test(texto(a)) && !(item.fora && item.fora.test(a.nome)));
+    .filter((a) => a.inicio && !SEM_DEMOLICAO.test(`${a.grupo} ${a.nome}`) && !NAO_E_SERVICO.test(a.nome) && !COMPRA.test(a.nome) && !SEM_REGRA_IGNORAR.test(a.nome) && item.casa(a, texto(a)));
   if (!ativ.length) return null;
   const primeira = ativ.reduce((m, a) => (a.inicio < m.inicio ? a : m));
   return { data: primeira.inicio, atividade: primeira.nome.replace(/\s*\(.*\)\s*$/, '') };
 }
 
+// Responsável pelo projeto: o projetista que mais aparece na listagem da obra (do próprio projeto, se houver); sem listagem, ninguém (a tela diz "definir")
+export function responsavelDoProjeto(p, item) {
+  const itens = (p.listagem && p.listagem.itens) || [];
+  const conta = (lista) => { const m = new Map(); for (const i of lista) { const n = String(i.projetista || '').trim(); if (n) m.set(n, (m.get(n) || 0) + 1); } return [...m].sort((a, b) => b[1] - a[1])[0]; };
+  const doItem = conta(itens.filter((i) => item.arquivo.test(`${i.especialidade} ${i.prancha} ${i.arquivo || ''}`)));
+  return (doItem || conta(itens) || [])[0] || '';
+}
+
+// Situação de um projeto da matriz numa obra.
+//  Vigente = a revisão mais recente que não seja rascunho/estudo/anteprojeto/obsoleto/antigo. Sem projeto vigente e com o serviço no cronograma = PENDÊNCIA.
+//  Prazo do projeto = início do serviço − antecedência. cor: vermelho (vencido ou vence em até 3 dias) · amarelo (4 a 10 dias) · verde (mais de 10: só monitorar).
 export function situacaoImprescindivel(p, item, hoje = hojeISO()) {
-  const docs = documentos(p).filter((d) => item.arquivo.test(d.texto) && d.data);
+  const todos = documentos(p).filter((d) => d.data);
+  const casados = todos.filter((d) => item.arquivo.test(d.texto));
+  const genericos = casados.length ? [] : todos.filter((d) => item.generico && item.generico.test(d.texto));
+  const achados = casados.length ? casados : genericos;
+  const docs = achados.filter((d) => d.liberado !== false);
+  const soNaoLiberado = !docs.length && achados.length > 0;
+  const verificar = !casados.length && genericos.some((d) => d.liberado !== false);   // nome ambíguo: conta como recebido, mas confirmar na pasta
+  const dias = item.dias;
   const recebido = docs.length ? docs.reduce((m, d) => (d.data < m ? d.data : m), docs[0].data) : null;
   const revs = docs.map((d) => d.rev).filter((r) => r != null);
   const rev = revs.length ? Math.max(...revs) : null;
   const crono = inicioNoCronograma(p, item);
   const exemplo = docs.length ? docs.reduce((m, d) => (d.data > m.data ? d : m)) : null;
-  let nivel; let texto;
+  const limite = crono ? somarDias(crono.data, -dias) : null;
+  const restantes = limite ? diasEntre(hoje, limite) : null;
+  let nivel; let texto; let cor = null;
   if (recebido) {
     if (!crono) { nivel = 'ok'; texto = `Recebido ${dm(recebido)}`; }
     else {
       const folga = diasEntre(recebido, crono.data);
       if (folga < 0) { nivel = 'tardio'; texto = `Chegou ${-folga} dias depois de: ${crono.atividade} (${dm(crono.data)})`; }
-      else if (folga < ANTECEDENCIA) { nivel = 'justo'; texto = `Chegou só ${folga} dias antes de: ${crono.atividade} (${dm(crono.data)})`; }
+      else if (folga < dias) { nivel = 'justo'; texto = `Chegou só ${folga} dias antes de: ${crono.atividade} (${dm(crono.data)})`; }
       else { nivel = 'ok'; texto = `Chegou ${folga} dias antes de: ${crono.atividade} (${dm(crono.data)})`; }
     }
   } else if (crono) {
     const faltam = diasEntre(hoje, crono.data);
-    if (faltam < 0) { nivel = 'falta-atrasado'; texto = `Falta, e ${crono.atividade} já devia ter começado em ${dm(crono.data)}`; }
-    else if (faltam <= ANTECEDENCIA + 7) { nivel = 'falta-urgente'; texto = `Falta. ${crono.atividade} começa em ${dm(crono.data)} (${faltam} dias)`; }
-    else { nivel = 'falta'; texto = `Falta. Precisa até ${dm(somarDias(crono.data, -ANTECEDENCIA))}`; }
+    const retro = faltam < -RETRO_DIAS;
+    cor = retro ? 'verificar' : restantes <= 3 ? 'vermelho' : restantes <= 10 ? 'amarelo' : 'verde';
+    const achado = soNaoLiberado ? `só há versão não liberada (${achados[0].nome})` : 'nada encontrado na pasta';
+    if (retro) { nivel = 'falta-atrasado'; texto = `${crono.atividade} começou em ${dm(crono.data)} (há ${-faltam} dias) e não achei o projeto vigente. Verificar manualmente: o arquivo pode ter outro nome ou a obra seguiu sem ele`; }
+    else if (faltam < 0) { nivel = 'falta-atrasado'; texto = `Falta, e ${crono.atividade} já devia ter começado em ${dm(crono.data)}`; }
+    else if (cor !== 'verde') { nivel = 'falta-urgente'; texto = `Falta. ${crono.atividade} começa em ${dm(crono.data)} (${faltam} dias)`; }
+    else { nivel = 'falta'; texto = `Falta. Precisa até ${dm(limite)}`; }
+    texto += `. ${achado[0].toUpperCase()}${achado.slice(1)}.`;
   } else { nivel = 'falta'; texto = p.cronograma && !p.cronograma.erro ? 'Falta (serviço não está no cronograma)' : 'Falta'; }
-  return { nivel, texto, recebido, rev, crono, docs: docs.length, exemplo };
+  return { nivel, texto, recebido, rev, crono, docs: docs.length, exemplo, dias, limite, restantes, cor, soNaoLiberado, verificar };
 }
 
 const CLASSE = {
@@ -147,6 +204,63 @@ export function revisoesDaObra(p) {
   };
 }
 
+// ---------------------------------------------------------------- análise do agente de Controle de Projetos
+
+const norm = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s*\(.*\)\s*/g, ' ').replace(/\s+/g, ' ').trim();
+
+// O que o agente conclui hoje: por obra, a lista de projetos da matriz com o prazo de cada um, as pendências (vermelho e amarelo) e os totais.
+export function analiseProjetos(CFG, proj, visiveis, hoje = hojeISO()) {
+  const obras = obrasComProjeto(CFG, proj, visiveis).map((p) => {
+    if (p.semPasta) return { obra: p.obra, estado: 'sem-pasta', sits: [], pendencias: [], retroativas: [], verdes: [], tardios: [], verificar: [], p };
+    const cr = p.cronograma;
+    const semCrono = !cr || !!cr.erro || !(cr.atividades || []).some((a) => a.inicio);
+    const sits = IMPRESCINDIVEIS.map((item) => ({ item, s: situacaoImprescindivel(p, item, hoje) }));
+    if (semCrono) return { obra: p.obra, estado: 'sem-cronograma', motivo: !cr ? 'cronograma não encontrado na pasta' : cr.erro ? 'cronograma não pôde ser lido' : 'cronograma sem datas', sits, pendencias: [], retroativas: [], verdes: [], tardios: [], verificar: [], p };
+    const pend = (cor) => sits.filter((x) => x.s.cor === cor).map((x) => ({
+      obra: p.obra, item: x.item, cor, limite: x.s.limite, restantes: x.s.restantes, inicio: x.s.crono.data, servico: x.s.crono.atividade, texto: x.s.texto,
+      responsavel: responsavelDoProjeto(p, x.item), dias: x.item.dias, confirmada: x.item.confirmado, naoLiberado: x.s.soNaoLiberado,
+    }));
+    return {
+      obra: p.obra, estado: 'ok', sits, p,
+      pendencias: [...pend('vermelho'), ...pend('amarelo')].sort((a, b) => a.restantes - b.restantes),
+      retroativas: pend('verificar').sort((a, b) => a.inicio.localeCompare(b.inicio)),
+      verdes: pend('verde').sort((a, b) => a.restantes - b.restantes),
+      tardios: sits.filter((x) => x.s.nivel === 'tardio'),
+      verificar: sits.filter((x) => x.s.verificar),
+    };
+  });
+  const analisadas = obras.filter((o) => o.estado === 'ok');
+  // serviços sem regra
+  const sr = new Map();
+  for (const o of analisadas) {
+    for (const a of ((o.p.cronograma && o.p.cronograma.atividades) || [])) {
+      if (!a.inicio || SEM_DEMOLICAO.test(`${a.grupo} ${a.nome}`) || NAO_E_SERVICO.test(a.nome) || COMPRA.test(a.nome) || SEM_REGRA_IGNORAR.test(a.nome) || SEM_REGRA_IGNORAR.test(a.grupo || '')) continue;
+      const texto = /^[A-Z]{2,4}$/.test(a.grupo || '') ? `${a.grupo} ${a.nome}` : a.nome;
+      if (IMPRESCINDIVEIS.some((i) => i.casa(a, texto))) continue;
+      const k = norm(a.nome); if (!k) continue;
+      const e = sr.get(k) || { nome: a.nome.replace(/\s*\(.*\)\s*$/, ''), obras: new Set() };
+      e.obras.add(o.obra); sr.set(k, e);
+    }
+  }
+  const pendencias = analisadas.flatMap((o) => o.pendencias).sort((a, b) => a.restantes - b.restantes);
+  return {
+    hoje, obras, pendencias,
+    totais: {
+      analisadas: analisadas.length,
+      vermelhas: pendencias.filter((x) => x.cor === 'vermelho').length,
+      amarelas: pendencias.filter((x) => x.cor === 'amarelo').length,
+      verdes: analisadas.reduce((s, o) => s + o.verdes.length, 0),
+      retroativas: analisadas.reduce((s, o) => s + o.retroativas.length, 0),
+      tardios: analisadas.reduce((s, o) => s + o.tardios.length, 0),
+      verificar: analisadas.reduce((s, o) => s + o.verificar.length, 0),
+      semCronograma: obras.filter((o) => o.estado === 'sem-cronograma').map((o) => o.obra),
+      semPasta: obras.filter((o) => o.estado === 'sem-pasta').map((o) => o.obra),
+      regrasSugeridas: IMPRESCINDIVEIS.filter((i) => !i.confirmado).length,
+    },
+    semRegra: [...sr.values()].map((e) => ({ nome: e.nome, obras: [...e.obras].sort() })).sort((a, b) => b.obras.length - a.obras.length || a.nome.localeCompare(b.nome)).slice(0, 25),
+  };
+}
+
 // ---------------------------------------------------------------- aba Projetos
 
 export function abaProjetos(CFG, proj, visiveis) {
@@ -157,7 +271,7 @@ export function abaProjetos(CFG, proj, visiveis) {
 
   // alerta: projeto imprescindível faltando com o serviço chegando, ou que chegou depois do serviço
   const urgentes = linhas.flatMap(({ p, sits }) => (sits || []).map((s, i) => ({ obra: p.obra, item: IMPRESCINDIVEIS[i].nome, s }))
-    .filter((x) => ['falta-atrasado', 'falta-urgente'].includes(x.s.nivel)));
+    .filter((x) => ['vermelho', 'amarelo'].includes(x.s.cor)));
 
   const celula = (s) => html`<td class="qs-cel ${CLASSE[s.nivel]}" title="${s.exemplo ? `Último: ${s.exemplo.nome} (${dm(s.exemplo.data)})` : ''}">
     <b>${s.recebido ? `✓ ${dm(s.recebido)}${s.rev != null ? ` · R${String(s.rev).padStart(2, '0')}` : ''}` : '✕ falta'}</b><em>${/^Recebido /.test(s.texto) ? '' : s.texto}</em></td>`;
@@ -214,7 +328,7 @@ export function resumoProjetos(CFG, proj, visiveis) {
   const obras = obrasComProjeto(CFG, proj, visiveis).filter((p) => !p.semPasta);
   const sits = obras.flatMap((p) => IMPRESCINDIVEIS.map((i) => ({ obra: p.obra, item: i.nome, s: situacaoImprescindivel(p, i, hoje) })));
   const faltando = sits.filter((x) => /^falta/.test(x.s.nivel));
-  const urgentes = faltando.filter((x) => x.s.nivel !== 'falta');
+  const urgentes = faltando.filter((x) => ['vermelho', 'amarelo'].includes(x.s.cor));
   const tardios = sits.filter((x) => x.s.nivel === 'tardio');
   const asbuiltParado = obras.filter((p) => {
     const ds = (p.asbuilt || []).map((a) => a.data).filter(Boolean).sort();
@@ -238,10 +352,10 @@ export function statusProjetos(CFG, proj) {
   if (!proj) return null;
   const hoje = hojeISO();
   const obras = obrasComProjeto(CFG, proj, null).filter((p) => !p.semPasta);
-  const niveis = obras.flatMap((p) => IMPRESCINDIVEIS.map((i) => situacaoImprescindivel(p, i, hoje).nivel));
-  if (niveis.some((n) => n === 'falta-atrasado' || n === 'falta-urgente')) return 'critico';
+  const sits = obras.flatMap((p) => IMPRESCINDIVEIS.map((i) => situacaoImprescindivel(p, i, hoje)));
+  if (sits.some((s) => s.cor === 'vermelho')) return 'critico';   // projeto vencido ou vencendo em até 3 dias
   const parado = obras.some((p) => { const ds = (p.asbuilt || []).map((a) => a.data).filter(Boolean).sort(); return !ds.length || diasEntre(ds[ds.length - 1], hoje) > 7; });
-  return niveis.some((n) => n === 'falta' || n === 'tardio') || parado ? 'atencao' : 'ok';
+  return sits.some((s) => s.cor === 'amarelo' || s.cor === 'verificar' || s.nivel === 'falta' || s.nivel === 'tardio') || parado ? 'atencao' : 'ok';
 }
 
 // ---------------------------------------------------------------- aba As-built
