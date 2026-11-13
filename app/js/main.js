@@ -1390,6 +1390,13 @@ function configurar() {
       await sincronizarCadastros({ forcar: true });
     } catch (err) { alert(`Não foi possível mudar a situação da obra (${err.message || err}).`); desenhar(); }
   });
+  // Equipe (Cadastros): a linha curta da pessoa abre as configurações (função, obras, setores) numa abinha
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest && e.target.closest('[data-ac-abrir]'); if (!b) return;
+    const corpo = b.closest('form').querySelector('.ac-pessoa-corpo'); if (!corpo) return;
+    corpo.hidden = !corpo.hidden; b.setAttribute('aria-expanded', String(!corpo.hidden)); b.textContent = corpo.hidden ? '⚙ Configurações ▾' : '⚙ Configurações ▴';
+    b.closest('.ac-pessoa').classList.toggle('aberta', !corpo.hidden);
+  });
   // tipo escolhido → as situações daquele tipo (obra e pós-obra: andamento, pausada, finalizada; orçamento: solicitação, em orçamento, com arquitetura, com fornecedor, não fechado)
   document.addEventListener('change', (e) => {
     const t = e.target.closest && e.target.closest('[data-ob-tipo]'); if (!t) return;

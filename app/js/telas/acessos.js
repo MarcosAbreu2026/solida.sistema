@@ -29,15 +29,23 @@ export function render({ perfis = [], obras = [], posObras = [], obrasCad = [], 
     // a conta do computador do escritório (coletor) não se edita aqui: mudar a função dela faz o envio de dados parar
     if (p.funcao === 'coletor' || /^coletor@/i.test(p.email || '')) return html`<div class="ac-linha"><div class="ac-quem"><b>${p.nome || 'Coletor'}</b><span class="pequeno">conta do computador do escritório (envia os dados ao site) · não editar</span></div></div>`;
     const protegido = p.id === meuId || p.funcao === 'coletor';
-    return html`<form class="ac-linha ${p.ativo === false ? 'ac-bloq' : ''}" data-acesso="${p.id}">
-    <div class="ac-quem"><b>${p.nome || p.usuario}</b><span class="pequeno">usuário: <b>${p.usuario || p.email}</b>${p.trocar_senha ? ' · ainda não criou a senha' : ''}${p.ativo === false ? ' · bloqueado' : ''}${p.id === meuId ? ' · você' : ''}</span></div>
-    <label>Função<select name="funcao"><option value="">— escolher —</option>${opcoesFuncao(p.funcao)}</select></label>
-    <div class="ac-obras"><span class="ac-rot">Obras e pós-obras <span class="pequeno">(quem a pessoa acompanha)</span></span>${caixinhasObras(obras, p.obras || [], posObras)}</div>
-    <div class="ac-obras"><span class="ac-rot">Setores <span class="pequeno">(onde atua: gestor ou estagiário do setor)</span></span>${caixinhasSetores(p.setores || [])}</div>
-   <span class="ac-botoes"><button type="submit" class="botao on">Salvar</button>
-      <button type="button" class="botao" data-redefinir-senha="${p.id}|${p.nome || p.usuario}">Nova senha</button>
-      ${protegido ? '' : html`<button type="button" class="botao ac-excluir" data-excluir-login="${p.id}|${p.nome || p.usuario}">Excluir</button>`}</span>
-    ${funcaoPorId(p.funcao || '').porObra && p.funcao && !(p.obras || []).length ? html`<span class="pequeno pendente">escolha as obras</span>` : ''}
+    const falta = funcaoPorId(p.funcao || '').porObra && p.funcao && !(p.obras || []).length;
+    return html`<form class="ac-pessoa ${p.ativo === false ? 'ac-bloq' : ''}" data-acesso="${p.id}">
+    <div class="ac-pessoa-cab">
+      <div class="ac-pessoa-id"><b>${p.nome || p.usuario}</b>
+        <span class="pequeno">usuário <b>${p.usuario || p.email}</b> · ${p.funcao ? funcaoPorId(p.funcao).nome : html`<span class="pendente">sem função</span>`}${p.trocar_senha ? ' · ainda não criou a senha' : ''}${p.ativo === false ? ' · bloqueado' : ''}${p.id === meuId ? ' · você' : ''}${falta ? html` · <span class="pendente">escolha as obras</span>` : ''}</span></div>
+      <div class="ac-pessoa-acoes">
+        <button type="button" class="botao" data-ac-abrir aria-expanded="false" title="Função, obras e setores desta pessoa">⚙ Configurações ▾</button>
+        <button type="button" class="botao" data-redefinir-senha="${p.id}|${p.nome || p.usuario}">Nova senha</button>
+        ${protegido ? '' : html`<button type="button" class="botao ac-excluir" data-excluir-login="${p.id}|${p.nome || p.usuario}">Excluir</button>`}
+      </div>
+    </div>
+    <div class="ac-pessoa-corpo" hidden>
+      <label class="ac-pessoa-func">Função<select name="funcao"><option value="">— escolher —</option>${opcoesFuncao(p.funcao)}</select></label>
+      <div class="ac-obras"><span class="ac-rot">Obras e pós-obras <span class="pequeno">(quem a pessoa acompanha)</span></span>${caixinhasObras(obras, p.obras || [], posObras)}</div>
+      <div class="ac-obras"><span class="ac-rot">Setores <span class="pequeno">(onde atua: gestor ou estagiário do setor)</span></span>${caixinhasSetores(p.setores || [])}</div>
+      <div class="ac-pessoa-salvar"><button type="submit" class="botao on">Salvar configurações</button></div>
+    </div>
   </form>`;
   };
   const funcoes = FUNCOES.filter((f) => f.id !== 'socio');

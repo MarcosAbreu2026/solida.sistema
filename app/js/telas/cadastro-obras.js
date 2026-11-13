@@ -9,16 +9,19 @@ const opcoesSituacao = (tipo, sel) => (SITUACOES_POR_TIPO[tipo] || SITUACOES_POR
 const ordem = (a, b) => String(a.codigo).localeCompare(String(b.codigo), 'pt-BR', { numeric: true });
 
 export function secaoObras({ obrasCad = [], podeExcluir = false, listaAberta = false }) {
-  const linhaObra = (o) => { const t = tipoDe(o); const s = situacaoDe(o); return html`<form class="ac-linha ${s === 'finalizada' || s === 'nao_fechado' ? 'ac-bloq' : ''}" data-obra-cad="${o.codigo}">
-    <div class="ac-quem"><b>${o.codigo}</b>${o.semCadastro ? html`<span class="pequeno pendente">ainda não cadastrada (vem dos dados): clique em Salvar para cadastrar</span>` : ''}</div>
-    <label>Código <span class="pequeno">(dá para mudar o número)</span><input name="codigo_novo" value="${o.codigo}" autocapitalize="none" spellcheck="false" required></label>
-    <label>Tipo<select name="tipo" data-ob-tipo>${opcoesTipo(t)}</select></label>
-    <label>Cliente<input name="cliente" value="${clienteDe(o)}" placeholder="ex.: Residencial X"></label>
-    <label>Endereço<input name="endereco" value="${o.endereco || ''}" placeholder="rua, número, bairro"></label>
-    <label>Arquitetura <span class="pequeno">(opcional)</span><input name="arquitetura" value="${o.arquitetura || ''}"></label>
-    <label>Situação<select name="situacao" data-ob-situacao>${opcoesSituacao(t, s)}</select></label>
-    <span class="ac-botoes"><button type="submit" class="botao on">Salvar</button>
-      ${podeExcluir ? html`<button type="button" class="botao ac-excluir" data-excluir-obra="${o.codigo}">Remover</button>` : ''}</span>
+  const linhaObra = (o) => { const t = tipoDe(o); const s = situacaoDe(o); return html`<form class="ac-obra-form ${s === 'finalizada' || s === 'nao_fechado' ? 'ac-bloq' : ''}" data-obra-cad="${o.codigo}">
+    <div class="aof-grade">
+      <label>Código<input name="codigo_novo" value="${o.codigo}" autocapitalize="none" spellcheck="false" required></label>
+      <label>Tipo<select name="tipo" data-ob-tipo>${opcoesTipo(t)}</select></label>
+      <label>Situação<select name="situacao" data-ob-situacao>${opcoesSituacao(t, s)}</select></label>
+      <label>Cliente<input name="cliente" value="${clienteDe(o)}" placeholder="ex.: Ivan Drummond"></label>
+      <label>Endereço<input name="endereco" value="${o.endereco || ''}" placeholder="rua, número, bairro"></label>
+      <label>Arquitetura <small>(opcional)</small><input name="arquitetura" value="${o.arquitetura || ''}" placeholder="escritório de arquitetura"></label>
+    </div>
+    <div class="aof-rodape">
+      <span class="aof-aviso">${o.semCadastro ? 'Ainda não cadastrada (vem dos dados): clique em Salvar para cadastrar.' : 'Ao mudar o código, o sistema troca em tudo que usa a obra (tarefas, atas, OS, logins…).'}</span>
+      <span class="aof-btns">${podeExcluir ? html`<button type="button" class="botao ac-excluir" data-excluir-obra="${o.codigo}">Remover</button>` : ''}<button type="submit" class="botao on">Salvar</button></span>
+    </div>
   </form>`; };
   const item = (o) => { const s = situacaoDe(o); return html`<details class="ac-obra-item"><summary><b>${o.codigo}</b><span class="ac-obra-nome">${clienteDe(o) || 'sem cliente'}${o.endereco ? html` <span class="pequeno">· ${o.endereco}</span>` : ''}</span><span class="ac-sit ac-sit-${s}">${ROTULO_SITUACAO[s] || s}</span>${!o.endereco && !o.semCadastro ? html`<span class="pequeno pendente">falta o endereço</span>` : ''}</summary>${linhaObra(o)}</details>`; };
   const grupos = [
