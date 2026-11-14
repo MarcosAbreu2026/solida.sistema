@@ -26,6 +26,7 @@ function entendimento(a, nObras) {
   linhas.push(`Analisei ${plural(t.analisadas, 'obra', 'obras')} de ${nObras} ativas (as que têm pasta e cronograma lidos). ${t.verdes ? `${plural(t.verdes, 'projeto ainda está', 'projetos ainda estão')} com mais de 10 dias de folga: só monitorar.` : ''}`);
   if (t.retroativas) linhas.push(`${plural(t.retroativas, 'serviço já começou', 'serviços já começaram')} há mais de 3 semanas sem projeto vigente na pasta. Não afirmo que falta: o arquivo pode ter outro nome ou a obra seguiu sem ele. Confira manualmente (lista abaixo).`);
   if (t.semCronograma.length) linhas.push(`Sem cronograma, não dá para analisar: ${t.semCronograma.join(', ')}.`);
+  if (t.pausadas.length) linhas.push(`Obra pausada, fora da cobrança de projetos até voltar: ${t.pausadas.join(', ')}.`);
   if (t.semPasta.length) linhas.push(`Sem pasta de projetos no Drive: ${t.semPasta.join(', ')}.`);
   if (t.tardios) linhas.push(`${plural(t.tardios, 'projeto chegou', 'projetos chegaram')} depois do início do serviço correspondente (já aconteceu; serve de aprendizado).`);
   if (t.regrasSugeridas) linhas.push(`${t.regrasSugeridas} das 11 antecedências da matriz ainda são sugestão e precisam de confirmação (marcadas com *).`);
@@ -69,7 +70,7 @@ export function painel(ctx) {
   const peso = (o) => (o.estado === 'ok' ? (o.pendencias.some((p) => p.cor === 'vermelho') ? 0 : o.pendencias.length ? 1 : 2) : o.estado === 'sem-cronograma' ? 3 : 4);
   const porObra = [...a.obras].sort((x, y) => peso(x) - peso(y) || y.pendencias.length - x.pendencias.length || x.obra.localeCompare(y.obra)).map((o) => {
     const cr = o.p && o.p.cronograma;
-    if (o.estado !== 'ok') return [pd.obraCel(o.obra, '', `#/obra/${encodeURIComponent(o.obra)}`), pd.selo('', o.estado === 'sem-pasta' ? 'sem pasta de projetos' : 'sem cronograma'), '—', '—', '—', o.estado === 'sem-pasta' ? 'Pasta da obra não encontrada no Drive.' : `Não analisada: ${o.motivo}.`];
+    if (o.estado !== 'ok') return [pd.obraCel(o.obra, '', `#/obra/${encodeURIComponent(o.obra)}`), pd.selo('', o.estado === 'sem-pasta' ? 'sem pasta de projetos' : o.estado === 'pausada' ? 'obra pausada' : 'sem cronograma'), '—', '—', '—', o.estado === 'sem-pasta' ? 'Pasta da obra não encontrada no Drive.' : `Não analisada: ${o.motivo}.`];
     const v = o.pendencias.filter((p) => p.cor === 'vermelho').length; const am = o.pendencias.length - v;
     const sit = v ? pd.selo('critico', 'Vermelho') : am ? pd.selo('atencao', 'Amarelo') : o.retroativas.length ? pd.selo('atencao', 'Verificar') : pd.selo('ok', 'Em dia');
     const obs = [o.retroativas.length ? `${plural(o.retroativas.length, 'serviço já começou', 'serviços já começaram')} sem projeto achado: verificar` : '',o.tardios.length ? `${plural(o.tardios.length, 'projeto chegou', 'projetos chegaram')} depois do serviço` : '', o.verificar.length ? `verificar manualmente: ${o.verificar.map((x) => x.item.nome.toLowerCase()).join(', ')}` : ''].filter(Boolean).join(' · ');

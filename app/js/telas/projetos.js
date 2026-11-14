@@ -74,13 +74,25 @@ const NAO_LIBERADO = /rascunho|estudo|anteprojeto|obsolet|antigo|\bold\b|\.bak$/
 // linhas de compra/entrega/orçamento do cronograma não são o serviço
 const COMPRA = /^(compra|or[çc]amento|entrega)\b/i;
 
-// Obras ativas (as do Planejamento, sem as concluídas) com o que foi lido da pasta delas
+// Situação da obra no cadastro (andamento · pausada · finalizada); o código exato vale mais que o da obra-mãe (Mo565C → Mo565). Sem cadastro: ''.
+const situacaoCad = (CFG, cod) => {
+  const cad = CFG && CFG.obrasCad;
+  if (!Array.isArray(cad)) return '';
+  const r = cad.find((x) => x.codigo === cod) || cad.find((x) => cod.startsWith(x.codigo) || x.codigo.startsWith(cod));
+  return r ? r.situacao : '';
+};
+
+// Obras ativas: as do Planejamento, sem as concluídas e sem as FINALIZADAS no Cadastros (Cadastros é a fonte das listas). Pausada continua na lista, marcada.
 export function obrasComProjeto(CFG, proj, visiveis) {
   const plan = (CFG.areas.find((a) => a.id === 'planejamento') || {}).porObra || [];
   const ativas = plan.filter((o) => !/conclu[ií]da|100% executada/i.test(`${(o.cronograma || {}).info || ''} ${(o.cronograma || {}).obs || ''}`))
-    .map((o) => o.obra).filter((o) => !visiveis || visiveis.includes(o));
+    .map((o) => o.obra).filter((o) => !visiveis || visiveis.includes(o))
+    .filter((o) => situacaoCad(CFG, o) !== 'finalizada');
   const lidas = (proj && proj.obras) || [];
-  return ativas.map((obra) => lidas.find((p) => p.obra.toLowerCase() === obra.toLowerCase()) || { obra, semPasta: true });
+  return ativas.map((obra) => {
+    const p = lidas.find((x) => x.obra.toLowerCase() === obra.toLowerCase()) || { obra, semPasta: true };
+    return situacaoCad(CFG, obra) === 'pausada' ? { ...p, pausada: true } : p;
+  });
 }
 
 // Siglas da listagem de projetos (aba PROJETO ESPECIALIDADE ABREV) → nome da pasta
@@ -211,6 +223,7 @@ const norm = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toL
 // O que o agente conclui hoje: por obra, a lista de projetos da matriz com o prazo de cada um, as pendências (vermelho e amarelo) e os totais.
 export function analiseProjetos(CFG, proj, visiveis, hoje = hojeISO()) {
   const obras = obrasComProjeto(CFG, proj, visiveis).map((p) => {
+    if (p.pausada) return { obra: p.obra, estado: 'pausada', motivo: 'obra pausada no Cadastros (volta depois; os projetos serão cobrados quando retomar)', sits: [], pendencias: [], retroativas: [], verdes: [], tardios: [], verificar: [], p };
     if (p.semPasta) return { obra: p.obra, estado: 'sem-pasta', sits: [], pendencias: [], retroativas: [], verdes: [], tardios: [], verificar: [], p };
     const cr = p.cronograma;
     const semCrono = !cr || !!cr.erro || !(cr.atividades || []).some((a) => a.inicio);
@@ -255,6 +268,7 @@ export function analiseProjetos(CFG, proj, visiveis, hoje = hojeISO()) {
       verificar: analisadas.reduce((s, o) => s + o.verificar.length, 0),
       semCronograma: obras.filter((o) => o.estado === 'sem-cronograma').map((o) => o.obra),
       semPasta: obras.filter((o) => o.estado === 'sem-pasta').map((o) => o.obra),
+      pausadas: obras.filter((o) => o.estado === 'pausada').map((o) => o.obra),
       regrasSugeridas: IMPRESCINDIVEIS.filter((i) => !i.confirmado).length,
     },
     semRegra: [...sr.values()].map((e) => ({ nome: e.nome, obras: [...e.obras].sort() })).sort((a, b) => b.obras.length - a.obras.length || a.nome.localeCompare(b.nome)).slice(0, 25),
