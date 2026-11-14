@@ -156,3 +156,24 @@ export function render({ eqp, obrasCad, params, hoje = hojeISO() }) {
     ${pd.secao('Por obra', 'Quantos de cada função e quem está em cada obra, semana a semana', tabelaObras)}
     ${pd.secao('Por funcionário', 'Onde cada pessoa está em cada semana (chip = obra; "3d" = só 3 dias da semana)', tabelaPessoas)}`;
 }
+
+// ---- alocação por obra (usada pelo dimensionamento): quantos homens-dia de cada profissional a distribuição põe em cada obra na semana
+// função da planilha → profissional da planilha de produtividade (ladrilheiro assenta revestimento: conta como pedreiro; encarregado e pós-obra não entram)
+const PROF_CANON = { pedreiro: 'pedreiro', ajudante: 'ajudante', eletricista: 'eletricista', 'bombeiro hidráulico': 'bombeiro', pintor: 'pintor', carpinteiro: 'carpinteiro', ladrilheiro: 'pedreiro' };
+export function alocacaoPorObra(eqp, segunda, normaliza = (c) => c) {
+  const out = new Map();
+  const cobre = !!eqp && new Set(eqp.semanas || []).has(segunda);
+  if (!cobre) return { cobre: false, obras: out };
+  for (const p of (eqp.pessoas || [])) {
+    const w = semanaDaPessoa(p, segunda, true, normaliza);
+    const prof = PROF_CANON[rotuloFuncao(p.funcao)];
+    if (!prof) continue;
+    for (const [cod, dias] of w.obras) {
+      const o = out.get(cod) || { prof: {} };
+      const e = o.prof[prof] || { hd: 0, pessoas: [] };
+      e.hd += Math.min(5, dias); e.pessoas.push(p.nome);
+      o.prof[prof] = e; out.set(cod, o);
+    }
+  }
+  return { cobre: true, obras: out };
+}

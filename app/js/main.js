@@ -31,6 +31,7 @@ import * as feed from './telas/feed.js';
 import * as notificacoes from './notificacoes.js';
 import * as funcObras from './telas/func-obras.js';
 import * as metasHist from './telas/metas-hist.js';
+import * as dimens from './telas/dimensionamento.js';
 import { aplicarCadastroNasObras } from './obras-cadastro.js';
 import * as evidencias from './evidencias.js';
 import * as treinamentos from './telas/treinamentos.js';
@@ -825,7 +826,7 @@ function desenhar() {
   let out;
   try {
     // ---- desenho do Marcos: Início, painéis dos departamentos, página da obra e celular da obra
-    const abasDe = (base, ativa) => pd.abas([{ id: '', nome: 'Painel', href: base }, { id: 'detalhe', nome: tela === 'geral' ? 'Visão geral (anterior)' : 'Detalhes', href: `${base}/detalhe` }, ...(tela === 'transporte' ? [{ id: 'rotas', nome: 'Rotas da semana', href: `${base}/rotas` }] : []), ...(tela === 'planejamento' ? [{ id: 'metas', nome: 'Metas (4 semanas)', href: `${base}/metas` }, { id: 'funcionarios', nome: 'Funcionários por obra', href: `${base}/funcionarios` }] : [])], ativa);
+    const abasDe = (base, ativa) => pd.abas([{ id: '', nome: 'Painel', href: base }, { id: 'detalhe', nome: tela === 'geral' ? 'Visão geral (anterior)' : 'Detalhes', href: `${base}/detalhe` }, ...(tela === 'transporte' ? [{ id: 'rotas', nome: 'Rotas da semana', href: `${base}/rotas` }] : []), ...(tela === 'planejamento' ? [{ id: 'metas', nome: 'Metas (4 semanas)', href: `${base}/metas` }, { id: 'funcionarios', nome: 'Funcionários por obra', href: `${base}/funcionarios` }, { id: 'dimensionamento', nome: 'Dimensionamento da equipe', href: `${base}/dimensionamento` }] : [])], ativa);
     if (tela === 'geral' && ehPainel) {
       out = `<div class="pd">${pd.cabecalho({ rotulo: new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' }) })}${abasDe('#/geral', '')}${inicio.painel(ctxPainel(null, null))}</div>`;
     } else if (dep && ehPainel) {
@@ -837,7 +838,8 @@ function desenhar() {
       if (!estado.celCarregado) { estado.celCarregado = true; celularObra.carregar(() => desenhar()); }
       if (f.porObra && !obrasDaPessoa().includes(rota.sub)) out = `<div class="erro">A obra ${esc(rota.sub)} não está entre as suas obras.</div>`;
       else out = String(celularObra.render(ctxPainel(depPorId('operacao'), CFG.areas.find((a) => a.id === 'operacao')), rota.sub, rota.params));
-    } else if (dep && dep.id === 'planejamento' && rota.sub === 'metas') out = String(metasHist.render({ CFG, params: rota.params }));
+    } else if (dep && dep.id === 'planejamento' && rota.sub === 'dimensionamento') out = String(dimens.render({ CFG, drive: estado.drive, eqp: estado.equipeProg, obrasCad: estado.obrasCad, params: rota.params }));
+    else if (dep && dep.id === 'planejamento' && rota.sub === 'metas') out = String(metasHist.render({ CFG, params: rota.params }));
     else if (dep && dep.id === 'planejamento' && rota.sub === 'funcionarios') out = String(funcObras.render({ eqp: estado.equipeProg, obrasCad: estado.obrasCad, params: rota.params }));
     else if (ehObraPlan) out = T.telaObra(rota.arg);
     else if (area && area.id === 'operacao') {
@@ -917,7 +919,7 @@ function desenhar() {
     } else if (area) out = T.telaArea(area);
     else out = T.telaGeral();
     // tela antiga dentro do departamento: fica na aba "Detalhes"
-    if ((dep || tela === 'geral') && !ehPainel) out = `<div class="pd">${dep ? pd.cabecalho({ resp: dep.resp }) : ''}${abasDe(`#/${dep ? dep.id : 'geral'}`, tela === 'transporte' && rota.sub === 'rotas' ? 'rotas' : tela === 'planejamento' && ['metas', 'funcionarios'].includes(rota.sub) ? rota.sub : 'detalhe')}<div class="pd-legado">${out}</div></div>`;
+    if ((dep || tela === 'geral') && !ehPainel) out = `<div class="pd">${dep ? pd.cabecalho({ resp: dep.resp }) : ''}${abasDe(`#/${dep ? dep.id : 'geral'}`, tela === 'transporte' && rota.sub === 'rotas' ? 'rotas' : tela === 'planejamento' && ['metas', 'funcionarios', 'dimensionamento'].includes(rota.sub) ? rota.sub : 'detalhe')}<div class="pd-legado">${out}</div></div>`;
   } catch (e) {
     console.error(e);
     out = `<div class="erro">Erro ao montar esta tela: ${esc(e.message)}</div>`;

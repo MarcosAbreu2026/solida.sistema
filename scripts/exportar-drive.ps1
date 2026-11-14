@@ -317,6 +317,7 @@ function Ler-Listagem([string]$pastaProjeto) {
 # ---------------------------------------------------------------- escopo e programação semanal (por obra)
 . (Join-Path $PSScriptRoot 'ler-pdf.ps1')
 . (Join-Path $PSScriptRoot 'ler-programacao-xlsx.ps1')
+. (Join-Path $PSScriptRoot 'ler-rendimentos-equipe.ps1')
 . (Join-Path $PSScriptRoot 'grade-xlsx.ps1')
 
 # leitura anterior (para não reler PDF/planilha que não mudou)
@@ -492,7 +493,9 @@ foreach ($pasta in Get-ChildItem $pastaObras -Directory | Where-Object { $_.Name
     programacao = Ler-Programacao $pasta.FullName $codigo
   })
 }
-$jsonProj = [ordered]@{ geradoEm = (Get-Date).ToString('o'); pasta = 'SOLIDA GERAL\OPERACOES\OBRAS\<obra>\PROJETO'; obras = $obras }
+# rendimentos: médias de produtividade da equipe por serviço (planilha do Marcos), para dimensionar a equipe da programação semanal
+$rendimentos = try { Ler-RendimentosEquipe $Raiz } catch { [ordered]@{ erro = $_.Exception.Message } }
+$jsonProj = [ordered]@{ geradoEm = (Get-Date).ToString('o'); pasta = 'SOLIDA GERAL\OPERACOES\OBRAS\<obra>\PROJETO'; obras = $obras; rendimentos = $rendimentos }
 [IO.File]::WriteAllText((Join-Path $Saida 'projetos.json'), ($jsonProj | ConvertTo-Json -Depth 20 -Compress), $utf8)
 Gravar-Evidencias
 

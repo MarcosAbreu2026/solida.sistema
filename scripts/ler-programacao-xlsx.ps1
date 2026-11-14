@@ -42,6 +42,7 @@ function Ler-ProgramacaoXlsx([string]$pastaProg, [string]$codigo) {
     [void]$saida.Add([ordered]@{
       data = $dataAtual; fase = $l.c[$cols.fase]; cod = $l.c[$cols.cod]; tarefa = $tarefa
       qtd = $(if ($cols.qtd) { Numero $l.c[$cols.qtd] } else { $null }); un = $l.c[$cols.un]; local = $l.c[$cols.local]; funcionario = $l.c[$cols.func]
+      cor = $(if ($cols.fase) { $l.cor[$cols.fase] } else { $null })   # cor de fundo da FASE: cinza = equipe Sólida; laranja/verde = terceiro
     })
   }
   return [ordered]@{ arquivo = $arq.Name; modificado = $arq.LastWriteTime.ToString('o'); semana = $(if ($semana) { "S$semana" } else { '' }); linhas = $saida }
