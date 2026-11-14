@@ -5,7 +5,7 @@
 import { html } from '../formato.js';
 import * as pd from './painel-dep.js';
 import { somarDias, inicioDaSemana, hojeISO } from '../datas.js';
-import { lerProgramacao } from '../equipe-prog.js';
+import { lerProgramacao, comparar } from '../equipe-prog.js';
 
 const N_SEMANAS = 4;
 const dm = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
@@ -51,7 +51,7 @@ function situacaoCad(cad, cod) {
   return r ? r.situacao : '';
 }
 
-export function render({ eqp, obrasCad, params, hoje = hojeISO() }) {
+export function render({ eqp, obrasCad, efetivo, params, hoje = hojeISO() }) {
   if (!eqp || !eqp.pessoas || !eqp.pessoas.length) {
     return html`<p class="pd-vazio">A distribuição de funcionários (SL_FUNC_OBRAS) ainda não chegou do computador do escritório${eqp && eqp.erro ? ` — ${eqp.erro}` : ''}.</p>`;
   }
@@ -152,6 +152,7 @@ export function render({ eqp, obrasCad, params, hoje = hojeISO() }) {
 
   return html`${pd.pergunta('Quem está em cada obra nas próximas 4 semanas, e quem está livre?', 'Pergunta da aba')}
     ${nav}${cartoes}
+    ${secaoPresenca(eqp, efetivo, obrasCad, hoje)}
     ${avisos.length ? pd.caixa('Atenção', pd.itens(avisos)) : ''}
     ${pd.secao('Por obra', 'Quantos de cada função e quem está em cada obra, semana a semana', tabelaObras)}
     ${pd.secao('Por funcionário', 'Onde cada pessoa está em cada semana (chip = obra; "3d" = só 3 dias da semana)', tabelaPessoas)}`;
@@ -176,4 +177,40 @@ export function alocacaoPorObra(eqp, segunda, normaliza = (c) => c) {
     }
   }
   return { cobre: true, obras: out };
+}
+
+// ---- conferência diária: quem estava programado para HOJE e se apareceu no relatório de efetivo dos grupos de WhatsApp das obras
+// (a leitura dos grupos é feita pelo leitor automático; a comparação é a mesma do RH › Programado × realizado, em equipe-prog.js › comparar)
+const EST_ROT = { ok: ['ok', 'bateu com o programado'], outra: ['atencao', 'esteve em outra obra'], semreg: ['critico', 'programado e não apareceu'], fora: ['atencao', 'apareceu sem estar programado'], futuro: ['', 'a confirmar (relatório do dia ainda não chegou)'], afast: ['', 'afastado / férias'], po: ['', 'pós-obra (sem leitura do grupo)'] };
+const PESO_EST = { semreg: 0, outra: 1, fora: 2, futuro: 3, po: 4, afast: 5, ok: 6 };
+function secaoPresenca(eqp, efetivo, obrasCad, hoje) {
+  const segunda = inicioDaSemana(hoje);
+  const idx = Math.round((new Date(`${hoje}T12:00:00Z`) - new Date(`${segunda}T12:00:00Z`)) / 86400000);
+  if (idx > 5) return pd.secao('Conferência de hoje', 'domingo', html`<p class="pd-vazio">Hoje é domingo: sem programação para conferir.</p>`);
+  if (!eqp || !(eqp.semanas || []).includes(segunda)) return '';
+  const r = comparar(eqp, efetivo, segunda, hoje);
+  const dia = (efetivo && efetivo.dias && efetivo.dias[hoje]) || {};
+  const itens = r.linhas.map((l) => ({ p: l.pessoa, c: l.cel[idx] })).filter((x) => x.c && (x.c.prog.length || x.c.real.length) && x.c.est);
+  // o RH só dá alguém como ausente quando o dia já passou; aqui, se o relatório de efetivo da obra programada JÁ chegou hoje e a pessoa não consta, vale como "programado e não apareceu"
+  for (const x of itens) {
+    const obrasProg = x.c.prog.filter((i) => i.tipo === 'obra').map((i) => i.cod);
+    if (x.c.est === 'futuro' && obrasProg.length && obrasProg.some((o) => Object.keys(dia).some((k) => obraBase(k) && obraBase(k) === obraBase(o)))) x.c = { ...x.c, est: 'semreg' };
+  }
+  const conta = (e) => itens.filter((x) => x.c.est === e).length;
+  const cad = Array.isArray(obrasCad) ? obrasCad : [];
+  const semRelatorio = cad.filter((c) => /^mo/i.test(c.codigo) && (c.tipo || 'obra') === 'obra' && c.situacao === 'andamento' && !Object.keys(dia).some((o) => o.toUpperCase() === String(c.codigo).toUpperCase())).map((c) => c.codigo);
+  const cartoes = pd.cartoes([
+    { rotulo: 'Programados hoje', valor: String(itens.length), sub: `${hoje.slice(8, 10)}/${hoje.slice(5, 7)} · distribuição de funcionários` },
+    { rotulo: 'Bateu com o programado', valor: String(conta('ok')), nivel: conta('ok') ? 'ok' : '', sub: 'apareceu na obra programada' },
+    { rotulo: 'Programado e não apareceu', valor: String(conta('semreg')), nivel: conta('semreg') ? 'critico' : 'ok', sub: 'relatório da obra saiu e ele não consta' },
+    { rotulo: 'Em outra obra / fora do programado', valor: String(conta('outra') + conta('fora')), nivel: conta('outra') + conta('fora') ? 'atencao' : 'ok', sub: 'conferir o remanejamento' },
+  ]);
+  const linhas = itens.sort((a, b) => (PESO_EST[a.c.est] ?? 9) - (PESO_EST[b.c.est] ?? 9) || String(a.p.nome).localeCompare(String(b.p.nome))).map(({ p, c }) => [
+    cap(String(p.nome).replace(/\s+/g, ' ')), cap(rotuloFuncao(p.funcao)), c.prog.map((i) => i.rotulo).join(' + ') || '—', c.est === 'futuro' ? '—' : (c.real.join(' + ') || '—'), pd.selo(...(EST_ROT[c.est] || ['', c.est])),
+  ]);
+  const aviso = [
+    semRelatorio.length ? `Obras em andamento sem relatório de efetivo hoje: ${semRelatorio.join(', ')}. Até o relatório chegar (prazo 12h), ninguém dessas obras é dado como ausente.` : '',
+    r.orfaos.filter((o) => o.dia === hoje).length ? `Apareceram no relatório de hoje e não estão na distribuição: ${[...new Set(r.orfaos.filter((o) => o.dia === hoje).map((o) => `${o.nome} (${o.obra})`))].join(', ')}.` : '',
+  ].filter(Boolean);
+  return pd.secao(`Conferência de hoje · quem estava programado × quem apareceu`, 'Programado (SL_FUNC_OBRAS) × efetivo lido dos grupos de WhatsApp das obras', html`${cartoes}${aviso.length ? pd.caixa('Atenção', pd.itens(aviso)) : ''}${pd.tabela(['Funcionário', 'Função', 'Programado hoje', 'Esteve em', 'Situação'], linhas, { vazio: 'Ninguém programado para hoje na distribuição.' })}`);
 }

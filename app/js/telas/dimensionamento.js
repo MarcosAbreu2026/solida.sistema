@@ -8,6 +8,7 @@ import { somarDias, inicioDaSemana, hojeISO } from '../datas.js';
 import { alocacaoPorObra } from './func-obras.js';
 import { programacaoDaObra } from './prog-obra.js';
 import { obrasComProjeto } from './projetos.js';
+import { cronogramaDa } from './operacao.js';
 
 const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/²/g, '2').replace(/\s+/g, ' ').trim();
 const dm = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
@@ -85,6 +86,44 @@ function tarefasDaObra(CFG, p, cod, ini, hoje) {
   return { fonte: null, linhas: [] };
 }
 
+
+// ---- escopo × prazo (obra inteira): homens-dia do ESCOPO (itens com média) → o que falta, pelo avanço do cronograma → efetivo médio necessário até o fim previsto
+const diasUteis = (de, ate) => { let n = 0; for (let d = de; d <= ate; d = somarDias(d, 1)) { const w = new Date(`${d}T12:00:00Z`).getUTCDay(); if (w !== 0 && w !== 6) n++; } return n; };
+const NAO_MEDIVEL = /^(COP|DOC|MAQ|FER|CON)/i;   // custo operacional, documentos, máquinas, ferramentas, consumíveis: não têm produtividade
+function escopoDaObra(CFG, drive, cod, p, hoje, rend, alocSemana) {
+  const itens = ((p && p.escopo && p.escopo.grupos) || []).flatMap((g) => (g.itens || []).map((i) => ({ cod: i.cod, tarefa: i.desc, qtd: i.quant, un: i.unid })));
+  if (!itens.length) return html`<p class="pd-vazio">Sem escopo lido na pasta da obra (GERENCIAMENTO › DOC › ESCOPO).</p>`;
+  const cr = cronogramaDa(drive && drive.projetos, cod);
+  if (cr.erro) return html`<p class="pd-vazio">Sem cronograma lido: ${cr.erro}.</p>`;
+  const medivel = itens.filter((i) => typeof i.qtd === 'number' && i.qtd > 0 && !NAO_MEDIVEL.test(String(i.cod || '')) && !SEM_MEDIDA.has(unid(i.un)));
+  const d = dimensionar(medivel, rend);
+  const total = Object.values(d.hd).reduce((s, v) => s + v, 0);
+  const cobertura = medivel.length ? d.cobertas.length / medivel.length : 0;
+  const exe = Math.max(0, Math.min(1, cr.exe || 0));
+  const inicio = cr.inicioObra > hoje ? cr.inicioObra : hoje;
+  const diasRest = cr.fimObra && cr.fimObra >= inicio ? diasUteis(inicio, cr.fimObra) : 0;
+  const vencido = !!cr.fimObra && cr.fimObra < hoje;
+  const profs = Object.keys(d.hd).sort((a, b) => ORDEM_PROF.indexOf(a) - ORDEM_PROF.indexOf(b));
+  const linhas = profs.map((p2) => {
+    const restante = d.hd[p2] * (1 - exe);
+    const nec = diasRest ? restante / diasRest : null;
+    const aloc = ((alocSemana || {})[p2] && alocSemana[p2].hd) ? alocSemana[p2].hd / 5 : 0;
+    let sit = pd.selo('', 'sem distribuição');
+    if (alocSemana) {
+      if (nec == null) sit = pd.selo('atencao', 'prazo vencido');
+      else if (nec > aloc * 1.15 + 0.3) sit = pd.selo('critico', `efetivo abaixo: faltam ~${n1(nec - aloc)} pessoa(s)`);
+      else sit = pd.selo('ok', 'efetivo dá conta');
+    }
+    return [html`<b>${rotuloProf(p2)}</b>`, n1(d.hd[p2]), n1(restante), nec == null ? '—' : n1(nec), alocSemana ? n1(aloc) : '—', sit];
+  });
+  const avisos = [
+    cobertura < 0.5 ? html`<div class="pd-aviso pd-av-atencao"><i aria-hidden="true">⚠</i><span><b>Cobertura baixa:</b> só ${d.cobertas.length} de ${medivel.length} itens do escopo têm média na planilha, então o total está subestimado.</span></div>` : '',
+    vencido ? html`<div class="pd-aviso pd-av-atencao"><i aria-hidden="true">⚠</i><span>O fim previsto do cronograma (${dm(cr.fimObra)}) já passou: revisar o cronograma antes de usar o efetivo necessário.</span></div>` : '',
+  ];
+  return html`<p class="pequeno">${d.cobertas.length} de ${medivel.length} itens do escopo com média (${Math.round(cobertura * 100)}%) · ${d.semMedia.length} sem média · avanço médio do cronograma ${Math.round(exe * 100)}% · ${diasRest} dias úteis até o fim previsto${cr.fimObra ? ` (${dm(cr.fimObra)})` : ''}.</p>${avisos}
+    ${pd.tabela(['Profissional', 'Escopo todo (homens-dia)', 'Falta fazer (estimado)', 'Efetivo médio necessário até o fim (pessoas)', 'Alocado na semana (pessoas)', 'Situação'], linhas, { vazio: 'Nenhum item do escopo com média na planilha.' })}
+    <p class="pequeno" style="margin-top:6px">Total do escopo: ${n1(total)} homens-dia. "Falta fazer" = escopo × (1 − avanço médio das atividades do cronograma): é uma estimativa, não o medido.</p>`;
+}
 const STATUS_FRACO = /^(novo|revisado)/i;   // média ainda estimada/revisada: validar medindo na obra
 
 export function render({ CFG, drive, eqp, obrasCad, params, hoje = hojeISO() }) {
@@ -129,6 +168,11 @@ export function render({ CFG, drive, eqp, obrasCad, params, hoje = hojeISO() }) 
     const semMediaTxt = d.semMedia.length ? html`<details class="caixa"><summary><span class="caixa-tit">Tarefas sem média (${d.semMedia.length})</span><span class="pequeno">acrescentar na planilha de produtividade</span></summary><div style="padding:6px 18px 14px">${pd.itens([...new Map(d.semMedia.map((x) => [`${x.cod}|${norm(x.tarefa)}`, x])).values()].map((x) => `${x.cod ? `${x.cod} · ` : ''}${x.tarefa}${typeof x.qtd === 'number' ? ` (${x.qtd} ${x.un || ''})` : ''}: ${x.motivo}`))}</div></details>` : '';
     blocos.push(pd.secao(`${o.obra} · ${t.rotulo}`, t.arquivo ? `${t.arquivo}` : '', html`${resumo}${pd.tabela(['Profissional', 'Necessário (homens-dia)', 'Pessoas', 'Alocado na distribuição (homens-dia)', 'Situação'], linhasProf, { vazio: 'Nenhuma tarefa com média nesta semana.' })}${acimaTxt}${semMediaTxt}`));
   }
+  // escopo × prazo: uma tabela por obra em andamento (não pausada, não em fase de pendências); a alocação é a da semana de hoje
+  const alocHoje = alocacaoPorObra(eqp, inicioDaSemana(hoje));
+  const ultimaMeta = ((((CFG && CFG.metasSemanais) || {}).semanas) || []).slice(-1)[0];
+  const emPendencias = (cod, p) => (p && p.programacao && p.programacao.tipo === 'pendencias') || (!!ultimaMeta && (ultimaMeta.obras || []).some((x) => x.obra === cod && x.tipo === 'pendencias'));
+  const escopoBlocos = obras.filter((o) => !emPendencias(o.obra, o)).map((o) => pd.secao(`${o.obra} · escopo × prazo`, 'obra inteira · escopo da pasta × produtividade média × cronograma', escopoDaObra(CFG, drive, o.obra, o, hoje, rend, alocHoje.cobre ? (alocHoje.obras.get(o.obra) || { prof: {} }).prof : null)));
   const nav = html`<div class="fo-nav"><a class="botao" href="#/planejamento/dimensionamento?s=${somarDias(ini, -7)}">← Semana anterior</a>
     <b>Semana de ${dm(ini)} a ${dm(somarDias(ini, 4))}</b>
     ${ini !== inicioDaSemana(hoje) ? html`<a class="botao" href="#/planejamento/dimensionamento">Esta semana</a>` : ''}
@@ -143,5 +187,6 @@ export function render({ CFG, drive, eqp, obrasCad, params, hoje = hojeISO() }) 
   return html`${pd.pergunta('A equipe alocada dá conta da programação da semana?', 'Pergunta da aba')}
     ${nav}
     ${pd.caixa('Atenção', pd.itens(avisos))}
-    ${blocos.length ? blocos : html`<p class="pd-vazio">Nenhuma obra com programação ou meta com quantidade nesta semana.</p>`}`;
+    ${blocos.length ? blocos : html`<p class="pd-vazio">Nenhuma obra com programação ou meta com quantidade nesta semana.</p>`}
+    ${escopoBlocos}`;
 }

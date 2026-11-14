@@ -840,7 +840,7 @@ function desenhar() {
       else out = String(celularObra.render(ctxPainel(depPorId('operacao'), CFG.areas.find((a) => a.id === 'operacao')), rota.sub, rota.params));
     } else if (dep && dep.id === 'planejamento' && rota.sub === 'dimensionamento') out = String(dimens.render({ CFG, drive: estado.drive, eqp: estado.equipeProg, obrasCad: estado.obrasCad, params: rota.params }));
     else if (dep && dep.id === 'planejamento' && rota.sub === 'metas') out = String(metasHist.render({ CFG, params: rota.params }));
-    else if (dep && dep.id === 'planejamento' && rota.sub === 'funcionarios') out = String(funcObras.render({ eqp: estado.equipeProg, obrasCad: estado.obrasCad, params: rota.params }));
+    else if (dep && dep.id === 'planejamento' && rota.sub === 'funcionarios') out = String(funcObras.render({ eqp: estado.equipeProg, obrasCad: estado.obrasCad, efetivo: estado.efetivo, params: rota.params }));
     else if (ehObraPlan) out = T.telaObra(rota.arg);
     else if (area && area.id === 'operacao') {
       // Operação: acompanhamento de todas as obras (quem é de obra vê só as suas e não vê o Resumo do setor)
