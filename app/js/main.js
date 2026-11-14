@@ -31,6 +31,7 @@ import * as feed from './telas/feed.js';
 import * as notificacoes from './notificacoes.js';
 import * as funcObras from './telas/func-obras.js';
 import * as metasHist from './telas/metas-hist.js';
+import { aplicarCadastroNasObras } from './obras-cadastro.js';
 import * as evidencias from './evidencias.js';
 import * as treinamentos from './telas/treinamentos.js';
 import { desenharBoneco } from './escritorio/desenho.js';
@@ -664,6 +665,8 @@ function desenhar() {
   if (!logado()) { mostrarLogin(); desenharPedido(); return; }
   esconderLogin();
   const CFG = estado.cfg;
+  // Cadastros manda nas listas: obra finalizada (ex.: Mo344, Mo565C, Mo565D) sai de todas as telas, mesmo que os agentes ou o Drive ainda tragam a obra
+  aplicarCadastroNasObras({ cfg: CFG, obrasCad: estado.obrasCad, projetos: estado.drive && estado.drive.projetos, estoque: estado.drive && estado.drive.estoque });
   // onde está cada funcionário: só o efetivo de HOJE (zera todo dia); a lista de nomes vem do RH
   // obra cadastrada em Acessos entra na hora nas telas que usam a lista de obras dos dados (efetivo, ferramentas, orçamentos…)
   if (CFG) { CFG.obrasDados = CFG.obrasDados || [...(CFG.obras || [])]; CFG.obras = [...new Set([...CFG.obrasDados, ...(estado.obrasCad || []).filter(ativaNasListas).map((c) => c.codigo)])]; }
