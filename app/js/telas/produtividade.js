@@ -14,7 +14,9 @@ import { programacoes, semanaDoDia, registroDoDia, feriado } from '../programaca
 
 export { programacoes };
 
-export const MOTIVOS = ['Falta de mão de obra', 'Falta de material', 'Procrastinação', 'Chuva / clima',
+// Causas de uma meta não atingida (14/11/2026: o Marcos acrescentou Mau planejamento, Erro de planejamento e Impossibilidade, para separar
+// problema de execução de problema de planejamento). O quadro Planejamento › Metas (telas/metas-hist.js) usa esta mesma lista.
+export const MOTIVOS = ['Falta de mão de obra', 'Falta de material', 'Mau planejamento', 'Erro de planejamento', 'Impossibilidade', 'Procrastinação', 'Chuva / clima',
   'Serviço dependia de outra equipe', 'Mudança de prioridade', 'Outro'];
 
 const norm = (s) => String(s || '').toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
