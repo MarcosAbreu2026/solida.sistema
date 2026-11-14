@@ -511,6 +511,7 @@ function telaObraNova(rota) {
   if (!abaId) corpo = obraDep.resumo(ctx, cod);
   else if (legado.includes(abaId)) corpo = operacao.abaDaObra(estado.cfg, estado.drive.projetos, cod, abaId, rota.params, `${base}/escopo`, { veValores: veValores() });
   else corpo = obraDep.aba(ctx, cod, abaId);
+  if (abaId === 'programacao') corpo = String(obraDep.abaProgramacao(ctx, cod)) + corpo;   // planilha da semana (hoje, fases, materiais) em cima; o PDF lido embaixo
   return `<div class="pd">${obraDep.cabecalho(ctx, cod)}${pd.abas(tabs, abaId)}<div class="pd-corpo">${corpo}</div></div>`;
 }
 

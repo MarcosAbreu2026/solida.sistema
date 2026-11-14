@@ -5,6 +5,7 @@ import { html } from '../formato.js';
 import * as pd from '../telas/painel-dep.js';
 import * as oc from './obras-comum.js';
 import { somarDias } from '../datas.js';
+import * as progObra from '../telas/prog-obra.js';
 
 export const ABAS = [
   { id: '', nome: 'Resumo' }, { id: 'cronograma', nome: 'Cronograma' }, { id: 'programacao', nome: 'Programação semanal' },
@@ -109,6 +110,7 @@ export function resumo(ctx, cod) {
   return html`<div class="pd-sec-h"><h2>Visão da obra</h2><a class="pd-bt pd-bt-cheio pd-so-celular" href="#/celular/${encodeURIComponent(cod)}">Abrir celular da obra</a></div>
     ${plan}
     ${blocos}
+    ${progObra.secoes(ctx, oc.projetoDa(ctx, cod), cod)}
     ${pd.secao('Quem precisa agir nesta obra', 'Alertas dos agentes que citam a obra · alerta vira tarefa com data-limite', pd.quemAgir(agir, { obra: cod, setor: 'Operação' }))}
     ${pd.secao('Escopo e aditivos', es && es.arquivo ? `Drive · ${es.arquivo}${ctx.veValores ? '' : ' · valores só para sócios'}` : '', escopo)}`;
 }
@@ -173,3 +175,8 @@ function abaPendencias(ctx, cod) {
     <a class="pd-bt" href="#/atas?obra=${encodeURIComponent(cod)}">Abrir em Tarefas</a>`;
 }
 
+
+// aba Programação semanal: hoje, dia a dia, fases e materiais (a planilha da pasta); embaixo continua o PDF lido (telas/operacao.js)
+export function abaProgramacao(ctx, cod) {
+  return progObra.secoes(ctx, oc.projetoDa(ctx, cod), cod, { completo: true });
+}

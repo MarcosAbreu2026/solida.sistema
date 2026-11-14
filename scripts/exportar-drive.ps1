@@ -316,6 +316,7 @@ function Ler-Listagem([string]$pastaProjeto) {
 
 # ---------------------------------------------------------------- escopo e programação semanal (por obra)
 . (Join-Path $PSScriptRoot 'ler-pdf.ps1')
+. (Join-Path $PSScriptRoot 'ler-programacao-xlsx.ps1')
 . (Join-Path $PSScriptRoot 'grade-xlsx.ps1')
 
 # leitura anterior (para não reler PDF/planilha que não mudou)
@@ -432,7 +433,7 @@ function Colunas-Valor($linhas) {
   return @($cab.c.GetEnumerator() | Where-Object { $_.Value -match '(?i)^(material|m[ãa]o de obra|m\. ?obra|loca[çc][ãa]o|s\.?\s*total)' } | ForEach-Object { Indice-Coluna $_.Key } | Sort-Object)
 }
 # Programação semanal (ou pendências, na fase final): o PDF mais novo de GERENCIAMENTO\PROGRAMAÇÃO SEMANAL
-function Ler-Programacao([string]$pastaObra, [string]$codigo) {
+function Ler-ProgramacaoPdf([string]$pastaObra, [string]$codigo) {
   $p = Get-ChildItem (Join-Path $pastaObra 'GERENCIAMENTO') -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '(?i)^PROGRAMA' } | Select-Object -First 1
   if (-not $p) { return $null }
   $arq = Get-ChildItem $p.FullName -File -ErrorAction SilentlyContinue |
@@ -445,6 +446,16 @@ function Ler-Programacao([string]$pastaObra, [string]$codigo) {
   try { $tb = Ler-TabelaPdf (Ler-PdfTexto $arq.FullName) } catch { return [ordered]@{ arquivo = $arq.Name; modificado = $arq.LastWriteTime.ToString('o'); erro = $_.Exception.Message } }
   $tipo = if ($arq.Name -match '(?i)PEND') { 'pendencias' } elseif ($arq.Name -match '(?i)METAS') { 'metas' } else { 'programacao' }
   return [ordered]@{ v = $VERSAO_LEITURA; arquivo = $arq.Name; modificado = $arq.LastWriteTime.ToString('o'); tipo = $tipo; titulo = $tb.titulo; nota = $tb.nota; secoes = $tb.secoes }
+}
+# Programação semanal: o PDF (tipo, título, seções de pendências) + as linhas da planilha .xlsx (data, fase, tarefa, quantidade, local, funcionário), em programacao.planilha
+function Ler-Programacao([string]$pastaObra, [string]$codigo) {
+  $prog = Ler-ProgramacaoPdf $pastaObra $codigo
+  $p = Get-ChildItem (Join-Path $pastaObra 'GERENCIAMENTO') -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '(?i)^PROGRAMA' } | Select-Object -First 1
+  $x = if ($p) { try { Ler-ProgramacaoXlsx $p.FullName $codigo } catch { $null } } else { $null }
+  if (-not $x) { return $prog }
+  if (-not $prog) { $prog = [ordered]@{ tipo = 'programacao'; arquivo = $x.arquivo; modificado = $x.modificado } }
+  if ($prog -is [Collections.IDictionary]) { $prog['planilha'] = $x } else { $prog | Add-Member -NotePropertyName planilha -NotePropertyValue $x -Force }
+  return $prog
 }
 . (Join-Path $PSScriptRoot 'evidencias.ps1')
 . (Join-Path $PSScriptRoot 'posobra.ps1')
