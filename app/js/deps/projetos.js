@@ -98,5 +98,5 @@ export function painel(ctx) {
       pd.tabela(['Obra', 'Situação', 'Vermelhas', 'Amarelas', 'Monitorar (+10 dias)', 'Observação'], porObra, { vazio: 'Nenhuma obra ativa encontrada.' }))}
     ${verificarAgora.length ? pd.secao('Verificar manualmente', 'Serviço que começou há mais de 3 semanas e não achei o projeto vigente na pasta', pd.tabela(['Obra', 'Projeto', 'Serviço do cronograma', 'O que fazer'], verificarAgora)) : ''}
     ${pd.caixa('Serviços do cronograma sem regra na matriz', semRegra, { direita: 'a diretoria decide se entram na matriz' })}
-    <p class="pequeno" style="margin-top:14px">Regra: o projeto precisa estar na pasta (revisão mais recente; rascunho, estudo, anteprojeto, obsoleto e antigo não contam) até o início do serviço menos a antecedência. * = antecedência sugerida, ainda não confirmada. O sistema só lê o Drive; não move nem apaga arquivos.</p>`;
+    <p class="pequeno" style="margin-top:14px">Regra: o projeto precisa estar na pasta (revisão mais recente; rascunho, estudo, anteprojeto, obsoleto e antigo não contam) até o início do serviço menos a antecedência (a de cada projeto está na matriz, confirmada pela diretoria).${t.regrasSugeridas ? ' * = antecedência sugerida, ainda não confirmada.' : ''} O sistema só lê o Drive; não move nem apaga arquivos.</p>`;
 }

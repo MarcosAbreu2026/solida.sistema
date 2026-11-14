@@ -28,7 +28,7 @@ const SEM_REGRA_IGNORAR = /^(atividade|doc)$|rrt|responsabilidade t[ée]cnica|se
 const RETRO_DIAS = 21;
 
 // Matriz de regras do agente de Controle de Projetos: serviço do cronograma → projeto exigido → antecedência mínima (dias antes do início do serviço).
-// confirmado: true = regra confirmada pela diretoria; false = SUGESTÃO que ainda precisa de confirmação (aparece marcada na tela).
+// confirmado: true = regra confirmada pela diretoria (todas confirmadas em 14/11/2026); false = SUGESTÃO que ainda precisa de confirmação (aparece marcada na tela com *).
 // arquivo: como o projeto aparece na pasta ("DISCIPLINA nome do arquivo") · generico: nome ambíguo (conta como recebido, mas pede "verificar manualmente")
 // atividade: o serviço do cronograma que depende dele (texto = sigla do grupo + nome da linha) · fora: linhas que parecem o serviço mas não são
 const PAREDE_GRUPO = /^(PAR|PAREDES?)$/i;
@@ -40,31 +40,31 @@ export const IMPRESCINDIVEIS = [
   { id: 'parede', nome: 'Paginação de parede', dias: 14, confirmado: true,
     arquivo: /pagina[çc][ãa]o.{0,15}(parede|revest)|(parede|revest).{0,15}pagina/i, generico: /pagina[çc][ãa]o|revestiment/i,
     casa: (a) => (PAREDE_GRUPO.test(gp(a)) || /parede/i.test(a.nome)) && /cer[âa]mica|porcelanato|revestimento|painel|azulejo|pastilha|pedra|m[áa]rmore/i.test(a.nome) && !/rejunte|imperm|arremate|rodap|prepar/i.test(a.nome) },
-  { id: 'marcenaria', nome: 'Marcenaria', dias: 30, confirmado: false,
+  { id: 'marcenaria', nome: 'Marcenaria', dias: 30, confirmado: true,
     arquivo: /marcenaria|caderno executivo/i,
     casa: (a, t) => /marcenaria|arm[áa]rio|roupeiro|closet|louceiro|painel (ripado|de madeira)/i.test(t) },
-  { id: 'eletrica', nome: 'Elétrica e iluminação', dias: 14, confirmado: false,
+  { id: 'eletrica', nome: 'Elétrica e iluminação', dias: 14, confirmado: true,
     arquivo: /el[ée]tric|pontos de instala|ilumina|lumino|\bELE\b|\bLUM\b|\bILU\b/i,
     casa: (a, t) => /el[ée]tric|condu[íi]te|caixinha|fia[çc][ãa]o|tomada|quadro de|infra.*(el[ée]|dados)|lumin|ilumina|spot|\bled\b|pendente/i.test(t) },
-  { id: 'hidraulica', nome: 'Hidrossanitário', dias: 14, confirmado: false,
+  { id: 'hidraulica', nome: 'Hidrossanitário', dias: 14, confirmado: true,
     arquivo: /hidr[áa]ul|hidross|esgoto|sanit|\bHID|\bESG\b|\bHEP\b/i,
     casa: (a, t) => /hidr|esgoto|tubula|[áa]gua (fria|quente)|ralo|registro|\bHEP\b|\bHID\b/i.test(t) },
-  { id: 'arcondicionado', nome: 'Ar-condicionado', dias: 21, confirmado: false,
+  { id: 'arcondicionado', nome: 'Ar-condicionado', dias: 21, confirmado: true,
     arquivo: /ar.?condicionado|climatiza|\bAC\b|hvac/i,
     casa: (a, t) => /ar.?condicionado|climatiza|\bAC\b/i.test(t) },
-  { id: 'forro', nome: 'Forro e gesso', dias: 14, confirmado: false,
+  { id: 'forro', nome: 'Forro e gesso', dias: 14, confirmado: true,
     arquivo: /forro|\bteto|gesso/i,
     casa: (a, t) => /forro|gesso|\bteto|sanca|cortineiro|tabica/i.test(t) && !/lixar|massa|pintura|selar/i.test(a.nome) },
-  { id: 'marmoraria', nome: 'Marmoraria e bancadas', dias: 21, confirmado: false,
+  { id: 'marmoraria', nome: 'Marmoraria e bancadas', dias: 21, confirmado: true,
     arquivo: /marmoraria|bancada|m[áa]rmore|granito/i,
     casa: (a, t) => /marmoraria|bancada|tampo/i.test(t) },
-  { id: 'esquadrias', nome: 'Esquadrias e vidraçaria', dias: 30, confirmado: false,
+  { id: 'esquadrias', nome: 'Esquadrias e vidraçaria', dias: 30, confirmado: true,
     arquivo: /esquadria|vidra[çc]aria|vidro|caixilh|\bbox\b/i,
     casa: (a, t) => /esquadria|vidra[çc]aria|vidro|caixilh|janela|\bbox\b|guarda.?corpo/i.test(t) },
-  { id: 'impermeabilizacao', nome: 'Impermeabilização', dias: 7, confirmado: false,
+  { id: 'impermeabilizacao', nome: 'Impermeabilização', dias: 7, confirmado: true,
     arquivo: /imperm/i,
     casa: (a, t) => /imperm/i.test(t) },
-  { id: 'automacao', nome: 'Automação', dias: 21, confirmado: false,
+  { id: 'automacao', nome: 'Automação', dias: 21, confirmado: true,
     arquivo: /automa[çc]|\bAUT\b/i,
     casa: (a, t) => /automa[çc]/i.test(t) },
 ];
