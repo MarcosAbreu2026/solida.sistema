@@ -1033,3 +1033,11 @@ body.imp-ata .at-ata-det .sd-tab td.sd-t-info, body.imp-ata .at-ata-det .sd-tab 
 .pc-nota-form input::placeholder { color: #9AA8B8; }
 .pc-nota-form button { flex: none; }
 @media print { .pc-nota-form { display: none; } }
+
+/* Janela de confirmação da exclusão */
+.esc-excluir { z-index: 3500; }
+.esc-excluir .esc-tarefa { color: #1F3A56; font-weight: 700; background: #F4F6F9; border-radius: 8px; padding: 8px 10px; margin: 0 0 8px; word-break: break-word; }
+.esc-rod2 { gap: 10px; }
+.esc-excluir-bt, .esc-ops .esc-perigo { background: #B3261E !important; border-color: #B3261E !important; color: #fff !important; }
+.esc-excluir-bt:hover, .esc-ops .esc-perigo:hover { background: #8F1F18 !important; }
+.tf-excluir { color: #B3261E; border-color: #E8B7B3; } .tf-excluir:hover { background: #FBEAE8; }

@@ -2065,6 +2065,24 @@ document.addEventListener('click', async (e) => {
   if (r) { try { await restaurarConfig(r.dataset.cfgReset); estado.cfgMsg = 'Voltou ao padrão ✓'; desenhar(); } catch (err) { alert(`Não foi possível restaurar (${err.message || err}).`); } }
 });
 // Tarefa recorrente: pergunta (como no Google Agenda) se a mudança vale só para esta ou para esta e as próximas. Devolve 'uma', 'seguintes' ou null (cancelou).
+// Janela de confirmação da exclusão (sempre abre, nunca o confirm() do navegador). Devolve 'uma' | 'seguintes' | null (cancelou).
+function confirmarExclusao(p) {
+  return new Promise((ok) => {
+    const daAta = !!(p && p.ata_id); const recorrente = !!(p && p.serie && !daAta);
+    const titulo = daAta ? 'Tirar da lista de pendências?' : 'Excluir esta tarefa?';
+    const aviso = daAta ? 'O item continua na ata, que não muda.' : recorrente ? 'Esta tarefa se repete. Escolha o que excluir. Não dá para desfazer.' : 'Não dá para desfazer.';
+    const m = document.createElement('div'); m.className = 'esc-modal esc-excluir';
+    m.innerHTML = `<div class="esc-caixa" role="alertdialog" aria-modal="true"><h3>${esc(titulo)}</h3>
+      <p class="esc-tarefa">${esc(String((p && p.descricao) || '').slice(0, 160))}</p><p>${esc(aviso)}</p>
+      ${recorrente ? '<div class="esc-ops"><button type="button" class="esc-perigo" data-esc="uma">Excluir só esta tarefa</button><button type="button" class="esc-perigo" data-esc="seguintes">Excluir esta e as próximas</button></div><div class="esc-rod"><button type="button" class="botao" data-esc="">Cancelar</button></div>'
+        : `<div class="esc-rod esc-rod2"><button type="button" class="botao" data-esc="">Cancelar</button><button type="button" class="botao esc-excluir-bt" data-esc="uma">${daAta ? 'Tirar da lista' : 'Excluir'}</button></div>`}</div>`;
+    const fim = (v) => { m.remove(); document.removeEventListener('keydown', tecla, true); ok(v || null); };
+    const tecla = (e) => { if (e.key === 'Escape') { e.stopPropagation(); fim(null); } };
+    m.addEventListener('click', (e) => { const b = e.target.closest('[data-esc]'); if (b) fim(b.dataset.esc); else if (e.target === m) fim(null); });
+    document.addEventListener('keydown', tecla, true);
+    document.body.appendChild(m); const alvo = m.querySelector('[data-esc=""]'); if (alvo) alvo.focus();
+  });
+}
 function perguntarEscopo(titulo) {
   return new Promise((ok) => {
     const m = document.createElement('div'); m.className = 'esc-modal';
@@ -2203,9 +2221,7 @@ document.addEventListener('click', async (e) => {
   if (pd) {
     const dePendencia = atas.pendenciaPorId(pd.dataset.pendDel);
     const daAta = dePendencia && dePendencia.ata_id;
-    let esc = 'uma';
-    if (dePendencia && dePendencia.serie && !daAta) { esc = await perguntarEscopo('Excluir tarefa recorrente'); if (!esc) return; }
-    else if (!confirm(daAta ? 'Tirar esta pendência da sua lista de pendências? O item continua na ata, que não muda.' : 'Excluir esta pendência?')) return;
+    const esc = await confirmarExclusao(dePendencia); if (!esc) return;
     try { await atas.apagarPendencia(pd.dataset.pendDel, esc); desenhar(); } catch (err) { alert(`Não foi possível ${daAta ? 'tirar da lista' : 'excluir'} (${err.message || err}).`); }
     return;
   }
@@ -2213,6 +2229,15 @@ document.addEventListener('click', async (e) => {
   if (volta) { try { await atas.mudarNaLista(volta.dataset.pendLista, true); desenhar(); } catch (err) { alert(`Não foi possível (${err.message || err}).`); } return; }
   const ad = e.target.closest('[data-ata-del]');
   if (ad) { if (!confirm('Excluir esta ata e todas as pendências dela? Não dá para desfazer.')) return; try { await atas.apagarAta(ad.dataset.ataDel); estado.atasMsg = 'Ata excluída.'; estado.atasMsgHash = '#/atas?aba=atas'; location.hash = estado.atasMsgHash; desenhar(); } catch (err) { alert(`Não foi possível excluir (${err.message || err}).`); } }
+});
+// janela da tarefa: botão Excluir (no lugar do Fechar) abre a janela de confirmação; fechar a janela é clicar fora dela ou Esc
+document.addEventListener('click', async (e) => {
+  const b = e.target.closest && e.target.closest('[data-tf-excluir]'); if (!b) return;
+  e.preventDefault();
+  const id = b.dataset.tfExcluir; const p = atas.pendenciaPorId(id); if (!p) return;
+  const escopo = await confirmarExclusao(p); if (!escopo) return;
+  try { await atas.apagarPendencia(id, escopo); const m = document.getElementById('at-modal'); if (m) m.remove(); desenhar(); }
+  catch (err) { alert(`Não foi possível ${p.ata_id ? 'tirar da lista' : 'excluir'} (${err.message || err}).`); }
 });
 // Controle de obras do Pós-obra: acrescentar um relato (anotação) numa pendência, direto na linha
 document.addEventListener('submit', async (e) => {

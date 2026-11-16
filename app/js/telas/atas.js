@@ -1141,7 +1141,7 @@ export function detalheTarefa(id, { msg = '', obras = [] } = {}) {
       <div class="tf-botoes">
         ${msg ? html`<span class="tf-msg">${msg}</span>` : ''}
         <button type="button" class="botao tf-dup" data-tf-dup="${p.id}" title="Cria uma cópia desta tarefa (sem as anotações) para você ajustar">⧉ Duplicar tarefa</button>
-        <button type="button" class="botao" data-av-fechar>Fechar</button>
+        <button type="button" class="botao tf-excluir" data-tf-excluir="${p.id}" title="${p.ata_id ? 'Tirar da lista de pendências (o item continua na ata)' : 'Excluir esta tarefa'}">${p.ata_id ? 'Tirar da lista' : 'Excluir'}</button>
         <button type="submit" class="botao on">Salvar alterações</button>
       </div>
     </form>
