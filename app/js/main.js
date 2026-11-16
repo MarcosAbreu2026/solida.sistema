@@ -1912,6 +1912,33 @@ document.addEventListener('submit', async (e) => {
 });
 const redesenharTarefas = async (id, msg) => { await atas.carregar(); desenhar(); if (id && document.getElementById('at-modal')) await abrirTarefa(id, msg); };
 
+// Clicar no NOME da tarefa (cartão da Tabela ou linha da Lista) edita o nome ali mesmo; clicar em qualquer outro canto do cartão (menos botões) abre a tarefa (handler logo abaixo)
+document.addEventListener('click', (e) => {
+  const tit = e.target.closest && e.target.closest('.at-card .at-tit, .lt-linha .lt-tit'); if (!tit || tit.querySelector('input.tit-edit')) return;
+  const card = tit.closest('[data-tarefa]'); if (!card) return;
+  const p = atas.pendenciaPorId(card.dataset.tarefa); if (!p) return;
+  e.preventDefault(); e.stopPropagation();
+  const antes = tit.innerHTML; const eraArrastavel = card.getAttribute('draggable');
+  if (eraArrastavel) card.setAttribute('draggable', 'false');   // senão o navegador arrasta o cartão em vez de selecionar o texto
+  const inp = document.createElement('input'); inp.type = 'text'; inp.className = 'tit-edit'; inp.value = p.descricao || ''; inp.setAttribute('aria-label', 'Nome da tarefa');
+  tit.innerHTML = ''; tit.appendChild(inp); inp.focus(); inp.select();
+  let fim = false;
+  const sair = () => { if (eraArrastavel) card.setAttribute('draggable', eraArrastavel); };
+  const cancelar = () => { if (fim) return; fim = true; tit.innerHTML = antes; sair(); };
+  const salvar = async () => {
+    if (fim) return; fim = true;
+    const novo = inp.value.trim();
+    if (!novo || novo === (p.descricao || '').trim()) { tit.innerHTML = antes; sair(); return; }
+    try {
+      let escopo = 'uma'; if (atas.ehRecorrente(p.id)) { escopo = await perguntarEscopo('Mudar o nome da tarefa recorrente'); if (!escopo) { tit.innerHTML = antes; sair(); return; } }
+      await atas.renomearTarefa(p.id, novo, escopo);
+      sair(); desenhar();
+    } catch (err) { alert(`Não foi possível mudar o nome (${err.message || err}).`); tit.innerHTML = antes; sair(); }
+  };
+  inp.addEventListener('keydown', (k) => { if (k.key === 'Enter') { k.preventDefault(); salvar(); } else if (k.key === 'Escape') { k.preventDefault(); cancelar(); } });
+  inp.addEventListener('blur', salvar);
+  inp.addEventListener('click', (c) => c.stopPropagation());
+}, true);
 document.addEventListener('click', (e) => {
   const card = e.target.closest && e.target.closest('[data-tarefa]'); if (!card) return;
   const dentro = e.target.closest('button, a, input, select, textarea, summary');

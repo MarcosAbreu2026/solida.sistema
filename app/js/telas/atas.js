@@ -608,8 +608,8 @@ function cartao(p, hoje) {
   const dias = p.prazo ? diasEntre(hoje, p.prazo) : null;
   const rotuloPrazo = !p.prazo ? 'Sem prazo' : col === 'vencido' ? `${dm(p.prazo).slice(0, 5)} · ${Math.abs(dias)} ${Math.abs(dias) === 1 ? 'dia' : 'dias'} de atraso` : col === 'hoje' ? 'Hoje' : dm(p.prazo);
   const onde2 = p.obra || p.setor || '';   // se tem obra aparece a obra; senão, o setor
-  return html`<article class="at-card at-${col}" data-tarefa="${p.id}" draggable="true" title="Clique para ver os detalhes · arraste para mudar o prazo">
-    <div class="at-tit">${descRica(p.descricao)}</div>
+  return html`<article class="at-card at-${col}" data-tarefa="${p.id}" draggable="true" title="Clique para ver os detalhes · clique no nome para editá-lo aqui mesmo · arraste para mudar o prazo">
+    <div class="at-tit" title="Clique para editar o nome da tarefa">${descRica(p.descricao)}</div>
     <div class="at-linha2"><span class="at-esq">${prazoBtn(p, rotuloPrazo, `at-prazo at-p-${col}`)}</span><span class="at-dir">${p.urgencia ? chipUrg(p.urgencia) : ""}</span></div>
     <div class="at-linha3"><span class="at-esq"><span class="at-pessoa">${nomeDe(p.responsavel, p.responsavel_nome)}</span>${p.responsavel_tipo && p.responsavel_tipo !== 'solida' ? html`<span class="at-tipo at-t-${p.responsavel_tipo}">${ROTULO_TIPO[p.responsavel_tipo] || 'Externo'}${p.responsavel_categoria ? ` · ${p.responsavel_categoria}` : ''}</span>` : ''}</span><span class="at-dir">${onde2 ? html`<span class="at-chip">${onde2}</span>` : ''}</span></div>
     ${a ? html`<div class="at-linha4"><a class="at-ata" href="#/atas?aba=atas&ata=${a.id}" title="Ata de origem">ata ${dm(a.data).slice(0, 5)}</a></div>` : ''}
@@ -848,9 +848,9 @@ function vistaDia(params, obras, setorFixo) {
     const sub = p.status === 'feita' ? 'Concluída' : atrasada ? `Pendente desde ${dm(p.prazo).slice(0, 5)}` : !p.prazo ? 'Sem prazo' : '';
     const quem = nomeDe(p.responsavel, p.responsavel_nome);
     const ontem = somarDias(dia, -1); const amanha = somarDias(dia, 1);
-    return html`<div class="lt-linha ${p.status === 'feita' ? 'lt-feita' : ''}">
+    return html`<div class="lt-linha ${p.status === 'feita' ? 'lt-feita' : ''}" data-tarefa="${p.id}" title="Clique para ver a tarefa · clique no nome para editá-lo aqui mesmo">
       <input type="checkbox" class="lt-chk" data-pend="${p.id}|${p.status === 'feita' ? 'aberta' : 'feita'}" ${p.status === 'feita' ? html.seguro('checked') : ''} title="${p.status === 'feita' ? 'Reabrir' : 'Concluir'}">
-      <div class="lt-corpo"><span class="lt-tit" data-tarefa="${p.id}" title="Abrir a tarefa">${cmp && p.obra ? html`<b class="lt-obra">${p.obra}</b> ` : ''}${descRica(p.descricao)}</span>${sub ? html`<span class="lt-sub ${atrasada ? 'lt-atraso' : ''}">${sub}</span>` : ''}${p.funcao_tarefa ? html`<span class="lt-sub">Função: ${p.funcao_tarefa}</span>` : ''}</div>
+      <div class="lt-corpo"><span class="lt-tit" title="Clique para editar o nome da tarefa">${cmp && p.obra ? html`<b class="lt-obra">${p.obra}</b> ` : ''}${descRica(p.descricao)}</span>${sub ? html`<span class="lt-sub ${atrasada ? 'lt-atraso' : ''}">${sub}</span>` : ''}${p.funcao_tarefa ? html`<span class="lt-sub">Função: ${p.funcao_tarefa}</span>` : ''}</div>
       <div class="lt-dir">${mostrarQuem(p) ? html`<span class="lt-quem ${corPessoa(quem)}">${quem}</span>` : ''}${chipUrg(p.urgencia)}
         <button type="button" class="lt-bt" data-lt-mover="${p.id}|${ontem}" title="Passar para ${dm(ontem)}">↩ Devolver para ${dm(ontem).slice(0, 5)}</button>
         <button type="button" class="lt-bt" data-lt-mover="${p.id}|${amanha}" title="Passar para ${dm(amanha)}">→ ${dm(amanha).slice(0, 5)}</button>
@@ -995,6 +995,17 @@ export async function duplicarTarefa(id) {
 // define (ou tira) o responsável da Sólida de uma tarefa, direto de uma lista (ex.: Controle de obras do pós-obra)
 export async function definirResponsavelTarefa(id, pessoaId) {
   const mud = pessoaId ? { responsavel: pessoaId, responsavel_nome: nomeDe(pessoaId), responsavel_tipo: 'solida', responsavel_categoria: null } : { responsavel: null };
+  if (NA_NUVEM) await atualizarPendenciaNuvem(id, mud);
+  else { const l = lerLocal(); const q = l.pendencias.find((x) => String(x.id) === String(id)); if (q) Object.assign(q, mud); gravarLocal(l); }
+  await carregar();
+}
+// troca só o nome (título) da tarefa, direto no cartão; escopo 'seguintes' vale também para as próximas da série recorrente
+export async function renomearTarefa(id, texto, escopo = 'uma') {
+  const p = pendenciaPorId(id); if (!p) throw new Error('Tarefa não encontrada.');
+  const d = String(texto || '').trim(); if (!d) throw new Error('Escreva o título da tarefa.');
+  if (d === p.descricao) return;
+  const mud = { descricao: d };
+  if (escopo === 'seguintes' && p.serie) await atualizarVarias(seguintesDe(p).map((x) => x.id), () => mud);
   if (NA_NUVEM) await atualizarPendenciaNuvem(id, mud);
   else { const l = lerLocal(); const q = l.pendencias.find((x) => String(x.id) === String(id)); if (q) Object.assign(q, mud); gravarLocal(l); }
   await carregar();
