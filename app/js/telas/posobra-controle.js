@@ -101,7 +101,7 @@ export function render({ params, obrasCad = [], pendencias = [], hoje = '', pode
     </tbody>`;
   };
   return html`<section class="pc">
-    <p class="pequeno">Visão geral dos pós-obras no formato do Controle Operacional (planilha), em ordem de número do PO. O <b>PO não tem status</b>: quem tem status é a <b>OS</b> (uma linha por OS), que mostra o problema e a solução. Abaixo de cada OS ficam as <b>pendências</b> dela, com os <b>relatos</b> (as anotações de cada tarefa) e o campo para acrescentar um relato. ${podeEditar ? 'Use "+ OS" no PO para criar uma OS, "+ pendência" na OS e defina o responsável e o prazo direto na linha da pendência.' : ''}</p>
+    <p class="pequeno">Cada PO tem as suas OS; cada OS tem as suas pendências (com responsável e prazo) e, embaixo delas, os relatos.</p>
     <div class="pc-cards">${cartoes}</div>
     <div class="at-filtros">
       ${podeEditar ? html`<button type="button" class="botao on pc-novo-po" data-pc-novo-po title="Cadastrar um pós-obra novo (PO)">+ Novo PO</button>` : ''}
@@ -109,7 +109,7 @@ export function render({ params, obrasCad = [], pendencias = [], hoje = '', pode
       <label>Procurar<input type="search" data-atas-filtro="q" value="${params.get('q') || ''}" placeholder="PO, cliente, OS, responsável…"></label>
     </div>
     <div class="pd-tab-caixa"><div class="tabela-rolagem"><table class="pd-tab pc-tab">
-      <thead><tr><th>PO / OS</th><th>Status da OS</th><th>OS: problema e solução · pendências e relatos</th><th>Responsável</th><th>Prazo</th><th></th></tr></thead>
+      <thead><tr><th>PO / OS</th><th>Status da OS</th><th>Assunto</th><th>Responsável</th><th>Prazo</th><th></th></tr></thead>
       ${visiveis.length ? visiveis.map(faixa) : html`<tbody><tr><td colspan="6"><p class="pd-vazio">Nenhum pós-obra com esse filtro.</p></td></tr></tbody>`}
     </table></div></div>
     <p class="pequeno">${visiveis.length} de ${todos.length} pós-obras · ${osLista.filter((o) => o.status !== 'concluido').length} OS abertas.</p>

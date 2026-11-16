@@ -1068,3 +1068,22 @@ body.nav-recolhido .pd, body.nav-recolhido .osq, body.nav-recolhido .pc { max-wi
 .pc-pdel { color: #B3261E; border-color: #E5B8B5; background: #fff; font-size: 11px; padding: 1px 7px; } .pc-pdel:hover { background: #FBEAE9; }
 
 .av-os[hidden] { display: none !important; }
+/* Controle de obras em formato de lista: faixa do PO discreta (sem o azul forte) e campo de relato só aparece ao passar o mouse */
+.pc-po-grupo { border-top-width: 2px; }
+.pc-po td { background: #F6F8FA; border-top: 1px solid #DCE2E9; border-bottom: 1px solid #E8ECF1; color: #25323F; }
+.pc-po td b { color: #25323F; }
+.pc-po .pc-nome { color: #66717D; }
+.pc-nota-form { max-height: 0; opacity: 0; overflow: hidden; margin: 0; transition: max-height .12s ease, opacity .12s ease; }
+.pc-pend:hover + .pc-notas .pc-nota-form, .pc-notas:hover .pc-nota-form, .pc-nota-form:focus-within { max-height: 28px; opacity: 1; margin-top: 2px; }
+.pc-notas:not(:has(.pc-nota)) .pc-relatos { border-left-color: transparent; }
+.pc-notas:not(:has(.pc-nota)) td { padding-bottom: 0 !important; }
+
+/* Controle de obras mais limpo: a pendência não leva etiqueta ("pendência", "tarefa", fase); só um marcador. O relato é diferente: menor, em cinza e com a linha ao lado */
+.pc-pend .pc-pst { font-size: 0; background: none !important; padding: 0; } .pc-pend .pc-pst::before { content: '•'; font-size: 15px; line-height: 1; color: #9AA8B8; }
+.pc-pend .pc-pst.ok::before { content: '✓'; color: #1B7F4B; font-size: 12px; font-weight: 700; }
+.pc-pend td { font-size: 13px; color: #25323F; }
+.pc-nota { color: #6B7683; font-style: italic; } .pc-nota b { font-style: normal; color: #6B7683; font-weight: 600; }
+.pc-relatos { border-left-color: #E2E7ED; }
+
+.pc-tab { min-width: 0 !important; }
+.pc-resp, .pc-prazo { max-width: 130px; }
