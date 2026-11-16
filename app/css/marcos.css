@@ -1064,3 +1064,5 @@ body.imp-ata .at-ata-det .sd-tab td.sd-t-info, body.imp-ata .at-ata-det .sd-tab 
 .osq-cobr-aguarda { background: #F7E0EB; color: #8A2F5E; } .osq-cobr-ok { background: #E3F3EA; color: #1B7F4B; }
 /* menu lateral recolhido: o conteúdo ocupa toda a largura (nada fica preso em largura máxima) */
 body.nav-recolhido .pd, body.nav-recolhido .osq, body.nav-recolhido .pc { max-width: none; }
+
+.pc-pdel { color: #B3261E; border-color: #E5B8B5; background: #fff; font-size: 11px; padding: 1px 7px; } .pc-pdel:hover { background: #FBEAE9; }

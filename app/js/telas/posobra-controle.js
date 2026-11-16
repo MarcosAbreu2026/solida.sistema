@@ -84,8 +84,8 @@ export function render({ params, obrasCad = [], pendencias = [], hoje = '', pode
   const linhaPend = (p) => html`<tr class="pc-pend" data-tarefa="${p.id}" title="Clique no texto para abrir a pendência (prioridade, observadores, anotações)">
     <td></td><td><span class="pc-pst ${p.status === 'feita' ? 'ok' : ''}">${(stDe(p.os_fase).nome && p.os_fase) ? stDe(p.os_fase).nome : 'pendência'}${p.status === 'feita' ? ' · feita' : ''}</span></td>
     <td class="pc-relato">${p.descricao}</td>
-    <td>${quemPend(p)}</td><td>${prazoPend(p)}</td><td></td></tr>${relatos(p)}`;
-  const linhaSolta = (p) => html`<tr class="pc-pend" data-tarefa="${p.id}"><td></td><td><span class="pc-pst">tarefa</span></td><td class="pc-relato">${p.descricao}</td><td>${p.responsavel_nome || html`<span class="pc-sem-txt">[definir]</span>`}</td><td>${p.prazo ? dBR(p.prazo) : ''}</td><td></td></tr>${relatos(p)}`;
+    <td>${quemPend(p)}</td><td>${prazoPend(p)}</td><td>${podeEditar ? html`<button type="button" class="ac-mini pc-pdel" data-pc-pdel="${p.id}" title="Excluir só esta tarefa (a OS continua)">excluir</button>` : ''}</td></tr>${relatos(p)}`;
+  const linhaSolta = (p) => html`<tr class="pc-pend" data-tarefa="${p.id}"><td></td><td><span class="pc-pst">tarefa</span></td><td class="pc-relato">${p.descricao}</td><td>${p.responsavel_nome || html`<span class="pc-sem-txt">[definir]</span>`}</td><td>${p.prazo ? dBR(p.prazo) : ''}</td><td>${podeEditar ? html`<button type="button" class="ac-mini pc-pdel" data-pc-pdel="${p.id}" title="Excluir só esta tarefa (a OS continua)">excluir</button>` : ''}</td></tr>${relatos(p)}`;
   const faixa = (g) => {
     const doStatus = (o) => !st || st === 'todas' || o.status === st;
     const abertas = [...g.os].filter((o) => o.status !== 'concluido' && doStatus(o)).sort((a, b) => a.codigo.localeCompare(b.codigo, 'pt-BR', { numeric: true }));

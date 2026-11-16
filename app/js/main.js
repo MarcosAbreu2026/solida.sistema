@@ -2239,6 +2239,16 @@ document.addEventListener('click', async (e) => {
   try { await atas.apagarPendencia(id, escopo); const m = document.getElementById('at-modal'); if (m) m.remove(); desenhar(); }
   catch (err) { alert(`Não foi possível ${p.ata_id ? 'tirar da lista' : 'excluir'} (${err.message || err}).`); }
 });
+// Excluir só a tarefa (pendência) de uma OS, sem mexer na OS: botão "excluir" na linha da tarefa (Controle de obras e janela da OS)
+document.addEventListener('click', async (e) => {
+  const b = e.target.closest && e.target.closest('[data-pc-pdel]'); if (!b) return;
+  e.preventDefault();
+  const p = atas.pendenciaPorId(b.dataset.pcPdel); if (!p) return;
+  const escopo = await confirmarExclusao(p); if (!escopo) return;
+  const raiz = b.closest('[data-osq-raiz]');
+  try { await atas.apagarPendencia(p.id, escopo); if (raiz) osqDetalhe(raiz.dataset.osqRaiz); else desenhar(); }
+  catch (err) { alert(`Não foi possível excluir (${err.message || err}).`); }
+});
 // Controle de obras do Pós-obra: acrescentar um relato (anotação) numa pendência, direto na linha
 document.addEventListener('submit', async (e) => {
   const f = e.target.closest && e.target.closest('[data-pc-nota-form]'); if (!f) return;
