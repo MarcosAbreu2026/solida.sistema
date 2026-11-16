@@ -944,3 +944,37 @@ body.imp-ata .at-ata-det .sd-tab td.sd-t-info, body.imp-ata .at-ata-det .sd-tab 
 .osq-datas .osq-st { font-size: 10.5px; padding: 0 6px; }
 .osq-datas input[type="date"] { width: 92px !important; min-width: 0 !important; max-width: 92px; box-sizing: border-box; }
 .pd-tab-caixa:has(.osq-datas) { padding: 4px 8px; }
+
+/* Tarefas na impressão (16/11): bem mais enxuto, para caber o máximo de informação por folha.
+   Lista: cada tarefa vira UMA linha baixa (caixinha, assunto + situação, responsável e urgência); grupos sem espaço entre si; o resumo vira uma faixa fina.
+   Tabela: cartões ainda mais juntos, 4 por faixa. */
+@media print {
+  .at-cab-imp { margin: 0 0 3px !important; }
+  .at-cab-imp .sd-tit, .at-cab-imp .ci-tit { font-size: 15px !important; }
+  .lt-corpo-geral { padding: 0 !important; }
+  .lt-resumo { padding: 2px 8px !important; margin: 0 0 3px !important; gap: 8px !important; border-radius: 3px !important; break-inside: avoid; }
+  .lt-resumo .lt-anel, .lt-resumo .lt-nav { display: none !important; }
+  .lt-resumo > div:nth-child(2) { display: flex !important; align-items: baseline; gap: 10px; flex: 1 1 auto !important; flex-wrap: wrap; }
+  .lt-resumo h3 { font-size: 11px !important; margin: 0 !important; } .lt-resumo p { font-size: 9px !important; }
+  .lt-urgs { margin: 0 !important; gap: 4px !important; } .lt-urg { padding: 0 5px !important; font-size: 8px !important; gap: 3px !important; }
+  .lt-grupo { margin: 0 0 3px !important; border-radius: 3px !important; break-inside: auto !important; overflow: visible !important; }
+  .lt-grupo > header { padding: 1px 8px !important; break-after: avoid; }
+  .lt-grupo > header h3 { font-size: 10.5px !important; line-height: 1.25; } .lt-grupo > header span { font-size: 8.5px !important; }
+  .lt-linha { padding: 1px 8px !important; gap: 6px !important; flex-wrap: nowrap !important; align-items: center !important; }
+  .lt-chk { width: 9px !important; height: 9px !important; border-radius: 2px !important; } .lt-chk:checked::after { font-size: 7px !important; }
+  .lt-corpo { flex: 1 1 auto !important; flex-direction: row !important; align-items: baseline; flex-wrap: wrap; gap: 0 8px !important; }
+  .lt-tit { font-size: 9px !important; line-height: 1.2 !important; }
+  .lt-sub { font-size: 8px !important; line-height: 1.2 !important; }
+  .lt-obra { font-size: 7.5px !important; padding: 0 3px !important; margin-right: 3px !important; }
+  .lt-dir { flex: none !important; gap: 4px !important; flex-wrap: nowrap !important; }
+  .lt-quem { padding: 0 6px !important; font-size: 8px !important; line-height: 1.4 !important; }
+  .lt-linha .lt-urg { padding: 0 4px !important; font-size: 7.5px !important; line-height: 1.4 !important; }
+  /* Tabela */
+  .at-col { margin: 0 0 3px !important; }
+  .at-col > header { padding: 1px 6px !important; font-size: 9.5px !important; }
+  .at-itens { grid-template-columns: repeat(4, 1fr) !important; gap: 2px !important; padding: 2px 0 0 !important; }
+  .at-card { padding: 1px 4px !important; gap: 0 !important; font-size: 8px !important; line-height: 1.15 !important; }
+  .at-card .at-tit { font-size: 8.5px !important; line-height: 1.15 !important; }
+  .at-card .at-meta > *, .at-card .at-quem, .at-card .at-pessoa { font-size: 7.5px !important; line-height: 1.25 !important; padding: 0 3px !important; }
+  .at-card .at-linha2, .at-card .at-linha3, .at-card .at-linha4 { row-gap: 0 !important; gap: 3px !important; font-size: 7.5px !important; }
+}
