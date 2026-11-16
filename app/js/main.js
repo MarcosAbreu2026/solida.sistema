@@ -1920,15 +1920,22 @@ document.addEventListener('click', (e) => {
   e.preventDefault(); e.stopPropagation();
   const antes = tit.innerHTML; const eraArrastavel = card.getAttribute('draggable');
   if (eraArrastavel) card.setAttribute('draggable', 'false');   // senão o navegador arrasta o cartão em vez de selecionar o texto
-  const inp = document.createElement('input'); inp.type = 'text'; inp.className = 'tit-edit'; inp.value = p.descricao || ''; inp.setAttribute('aria-label', 'Nome da tarefa');
-  tit.innerHTML = ''; tit.appendChild(inp); inp.focus(); inp.select();
+  // só o descritivo (depois da primeira vírgula) pode mudar: o assunto fica travado, para ninguém tirar a vírgula que separa os dois
+  const texto = p.descricao || ''; const iv = texto.indexOf(','); const temAss = iv > 0 && iv < 60;
+  const assRaw = temAss ? texto.slice(0, iv) : ''; const resto = temAss ? texto.slice(iv + 1).trim() : texto;
+  const inp = document.createElement('input'); inp.type = 'text'; inp.className = 'tit-edit'; inp.value = resto; inp.setAttribute('aria-label', 'Descritivo da tarefa');
+  tit.innerHTML = '';
+  if (temAss) { const b = document.createElement('b'); b.className = 'tit-ass'; b.textContent = `${assRaw.toLocaleUpperCase('pt-BR')},`; b.title = 'O assunto não muda aqui'; tit.appendChild(b); }
+  tit.appendChild(inp); inp.focus(); inp.select();
   let fim = false;
   const sair = () => { if (eraArrastavel) card.setAttribute('draggable', eraArrastavel); };
   const cancelar = () => { if (fim) return; fim = true; tit.innerHTML = antes; sair(); };
   const salvar = async () => {
     if (fim) return; fim = true;
-    const novo = inp.value.trim();
-    if (!novo || novo === (p.descricao || '').trim()) { tit.innerHTML = antes; sair(); return; }
+    let novoResto = inp.value.replace(/\s+/g, ' ').trim();
+    if (!temAss && novoResto.indexOf(',') > 0 && novoResto.indexOf(',') < 60) novoResto = novoResto.replace(/,/g, ' /');   // sem assunto: uma vírgula no começo criaria um assunto sem querer
+    const novo = temAss ? `${assRaw}, ${novoResto}` : novoResto;
+    if (!novoResto || novo === (p.descricao || '').trim()) { tit.innerHTML = antes; sair(); return; }
     try {
       let escopo = 'uma'; if (atas.ehRecorrente(p.id)) { escopo = await perguntarEscopo('Mudar o nome da tarefa recorrente'); if (!escopo) { tit.innerHTML = antes; sair(); return; } }
       await atas.renomearTarefa(p.id, novo, escopo);

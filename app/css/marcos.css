@@ -985,3 +985,6 @@ body.imp-ata .at-ata-det .sd-tab td.sd-t-info, body.imp-ata .at-ata-det .sd-tab 
 .at-card .at-tit, .lt-linha .lt-tit { cursor: text; }
 .lt-linha[data-tarefa] { cursor: pointer; }
 @media print { .tit-edit { display: none; } }
+.lt-tit:has(.tit-edit), .at-tit:has(.tit-edit) { display: flex; align-items: center; gap: 5px; }
+.tit-ass { white-space: nowrap; flex: none; opacity: .75; }
+.tit-edit { flex: 1 1 auto; min-width: 0; }
