@@ -63,7 +63,7 @@ export function render({ params, obrasCad = [], pendencias = [], hoje = '', pode
   const pessoas = [...pessoasDaEquipe()].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
   const dataHora = (iso) => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? '' : `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
   // a OS tem o status e mostra o problema e a solução; quem faz e quando são das pendências dela
-  const linhaOS = (o) => html`<tr class="pc-os">
+  const linhaOS = (o) => html`<tr class="pc-os" data-osq="${o.id}" title="Clique para abrir a OS">
     <td class="pc-cod"><a href="#" data-osq="${o.id}" title="Abrir a OS">${o.codigo}</a></td>
     <td><span class="pc-sit" style="background:${stDe(o.status).cor}">${stDe(o.status).nome}</span></td>
     <td class="pc-relato"><b>${o.assunto || ''}</b>${o.problema ? html`<div class="pc-prob"><span>Problema:</span> ${o.problema}</div>` : ''}${o.solucao ? html`<div class="pc-prob"><span>Solução:</span> ${o.solucao}</div>` : ''}</td>

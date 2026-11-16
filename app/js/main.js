@@ -1659,7 +1659,7 @@ document.addEventListener('click', (e) => {
   const nova = e.target.closest && e.target.closest('[data-osq-nova]');
   if (nova) { osqAbrir(osq.formNova(nova.dataset.osqNova, posObrasAtivas())); const c = document.querySelector('#osq-form-nova [name="cliente"]'); if (c) c.focus(); return; }
   const c = e.target.closest && e.target.closest('[data-osq]');
-  if (c) { if (c.dataset.arrastou) return; e.preventDefault(); osqDetalhe(c.dataset.osq); }
+  if (c) { if (c.dataset.arrastou) return; if (c.tagName === 'TR' && e.target.closest('button, select, input, textarea')) return; e.preventDefault(); osqDetalhe(c.dataset.osq); }
 });
 document.addEventListener('dragstart', (e) => {
   const c = e.target.closest && e.target.closest('.osq-card[data-osq]'); if (!c) return;

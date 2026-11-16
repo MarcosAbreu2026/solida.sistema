@@ -1111,3 +1111,4 @@ body.nav-recolhido .pd, body.nav-recolhido .osq, body.nav-recolhido .pc { max-wi
 .pc-pend td:first-child { border-left: 0; }
 .pc-pend td.pc-relato { padding-left: 26px; } .pc-pend td.pc-relato::before { left: 8px; }
 .pc-notas td:nth-child(3) { padding-left: 40px !important; }
+.pc-os { cursor: pointer; } .pc-os:hover td { background: #F3F7FB; }
