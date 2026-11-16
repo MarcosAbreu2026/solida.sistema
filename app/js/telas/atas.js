@@ -845,7 +845,7 @@ const SEM_LONGO = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 
 function vistaDia(params, obras, setorFixo) {
   const hoje = hojeISO(); const dia = ehData(params.get('dia')) ? params.get('dia') : hoje;
   const pessoaSel = params.get('pessoa') || 'eu';
-  const p2 = new URLSearchParams(params); if (pessoaSel === 'todos') p2.delete('pessoa'); else p2.set('pessoa', pessoaSel);
+  const p2 = new URLSearchParams(params); p2.set('pessoa', pessoaSel);
   const urg = params.get('urg') || '';
   const base = filtrar(p2, setorFixo).filter((p) => !urg || (urg === 'sem' ? !p.urgencia : p.urgencia === urg));
   const aberta = (p) => p.status === 'aberta';
