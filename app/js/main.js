@@ -285,7 +285,7 @@ function ctxPosObra() {
   garantirOsCarregadas(); garantirAtasCarregadas('#posobra-painel'); carregarAgendaSemana();
   const podeEditar = podeEditarPos();
   return {
-    quadroOs: () => String(osq.renderQuadro({ params: new URLSearchParams(), podeEditar, clientesPos: posObrasAtivas(), semFiltros: true })),
+    quadroOs: () => String(osq.renderQuadro({ params: rotaAtual().params, podeEditar, clientesPos: posObrasAtivas(), pendencias: atas.todasPendencias() })),
     agendaPos: () => (estado.base ? String(posGeral.renderAgenda({ base: estado.base, semanaIni: estado.posAgenda.semana, linhasAgenda: agendaPos.linhas, podeEditar, selecionado: estado.posAgenda.sel, erro: agendaPos.erro, extras: apExtras(), equipeProg: estado.equipeProg })) : ''),
   };
 }
@@ -2066,6 +2066,8 @@ document.addEventListener('click', async (e) => {
 });
 // Tarefa recorrente: pergunta (como no Google Agenda) se a mudança vale só para esta ou para esta e as próximas. Devolve 'uma', 'seguintes' ou null (cancelou).
 // Janela de confirmação da exclusão (sempre abre, nunca o confirm() do navegador). Devolve 'uma' | 'seguintes' | null (cancelou).
+const osEscolhida = (g) => { const v = g.querySelector('[name="av_os"]'); return v && v.value && v.value !== '__sem__' ? v.value : ''; };
+const osFaseDe = (g) => { const c = osEscolhida(g); const o = c ? osq.lista.find((x) => x.codigo === c) : null; return o ? o.status : ''; };
 function confirmarExclusao(p) {
   return new Promise((ok) => {
     const daAta = !!(p && p.ata_id); const recorrente = !!(p && p.serie && !daAta);
@@ -2239,6 +2241,23 @@ document.addEventListener('click', async (e) => {
   try { await atas.apagarPendencia(id, escopo); const m = document.getElementById('at-modal'); if (m) m.remove(); desenhar(); }
   catch (err) { alert(`Não foi possível ${p.ata_id ? 'tirar da lista' : 'excluir'} (${err.message || err}).`); }
 });
+// Nova tarefa: ao escolher um pós-obra (PO), aparece a lista das OS em aberto dele ("OS-003 · Painel de LED") para ligar a tarefa ao PO e à OS ao mesmo tempo;
+// a OS escolhida vira o assunto da tarefa. "Sem OS" é uma escolha explícita (tarefa geral do PO).
+document.addEventListener('change', (e) => {
+  const sel = e.target.closest && e.target.closest('select[name="av_obra"]'); if (!sel) return;
+  const form = sel.closest('form'); const caixa = form && form.querySelector('.av-os'); if (!caixa) return;
+  const lista = caixa.querySelector('select'); const rot = posControle.rotuloPO(sel.value);
+  const abertas = /^po/i.test(sel.value || '') ? osq.lista.filter((o) => o.status !== 'concluido' && o.cliente && posControle.rotuloPO(o.cliente).chave === rot.chave).sort((a, b) => String(a.codigo).localeCompare(String(b.codigo), 'pt-BR', { numeric: true })) : [];
+  const esc2 = (t) => String(t == null ? '' : t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  caixa.hidden = !abertas.length; lista.classList.toggle('tf-req', !!abertas.length);
+  lista.innerHTML = `<option value="">— escolher a OS —</option>${abertas.map((o) => `<option value="${esc2(o.codigo)}">${esc2(o.codigo)} · ${esc2(o.assunto || 'sem assunto')}${o.status ? ` (${esc2((osq.STATUS.find((s) => s.id === o.status) || {}).nome || '')})` : ''}</option>`).join('')}<option value="__sem__">Sem OS (tarefa geral do PO)</option>`;
+  const ass = form.querySelector('[name="p_assunto"]'); if (ass && ass.readOnly && !form.dataset.os) { ass.readOnly = false; ass.value = ''; }
+});
+document.addEventListener('change', (e) => {
+  const lista = e.target.closest && e.target.closest('select[name="av_os"]'); if (!lista) return;
+  const ass = lista.closest('form').querySelector('[name="p_assunto"]'); if (!ass) return;
+  if (lista.value && lista.value !== '__sem__') { ass.value = lista.value; ass.readOnly = true; } else if (ass.readOnly) { ass.value = ''; ass.readOnly = false; }
+});
 // Excluir só a tarefa (pendência) de uma OS, sem mexer na OS: botão "excluir" na linha da tarefa (Controle de obras e janela da OS)
 document.addEventListener('click', async (e) => {
   const b = e.target.closest && e.target.closest('[data-pc-pdel]'); if (!b) return;
@@ -2328,7 +2347,8 @@ document.addEventListener('submit', async (e) => {
       if (!p.descricao || (p.externoTipo === '' && !p.responsavel) || (p.externoTipo === 'terceirizado' && !p.externoCategoria && !p.externoNome)) { alert('Escreva a pendência e escolha o responsável.'); return; }
       if (g.dataset.avulsa) {
         const setorV = String(new FormData(g).get('av_setor') || ''); if (!setorV) { alert('Escolha o departamento da pendência.'); return; }
-        await atas.criarPendencia({ ata_id: null, ...p, obra: String(new FormData(g).get('av_obra') || ''), setor: setorV, os: g.dataset.os || null, osFase: g.dataset.osFase || null, observadores: new FormData(g).getAll('p_obs'), hora: String(new FormData(g).get('p_hora') || ''), duracao: new FormData(g).get('p_dur'), recorrente: new FormData(g).has('p_recor'), frequencia: String(new FormData(g).get('p_freq') || 'semanal') });
+        { const caixaOs = g.querySelector('.av-os'); if (caixaOs && !caixaOs.hidden && !g.querySelector('[name="av_os"]').value) { alert('Este PO tem OS em aberto: escolha a OS da tarefa (ou "Sem OS" se for uma tarefa geral do PO).'); g.querySelector('[name="av_os"]').focus(); return; } }
+        await atas.criarPendencia({ ata_id: null, ...p, obra: String(new FormData(g).get('av_obra') || ''), setor: setorV, os: osEscolhida(g) || g.dataset.os || null, osFase: osFaseDe(g) || g.dataset.osFase || null, observadores: new FormData(g).getAll('p_obs'), hora: String(new FormData(g).get('p_hora') || ''), duracao: new FormData(g).get('p_dur'), recorrente: new FormData(g).has('p_recor'), frequencia: String(new FormData(g).get('p_freq') || 'semanal') });
         const mod = document.getElementById('at-modal'); if (mod) mod.remove();
       } else await atas.criarPendencia({ ata_id: Number(g.dataset.ata), ...p, obra: g.dataset.obra, setor: g.dataset.setor });
     }

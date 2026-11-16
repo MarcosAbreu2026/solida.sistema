@@ -668,6 +668,7 @@ export function formAvulsa(obras, prazo, setorPadrao = '', preset = {}) {
           <input name="p_nome" class="pf-ext tf-req" list="dl-terceiros" placeholder="Nome da empresa ou pessoa" autocomplete="off" hidden></label>
         <label>Departamento<select name="av_setor" class="tf-req" required><option value="">— escolher —</option>${SETORES_ATA.map((s) => html`<option value="${s}" ${s === setorPadrao ? html.seguro('selected') : ''}>${s}</option>`)}</select></label>
         <label>Obra<select name="av_obra"><option value="">Nenhuma</option>${gruposDeObras(listaObras, preset.obra || '', { criar: true })}</select></label>
+        ${preset.os ? '' : html`<label class="av-os tf-os" hidden>OS em aberto deste PO<select name="av_os"><option value="">— escolher a OS —</option></select></label>`}
         <label>Prazo<input type="date" name="p_prazo" class="tf-req" value="${prazo || ''}"></label>
         <label>Horário na Agenda<input type="time" name="p_hora" value="${preset.hora || ''}"></label>
         <label>Duração<select name="p_dur"><option value="">Padrão</option>${[30, 60, 90, 120, 180, 240].map((m) => html`<option value="${m}" ${String(preset.dur || '') === String(m) ? html.seguro('selected') : ''}>${m >= 60 ? `${m / 60}h${m % 60 ? m % 60 : ''}`.replace(/^(\d+)h$/, '$1 h') : `${m} min`}</option>`)}</select></label>

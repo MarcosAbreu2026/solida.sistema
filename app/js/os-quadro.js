@@ -116,17 +116,28 @@ export async function tirarFoto(id, indice) {
 
 // ---------------------------------------------------------------- telas
 const opcoesCliente = (clientes) => html`<datalist id="osq-clientes">${clientes.map((c) => html`<option value="${c}">`)}</datalist>`;
-const filtrar = (params) => {
-  const cli = params.get('cliente') || ''; const q = (params.get('q') || '').toLocaleLowerCase('pt-BR');
-  return lista.filter((o) => (!cli || o.cliente === cli) && (!q || `${o.codigo} ${o.cliente} ${o.assunto} ${o.problema || ''}`.toLocaleLowerCase('pt-BR').includes(q)));
+const ORDENS = [['', 'Padrão (mais novas primeiro)'], ['antigas', 'Mais antigas primeiro'], ['codigo', 'Número da OS'], ['po', 'PO (número)'], ['assunto', 'Assunto (A–Z)']];
+const filtrar = (params, pendencias = []) => {
+  const cli = params.get('cliente') || ''; const q = (params.get('q') || '').toLocaleLowerCase('pt-BR'); const tar = params.get('tarefas') || ''; const ord = params.get('ord') || '';
+  const abertas = (o) => pendencias.filter((p) => p.os === o.codigo && p.status === 'aberta' && p.na_lista !== false).length;
+  const r = lista.filter((o) => (!cli || o.cliente === cli) && (!q || `${o.codigo} ${o.cliente} ${o.assunto} ${o.problema || ''}`.toLocaleLowerCase('pt-BR').includes(q))
+    && (!tar || (tar === 'com' ? abertas(o) > 0 : abertas(o) === 0)));
+  const cmpNum = (a, b) => String(a).localeCompare(String(b), 'pt-BR', { numeric: true });
+  if (ord === 'antigas') r.sort((a, b) => String(a.d_solicitacao || a.criado_em || '').localeCompare(String(b.d_solicitacao || b.criado_em || '')) || cmpNum(a.codigo, b.codigo));
+  else if (ord === 'codigo') r.sort((a, b) => cmpNum(a.codigo, b.codigo));
+  else if (ord === 'po') r.sort((a, b) => cmpNum(a.cliente, b.cliente) || cmpNum(a.codigo, b.codigo));
+  else if (ord === 'assunto') r.sort((a, b) => String(a.assunto || '').localeCompare(String(b.assunto || ''), 'pt-BR'));
+  return r;
 };
 const clientesDe = (extras = []) => [...new Set([...extras, ...lista.map((o) => o.cliente)].filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }));
 const filtros = (params, extras) => html`<div class="at-filtros">
   <label>PO / cliente<select data-atas-filtro="cliente"><option value="">Todos</option>${clientesDe(extras).map((c) => html`<option value="${c}" ${c === params.get('cliente') ? html.seguro('selected') : ''}>${c}</option>`)}</select></label>
+  <label>Tarefas<select data-atas-filtro="tarefas"><option value="">Todas as OS</option><option value="com" ${params.get('tarefas') === 'com' ? html.seguro('selected') : ''}>Com tarefa em aberto</option><option value="sem" ${params.get('tarefas') === 'sem' ? html.seguro('selected') : ''}>Sem tarefa em aberto</option></select></label>
+  <label>Ordenar por<select data-atas-filtro="ord">${ORDENS.map(([v, t]) => html`<option value="${v}" ${params.get('ord') === v ? html.seguro('selected') : ''}>${t}</option>`)}</select></label>
   <label>Procurar<input type="search" data-atas-filtro="q" value="${params.get('q') || ''}" placeholder="OS, assunto, problema…"></label></div>`;
 
 export function renderQuadro({ params, podeEditar, clientesPos = [], semFiltros = false, pendencias = [] }) {
-  const itens = filtrar(params);
+  const itens = filtrar(params, pendencias);
   const hoje = hojeISO();
   const chipCobranca = (o) => {
     const s = porId[o.status]; if (!s || !s.cobranca) return '';
