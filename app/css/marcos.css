@@ -1101,3 +1101,13 @@ body.nav-recolhido .pd, body.nav-recolhido .osq, body.nav-recolhido .pc { max-wi
 .pc-nota { color: #4F4116; font-style: normal; font-size: 12px; }
 .pc-nota b { color: #7A5A00; font-weight: 700; } .pc-nota small { color: #A08A4A; }
 .pc-pend .pc-pst:not(.ok)::before { content: none; }
+/* Controle de obras (ajuste 16/11): PO em azul escuro com letra branca; OS recuada para a direita do PO; tarefa sem pintura (fundo branco) */
+.pc-po td { background: #1F3A56 !important; color: #fff !important; border-top: 0; border-bottom: 0; }
+.pc-po td b { color: #fff !important; } .pc-po .pc-nome { color: #C9D6E4 !important; } .pc-po .pc-cont { color: #B7C7D8 !important; }
+.pc-po .pc-po-mais { background: transparent; color: #fff; border-color: rgba(255,255,255,.55); } .pc-po .pc-po-mais:hover { background: rgba(255,255,255,.15); }
+.pc-po-grupo { border-top-width: 6px; }
+.pc-cod { padding-left: 30px !important; }
+.pc-pend td { background: #fff !important; }
+.pc-pend td:first-child { border-left: 0; }
+.pc-pend td.pc-relato { padding-left: 26px; } .pc-pend td.pc-relato::before { left: 8px; }
+.pc-notas td:nth-child(3) { padding-left: 40px !important; }
