@@ -1087,3 +1087,17 @@ body.nav-recolhido .pd, body.nav-recolhido .osq, body.nav-recolhido .pc { max-wi
 
 .pc-tab { min-width: 0 !important; }
 .pc-resp, .pc-prazo { max-width: 130px; }
+/* Controle de obras: três níveis bem distintos — OS (faixa branca, negrito) > tarefa (recuada, com trilho azul claro) > relato (bilhete amarelo, recuado mais ainda) */
+.pc-os td { background: #fff; font-weight: 600; border-top: 1px solid #E4E9EE; padding-top: 5px; padding-bottom: 5px; }
+.pc-os .pc-cod a { font-weight: 800; }
+.pc-pend td { background: #F4F8FC; font-weight: 400; border-bottom: 1px solid #E6EDF4; }
+.pc-pend td:first-child { border-left: 4px solid #8DB2D8; }
+.pc-pend td.pc-relato { padding-left: 18px; position: relative; }
+.pc-pend td.pc-relato::before { content: '↳'; position: absolute; left: 2px; top: 3px; color: #8DB2D8; font-weight: 700; }
+.pc-notas td { background: #fff; }
+.pc-notas td:nth-child(3) { padding-left: 34px !important; }
+.pc-relatos { margin: 2px 0 4px 0; padding: 4px 10px; background: #FFF8E1; border-left: 3px solid #E3B93E; border-radius: 6px; }
+.pc-notas:not(:has(.pc-nota)) .pc-relatos { background: transparent; border-left-color: transparent; padding: 0 10px; }
+.pc-nota { color: #4F4116; font-style: normal; font-size: 12px; }
+.pc-nota b { color: #7A5A00; font-weight: 700; } .pc-nota small { color: #A08A4A; }
+.pc-pend .pc-pst:not(.ok)::before { content: none; }
