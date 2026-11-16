@@ -217,20 +217,35 @@ export function abrir(subId, inicio = 0, aoFechar = () => {}) {
   fechar();
   const { sub } = achado; let i = Math.max(0, Math.min(inicio, sub.slides.length - 1));
   const caixa = document.createElement('div'); caixa.className = 'tv'; caixa.setAttribute('role', 'dialog'); caixa.setAttribute('aria-label', sub.titulo);
-  const desenhar = () => {
-    const s = sub.slides[i]; const ultimo = i === sub.slides.length - 1;
-    caixa.innerHTML = `<div class="tv-corpo">
-      <header class="tv-topo"><div><b>${esc(sub.titulo)}</b><span>Passo ${i + 1} de ${sub.slides.length}</span></div><button type="button" class="tv-fechar" data-tv="fechar" aria-label="Fechar">×</button></header>
-      ${s.imagem ? `<div class="tv-palco"><a href="${esc(s.imagem)}" target="_blank" rel="noopener" title="Clique para ver a imagem em tamanho grande"><img src="${esc(s.imagem)}" alt="${esc(s.titulo)}"></a></div>` : ""}
-      <section class="tv-texto ${s.imagem ? "" : "tv-so-texto"}"><h3>${esc(s.titulo)}</h3><p>${esc(s.texto)}</p>
+  // Todos os passos são montados de uma vez (as imagens já carregam todas ao abrir) e a troca é só um deslize suave de um trilho:
+  // nada é redesenhado nem recarregado a cada passo. A caixa tem tamanho fixo, igual em todos os passos.
+  const total = sub.slides.length;
+  const slide = (s) => `<div class="tv-slide">
+      ${s.imagem ? `<div class="tv-palco"><a href="${esc(s.imagem)}" target="_blank" rel="noopener" title="Clique para ver a imagem em tamanho grande"><img src="${esc(s.imagem)}" alt="${esc(s.titulo)}" loading="eager" decoding="async"></a></div>` : ''}
+      <section class="tv-texto ${s.imagem ? '' : 'tv-so-texto'}"><h3>${esc(s.titulo)}</h3><p>${esc(s.texto)}</p>
         ${s.legenda && s.legenda.length ? `<ol class="tv-legenda">${s.legenda.map((l, k) => `<li><span>${k + 1}</span>${esc(l)}</li>`).join('')}</ol>` : ''}
-        ${s.dica ? `<p class="tv-dica"><b>Dica:</b> ${esc(s.dica)}</p>` : ''}</section>
-      <footer class="tv-rodape"><button type="button" class="botao" data-tv="ant" ${i === 0 ? 'disabled' : ''}>← Anterior</button>
-        <div class="tv-bolas">${sub.slides.map((_, k) => `<button type="button" class="${k === i ? 'on' : ''}" data-tv-ir="${k}" aria-label="Passo ${k + 1}"></button>`).join('')}</div>
-        <button type="button" class="botao on" data-tv="${ultimo ? 'fim' : 'prox'}">${ultimo ? '✓ Concluir treinamento' : 'Próximo →'}</button></footer></div>`;
-    const corpo = caixa.querySelector('.tv-texto'); if (corpo) corpo.scrollTop = 0;
+        ${s.dica ? `<p class="tv-dica"><b>Dica:</b> ${esc(s.dica)}</p>` : ''}</section></div>`;
+  caixa.innerHTML = `<div class="tv-corpo">
+      <header class="tv-topo"><div><b>${esc(sub.titulo)}</b><span data-tv-passo></span></div><button type="button" class="tv-fechar" data-tv="fechar" aria-label="Fechar">×</button></header>
+      <div class="tv-janela"><div class="tv-trilho">${sub.slides.map(slide).join('')}</div>
+        <button type="button" class="tv-seta tv-seta-esq" data-tv="ant" aria-label="Passo anterior" title="Anterior (←)">‹</button>
+        <button type="button" class="tv-seta tv-seta-dir" data-tv="prox" aria-label="Próximo passo" title="Próximo (→)">›</button></div>
+      <footer class="tv-rodape"><div class="tv-bolas">${sub.slides.map((_, k) => `<button type="button" data-tv-ir="${k}" aria-label="Passo ${k + 1}"></button>`).join('')}</div>
+        <button type="button" class="botao on tv-fim" data-tv="fim" hidden>✓ Concluir treinamento</button></footer></div>`;
+  const trilho = caixa.querySelector('.tv-trilho'); const slidesEl = [...caixa.querySelectorAll('.tv-slide')]; const bolas = [...caixa.querySelectorAll('[data-tv-ir]')];
+  const desenhar = () => {
+    trilho.style.transform = `translateX(-${i * 100}%)`;
+    slidesEl.forEach((el, k) => { el.setAttribute('aria-hidden', k === i ? 'false' : 'true'); if (k === i) { const t = el.querySelector('.tv-texto'); if (t) t.scrollTop = 0; } });
+    bolas.forEach((b, k) => b.classList.toggle('on', k === i));
+    caixa.querySelector('[data-tv-passo]').textContent = `Passo ${i + 1} de ${total}`;
+    const ant = caixa.querySelector('.tv-seta-esq'); const prox = caixa.querySelector('.tv-seta-dir');
+    ant.disabled = i === 0; prox.disabled = i === total - 1;
+    caixa.querySelector('.tv-fim').hidden = i !== total - 1;
   };
-  const ir = (n) => { i = Math.max(0, Math.min(n, sub.slides.length - 1)); desenhar(); };
+  const ir = (n) => { i = Math.max(0, Math.min(n, total - 1)); desenhar(); };
+  // arrastar o dedo para os lados (celular)
+  let x0 = null; caixa.addEventListener('touchstart', (e) => { x0 = e.touches[0].clientX; }, { passive: true });
+  caixa.addEventListener('touchend', (e) => { if (x0 === null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 60) ir(i + (dx < 0 ? 1 : -1)); }, { passive: true });
   caixa.addEventListener('click', (e) => {
     if (e.target === caixa) { fechar(); aoFechar(); return; }
     const b = e.target.closest('[data-tv],[data-tv-ir]'); if (!b) return;
@@ -240,5 +255,6 @@ export function abrir(subId, inicio = 0, aoFechar = () => {}) {
   });
   const tecla = (e) => { if (e.key === 'Escape') { fechar(); aoFechar(); } else if (e.key === 'ArrowRight') ir(i + 1); else if (e.key === 'ArrowLeft') ir(i - 1); };
   document.addEventListener('keydown', tecla); document.body.style.overflow = 'hidden';
-  aberto = { caixa, tecla }; desenhar(); document.body.appendChild(caixa);
+  aberto = { caixa, tecla }; document.body.appendChild(caixa);
+  trilho.style.transition = 'none'; desenhar(); void trilho.offsetWidth; trilho.style.transition = '';   // o primeiro passo aparece direto, sem deslizar
 }

@@ -2306,3 +2306,25 @@ td select[data-cx-usuario] { font: inherit; font-size: 13px; padding: 5px 8px; b
 .fo-chip.fo-po { background: #EFE8DA; color: var(--bronze2); }
 .fo-chip.fo-af { background: #F4E3E1; color: var(--cr); }
 .fo-livre { color: var(--muted); font-style: italic; font-size: 12.5px; }
+
+/* Treinamentos (slides): caixa de tamanho fixo, passos num trilho que desliza, seta de próximo no meio da direita (anterior no meio da esquerda) */
+.tv-corpo { position: relative; width: min(1180px, 100%); height: min(92vh, 860px); max-height: 100%; }
+.tv-janela { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; }
+.tv-trilho { display: flex; height: 100%; transition: transform .4s cubic-bezier(.4, 0, .2, 1); will-change: transform; }
+.tv-slide { flex: 0 0 100%; width: 100%; min-width: 0; height: 100%; display: flex; flex-direction: column; min-height: 0; }
+.tv-slide .tv-palco { flex: 0 0 58%; min-height: 0; overflow: hidden; align-items: center; padding: 10px 70px; box-sizing: border-box; }
+.tv-slide .tv-palco a { display: flex; height: 100%; max-width: 100%; align-items: center; justify-content: center; }
+.tv-slide .tv-palco img { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
+.tv-slide .tv-texto { flex: 1 1 auto; min-height: 0; max-height: none; overflow: auto; padding: 12px 70px 8px; }
+.tv-slide .tv-so-texto { flex: 1 1 auto; max-height: none; padding-top: 30px; }
+.tv-seta { position: absolute; top: 50%; transform: translateY(-50%); z-index: 3; width: 48px; height: 48px; border-radius: 50%; border: 0; background: rgba(31, 58, 86, .92); color: #fff; font-size: 30px; line-height: 44px; padding: 0 0 4px; cursor: pointer; box-shadow: 0 3px 10px rgba(0, 0, 0, .35); transition: opacity .2s, background .2s; }
+.tv-seta:hover:not(:disabled) { background: #2B5E96; }
+.tv-seta:disabled { opacity: .22; cursor: default; }
+.tv-seta-esq { left: 12px; } .tv-seta-dir { right: 12px; }
+.tv-rodape { justify-content: center; min-height: 28px; position: relative; }
+.tv-rodape .tv-fim { position: absolute; right: 16px; } .tv-rodape .tv-fim[hidden] { display: none; }
+@media (max-width: 760px) {
+  .tv-corpo { height: 100%; }
+  .tv-seta { width: 38px; height: 38px; font-size: 24px; line-height: 34px; } .tv-seta-esq { left: 4px; } .tv-seta-dir { right: 4px; }
+  .tv-slide .tv-palco { padding: 8px 44px; flex-basis: 40%; } .tv-slide .tv-texto { padding: 10px 46px 6px; }
+}
