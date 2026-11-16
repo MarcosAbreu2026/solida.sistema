@@ -212,6 +212,13 @@ function telaPosObraPlanilha(rota) {
   // Controle de obras do pós-obra: a lista do Controle Operacional (planilha), montada com os pós-obras cadastrados e as OS do quadro
   if (rota.sub === 'controle') {
     garantirOsCarregadas(); garantirAtasCarregadas();
+    // relatos (anotações) das pendências das OS e das tarefas do PO: carrega as que faltam de uma vez e redesenha uma vez só, quando ninguém está digitando
+    const idsPend = atas.todasPendencias().filter((p) => p.na_lista !== false && p.status !== 'cancelada' && (p.os || String(p.origem || '').startsWith('os:') || (p.obra && /^po/i.test(String(p.obra).trim())))).map((p) => p.id);
+    const faltam = idsPend.filter((id) => !atas.notasCarregada(id));
+    if (faltam.length && !estado.pcNotasCarregando) {
+      estado.pcNotasCarregando = true;
+      atas.carregarNotasVarias(faltam).catch(() => {}).finally(() => { estado.pcNotasCarregando = false; const r = rotaAtual(); if (r.tela === 'posobra' && r.sub === 'controle' && !emEdicao()) desenhar(); });
+    }
     return { abas, conteudo: `<div class="pagina" style="margin-top:26px">${String(posControle.render({ params: rota.params, obrasCad: estado.obrasCad || [], pendencias: atas.todasPendencias(), hoje: hojeISO(), podeEditar: podeEditarPos() }))}</div>` };
   }
   // Quadro de OS (solicitação > análise > orçamento > falta agendar > agendado > em execução > concluído) e o quadro de datas das mesmas OS
@@ -2206,6 +2213,15 @@ document.addEventListener('click', async (e) => {
   if (volta) { try { await atas.mudarNaLista(volta.dataset.pendLista, true); desenhar(); } catch (err) { alert(`Não foi possível (${err.message || err}).`); } return; }
   const ad = e.target.closest('[data-ata-del]');
   if (ad) { if (!confirm('Excluir esta ata e todas as pendências dela? Não dá para desfazer.')) return; try { await atas.apagarAta(ad.dataset.ataDel); estado.atasMsg = 'Ata excluída.'; estado.atasMsgHash = '#/atas?aba=atas'; location.hash = estado.atasMsgHash; desenhar(); } catch (err) { alert(`Não foi possível excluir (${err.message || err}).`); } }
+});
+// Controle de obras do Pós-obra: acrescentar um relato (anotação) numa pendência, direto na linha
+document.addEventListener('submit', async (e) => {
+  const f = e.target.closest && e.target.closest('[data-pc-nota-form]'); if (!f) return;
+  e.preventDefault();
+  const id = f.dataset.pcNotaForm; const campo = f.querySelector('input[name="texto"]'); const texto = String(campo.value || '').trim(); if (!texto) return;
+  campo.disabled = true;
+  try { await atas.anotar(id, texto); desenhar(); }
+  catch (err) { campo.disabled = false; alert(`Não foi possível anotar (${err.message || err}).`); }
 });
 // PRÉVIA da Reunião (só para o administrador): alterna Tarefa/Reunião na janela de Nova tarefa e adiciona convidados por e-mail. Ainda não grava nada.
 document.addEventListener('click', (e) => {

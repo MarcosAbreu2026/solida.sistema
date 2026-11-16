@@ -431,6 +431,15 @@ export async function listarNotasPend(pendenciaId) {
   if (error) throw new Error(error.message);
   return data || [];
 }
+export async function listarNotasPendVarias(ids) {
+  const out = [];
+  for (let i = 0; i < ids.length; i += 120) {
+    const { data, error } = await sb.from('pendencias_notas').select('*').in('pendencia_id', ids.slice(i, i + 120)).order('criado_em', { ascending: true });
+    if (error) throw new Error(error.message);
+    out.push(...(data || []));
+  }
+  return out;
+}
 export async function criarNotaPend(pendenciaId, texto) {
   const { error } = await sb.from('pendencias_notas').insert({ pendencia_id: pendenciaId, texto, autor: perfil.id, autor_nome: perfil.nome || '' });
   if (error) throw new Error(error.message);

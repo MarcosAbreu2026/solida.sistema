@@ -1022,3 +1022,14 @@ body.imp-ata .at-ata-det .sd-tab td.sd-t-info, body.imp-ata .at-ata-det .sd-tab 
 .rn-recor label { white-space: nowrap; }
 .tf-nova .tf-reuniao input[type="date"], .tf-nova .tf-reuniao input[type="time"] { width: auto; }
 .rn-recor label { display: inline-flex !important; flex-direction: row !important; align-items: center; gap: 8px; margin: 0; }
+
+/* Controle de obras do Pós-obra: relatos (anotações) de cada pendência, com campo para acrescentar */
+.pc-card.on { box-shadow: 0 0 0 2px #2B5E96 inset; }
+.pc-notas td { padding-top: 0 !important; padding-bottom: 6px !important; border-top: 0 !important; }
+.pc-relatos { margin-left: 4px; padding-left: 10px; border-left: 3px solid #D5DCE4; display: grid; gap: 3px; }
+.pc-nota { font-size: 12px; line-height: 1.35; color: #2C3A48; } .pc-nota b { color: #1F4A78; font-size: 11.5px; } .pc-nota small { color: #8A94A0; margin: 0 6px 0 4px; } .pc-nota span { white-space: pre-wrap; }
+.pc-nota-form { display: flex; gap: 6px; align-items: center; margin-top: 2px; }
+.pc-nota-form input { flex: 1 1 auto; min-width: 0; font: inherit; font-size: 12px; padding: 3px 8px; border: 1px solid #C9D1DA; border-radius: 6px; background: #fff; }
+.pc-nota-form input::placeholder { color: #9AA8B8; }
+.pc-nota-form button { flex: none; }
+@media print { .pc-nota-form { display: none; } }

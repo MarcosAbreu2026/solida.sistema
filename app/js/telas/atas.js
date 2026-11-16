@@ -7,7 +7,7 @@
 
 import { html, data as fmtData } from '../formato.js';
 import { hojeISO, somarDias, inicioDaSemana, diasEntre, ehData } from '../datas.js';
-import { NA_NUVEM, perfilAtual, listarAtasPendencias, criarAtaNuvem, criarPendenciaNuvem, criarPendenciasNuvemLote, atualizarPendenciaNuvem, atualizarAtaNuvem, apagarPendenciaNuvem, apagarPendenciasNuvem, atualizarPendenciasNuvem, apagarAtaNuvem, listarNotasPend, criarNotaPend, apagarNotaPend } from '../nuvem.js';
+import { NA_NUVEM, perfilAtual, listarAtasPendencias, criarAtaNuvem, criarPendenciaNuvem, criarPendenciasNuvemLote, atualizarPendenciaNuvem, atualizarAtaNuvem, apagarPendenciaNuvem, apagarPendenciasNuvem, atualizarPendenciasNuvem, apagarAtaNuvem, listarNotasPend, listarNotasPendVarias, criarNotaPend, apagarNotaPend } from '../nuvem.js';
 import { SETORES, SETORES_ORGANOGRAMA, funcoesDoCargo } from '../funcoes.js';
 import { funcaoVe } from '../config.js';
 import { sessao, idPessoa, funcaoReal, funcaoAtual, simulando } from '../sessao.js';
@@ -991,6 +991,16 @@ export async function carregarNotas(id) {
   if (NA_NUVEM) notasCache[String(id)] = await listarNotasPend(id);
   else { const l = lerLocal(); notasCache[String(id)] = (l.notas || []).filter((n) => String(n.pendencia_id) === String(id)); }
   return notasDe(id);
+}
+// várias de uma vez (Controle de obras do Pós-obra mostra os relatos de todas as pendências das OS)
+export const notasCarregada = (id) => Object.prototype.hasOwnProperty.call(notasCache, String(id));
+export async function carregarNotasVarias(ids) {
+  const lista = [...new Set(ids.map(String))]; if (!lista.length) return;
+  let todas = [];
+  try { todas = NA_NUVEM ? await listarNotasPendVarias(lista) : (lerLocal().notas || []).filter((n) => lista.includes(String(n.pendencia_id))); } catch { todas = []; }   // sem acesso às anotações: mostra sem relatos (e não tenta de novo em loop)
+  for (const id of lista) notasCache[id] = [];
+  for (const n of todas) (notasCache[String(n.pendencia_id)] || (notasCache[String(n.pendencia_id)] = [])).push(n);
+  for (const id of lista) notasCache[id].sort((a, b) => String(a.criado_em).localeCompare(String(b.criado_em)));
 }
 export async function anotar(id, texto) {
   const t = String(texto || '').trim(); if (!t) return;
