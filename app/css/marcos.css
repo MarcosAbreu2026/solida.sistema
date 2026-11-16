@@ -988,3 +988,8 @@ body.imp-ata .at-ata-det .sd-tab td.sd-t-info, body.imp-ata .at-ata-det .sd-tab 
 .lt-tit:has(.tit-edit), .at-tit:has(.tit-edit) { display: flex; align-items: center; gap: 5px; }
 .tit-ass { white-space: nowrap; flex: none; opacity: .75; }
 .tit-edit { flex: 1 1 auto; min-width: 0; }
+
+/* Agenda: horário vazio clicável (cria tarefa naquele dia e hora) */
+.ag-principal .fq-trilho { cursor: cell; }
+.fq-fantasma { position: absolute; left: 3px; right: 3px; z-index: 1; box-sizing: border-box; border: 1.5px dashed #2B5E96; border-radius: 6px; background: rgba(43, 94, 150, .09); color: #1F4A78; font-size: 11.5px; font-weight: 700; padding: 3px 7px; pointer-events: none; overflow: hidden; white-space: nowrap; }
+@media print { .fq-fantasma { display: none; } }

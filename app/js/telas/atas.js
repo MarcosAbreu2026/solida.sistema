@@ -646,6 +646,8 @@ export function formAvulsa(obras, prazo, setorPadrao = '', preset = {}) {
         <label>Departamento<select name="av_setor" class="tf-req" required><option value="">— escolher —</option>${SETORES_ATA.map((s) => html`<option value="${s}" ${s === setorPadrao ? html.seguro('selected') : ''}>${s}</option>`)}</select></label>
         <label>Obra<select name="av_obra"><option value="">Nenhuma</option>${gruposDeObras(listaObras, preset.obra || '', { criar: true })}</select></label>
         <label>Prazo<input type="date" name="p_prazo" class="tf-req" value="${prazo || ''}"></label>
+        <label>Horário na Agenda<input type="time" name="p_hora" value="${preset.hora || ''}"></label>
+        <label>Duração<select name="p_dur"><option value="">Padrão</option>${[30, 60, 90, 120, 180, 240].map((m) => html`<option value="${m}" ${String(preset.dur || '') === String(m) ? html.seguro('selected') : ''}>${m >= 60 ? `${m / 60}h${m % 60 ? m % 60 : ''}`.replace(/^(\d+)h$/, '$1 h') : `${m} min`}</option>`)}</select></label>
         <div class="tf-recor"><label class="tf-recor-chk"><input type="checkbox" name="p_recor"> <span>Tarefa recorrente</span></label><select name="p_freq" title="Como se repete"><option value="semanal">Toda semana</option><option value="mensal">Todo mês</option></select></div>
         <div class="tf-sep"></div>
         <label>Função (Agenda)<select name="p_func"><option value="">Nenhuma</option>${opcoesFuncaoTarefa(souEu(), '')}</select></label>

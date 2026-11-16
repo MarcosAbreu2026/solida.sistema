@@ -2146,6 +2146,14 @@ document.addEventListener('click', (e) => {
   const c = e.target.closest && e.target.closest('[data-rp-cat]'); if (!c) return;
   e.preventDefault(); reposicao.alternarCategoria(c.dataset.rpCat); desenhar();
 });
+// Agenda: clicar num horário vazio abre a Nova tarefa com o dia, a hora e a própria pessoa já preenchidos
+document.addEventListener('agenda-nova-tarefa', (e) => {
+  const { dia, hora } = e.detail || {};
+  const antigo = document.getElementById('at-modal'); if (antigo) antigo.remove();
+  const m = document.createElement('div'); m.id = 'at-modal'; m.className = 'at-modal';
+  m.innerHTML = `<div class="at-modal-caixa">${String(atas.formAvulsa(obrasDeAtas(), dia, '', { resp: (nuvem.NA_NUVEM ? (nuvem.perfilAtual() || {}).id : idPessoa()) || '', hora: hora || '' }))}</div>`;
+  document.body.appendChild(m); const campo = m.querySelector('[name="p_assunto"]'); if (campo) campo.focus();
+});
 // nova pendência avulsa (sem ata), aberta pelo + de cada caixinha do quadro por prazo
 document.addEventListener('click', (e) => {
   const nova = e.target.closest && e.target.closest('[data-av-nova]');

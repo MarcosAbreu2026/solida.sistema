@@ -278,6 +278,23 @@ export function instalarQuadro(aoMudar) {
     if (c && !e.target.closest('button, a')) { const [id, d] = c.dataset.mover.split('|'); popup = { id, d }; aoMudar(); }
   });
 
+  // Clicar num horário vazio da Agenda cria uma tarefa nova naquele dia e hora (a janela de Nova tarefa abre com o prazo e o horário já preenchidos).
+  // Só vale na Agenda de tarefas (que tem a faixa "dia todo"), fora dos cartões e logo depois de arrastar não conta.
+  let ultimoArrasto = 0;
+  const faixaDoClique = (e) => { const tr = e.target.closest && e.target.closest('.fq-trilho[data-trilho]'); if (!tr || !document.querySelector('.ag-livre-rot')) return null; if (e.target.closest('.ag-tcard, .ag-tcaixa, [data-tarefa], [data-tcard], button, a')) return null; const r = tr.getBoundingClientRect(); const faixa = Math.min(GRADE.faixas - 1, Math.max(0, Math.floor((e.clientY - r.top) / GRADE.alt))); return { tr, faixa, dia: tr.dataset.trilho, hora: hhmm(GRADE.ini + faixa * GRADE.passo) }; };
+  document.addEventListener('click', (e) => {
+    if (Date.now() - ultimoArrasto < 450) return;
+    const f = faixaDoClique(e); if (!f) return;
+    document.dispatchEvent(new CustomEvent('agenda-nova-tarefa', { detail: { dia: f.dia, hora: f.hora } }));
+  });
+  document.addEventListener('mousemove', (e) => {
+    const antigo = document.querySelector('.fq-fantasma');
+    const f = e.buttons ? null : faixaDoClique(e);
+    if (!f) { if (antigo) antigo.remove(); return; }
+    let g = antigo; if (g && g.parentElement !== f.tr) { g.remove(); g = null; }
+    if (!g) { g = document.createElement('div'); g.className = 'fq-fantasma'; f.tr.appendChild(g); }
+    g.style.top = `${f.faixa * GRADE.alt}px`; g.style.height = `${GRADE.alt}px`; g.textContent = `+ Nova tarefa · ${f.hora}`;
+  });
   let a = null;
   const reset = () => { if (a) { a.card.classList.remove('arrastando'); a.card.style.transform = ''; a = null; } };
   document.addEventListener('pointerdown', (e) => {
@@ -304,6 +321,7 @@ export function instalarQuadro(aoMudar) {
     if (!a) return;
     const x = a;
     const pessoa = idPessoa();
+    if (x.moveu) ultimoArrasto = Date.now();
     if (!x.moveu) { reset(); if (!x.alca) { popup = { id: x.id, d: x.d }; aoMudar(); } return; }
     if (x.alca) {
       const span = Math.max(1, Math.round((x.h0 + (e.clientY - x.y0) + 2) / GRADE.alt));
