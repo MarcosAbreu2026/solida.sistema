@@ -6,15 +6,17 @@
 import { html } from './formato.js';
 import { hojeISO } from './datas.js';
 import { NA_NUVEM, listarOsQuadro, gravarOsQuadro, apagarOsQuadro, enviarFotoOs, apagarFotoOs, urlsFotosOs } from './nuvem.js';
-import { pessoasDaEquipe } from './telas/atas.js';
+import { pessoasDaEquipe, criarPendencia, todasPendencias } from './telas/atas.js';
 
 export const STATUS = [
   { id: 'solicitacao', nome: 'Solicitação', cor: '#6E7782', data: 'd_solicitacao' },
   { id: 'analise', nome: 'Análise', cor: '#7B6AA8', data: 'd_analise' },
   { id: 'orcamento', nome: 'Orçamento', cor: '#B58A1B', data: 'd_orcamento' },
+  { id: 'cobranca1', nome: 'Cobrar 50%', sub: 'entrada do orçamento', cobranca: 'entrada', cor: '#A23B72', data: null },
   { id: 'falta_agendar', nome: 'Falta agendar', cor: '#C0692B', data: null },
   { id: 'agendado', nome: 'Agendado', cor: '#3C7480', data: 'd_agendamento' },
   { id: 'execucao', nome: 'Em execução', cor: '#2F5F86', data: 'd_execucao' },
+  { id: 'cobranca2', nome: 'Cobrar 50%', sub: 'final do serviço', cobranca: 'final', cor: '#A23B72', data: null },
   { id: 'concluido', nome: 'Concluído', cor: '#4F7D5C', data: 'd_concluido' },
 ];
 export const DATAS = [['d_solicitacao', 'Solicitação'], ['d_analise', 'Análise'], ['d_orcamento', 'Orçamento'], ['d_agendamento', 'Agendamento'], ['d_execucao', 'Execução'], ['d_concluido', 'Concluído']];
@@ -50,7 +52,25 @@ function aplicarRegrasLocais(o) {
   const p = pessoasDaEquipe().find((x) => x.id === o.responsavel); if (p) o.responsavel_nome = p.nome;
   return o;
 }
+// Colunas de cobrança (pedido do Felipe, 16/11/2026): quando a OS entra em "Cobrar 50%" (entrada, entre Orçamento e Falta agendar; final, entre Em execução e Concluído)
+// nasce uma tarefa para a Letícia (financeiro) cobrar o cliente. Ela só vê essa tarefa, não precisa acompanhar o resto do quadro.
+async function avisarFinanceiro(o) {
+  const s = porId[o.status]; if (!s || !s.cobranca) return;
+  try {
+    if (todasPendencias().some((p) => p.os === o.codigo && p.os_fase === o.status && p.status === 'aberta')) return;
+    const gente = pessoasDaEquipe(); const l = gente.find((p) => /let[ií]cia/i.test(p.nome)) || gente.find((p) => p.funcao === 'financeiro'); if (!l) return;
+    const o1 = o.assunto ? ` (${o.assunto})` : '';
+    const descricao = s.cobranca === 'entrada' ? `${o.codigo}, Cobrar 50% de entrada do orçamento${o1}` : `${o.codigo}, Cobrar os 50% finais do serviço${o1}`;
+    await criarPendencia({ ata_id: null, descricao, responsavel: l.id, prazo: hojeISO(), obra: o.cliente, setor: 'Financeiro', os: o.codigo, osFase: o.status, urgencia: 'media' });
+  } catch { /* a OS já foi salva; o aviso pode ser refeito mudando a OS de coluna */ }
+}
 async function gravar(linha) {
+  const antes = linha.id ? porIdOs(linha.id) : null; const statusAntes = antes ? antes.status : null;
+  const r = await gravarBase(linha);
+  if (r && r.status !== statusAntes && porId[r.status] && porId[r.status].cobranca) await avisarFinanceiro(r);
+  return r;
+}
+async function gravarBase(linha) {
   if (NA_NUVEM) { const r = await gravarOsQuadro(linha); const i = lista.findIndex((o) => o.id === r.id); if (i >= 0) lista[i] = r; else lista.unshift(r); return r; }
   const todas = lerLocal(); let o;
   if (linha.id) { o = todas.find((x) => x.id === linha.id); Object.assign(o, linha); } else { o = { id: todas.reduce((m, x) => Math.max(m, x.id), 0) + 1, fotos: [], criado_em: new Date().toISOString(), d_solicitacao: hojeISO(), ...linha }; todas.push(o); }
@@ -105,21 +125,29 @@ const filtros = (params, extras) => html`<div class="at-filtros">
   <label>PO / cliente<select data-atas-filtro="cliente"><option value="">Todos</option>${clientesDe(extras).map((c) => html`<option value="${c}" ${c === params.get('cliente') ? html.seguro('selected') : ''}>${c}</option>`)}</select></label>
   <label>Procurar<input type="search" data-atas-filtro="q" value="${params.get('q') || ''}" placeholder="OS, assunto, problema…"></label></div>`;
 
-export function renderQuadro({ params, podeEditar, clientesPos = [], semFiltros = false }) {
+export function renderQuadro({ params, podeEditar, clientesPos = [], semFiltros = false, pendencias = [] }) {
   const itens = filtrar(params);
   const hoje = hojeISO();
+  const chipCobranca = (o) => {
+    const s = porId[o.status]; if (!s || !s.cobranca) return '';
+    const t = pendencias.find((p) => p.os === o.codigo && p.os_fase === o.status && p.status !== 'cancelada');
+    if (!t) return html`<span class="osq-cobr osq-cobr-aguarda" title="Ainda sem tarefa para o financeiro">cobrar</span>`;
+    return t.status === 'feita' ? html`<span class="osq-cobr osq-cobr-ok" title="${t.responsavel_nome || 'Financeiro'} já cobrou">✓ cobrado</span>` : html`<span class="osq-cobr osq-cobr-aguarda" title="Tarefa de ${t.responsavel_nome || 'financeiro'} aberta">⏳ ${t.responsavel_nome || 'financeiro'}</span>`;
+  };
   const cartao = (o) => {
     return html`<article class="at-card osq-card" data-osq="${o.id}" ${podeEditar ? html.seguro('draggable="true"') : ''} title="Clique para abrir${podeEditar ? ' · arraste para mudar o status' : ''}">
       <div class="at-tit"><b>${o.cliente}</b>${o.assunto ? `, ${o.assunto}` : ''}</div>
-      <div class="at-meta"><span class="at-chip">${o.codigo}</span>${(o.fotos || []).length ? html`<span class="at-chip">📷 ${o.fotos.length}</span>` : ''}</div></article>`;
+      <div class="at-meta"><span class="at-chip">${o.codigo}</span>${(o.fotos || []).length ? html`<span class="at-chip">📷 ${o.fotos.length}</span>` : ''}${chipCobranca(o)}</div></article>`;
   };
   return html`<section class="osq">
     ${erro ? html`<p class="erro">${erro}</p>` : ''}
     ${semFiltros ? '' : filtros(params, clientesPos)}
     <p class="pequeno">${podeEditar ? 'Arraste o cartão para a coluna certa ou clique nele para abrir a OS. O + cria uma OS nova naquela coluna.' : 'Só o pós-obra, a coordenação e a diretoria mexem nas OS; você acompanha por aqui.'}</p>
-    <div class="at-quadro osq-quadro">${STATUS.map((s) => {
+    <div class="at-quadro osq-quadro" style="grid-template-columns:${STATUS.map((s) => (s.cobranca ? 'minmax(0,.7fr)' : 'minmax(0,1fr)')).join(' ')}">${STATUS.map((s) => {
     const col = itens.filter((o) => o.status === s.id);
     const mostra = s.id === 'concluido' ? [...col].sort((a, b) => String(b.d_concluido || '').localeCompare(String(a.d_concluido || ''))).slice(0, 30) : col;
+    if (s.cobranca) return html`<section class="at-col osq-trans" data-osq-col="${s.id}" title="Soltar a OS aqui avisa o financeiro para cobrar ${s.cobranca === 'entrada' ? 'os 50% de entrada' : 'os 50% finais'}"><header style="background:${s.cor}"><b>💲 ${s.nome}</b><span>${col.length}</span></header><div class="osq-trans-sub">${s.sub}</div>
+      <div class="at-itens">${mostra.map(cartao)}${col.length ? '' : html`<p class="osq-trans-vazio">Solte a OS aqui para o financeiro cobrar</p>`}</div></section>`;
     return html`<section class="at-col" data-osq-col="${s.id}"><header style="background:${s.cor}"><b>${s.nome}</b><span>${col.length}</span>${podeEditar ? html`<button type="button" class="at-col-mais" data-osq-nova="${s.id}" title="Nova OS em ${s.nome}">+</button>` : ''}</header>
       <div class="at-itens">${mostra.map(cartao)}</div></section>`;
   })}</div>

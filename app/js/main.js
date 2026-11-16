@@ -224,7 +224,7 @@ function telaPosObraPlanilha(rota) {
   // Quadro de OS (solicitação > análise > orçamento > falta agendar > agendado > em execução > concluído) e o quadro de datas das mesmas OS
   if (rota.sub === 'quadro-os' || rota.sub === 'datas-os') {
     garantirOsCarregadas(); garantirAtasCarregadas();
-    const dados = { params: rota.params, podeEditar: podeEditarPos(), clientesPos: posObrasAtivas() };
+    const dados = { params: rota.params, podeEditar: podeEditarPos(), clientesPos: posObrasAtivas(), pendencias: atas.todasPendencias() };
     return { abas, conteudo: `<div class="pagina" style="margin-top:26px">${rota.sub === 'quadro-os' ? String(osq.renderQuadro(dados)) : String(osq.renderDatas(dados))}</div>` };
   }
   // Serviços: quadro por fase (análise, orçamento, execução, concluído…), arrastando os cartões

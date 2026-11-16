@@ -1053,3 +1053,14 @@ body.imp-ata .at-ata-det .sd-tab td.sd-t-info, body.imp-ata .at-ata-det .sd-tab 
 .pc-nota { font-size: 11.5px; line-height: 1.25; }
 .pc-nota-form { margin-top: 0; gap: 4px; }
 .pc-nota-form input { height: 20px; box-sizing: border-box; padding: 0 6px; font-size: 11.5px; border-radius: 5px; }
+
+/* Quadro de OS: colunas de transição de cobrança (50% de entrada e 50% finais) - mais estreitas e com cara de "ponte" entre as fases */
+.osq-trans { background: repeating-linear-gradient(135deg, #FBF1F6, #FBF1F6 8px, #F7E6EE 8px, #F7E6EE 16px); border: 1.5px dashed #A23B72; border-radius: 10px; }
+.osq-trans > header { font-size: 11.5px !important; }
+.osq-trans-sub { font-size: 10.5px; color: #8A2F5E; text-align: center; padding: 3px 4px 0; font-weight: 600; }
+.osq-trans-vazio { font-size: 10.5px; color: #A23B72; text-align: center; margin: 14px 6px; line-height: 1.3; opacity: .8; }
+.osq-trans .at-card { font-size: 11.5px; }
+.osq-cobr { font-size: 10px; font-weight: 700; border-radius: 999px; padding: 1px 7px; white-space: nowrap; }
+.osq-cobr-aguarda { background: #F7E0EB; color: #8A2F5E; } .osq-cobr-ok { background: #E3F3EA; color: #1B7F4B; }
+/* menu lateral recolhido: o conteúdo ocupa toda a largura (nada fica preso em largura máxima) */
+body.nav-recolhido .pd, body.nav-recolhido .osq, body.nav-recolhido .pc { max-width: none; }
