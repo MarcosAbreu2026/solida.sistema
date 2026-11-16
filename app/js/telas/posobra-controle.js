@@ -37,7 +37,7 @@ export function montarGrupos({ obrasCad = [], pendencias = [], hoje = '' }) {
   for (const o of osLista) { if (o.cliente) pega(o.cliente).os.push(o); }
   const porCodigoOs = new Map(osLista.map((o) => [o.codigo, o]));
   for (const p of pendencias) {
-    if (p.na_lista === false || p.status === 'cancelada') continue;
+    if (p.na_lista === false || p.status === 'cancelada' || p.recorrente || p.serie) continue;   // tarefa recorrente não entra aqui (enche a planilha de repetições)
     const cod = p.os || (String(p.origem || '').startsWith('os:') ? String(p.origem).slice(3) : '');
     const os = cod ? porCodigoOs.get(cod) : null;
     if (os) { (os.__pend || (os.__pend = [])).push(p); continue; }

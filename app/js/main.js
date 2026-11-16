@@ -213,7 +213,7 @@ function telaPosObraPlanilha(rota) {
   if (rota.sub === 'controle') {
     garantirOsCarregadas(); garantirAtasCarregadas();
     // relatos (anotações) das pendências das OS e das tarefas do PO: carrega as que faltam de uma vez e redesenha uma vez só, quando ninguém está digitando
-    const idsPend = atas.todasPendencias().filter((p) => p.na_lista !== false && p.status !== 'cancelada' && (p.os || String(p.origem || '').startsWith('os:') || (p.obra && /^po/i.test(String(p.obra).trim())))).map((p) => p.id);
+    const idsPend = atas.todasPendencias().filter((p) => p.na_lista !== false && p.status !== 'cancelada' && !p.recorrente && !p.serie && (p.os || String(p.origem || '').startsWith('os:') || (p.obra && /^po/i.test(String(p.obra).trim())))).map((p) => p.id);
     const faltam = idsPend.filter((id) => !atas.notasCarregada(id));
     if (faltam.length && !estado.pcNotasCarregando) {
       estado.pcNotasCarregando = true;
