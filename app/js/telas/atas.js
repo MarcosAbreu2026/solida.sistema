@@ -631,11 +631,34 @@ function prazoDaColuna(id, hoje) {
 // formulário de pendência avulsa (sem ata): janela com rótulos e grade organizada
 // Nova tarefa: o MESMO cartão da janela da tarefa (formulário à esquerda, anotações à direita), com os obrigatórios marcados em vermelho e o botão "Criar tarefa".
 // Os nomes dos campos (p_*, av_obra, av_setor) são os de sempre: quem grava é o mesmo código das pendências avulsas.
+// PRÉVIA (16/11/2026): "Reunião" na criação de tarefa, só para o administrador (conta "(admin)" na nuvem; no teste local sempre). Ainda não grava nada.
+export const reuniaoLiberada = () => !NA_NUVEM || /\(admin\)/i.test((perfilAtual() && perfilAtual().nome) || '');
+const somaHora = (hhmm, min) => { const [h, m] = String(hhmm || '08:30').split(':').map(Number); const t = (h * 60 + (m || 0) + min) % (24 * 60); return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`; };
+function painelReuniao(prazo, hora) {
+  const ini = hora || '08:30'; const pessoas = pessoasSelecionaveis();
+  return html`<div class="tf-reuniao">
+    <input name="r_titulo" class="rn-titulo" placeholder="Adicionar título" autocomplete="off">
+    <div class="rn-linha"><i aria-hidden="true">🕐</i><div class="rn-quando"><input type="date" name="r_data" value="${prazo || ''}"><input type="time" name="r_ini" value="${ini}"><span>até</span><input type="time" name="r_fim" value="${somaHora(ini, 60)}"></div></div>
+    <div class="rn-linha"><i aria-hidden="true">🔁</i><div class="rn-recor"><label><input type="checkbox" name="r_recor"> Reunião recorrente</label><select name="r_freq" title="Como se repete"><option value="semanal">Toda semana</option><option value="mensal">Todo mês</option></select></div></div>
+    <div class="rn-linha rn-conv"><i aria-hidden="true">👥</i>
+      <div class="obs" data-obs="r_conv">
+        <span class="obs-rot">Adicionar convidados <small>(pessoas da Sólida da lista, ou o e-mail de quem é de fora)</small></span>
+        <div class="obs-chips"></div>
+        <input type="search" class="obs-busca" placeholder="Procurar um nome da Sólida…" data-obs-busca autocomplete="off">
+        <div class="obs-lista">${pessoas.map((x) => html`<button type="button" class="obs-item" data-obs-add="${x.id}" data-obs-nome="${x.nome}">${x.nome}</button>`)}</div>
+        <div class="rn-email"><input type="email" placeholder="E-mail de quem não é da Sólida (cliente, arquiteto…)" data-conv-email autocomplete="off"><button type="button" class="botao" data-conv-email-add>Adicionar e-mail</button></div>
+      </div></div>
+    <div class="rn-linha"><i aria-hidden="true">📍</i><input name="r_local" placeholder="Adicionar local" autocomplete="off"></div>
+    <p class="rn-aviso">Prévia visível só para o administrador: ainda não salva nem aparece para ninguém.</p>
+    <div class="tf-botoes"><button type="button" class="botao" data-av-fechar>Cancelar</button><button type="button" class="botao on" disabled title="Em breve">Salvar reunião (em breve)</button></div>
+  </div>`;
+}
 export function formAvulsa(obras, prazo, setorPadrao = '', preset = {}) {
   const listaObras = preset.obra && !obras.includes(preset.obra) ? [preset.obra, ...obras] : obras;
   return html`<div class="tf tf-nova"><div class="tf-corpo">
     <form class="at-nova-pend at-avulsa tf-esq" id="pend-form" data-avulsa="1" data-os="${preset.os || ''}" data-os-fase="${preset.osFase || ''}" autocomplete="off">
       <div class="tf-cab"><h3>${preset.os ? 'Nova pendência da OS' : 'Nova tarefa'}</h3>${preset.os ? html`<span class="at-chip">${preset.os}</span>` : ''}<span class="pequeno">O que tem a borda vermelha precisa ser preenchido.</span></div>
+      ${reuniaoLiberada() && !preset.os ? html`<div class="tf-modo" role="tablist"><button type="button" class="on" role="tab" data-tf-modo="tarefa">Tarefa</button><button type="button" role="tab" data-tf-modo="reuniao">Reunião <small>prévia</small></button></div>` : ''}
       <div class="tf-grade pf-linha av-linha" data-tipo="solida" data-kind="pendencia">
         <label class="tf-ass">${preset.os ? 'Assunto (a OS)' : 'Assunto / cômodo'}<input name="p_assunto" class="pf-assunto" placeholder="ex.: ACM" autocomplete="off" value="${preset.os || preset.assunto || ''}" ${preset.os ? html.seguro('readonly') : ''}></label>
         <label class="tf-desc">${preset.os ? 'Descrição (o que fazer)' : 'Título (o que fazer)'}<input name="p_desc" class="tf-req" placeholder="ex.: Retirar da área gourmet" autocomplete="off" value="${preset.desc || ''}"></label>
@@ -654,7 +677,8 @@ export function formAvulsa(obras, prazo, setorPadrao = '', preset = {}) {
         <label>Urgência<select name="p_urg"><option value="">Sem urgência</option>${Object.entries(URG).map(([v, [t]]) => html`<option value="${v}">${t[0] + t.slice(1).toLocaleLowerCase('pt-BR')}</option>`)}</select></label>
         ${caixaObservadores('p_obs', [], '')}
       </div>
-      <div class="tf-botoes"><button type="button" class="botao" data-av-fechar>Cancelar</button><button type="submit" class="botao on">Criar tarefa</button></div>
+      <div class="tf-botoes tf-botoes-tarefa"><button type="button" class="botao" data-av-fechar>Cancelar</button><button type="submit" class="botao on">Criar tarefa</button></div>
+      ${reuniaoLiberada() && !preset.os ? painelReuniao(prazo, preset.hora) : ''}
     </form>
     <div class="tf-chat tf-dir"><h4>Anotações</h4><p class="pequeno">As anotações ficam disponíveis depois que a tarefa for criada.</p></div>
   </div></div>`;

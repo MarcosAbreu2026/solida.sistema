@@ -993,3 +993,32 @@ body.imp-ata .at-ata-det .sd-tab td.sd-t-info, body.imp-ata .at-ata-det .sd-tab 
 .ag-principal .fq-trilho { cursor: cell; }
 .fq-fantasma { position: absolute; left: 3px; right: 3px; z-index: 1; box-sizing: border-box; border: 1.5px dashed #2B5E96; border-radius: 6px; background: rgba(43, 94, 150, .09); color: #1F4A78; font-size: 11.5px; font-weight: 700; padding: 3px 7px; pointer-events: none; overflow: hidden; white-space: nowrap; }
 @media print { .fq-fantasma { display: none; } }
+
+/* PRÉVIA: Reunião na janela de Nova tarefa (só administrador) */
+.tf-modo { display: inline-flex; gap: 4px; padding: 3px; background: #E6EEF7; border-radius: 999px; margin: 2px 0 12px; }
+.tf-modo button { border: 0; background: transparent; color: #1F4A78; font: inherit; font-weight: 700; font-size: 13.5px; padding: 6px 18px; border-radius: 999px; cursor: pointer; }
+.tf-modo button.on { background: #2B5E96; color: #fff; }
+.tf-modo small { font-weight: 600; opacity: .8; font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; margin-left: 3px; }
+.tf-reuniao { display: none; }
+.tf-modo-reuniao .tf-grade, .tf-modo-reuniao .tf-botoes-tarefa { display: none !important; }
+.tf-modo-reuniao .tf-reuniao { display: block; }
+.rn-titulo { width: 100%; box-sizing: border-box; font: inherit; font-size: 22px; font-weight: 700; color: #1F3A56; padding: 6px 2px 8px; border: 0; border-bottom: 2px solid #2B5E96; background: transparent; margin: 4px 0 14px; outline: none; }
+.rn-titulo::placeholder { color: #9AA8B8; font-weight: 600; }
+.rn-linha { display: flex; gap: 12px; align-items: flex-start; margin: 0 0 12px; }
+.rn-linha > i { font-style: normal; font-size: 16px; width: 22px; text-align: center; padding-top: 7px; flex: none; }
+.rn-linha > input, .rn-linha .obs { flex: 1 1 auto; min-width: 0; }
+.rn-linha > input { font: inherit; font-size: 14px; padding: 8px 10px; border: 1px solid #C9D1DA; border-radius: 8px; box-sizing: border-box; background: #fff; }
+.rn-quando { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; } .rn-quando span { color: #7A8794; font-size: 13px; }
+.rn-quando input, .rn-recor select { font: inherit; font-size: 14px; padding: 7px 10px; border: 1px solid #C9D1DA; border-radius: 8px; background: #fff; }
+.rn-recor { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding-top: 4px; } .rn-recor label { display: inline-flex; gap: 6px; align-items: center; font-size: 14px; cursor: pointer; }
+.rn-conv .obs { margin-top: 0; grid-column: auto; }
+.rn-email { display: flex; gap: 8px; margin-top: 8px; } .rn-email input { flex: 1 1 auto; min-width: 0; font: inherit; font-size: 13.5px; padding: 7px 10px; border: 1px solid #C9D1DA; border-radius: 8px; } .rn-email .botao { white-space: nowrap; }
+.obs-chip.obs-ext { background: #F4EBD0; color: #6B4E0A; } .obs-chip.obs-ext small { font-weight: 600; opacity: .8; } .obs-chip.obs-ext button { background: rgba(107, 78, 10, .15); color: #6B4E0A; }
+.rn-aviso { background: #FFF6E3; border: 1px dashed #E0B04A; color: #7A5A12; font-size: 12.5px; border-radius: 8px; padding: 6px 10px; margin: 4px 0 12px; }
+.tf-reuniao .tf-botoes button:disabled { opacity: .45; cursor: not-allowed; }
+@media print { .tf-modo, .tf-reuniao { display: none !important; } }
+.tf-nova .tf-modo-reuniao .tf-grade.pf-linha, .tf-nova .tf-modo-reuniao .tf-botoes-tarefa { display: none !important; }
+.rn-recor input[type="checkbox"] { width: 18px !important; height: 18px !important; min-width: 0; flex: none; padding: 0; margin: 0; }
+.rn-recor label { white-space: nowrap; }
+.tf-nova .tf-reuniao input[type="date"], .tf-nova .tf-reuniao input[type="time"] { width: auto; }
+.rn-recor label { display: inline-flex !important; flex-direction: row !important; align-items: center; gap: 8px; margin: 0; }

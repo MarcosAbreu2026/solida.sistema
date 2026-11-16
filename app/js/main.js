@@ -2207,10 +2207,39 @@ document.addEventListener('click', async (e) => {
   const ad = e.target.closest('[data-ata-del]');
   if (ad) { if (!confirm('Excluir esta ata e todas as pendências dela? Não dá para desfazer.')) return; try { await atas.apagarAta(ad.dataset.ataDel); estado.atasMsg = 'Ata excluída.'; estado.atasMsgHash = '#/atas?aba=atas'; location.hash = estado.atasMsgHash; desenhar(); } catch (err) { alert(`Não foi possível excluir (${err.message || err}).`); } }
 });
+// PRÉVIA da Reunião (só para o administrador): alterna Tarefa/Reunião na janela de Nova tarefa e adiciona convidados por e-mail. Ainda não grava nada.
+document.addEventListener('click', (e) => {
+  const modo = e.target.closest && e.target.closest('[data-tf-modo]');
+  if (modo) {
+    const form = modo.closest('form'); if (!form) return;
+    form.classList.toggle('tf-modo-reuniao', modo.dataset.tfModo === 'reuniao');
+    form.querySelectorAll('[data-tf-modo]').forEach((b) => b.classList.toggle('on', b === modo));
+    const t = form.querySelector(modo.dataset.tfModo === 'reuniao' ? '[name="r_titulo"]' : '[name="p_assunto"]'); if (t) t.focus();
+    return;
+  }
+  const add = e.target.closest && e.target.closest('[data-conv-email-add]');
+  if (add) adicionarEmailConvidado(add.closest('.obs'));
+});
+document.addEventListener('keydown', (e) => {
+  const campo = e.target.closest && e.target.closest('[data-conv-email]');
+  if (campo && e.key === 'Enter') { e.preventDefault(); adicionarEmailConvidado(campo.closest('.obs')); }
+});
+function adicionarEmailConvidado(cx) {
+  if (!cx) return;
+  const campo = cx.querySelector('[data-conv-email]'); const em = String(campo.value || '').trim().toLowerCase();
+  if (!em) return;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) { campo.classList.add('falta'); campo.focus(); return; }
+  campo.classList.remove('falta');
+  if (cx.querySelector(`[data-obs-chip="${CSS.escape(em)}"]`)) { campo.value = ''; return; }
+  const chip = document.createElement('span'); chip.className = 'obs-chip obs-ext'; chip.dataset.obsChip = em;
+  chip.innerHTML = `${esc(em)} <small>externo</small><button type="button" data-obs-del="${esc(em)}" title="Tirar">×</button><input type="hidden" name="r_conv_email" value="${esc(em)}">`;
+  cx.querySelector('.obs-chips').appendChild(chip); campo.value = ''; campo.focus();
+}
 document.addEventListener('submit', async (e) => {
   const f = e.target.closest('#ata-form'); const g = e.target.closest('#pend-form');
   if (!f && !g) return;
   e.preventDefault();
+  if (g && g.classList.contains('tf-modo-reuniao')) return;   // prévia da Reunião: não grava
   try {
     if (f) {
       const fd = new FormData(f);
