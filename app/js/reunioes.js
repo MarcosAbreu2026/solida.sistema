@@ -60,44 +60,78 @@ function dataDaSerie(base, freq, k) {
   return `${ano}-${String(mes + 1).padStart(2, '0')}-${String(Math.min(d, ult)).padStart(2, '0')}`;
 }
 
-export async function criar(c) {
+// Tudo aqui é "otimista": a tela muda NA HORA (a reunião aparece, some ou é alterada na lista) e quem chamou fecha a janela já; o que demora (banco e Google Agenda)
+// acontece em segundo plano e devolve uma promessa ("pronto"). Se algo falhar, quem chamou recarrega a lista e avisa. `acompanhar` atualiza a tela até o envio ao Google terminar.
+let tmp = 0;
+export function criar(c, { antes = null } = {}) {
   const n = c.recorrente ? 12 : 1;
   const serie = c.recorrente ? `r${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}` : null;
   const base = { nome: nomeDaReuniao(c), titulo: c.titulo.trim(), obra: c.obra || null, setor: c.setor || null, ini: c.ini, fim: c.fim, local: (c.local || '').trim() || null,
     convidados: c.convidados || [], emails_externos: c.emails || [], recorrente: !!c.recorrente, frequencia: c.recorrente ? (c.frequencia === 'mensal' ? 'mensal' : 'semanal') : null, serie, meet: c.meet !== false, gcal_sync: 'pendente' };
   const linhas = Array.from({ length: n }, (_, k) => ({ ...base, data: dataDaSerie(c.data, base.frequencia, k) }));
-  let novas = [];
-  if (NA_NUVEM) novas = await gravarReunioes(linhas);
-  else { const l = lerLocal(); let seq = l.reduce((m, x) => Math.max(m, x.id), 0); for (const x of linhas) l.push({ id: ++seq, ...x, cancelada: false, criado_por: eu(), criado_em: new Date().toISOString(), gcal_event_id: null }); gravarLocal(l); }
-  if (NA_NUVEM) { await sincronizarReunioesGoogle(novas.map((x) => x.id)); }
-  await carregar();
+  // já aparece na lista (com número provisório) até o banco confirmar
+  lista = [...lista, ...linhas.map((x) => ({ id: `t${++tmp}`, ...x, cancelada: false, criado_por: eu(), convidados: x.convidados, gcal_event_id: null, meet_link: null }))];
+  return (async () => {
+    if (antes) await antes();
+    if (NA_NUVEM) {
+      const novas = await gravarReunioes(linhas);
+      sincronizarReunioesGoogle(novas.map((x) => x.id)).finally(() => carregar());   // não espera: o Google pode demorar
+    } else { const l = lerLocal(); let seq = l.reduce((m, x) => Math.max(m, x.id), 0); for (const x of linhas) l.push({ id: ++seq, ...x, cancelada: false, criado_por: eu(), criado_em: new Date().toISOString(), gcal_event_id: null }); gravarLocal(l); }
+    await carregar();
+  })();
 }
 
 async function atualizarVarias(ids, mud) {
   if (NA_NUVEM) { for (const i of ids) await atualizarReuniao(i, mud(i)); }
   else { const l = lerLocal(); for (const x of l) if (ids.some((i) => String(i) === String(x.id))) Object.assign(x, mud(x.id)); gravarLocal(l); }
 }
+function aplicarNaLista(ids, mud) { lista = lista.map((x) => (ids.some((i) => String(i) === String(x.id)) ? { ...x, ...mud(x.id) } : x)); }
 // mudar uma reunião (ou ela e as próximas da série): marca como pendente para o Google Agenda refazer o evento
-export async function salvar(id, c, escopo = 'uma') {
-  const r = porId(id); if (!r) return;
+export function salvar(id, c, escopo = 'uma', { antes = null } = {}) {
+  const r = porId(id); if (!r) return Promise.resolve();
   const alvo = escopo === 'seguintes' && r.serie ? lista.filter((x) => x.serie === r.serie && x.data >= r.data && !x.cancelada) : [r];
   const delta = c.data && c.data !== r.data ? Math.round((Date.parse(`${c.data}T12:00:00Z`) - Date.parse(`${r.data}T12:00:00Z`)) / 86400000) : 0;
   const agora = new Date().toISOString();
-  await atualizarVarias(alvo.map((x) => x.id), (i) => {
-    const x = lista.find((y) => String(y.id) === String(i));
+  const mud = (i) => {
+    const x = lista.find((y) => String(y.id) === String(i)) || r;
     return { nome: nomeDaReuniao(c), titulo: c.titulo.trim(), obra: c.obra || null, setor: c.setor || null, ini: c.ini, fim: c.fim, local: (c.local || '').trim() || null,
       convidados: c.convidados || [], emails_externos: c.emails || [], meet: c.meet !== false, data: String(i) === String(id) ? c.data : (delta ? somarDias(x.data, delta) : x.data), gcal_sync: 'pendente', gcal_erro: null, atualizado_em: agora, atualizado_por: eu() };
-  });
-  if (NA_NUVEM) await sincronizarReunioesGoogle(alvo.map((x) => x.id));
-  await carregar();
+  };
+  const ids = alvo.map((x) => x.id);
+  aplicarNaLista(ids, mud);   // a tela já mostra a mudança
+  return (async () => {
+    if (antes) await antes();
+    await atualizarVarias(ids, mud);
+    if (NA_NUVEM) sincronizarReunioesGoogle(ids).finally(() => carregar());
+    await carregar();
+  })();
 }
 // "excluir" cancela: o Google Agenda precisa apagar o evento, então a linha fica marcada até o envio
-export async function cancelar(id, escopo = 'uma') {
-  const r = porId(id); if (!r) return;
+export function cancelar(id, escopo = 'uma') {
+  const r = porId(id); if (!r) return Promise.resolve();
   const alvo = escopo === 'seguintes' && r.serie ? lista.filter((x) => x.serie === r.serie && x.data >= r.data) : [r];
-  await atualizarVarias(alvo.map((x) => x.id), () => ({ cancelada: true, gcal_sync: 'pendente', gcal_erro: null, atualizado_em: new Date().toISOString(), atualizado_por: eu() }));
-  if (NA_NUVEM) await sincronizarReunioesGoogle(alvo.map((x) => x.id));
-  await carregar();
+  const ids = alvo.map((x) => x.id);
+  const mud = () => ({ cancelada: true, gcal_sync: 'pendente', gcal_erro: null, atualizado_em: new Date().toISOString(), atualizado_por: eu() });
+  aplicarNaLista(ids, mud);   // some da lista na hora
+  return (async () => {
+    await atualizarVarias(ids, mud);
+    if (NA_NUVEM) sincronizarReunioesGoogle(ids).finally(() => carregar());
+    await carregar();
+  })();
+}
+// depois de uma alteração, recarrega de poucos em poucos segundos (até ~1 min) enquanto houver reunião esperando o Google; chama `redesenhar` quando algo muda
+let acompanhando = false;
+export async function acompanhar(redesenhar) {
+  if (acompanhando || !NA_NUVEM) return; acompanhando = true;
+  try {
+    for (let k = 0; k < 20; k++) {
+      await new Promise((ok) => setTimeout(ok, 3000));
+      const antes = JSON.stringify(lista.map((r) => [r.id, r.gcal_sync, r.meet_link, r.cancelada]));
+      await carregar();
+      if (JSON.stringify(lista.map((r) => [r.id, r.gcal_sync, r.meet_link, r.cancelada])) !== antes) redesenhar();
+      if (!lista.some((r) => r.gcal_sync === 'pendente' && !r.cancelada) && k >= 1) break;
+    }
+  } finally { acompanhando = false; }
 }
 
 // ---------------------------------------------------------------- telas

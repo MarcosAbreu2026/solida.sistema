@@ -2359,6 +2359,18 @@ document.addEventListener('submit', async (e) => {
   try { await atas.anotar(id, texto); desenhar(); }
   catch (err) { campo.disabled = false; alert(`Não foi possível anotar (${err.message || err}).`); }
 });
+// aviso rápido no pé da tela (some sozinho)
+function avisoRapido(texto, tom = 'ok') {
+  let el = document.getElementById('aviso-rapido'); if (!el) { el = document.createElement('div'); el.id = 'aviso-rapido'; document.body.appendChild(el); }
+  el.textContent = texto; el.className = `aviso-rapido ${tom}`; el.hidden = false;
+  clearTimeout(avisoRapido.t); avisoRapido.t = setTimeout(() => { el.hidden = true; }, tom === 'erro' ? 6000 : 2200);
+}
+// reunião: a janela já fechou e a tela já mudou; aqui o resto acontece em segundo plano. Dá o aviso, atualiza a tela quando termina e continua atualizando até o Google Agenda responder
+function acompanharReuniao(pronto, inicio, fim, falha) {
+  avisoRapido(inicio);
+  pronto.then(() => { avisoRapido(fim); if (!emEdicao()) desenhar(); reunioes.acompanhar(() => { if (!emEdicao()) desenhar(); }); })
+    .catch((err) => { reunioes.carregar().then(() => { if (!emEdicao()) desenhar(); }); avisoRapido(`${falha}: ${err.message || err}`, 'erro'); });
+}
 // Reuniões: o nome sai sozinho (R_<obra ou departamento>_<título>); salvar cria a reunião (o sistema leva para o Google Agenda do sistema)
 const dadosReuniao = (form) => {
   const fd = new FormData(form); const obraV = String(fd.get('r_obra') || '');
@@ -2429,12 +2441,15 @@ document.addEventListener('click', async (e) => {
   const caixa = form.querySelector('[data-rn-erro]'); if (caixa) { caixa.hidden = !msg; caixa.textContent = msg; caixa.style.color = '#B3261E'; }
   if (msg) return;
   b.disabled = true;
-  try { await reunioes.guardarEmailsDasPessoas(c.emailsPessoas); await reunioes.criar(c); const m = document.getElementById('at-modal'); if (m) m.remove(); estado.reunioesVisitada = false; desenhar(); }
-  catch (err) { b.disabled = false; alert(`Não foi possível salvar a reunião (${err.message || err}).`); }
+  // fecha já e trabalha em segundo plano: a reunião aparece na hora e o banco/Google Agenda atualizam logo depois
+  const pronto = reunioes.criar(c, { antes: () => reunioes.guardarEmailsDasPessoas(c.emailsPessoas) });
+  const m = document.getElementById('at-modal'); if (m) m.remove(); desenhar();
+  acompanharReuniao(pronto, 'Salvando a reunião…', 'Reunião salva ✓', 'Não foi possível salvar a reunião');
 });
 document.addEventListener('click', (e) => {
   const a = e.target.closest && e.target.closest('[data-reun-abrir]'); if (!a) return;
   const r = reunioes.porId(a.dataset.reunAbrir); if (!r) return;
+  if (String(r.id).startsWith('t')) { avisoRapido('Salvando a reunião… abre de novo em um instante.'); return; }
   const antigo = document.getElementById('at-modal'); if (antigo) antigo.remove();
   const m = document.createElement('div'); m.id = 'at-modal'; m.className = 'at-modal';
   m.innerHTML = `<div class="at-modal-caixa">${String(reunioes.formEdicao(r, { gruposObras: atas.gruposDeObras(obrasDeAtas(), r.obra || '', { criar: false }), setores: atas.SETORES_ATA, pessoas: atas.pessoasSelecionaveis() }))}</div>`;
@@ -2447,8 +2462,9 @@ document.addEventListener('submit', async (e) => {
   const id = f.dataset.reunForm; const r = reunioes.porId(id); const c = dadosReuniao(f); const msg = erroReuniao(c, false);
   if (msg) { alert(msg); return; }
   let escopo = 'uma'; if (r && r.serie) { escopo = await perguntarEscopo('Salvar reunião recorrente'); if (!escopo) return; }
-  try { await reunioes.guardarEmailsDasPessoas(c.emailsPessoas); await reunioes.salvar(id, c, escopo); const m = document.getElementById('at-modal'); if (m) m.remove(); estado.reunioesVisitada = false; desenhar(); }
-  catch (err) { alert(`Não foi possível salvar (${err.message || err}).`); }
+  const pronto = reunioes.salvar(id, c, escopo, { antes: () => reunioes.guardarEmailsDasPessoas(c.emailsPessoas) });
+  const m = document.getElementById('at-modal'); if (m) m.remove(); desenhar();
+  acompanharReuniao(pronto, 'Salvando as mudanças…', 'Mudanças salvas ✓', 'Não foi possível salvar');
 });
 document.addEventListener('click', async (e) => {
   const b = e.target.closest && e.target.closest('[data-reun-cancelar]'); if (!b) return;
@@ -2456,8 +2472,9 @@ document.addEventListener('click', async (e) => {
   let escopo = 'uma';
   if (r.serie) { escopo = await perguntarEscopo('Cancelar reunião recorrente'); if (!escopo) return; }
   else if (!confirm(`Cancelar a reunião "${r.nome}"? O evento sai do Google Agenda e os convidados são avisados.`)) return;
-  try { await reunioes.cancelar(id, escopo); const m = document.getElementById('at-modal'); if (m) m.remove(); estado.reunioesVisitada = false; desenhar(); }
-  catch (err) { alert(`Não foi possível cancelar (${err.message || err}).`); }
+  const pronto = reunioes.cancelar(id, escopo);
+  const m = document.getElementById('at-modal'); if (m) m.remove(); desenhar();
+  acompanharReuniao(pronto, 'Cancelando a reunião…', 'Reunião cancelada ✓', 'Não foi possível cancelar');
 });
 // PRÉVIA da Reunião (só para o administrador): alterna Tarefa/Reunião na janela de Nova tarefa e adiciona convidados por e-mail. Ainda não grava nada.
 document.addEventListener('click', (e) => {
