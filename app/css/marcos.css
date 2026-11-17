@@ -1293,3 +1293,16 @@ body.nav-recolhido .pd, body.nav-recolhido .osq, body.nav-recolhido .pc { max-wi
 
 .aviso-rapido { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 5000; background: #1F3A56; color: #fff; font-size: 13.5px; font-weight: 600; padding: 9px 18px; border-radius: 999px; box-shadow: 0 6px 24px rgba(0,0,0,.25); max-width: 90vw; }
 .aviso-rapido.erro { background: #B3261E; } .aviso-rapido[hidden] { display: none; }
+
+/* Botão ocupado: cinza, com uma rodinha girando, enquanto a ação roda */
+@keyframes girar { to { transform: rotate(360deg); } }
+.btn-ocupado { opacity: .7; cursor: progress !important; pointer-events: none; filter: grayscale(.7); }
+.btn-ocupado::before { content: ''; display: inline-block; width: 12px; height: 12px; margin-right: 8px; vertical-align: -2px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: girar .7s linear infinite; }
+/* Janela de editar reunião: mesma arrumação da criação (checkbox pequeno e na linha, dica ao lado do rótulo, campos de 28 px) */
+#reun-form .rn-meet-chk { display: inline-flex !important; flex-direction: row !important; align-items: center !important; gap: 8px !important; font-size: 13px; color: #3B4652; font-weight: 600; justify-self: start; }
+#reun-form input[type="checkbox"] { width: 16px !important; height: 16px !important; min-width: 16px !important; padding: 0 !important; margin: 0 !important; flex: none; }
+#reun-form .rn-dica { display: inline; margin-left: 4px; }
+#reun-form .tf-grade { align-items: end; }
+#reun-form .obs { display: flex; flex-direction: column; gap: 4px; } #reun-form .obs > * { margin-top: 0 !important; margin-bottom: 0 !important; }
+#reun-form .obs-lista { max-height: 52px; overflow-y: auto; }
+#reun-form .tf-botoes { margin-top: 8px; }
