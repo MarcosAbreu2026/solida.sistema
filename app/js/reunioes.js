@@ -41,7 +41,7 @@ export async function criar(c) {
   const n = c.recorrente ? 12 : 1;
   const serie = c.recorrente ? `r${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}` : null;
   const base = { nome: nomeDaReuniao(c), titulo: c.titulo.trim(), obra: c.obra || null, setor: c.setor || null, ini: c.ini, fim: c.fim, local: (c.local || '').trim() || null,
-    convidados: c.convidados || [], emails_externos: c.emails || [], recorrente: !!c.recorrente, frequencia: c.recorrente ? (c.frequencia === 'mensal' ? 'mensal' : 'semanal') : null, serie, gcal_sync: 'pendente' };
+    convidados: c.convidados || [], emails_externos: c.emails || [], recorrente: !!c.recorrente, frequencia: c.recorrente ? (c.frequencia === 'mensal' ? 'mensal' : 'semanal') : null, serie, meet: c.meet !== false, gcal_sync: 'pendente' };
   const linhas = Array.from({ length: n }, (_, k) => ({ ...base, data: dataDaSerie(c.data, base.frequencia, k) }));
   let novas = [];
   if (NA_NUVEM) novas = await gravarReunioes(linhas);
@@ -63,7 +63,7 @@ export async function salvar(id, c, escopo = 'uma') {
   await atualizarVarias(alvo.map((x) => x.id), (i) => {
     const x = lista.find((y) => String(y.id) === String(i));
     return { nome: nomeDaReuniao(c), titulo: c.titulo.trim(), obra: c.obra || null, setor: c.setor || null, ini: c.ini, fim: c.fim, local: (c.local || '').trim() || null,
-      convidados: c.convidados || [], emails_externos: c.emails || [], data: String(i) === String(id) ? c.data : (delta ? somarDias(x.data, delta) : x.data), gcal_sync: 'pendente', gcal_erro: null, atualizado_em: agora, atualizado_por: eu() };
+      convidados: c.convidados || [], emails_externos: c.emails || [], meet: c.meet !== false, data: String(i) === String(id) ? c.data : (delta ? somarDias(x.data, delta) : x.data), gcal_sync: 'pendente', gcal_erro: null, atualizado_em: agora, atualizado_por: eu() };
   });
   if (NA_NUVEM) await sincronizarReunioesGoogle(alvo.map((x) => x.id));
   await carregar();
@@ -103,7 +103,7 @@ export function renderLista({ pessoas = [], hoje = hojeISO() } = {}) {
     ${erro ? html`<p class="erro">${erro}</p>` : ''}
     ${itens.length ? itens.map((r) => html`<button type="button" class="rn-item" data-reun-abrir="${r.id}" title="Clique para editar a reunião">
       <span class="rn-quando"><b>${dm(r.data)}</b> ${SEM[new Date(`${r.data}T12:00:00`).getDay()]}<small>${r.ini}–${r.fim}</small></span>
-      <span class="rn-nome"><b>${r.nome}</b><small>${r.local ? `${r.local} · ` : ''}${(r.convidados || []).length + (r.emails_externos || []).length} convidados${(r.convidados || []).length ? ` (${(r.convidados || []).slice(0, 3).map(nome).filter(Boolean).join(', ')}${(r.convidados || []).length > 3 ? '…' : ''})` : ''}${r.serie ? ' · recorrente' : ''}</small></span>${selo(r)}</button>`)
+      <span class="rn-nome"><b>${r.nome}</b><small>${r.local ? `${r.local} · ` : ''}${(r.convidados || []).length + (r.emails_externos || []).length} convidados${(r.convidados || []).length ? ` (${(r.convidados || []).slice(0, 3).map(nome).filter(Boolean).join(', ')}${(r.convidados || []).length > 3 ? '…' : ''})` : ''}${r.serie ? ' · recorrente' : ''}</small></span>${r.meet_link ? html`<a class="rn-meet" href="${r.meet_link}" target="_blank" rel="noopener" title="Entrar na reunião (Google Meet)">🎥 Entrar</a>` : r.meet ? html`<span class="rn-meet rn-meet-pend" title="O link do Meet aparece assim que a reunião for ao Google Agenda">🎥 online</span>` : ''}${selo(r)}</button>`)
       : html`<p class="vazio">Nenhuma reunião marcada. Crie uma em Tarefas › Nova tarefa › Reunião.</p>`}
   </section>`;
 }
@@ -121,6 +121,7 @@ export function formEdicao(r, { gruposObras = '', setores = [], pessoas = [] } =
       <label>Início<input type="time" name="r_ini" value="${r.ini}" required ${dis}></label>
       <label>Fim<input type="time" name="r_fim" value="${r.fim}" required ${dis}></label>
       <label>Local<input name="r_local" value="${r.local || ''}" ${dis}></label>
+      <label class="rn-meet-chk" style="grid-column:1/-1;flex-direction:row;align-items:center;gap:8px"><input type="checkbox" name="r_meet" ${r.meet ? html.seguro('checked') : ''} ${dis}> Reunião online (link do Google Meet)${r.meet_link ? html` · <a href="${r.meet_link}" target="_blank" rel="noopener">Entrar na reunião</a>` : ''}</label>
     </div>
     ${pode ? caixaConvidados(pessoas, r.convidados || [], r.emails_externos || []) : html`<p class="pequeno">Só quem criou a reunião, os convidados da Sólida e a diretoria podem editar.</p>`}
     <p class="pequeno">Edite sempre por aqui: o sistema atualiza o Google Agenda e avisa os convidados. Mudanças feitas direto no Google Agenda não voltam para cá.</p>

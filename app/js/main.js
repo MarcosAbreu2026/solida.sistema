@@ -2362,7 +2362,7 @@ document.addEventListener('submit', async (e) => {
 const dadosReuniao = (form) => {
   const fd = new FormData(form); const obraV = String(fd.get('r_obra') || '');
   return { obra: obraV === '__nenhuma__' ? '' : obraV, obraEscolhida: obraV, setor: String(fd.get('r_setor') || ''), titulo: String(fd.get('r_titulo') || '').trim(), data: String(fd.get('r_data') || ''), ini: String(fd.get('r_ini') || ''), fim: String(fd.get('r_fim') || ''),
-    local: String(fd.get('r_local') || ''), convidados: fd.getAll('r_conv'), emails: fd.getAll('r_conv_email'), recorrente: fd.has('r_recor'), frequencia: String(fd.get('r_freq') || 'semanal') };
+    local: String(fd.get('r_local') || ''), convidados: fd.getAll('r_conv'), emails: fd.getAll('r_conv_email'), recorrente: fd.has('r_recor'), frequencia: String(fd.get('r_freq') || 'semanal'), meet: fd.has('r_meet') };
 };
 const erroReuniao = (c, obrigaEscolher = true) => {
   if (obrigaEscolher && !c.obraEscolhida) return 'Escolha a obra ou o pós-obra (ou "Nenhuma" se for uma reunião de departamento).';

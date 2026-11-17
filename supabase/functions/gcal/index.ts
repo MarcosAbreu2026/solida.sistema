@@ -47,6 +47,8 @@ function eventoDe(r: Record<string, unknown>, emails: string[]) {
     end: { dateTime: `${r.data}T${hora(String(r.fim))}`, timeZone: FUSO },
     attendees: emails.map((email) => ({ email })),
     reminders: { useDefault: true },
+    // reunião online: o Google cria o link do Meet junto com o evento (só se ainda não tem)
+    ...(r.meet && !r.meet_link ? { conferenceData: { createRequest: { requestId: crypto.randomUUID(), conferenceSolutionKey: { type: 'hangoutsMeet' } } } } : {}),
   };
 }
 
@@ -73,11 +75,11 @@ async function levar(cfg: Record<string, string | null>, ids: number[]) {
       const semEmail = (perfis || []).filter((p: { emails_agenda: string[] | null }) => !(p.emails_agenda || []).length).map((p: { nome: string }) => p.nome);
       const emails = [...new Set([...(perfis || []).flatMap((p: { emails_agenda: string[] | null }) => p.emails_agenda || []).filter(Boolean), ...(((r.emails_externos as string[]) || []))])];
       const corpo = JSON.stringify(eventoDe(r, emails));
-      const url = evId ? `https://www.googleapis.com/calendar/v3/calendars/${cal}/events/${evId}?sendUpdates=all` : `https://www.googleapis.com/calendar/v3/calendars/${cal}/events?sendUpdates=all`;
+      const url = evId ? `https://www.googleapis.com/calendar/v3/calendars/${cal}/events/${evId}?sendUpdates=all&conferenceDataVersion=1` : `https://www.googleapis.com/calendar/v3/calendars/${cal}/events?sendUpdates=all&conferenceDataVersion=1`;
       const resp = await fetch(url, { method: evId ? 'PATCH' : 'POST', headers: H, body: corpo });
       const ev = await resp.json();
       if (!resp.ok) throw new Error(`${resp.status} ${(ev.error && ev.error.message) || ''}`);
-      await sb.from('reunioes').update({ gcal_event_id: ev.id, gcal_sync: 'ok', gcal_erro: semEmail.length ? `Sem e-mail da Sólida cadastrado (não foram convidados): ${semEmail.join(', ')}` : null, gcal_sync_em: new Date().toISOString() }).eq('id', r.id);
+      await sb.from('reunioes').update({ gcal_event_id: ev.id, ...(ev.hangoutLink ? { meet_link: ev.hangoutLink } : {}), gcal_sync: 'ok', gcal_erro: semEmail.length ? `Sem e-mail da Sólida cadastrado (não foram convidados): ${semEmail.join(', ')}` : null, gcal_sync_em: new Date().toISOString() }).eq('id', r.id);
       resultado[id] = evId ? 'atualizada' : 'criada';
     } catch (e) {
       await sb.from('reunioes').update({ gcal_sync: 'erro', gcal_erro: String((e as Error).message || e).slice(0, 300), gcal_sync_em: new Date().toISOString() }).eq('id', r.id);
