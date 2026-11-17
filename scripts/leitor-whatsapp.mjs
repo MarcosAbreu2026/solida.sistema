@@ -62,7 +62,16 @@ const args = [`--remote-debugging-port=${porta}`, `--user-data-dir=${perfil}`, '
 if (!MODO_LOGIN) args.push('--headless=new');
 args.push('about:blank');
 const edge = spawn(NAVEGADOR, args, { stdio: 'ignore' });
-const encerrar = (codigo) => { try { edge.kill(); } catch { /* já fechou */ } process.exit(codigo); };
+// Fecha o navegador DIREITO (Browser.close) e espera ele terminar: matar o processo de uma vez faz o Chrome perder o que ainda não gravou no perfil
+// (a sessão do WhatsApp Web fica em localStorage) e o WhatsApp pede o QR code de novo. Só mata à força se ele não fechar em ~10 s.
+let encerrando = false;
+const encerrar = async (codigo) => {
+  if (encerrando) return; encerrando = true;
+  try { if (typeof ws !== 'undefined' && ws && ws.readyState === 1) await Promise.race([cdp('Browser.close').catch(() => {}), espera(3000)]); } catch { /* sem conexão com o navegador */ }
+  for (let i = 0; i < 20 && edge.exitCode === null; i++) await espera(500);
+  try { if (edge.exitCode === null) edge.kill(); } catch { /* já fechou */ }
+  process.exit(codigo);
+};
 async function pronto() { for (let i = 0; i < 60; i++) { try { const l = await (await fetch(`http://127.0.0.1:${porta}/json`)).json(); const p = l.find((x) => x.type === 'page'); if (p) return p.webSocketDebuggerUrl; } catch { /* ainda subindo */ } await espera(500); } throw new Error(`o ${NOME_NAV} não abriu (o perfil do leitor já está aberto em outra janela?)`); }
 let ws; let seq = 0; const pend = new Map();
 try { ws = new WebSocket(await pronto()); } catch (e) { gravarStatus({ ok: false, motivo: e.message }); console.log(e.message); encerrar(1); }
@@ -94,7 +103,7 @@ const BUSCA = `document.querySelector('#side input[data-tab="3"], #side input[ar
 const QR = 'canvas[aria-label], [data-ref], [data-testid="qrcode"]';
 if (MODO_LOGIN) {
   console.log('Escaneie o QR code com o WhatsApp do celular (Aparelhos conectados > Conectar um aparelho). Esperando até 10 minutos...');
-  if (await esperar(`!!document.querySelector('${LISTA}')`, 600000)) { console.log('Conectado. Aguardando a sincronização...'); await espera(15000); console.log('Pronto: o leitor já pode rodar sozinho.'); gravarStatus({ ok: true, motivo: 'login feito' }); encerrar(0); }
+  if (await esperar(`!!document.querySelector('${LISTA}')`, 600000)) { console.log('Conectado. Aguardando a sincronização...'); await espera(25000); console.log('Pronto: o leitor já pode rodar sozinho. Pode fechar esta janela (ou deixe que eu fecho).'); gravarStatus({ ok: true, motivo: 'login feito' }); encerrar(0); }
   console.log('Tempo esgotado sem conectar.'); encerrar(1);
 }
 
