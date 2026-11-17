@@ -773,7 +773,7 @@ function desenhar() {
     pinta('<div class="carregando">Carregando a equipe…</div>');
     Promise.all([nuvem.listarPerfis(), nuvem.listarObras().catch(() => estado.obrasCad || [])]).then(([ps, oc]) => {
       estado.obrasCad = oc; const r2 = rotaAtual(); if (r2.tela !== 'configuracoes' || r2.params.get('secao') !== 'cadastros') return;
-      pinta(String(acessos.render({ perfis: ps, obras: obrasDeAcesso(), posObras: posObrasAtivas(), obrasCad: [...oc, ...obrasSemCadastro(oc)], listaAberta: !!estado.listaObrasAberta, meuId: nuvem.perfilAtual() && nuvem.perfilAtual().id, msg: estado.acessosMsg || '', aviso: estado.acessosAviso })));
+      pinta(String(acessos.render({ sub: r2.params.get('sub') || 'pessoas', perfis: ps, obras: obrasDeAcesso(), posObras: posObrasAtivas(), obrasCad: [...oc, ...obrasSemCadastro(oc)], listaAberta: !!estado.listaObrasAberta, meuId: nuvem.perfilAtual() && nuvem.perfilAtual().id, msg: estado.acessosMsg || '', aviso: estado.acessosAviso })));
       estado.acessosMsg = ''; estado.acessosAviso = null;
     });
     return;
@@ -1500,14 +1500,22 @@ const abrirCalendarioDoPrazo = (e) => {
 document.addEventListener('mousedown', abrirCalendarioDoPrazo);
 document.addEventListener('click', abrirCalendarioDoPrazo);
 document.addEventListener('change', (e) => { const el = e.target.closest && e.target.closest(CAMPOS_PRAZO); if (el) avisoDoPrazo(el); });
-// clicar no NOME da pessoa abre a mesma abinha de configurações (onde está o e-mail da Sólida)
-document.addEventListener('click', (e) => { const n = e.target.closest && e.target.closest('[data-ac-nome]'); if (!n) return; const bt = n.closest('form').querySelector('[data-ac-abrir]'); if (bt) bt.click(); });
+// mais um campo de e-mail na abinha da pessoa
+document.addEventListener('click', (e) => {
+  const b = e.target.closest && e.target.closest('[data-ac-add-email]'); if (!b) return;
+  const campos = b.parentElement.querySelectorAll('input[name="emails_agenda"]'); const ult = campos[campos.length - 1];
+  const novo = document.createElement('input'); novo.type = 'email'; novo.name = 'emails_agenda'; novo.placeholder = 'nome@construcaosolida.com'; novo.autocomplete = 'off';
+  ult.insertAdjacentElement('afterend', novo); novo.focus();
+});
 // Equipe (Cadastros): a linha curta da pessoa abre as configurações (função, obras, setores) numa abinha
   document.addEventListener('click', (e) => {
-    const b = e.target.closest && e.target.closest('[data-ac-abrir]'); if (!b) return;
-    const corpo = b.closest('form').querySelector('.ac-pessoa-corpo'); if (!corpo) return;
-    corpo.hidden = !corpo.hidden; b.setAttribute('aria-expanded', String(!corpo.hidden)); b.textContent = corpo.hidden ? '⚙ Configurações ▾' : '⚙ Configurações ▴';
-    b.closest('.ac-pessoa').classList.toggle('aberta', !corpo.hidden);
+    const cab = e.target.closest && e.target.closest('.ac-pessoa-cab'); if (!cab) return;
+    // botões e links do cartão (Nova senha, Excluir…) continuam fazendo o que fazem; a engrenagem e o resto do cartão abrem as configurações
+    const dentro = e.target.closest('button, a, input, select, textarea'); if (dentro && !dentro.matches('[data-ac-abrir]')) return;
+    const form = cab.closest('form'); const corpo = form && form.querySelector('.ac-pessoa-corpo'); if (!corpo) return;
+    corpo.hidden = !corpo.hidden;
+    const bt = form.querySelector('[data-ac-abrir]'); if (bt) bt.setAttribute('aria-expanded', String(!corpo.hidden));
+    form.classList.toggle('aberta', !corpo.hidden);
   });
   // tipo escolhido → as situações daquele tipo (obra e pós-obra: andamento, pausada, finalizada; orçamento: solicitação, em orçamento, com arquitetura, com fornecedor, não fechado)
   document.addEventListener('change', (e) => {
@@ -1594,9 +1602,10 @@ document.addEventListener('click', (e) => { const n = e.target.closest && e.targ
     const funcao = fd.get('funcao') || null; const obras = fd.getAll('obras');
     if (!funcao) { alert('Escolha a função da pessoa.'); return; }
     if (funcaoPorId(funcao).porObra && !obras.length) { alert('Escolha pelo menos uma obra para esta função.'); return; }
-    const emailAg = String(fd.get('email_agenda') || '').trim().toLowerCase();
-    if (emailAg && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAg)) { alert('O e-mail da Sólida está num formato inválido.'); return; }
-    try { await nuvem.salvarPerfil(f.dataset.acesso, { funcao, obras, setores: fd.getAll('setores'), email_agenda: emailAg || null }); estado.acessosMsg = 'Salvo.'; await sincronizarCadastros({ forcar: true }); }
+    const emailsAg = [...new Set(fd.getAll('emails_agenda').map((x) => String(x).trim().toLowerCase()).filter(Boolean))];
+    const ruim = emailsAg.find((x) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x));
+    if (ruim) { alert(`O e-mail "${ruim}" está num formato inválido.`); return; }
+    try { await nuvem.salvarPerfil(f.dataset.acesso, { funcao, obras, setores: fd.getAll('setores'), emails_agenda: emailsAg }); estado.acessosMsg = 'Salvo.'; await sincronizarCadastros({ forcar: true }); }
     catch (err) { alert(`Não foi possível salvar (${err.message || err}).`); }
   });
   // Feed: publicar, comentar, curtir, fixar e apagar

@@ -69,9 +69,9 @@ async function levar(cfg: Record<string, string | null>, ids: number[]) {
         resultado[id] = 'apagada'; continue;
       }
       const pessoas = ((r.convidados as string[]) || []);
-      const { data: perfis } = pessoas.length ? await sb.from('perfis').select('id,nome,email_agenda').in('id', pessoas) : { data: [] };
-      const semEmail = (perfis || []).filter((p: { email_agenda: string | null }) => !p.email_agenda).map((p: { nome: string }) => p.nome);
-      const emails = [...new Set([...(perfis || []).map((p: { email_agenda: string | null }) => p.email_agenda).filter(Boolean) as string[], ...(((r.emails_externos as string[]) || []))])];
+      const { data: perfis } = pessoas.length ? await sb.from('perfis').select('id,nome,emails_agenda').in('id', pessoas) : { data: [] };
+      const semEmail = (perfis || []).filter((p: { emails_agenda: string[] | null }) => !(p.emails_agenda || []).length).map((p: { nome: string }) => p.nome);
+      const emails = [...new Set([...(perfis || []).flatMap((p: { emails_agenda: string[] | null }) => p.emails_agenda || []).filter(Boolean), ...(((r.emails_externos as string[]) || []))])];
       const corpo = JSON.stringify(eventoDe(r, emails));
       const url = evId ? `https://www.googleapis.com/calendar/v3/calendars/${cal}/events/${evId}?sendUpdates=all` : `https://www.googleapis.com/calendar/v3/calendars/${cal}/events?sendUpdates=all`;
       const resp = await fetch(url, { method: evId ? 'PATCH' : 'POST', headers: H, body: corpo });

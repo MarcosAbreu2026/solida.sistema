@@ -1217,3 +1217,12 @@ body.nav-recolhido .pd, body.nav-recolhido .osq, body.nav-recolhido .pc { max-wi
 .tf-nova .tf-grade.pf-linha { gap: 6px 12px !important; }
 .tf-nova .tf-grade.pf-linha input:not([type="checkbox"]), .tf-nova .tf-grade.pf-linha select { height: 28px !important; padding: 2px 8px !important; font-size: 13px !important; box-sizing: border-box !important; }
 .tf-nova .tf-grade.pf-linha .tf-recor input[type="checkbox"] { height: 16px !important; width: 16px !important; min-width: 16px !important; }
+
+/* Cadastros: sub-abas (Pessoas, Obras, Pós-obras, Obras em orçamento, Setores, Abas por função) e vários e-mails por pessoa */
+.cad-sub { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
+.cad-sub-bt { padding: 5px 14px; border-radius: 8px; border: 1px solid #C9D1DA; background: #fff; color: #1F3A56; font-weight: 600; font-size: 13px; text-decoration: none; }
+.cad-sub-bt:hover { background: #F0F5FA; } .cad-sub-bt.on { background: #2F5F86; color: #fff; border-color: #2F5F86; }
+.ac-emails { display: flex; flex-direction: column; gap: 5px; align-items: flex-start; } .ac-emails input[type="email"] { width: min(360px, 100%); }
+
+.ac-pessoa-cab { cursor: pointer; } .ac-pessoa:not(.aberta) .ac-pessoa-cab:hover { background: #F3F7FB; }
+.ac-engrenagem { border: 0; background: transparent; color: #8A94A0; font-size: 17px; line-height: 1; cursor: pointer; padding: 4px 6px; border-radius: 6px; } .ac-engrenagem:hover, .ac-pessoa.aberta .ac-engrenagem { color: #2F5F86; background: #E9EEF5; }

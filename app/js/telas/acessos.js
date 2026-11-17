@@ -24,7 +24,9 @@ const caixinhasSetores = (sel = []) => html`<div class="ac-chips">${SETORES_ORGA
 
 const ABAS = [...SETORES, ...PAGINAS];
 
-export function render({ perfis = [], obras = [], posObras = [], obrasCad = [], msg = '', aviso = null, meuId = null, listaAberta = false }) {
+const SUBS = [['pessoas', 'Pessoas'], ['obra', 'Obras'], ['pos', 'Pós-obras'], ['orcamento', 'Obras em orçamento'], ['setores', 'Setores'], ['abas', 'Abas por função']];
+const barraSub = (sub) => html`<div class="cad-sub" role="tablist">${SUBS.map(([id, nome]) => html`<a class="cad-sub-bt ${id === sub ? 'on' : ''}" href="#/configuracoes?secao=cadastros&sub=${id}" role="tab" aria-selected="${id === sub}">${nome}</a>`)}</div>`;
+export function render({ perfis = [], obras = [], posObras = [], obrasCad = [], msg = '', aviso = null, meuId = null, listaAberta = false, sub = 'pessoas' }) {
   const linha = (p) => {
     // a conta do computador do escritório (coletor) não se edita aqui: mudar a função dela faz o envio de dados parar
     if (p.funcao === 'coletor' || /^coletor@/i.test(p.email || '')) return html`<div class="ac-linha"><div class="ac-quem"><b>${p.nome || 'Coletor'}</b><span class="pequeno">conta do computador do escritório (envia os dados ao site) · não editar</span></div></div>`;
@@ -35,13 +37,15 @@ export function render({ perfis = [], obras = [], posObras = [], obrasCad = [], 
       <div class="ac-pessoa-id"><b class="ac-nome-click" data-ac-nome title="Clique para ver e editar o e-mail e as configurações">${p.nome || p.usuario}</b>
         <span class="pequeno">usuário <b>${p.usuario || p.email}</b> · ${p.funcao ? funcaoPorId(p.funcao).nome : html`<span class="pendente">sem função</span>`}${p.trocar_senha ? ' · ainda não criou a senha' : ''}${p.ativo === false ? ' · bloqueado' : ''}${p.id === meuId ? ' · você' : ''}${falta ? html` · <span class="pendente">escolha as obras</span>` : ''}</span></div>
       <div class="ac-pessoa-acoes">
-        <button type="button" class="botao" data-ac-abrir aria-expanded="false" title="Função, obras e setores desta pessoa">⚙ Configurações ▾</button>
+        <button type="button" class="ac-engrenagem" data-ac-abrir aria-expanded="false" title="Configurações da pessoa (função, obras, setores e e-mails). Dá para clicar em qualquer lugar do cartão." aria-label="Configurações da pessoa">⚙</button>
         <button type="button" class="botao" data-redefinir-senha="${p.id}|${p.nome || p.usuario}">Nova senha</button>
         ${protegido ? '' : html`<button type="button" class="botao ac-excluir" data-excluir-login="${p.id}|${p.nome || p.usuario}">Excluir</button>`}
       </div>
     </div>
     <div class="ac-pessoa-corpo" hidden>
-      <label class="ac-pessoa-func">E-mail da Sólida <span class="pequeno">(para convidar para as reuniões no Google Agenda)</span><input type="email" name="email_agenda" value="${p.email_agenda || ''}" placeholder="nome@construcaosolida.com" autocomplete="off"></label>
+      <div class="ac-pessoa-func ac-emails"><span class="ac-rot">E-mails da Sólida <span class="pequeno">(para convidar para as reuniões no Google Agenda; pode ter mais de um)</span></span>
+        ${[...(p.emails_agenda || []), ''].map((em) => html`<input type="email" name="emails_agenda" value="${em}" placeholder="nome@construcaosolida.com" autocomplete="off">`)}
+        <button type="button" class="ac-mini" data-ac-add-email>+ outro e-mail</button></div>
       <label class="ac-pessoa-func">Função<select name="funcao"><option value="">— escolher —</option>${opcoesFuncao(p.funcao)}</select></label>
       <div class="ac-obras"><span class="ac-rot">Obras e pós-obras <span class="pequeno">(quem a pessoa acompanha)</span></span>${caixinhasObras(obras, p.obras || [], posObras)}</div>
       <div class="ac-obras"><span class="ac-rot">Setores <span class="pequeno">(onde atua: gestor ou estagiário do setor)</span></span>${caixinhasSetores(p.setores || [])}</div>
@@ -61,13 +65,14 @@ export function render({ perfis = [], obras = [], posObras = [], obrasCad = [], 
     ${aviso ? html`<div class="ac-aviso"><b>${aviso.titulo}</b><p>Usuário: <code>${aviso.usuario}</code> · senha provisória: <code>${aviso.senha}</code></p>
       <p class="pequeno">Passe para a pessoa. No primeiro acesso ela cria a própria senha. Esta senha não aparece de novo.</p></div>` : ''}
     ${msg ? html`<p class="msg ok">${msg}</p>` : ''}
-    ${secaoObras({ obrasCad, podeExcluir: true, listaAberta })}
-    <section class="secao"><h2>Setores <span class="pequeno">${SETORES_ORGANOGRAMA.length}</span></h2>
+    ${barraSub(sub)}
+    ${['obra', 'pos', 'orcamento'].includes(sub) ? secaoObras({ obrasCad, podeExcluir: true, listaAberta: true, tipo: sub }) : ''}
+    ${sub === 'setores' ? html`<section class="secao"><h2>Setores <span class="pequeno">${SETORES_ORGANOGRAMA.length}</span></h2>
       <p class="pequeno">Departamentos usados em atas, pendências, tarefas e acessos. O que você criar ou excluir aqui aparece na hora em todas as telas.</p>
       <form class="ac-novo" id="set-novo"><label>Novo setor<input name="nome" placeholder="ex.: Jurídico" autocomplete="off" required></label><button type="submit" class="botao on">Criar setor</button></form>
       <div class="ac-chips">${SETORES_ORGANOGRAMA.map((s) => html`<span class="ac-chip"><span>${s}</span> <button type="button" class="ac-mini" data-excluir-setor="${s}" title="Excluir o setor">×</button></span>`)}</div>
-    </section>
-    <section class="secao"><h2>Criar login</h2>
+    </section>` : ''}
+    ${sub === 'pessoas' ? html`<section class="secao"><h2>Criar login</h2>
       <form class="ac-novo" id="ac-novo">
         <label>Nome<input name="nome" placeholder="ex.: Mariana C." required></label>
         <label>Usuário<input name="usuario" placeholder="ex.: mariana" autocapitalize="none" spellcheck="false" required></label>
@@ -79,13 +84,13 @@ export function render({ perfis = [], obras = [], posObras = [], obrasCad = [], 
     </section>
     <section class="secao"><h2>Equipe <span class="pequeno">${perfis.length}</span></h2>
       <p class="pequeno">Quem saiu da empresa: use <b>Excluir</b>. Isso apaga o login e tudo o que a pessoa marcou no sistema (tarefas, publicações do feed).</p>
-      ${perfis.map(linha)}</section>
-    <section class="secao"><h2>Abas de cada função</h2>
+      ${perfis.map(linha)}</section>` : ''}
+    ${sub === 'abas' ? html`<section class="secao"><h2>Abas de cada função</h2>
       <p class="pequeno">Marque o que cada função enxerga no menu. A Visão geral e o Perfil aparecem para todos; a diretoria vê tudo. Sem mexer, vale o padrão de cada função.</p>
       <form id="ac-abas"><div class="tabela-rolagem"><table class="tab ab-tab"><thead><tr><th>Função</th>${ABAS.map(([, nome]) => html`<th class="ab-col"><span>${nome}</span></th>`)}<th></th></tr></thead>
         <tbody>${funcoes.map(linhaAbas)}</tbody></table></div>
         <p style="margin-top:10px"><button type="submit" class="botao on">Salvar abas</button></p>
       </form>
-    </section>
+    </section>` : ''}
   </div>`;
 }

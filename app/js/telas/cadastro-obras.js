@@ -8,7 +8,9 @@ const opcoesTipo = (sel) => TIPOS.map(([v, n]) => html`<option value="${v}" ${v 
 const opcoesSituacao = (tipo, sel) => (SITUACOES_POR_TIPO[tipo] || SITUACOES_POR_TIPO.obra).map(([v, n]) => html`<option value="${v}" ${v === sel ? html.seguro('selected') : ''}>${n}</option>`);
 const ordem = (a, b) => String(a.codigo).localeCompare(String(b.codigo), 'pt-BR', { numeric: true });
 
-export function secaoObras({ obrasCad = [], podeExcluir = false, listaAberta = false }) {
+export function secaoObras({ obrasCad = [], podeExcluir = false, listaAberta = false, tipo = '' }) {
+  const TITULO_TIPO = { obra: 'Obras', pos: 'Pós-obras', orcamento: 'Obras em orçamento' };
+  const todasCad = obrasCad; if (tipo) obrasCad = obrasCad.filter((o) => tipoDe(o) === tipo);
   const linhaObra = (o) => { const t = tipoDe(o); const s = situacaoDe(o); return html`<form class="ac-obra-form ${s === 'finalizada' || s === 'nao_fechado' ? 'ac-bloq' : ''}" data-obra-cad="${o.codigo}">
     <div class="aof-grade">
       <label>Código<input name="codigo_novo" value="${o.codigo}" autocapitalize="none" spellcheck="false" required></label>
@@ -33,15 +35,15 @@ export function secaoObras({ obrasCad = [], podeExcluir = false, listaAberta = f
     ['Não fechadas (orçamentos que não viraram obra; ficam fora de todas as listas)', obrasCad.filter((o) => tipoDe(o) === 'orcamento' && situacaoDe(o) === 'nao_fechado'), true],
   ];
   const nObras = obrasCad.filter((o) => tipoDe(o) === 'obra').length; const nOrc = obrasCad.filter((o) => tipoDe(o) === 'orcamento').length; const nPos = obrasCad.filter((o) => tipoDe(o) === 'pos').length;
-  return html`<section class="secao"><h2>Obras <span class="pequeno">${obrasCad.length}</span></h2>
+  return html`<section class="secao"><h2>${tipo ? TITULO_TIPO[tipo] : 'Obras'} <span class="pequeno">${obrasCad.length}</span></h2>
     <p class="pequeno">Escolha primeiro o <b>tipo</b>. <b>Obra</b> e <b>pós-obra</b> têm as situações em andamento, pausada e finalizada (no pós-obra, o que anda — análise, orçamento, falta agendar — é a OS, no Quadro de OS). <b>Obra em orçamento</b> tem solicitação, em orçamento, com a arquitetura, com fornecedor e não fechado; quando fecha, vira obra. <b>Cliente</b> e <b>endereço</b> são obrigatórios; arquitetura é opcional.${podeExcluir ? '' : ' Você cadastra, edita e muda a situação; quem exclui é a diretoria.'}</p>
     <form class="ac-novo ac-novo-obra" id="ob-novo">
-      <label>Tipo<select name="tipo" data-ob-tipo>${opcoesTipo('obra')}</select></label>
+      ${tipo ? html`<input type="hidden" name="tipo" value="${tipo}">` : html`<label>Tipo<select name="tipo" data-ob-tipo>${opcoesTipo('obra')}</select></label>`}
       <label>Código <span class="pequeno">(obra: Mo… · pós-obra: PO…, ou deixe vazio)</span><input name="codigo" placeholder="ex.: Mo565 · PO577" autocapitalize="none" spellcheck="false"></label>
       <label>Cliente <span class="pequeno">(obrigatório)</span><input name="cliente" placeholder="ex.: Sinagoga Leblon" required></label>
       <label>Endereço <span class="pequeno">(obrigatório)</span><input name="endereco" placeholder="rua, número, bairro" required></label>
       <label>Arquitetura <span class="pequeno">(opcional)</span><input name="arquitetura" placeholder="escritório de arquitetura"></label>
-      <label>Situação<select name="situacao" data-ob-situacao>${opcoesSituacao('obra', 'andamento')}</select></label>
+      <label>Situação<select name="situacao" data-ob-situacao>${opcoesSituacao(tipo || 'obra', tipo === 'orcamento' ? 'solicitacao' : 'andamento')}</select></label>
       <button type="submit" class="botao on">Cadastrar</button>
     </form>
     <details class="caixa ac-lista-obras" ${listaAberta ? html.seguro('open') : ''}>
