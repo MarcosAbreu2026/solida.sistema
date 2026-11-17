@@ -97,7 +97,7 @@ function envelope(pends, infos, obras, hoje, tipoReuniao = 'PLANEJAMENTO') {
 // ---------------------------------------------------------------- resumo em tópicos
 export const pareceResumoEmTopicos = (texto) => (String(texto).match(/^\s*(?:#{1,6}\s|[-*•]\s)/gm) || []).length >= 5;
 
-// nomes de projeto que as pessoas usam no lugar do código da obra ("Remax" = Mo565)
+// nomes de projeto que as pessoas usam no lugar do código da obra ("Remax" = Mo602)
 const ALIAS_OBRA = [[/\bremax\b/i, '565'], [/maracuxi/i, '344'], [/\bpipa\b/i, '533'], [/l[úu]cio costa/i, '531'], [/cosme velho/i, '358'], [/bras[íi]lia/i, '566']];
 const MESES = { jan: 1, feb: 2, fev: 2, mar: 3, apr: 4, abr: 4, may: 5, mai: 5, jun: 6, jul: 7, aug: 8, ago: 8, sep: 9, set: 9, oct: 10, out: 10, nov: 11, dec: 12, dez: 12 };
 const dd = (n) => String(n).padStart(2, '0');
