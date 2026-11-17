@@ -48,7 +48,7 @@ export function daPessoa(filtro = 'eu') {
 export const horaDe = (r) => `${r.ini}–${r.fim}`;
 // cartão violeta para o quadro (Tarefas › Tabela) e para a faixa "dia todo" da Agenda
 export const cartaoReuniao = (r, extra = '') => html`<article class="at-card rn-card ${extra}" data-reun-abrir="${r.id}" title="Reunião · ${r.nome} · ${horaDe(r)}${r.local ? ` · ${r.local}` : ''} — clique para abrir">
-  <div class="rn-card-h"><span>🎥 ${horaDe(r)}</span><small>${dm(r.data)}</small></div><div class="rn-card-t">${r.nome}</div>${r.local ? html`<div class="rn-card-l">📍 ${r.local}</div>` : ''}</article>`;
+  <div class="rn-card-h"><span>🎥 ${horaDe(r)}</span><small>${dm(r.data)}</small></div><div class="rn-card-t">${r.nome}</div></article>`;
 export const podeEditar = (r) => !!r && (r.criado_por === eu() || (r.convidados || []).includes(eu()) || funcaoReal().id === 'socio');
 
 // data da k-ésima repetição: semanal = +7 dias; mensal = mesmo dia do mês (nos meses curtos, o último dia)
