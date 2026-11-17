@@ -2448,6 +2448,7 @@ document.addEventListener('click', async (e) => {
 });
 document.addEventListener('click', (e) => {
   const a = e.target.closest && e.target.closest('[data-reun-abrir]'); if (!a) return;
+  if (e.target.closest('a[href]')) return;   // o botão Entrar (Google Meet) abre o Meet, não a janela de editar
   const r = reunioes.porId(a.dataset.reunAbrir); if (!r) return;
   if (String(r.id).startsWith('t')) { avisoRapido('Salvando a reunião… abre de novo em um instante.'); return; }
   const antigo = document.getElementById('at-modal'); if (antigo) antigo.remove();

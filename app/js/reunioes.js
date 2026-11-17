@@ -48,7 +48,7 @@ export function daPessoa(filtro = 'eu') {
 export const horaDe = (r) => `${r.ini}–${r.fim}`;
 // cartão violeta para o quadro (Tarefas › Tabela) e para a faixa "dia todo" da Agenda
 export const cartaoReuniao = (r, extra = '') => html`<article class="at-card rn-card ${extra}" data-reun-abrir="${r.id}" title="Reunião · ${r.nome} · ${horaDe(r)}${r.local ? ` · ${r.local}` : ''} — clique para abrir">
-  <div class="rn-card-h"><span>🎥 ${horaDe(r)}</span><small>${dm(r.data)}</small></div><div class="rn-card-t">${r.nome}</div></article>`;
+  <div class="rn-card-h"><span>🎥 ${horaDe(r)}</span><small>${dm(r.data)}</small></div><div class="rn-card-t"><span class="rn-card-nome">${r.nome}</span>${r.meet_link ? html`<a class="rn-meet rn-meet-mini" href="${r.meet_link}" target="_blank" rel="noopener" title="Entrar na reunião (Google Meet)">🎥 Entrar</a>` : ''}</div></article>`;
 export const meuId = () => eu();
 export const podeEditar = (r) => !!r && (r.criado_por === eu() || (r.convidados || []).includes(eu()) || funcaoReal().id === 'socio');
 
