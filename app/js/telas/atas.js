@@ -14,6 +14,7 @@ import { sessao, idPessoa, funcaoReal, funcaoAtual, simulando } from '../sessao.
 import { lerPessoasTarefas } from '../armazenamento.js';
 import { analisarAta, lerArquivoAta, acharResponsavel, ehAtaDePendencias, lerAtaDePendencias, formatoListaPendencias, lerListaPorPessoa } from '../ata-leitor.js';
 import { analisarReuniao, analisarFala, pareceResumoEmTopicos } from '../fala-leitor.js';
+import { caixaConvidados } from '../reunioes.js';
 
 export const ABAS = [['pendencias', 'Pendências'], ['atas', 'Atas'], ['pautas', 'Pautas'], ['nova', 'Nova ata']];
 export const SETORES_ATA = [...SETORES_ORGANOGRAMA, 'Diretoria / geral'];
@@ -634,23 +635,22 @@ function prazoDaColuna(id, hoje) {
 // PRÉVIA (16/11/2026): "Reunião" na criação de tarefa, só para o administrador (conta "(admin)" na nuvem; no teste local sempre). Ainda não grava nada.
 export const reuniaoLiberada = () => !NA_NUVEM || /\(admin\)/i.test((perfilAtual() && perfilAtual().nome) || '');
 const somaHora = (hhmm, min) => { const [h, m] = String(hhmm || '08:30').split(':').map(Number); const t = (h * 60 + (m || 0) + min) % (24 * 60); return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`; };
-function painelReuniao(prazo, hora) {
+function painelReuniao(prazo, hora, obras = [], setorPadrao = '') {
   const ini = hora || '08:30'; const pessoas = pessoasSelecionaveis();
   return html`<div class="tf-reuniao">
-    <input name="r_titulo" class="rn-titulo" placeholder="Adicionar título" autocomplete="off">
+    <div class="rn-grade">
+      <label>Obra ou pós-obra<select name="r_obra"><option value="">— escolher —</option><option value="__nenhuma__">Nenhuma (reunião de departamento)</option>${gruposDeObras(obras, '', { criar: false })}</select></label>
+      <label>Departamento <small>(obrigatório se não houver obra)</small><select name="r_setor"><option value="">— escolher —</option>${SETORES_ATA.map((s) => html`<option ${s === setorPadrao ? html.seguro('selected') : ''}>${s}</option>`)}</select></label>
+    </div>
+    <input name="r_titulo" class="rn-titulo" placeholder="Título da reunião" autocomplete="off">
+    <p class="rn-nomeprev">Nome da reunião: <b data-rn-nome>R__</b></p>
     <div class="rn-linha"><i aria-hidden="true">🕐</i><div class="rn-quando"><input type="date" name="r_data" value="${prazo || ''}"><input type="time" name="r_ini" value="${ini}"><span>até</span><input type="time" name="r_fim" value="${somaHora(ini, 60)}"></div></div>
     <div class="rn-linha"><i aria-hidden="true">🔁</i><div class="rn-recor"><label><input type="checkbox" name="r_recor"> Reunião recorrente</label><select name="r_freq" title="Como se repete"><option value="semanal">Toda semana</option><option value="mensal">Todo mês</option></select></div></div>
-    <div class="rn-linha rn-conv"><i aria-hidden="true">👥</i>
-      <div class="obs" data-obs="r_conv">
-        <span class="obs-rot">Adicionar convidados <small>(pessoas da Sólida da lista, ou o e-mail de quem é de fora)</small></span>
-        <div class="obs-chips"></div>
-        <input type="search" class="obs-busca" placeholder="Procurar um nome da Sólida…" data-obs-busca autocomplete="off">
-        <div class="obs-lista">${pessoas.map((x) => html`<button type="button" class="obs-item" data-obs-add="${x.id}" data-obs-nome="${x.nome}">${x.nome}</button>`)}</div>
-        <div class="rn-email"><input type="email" placeholder="E-mail de quem não é da Sólida (cliente, arquiteto…)" data-conv-email autocomplete="off"><button type="button" class="botao" data-conv-email-add>Adicionar e-mail</button></div>
-      </div></div>
+    <div class="rn-linha rn-conv"><i aria-hidden="true">👥</i>${caixaConvidados(pessoas)}</div>
     <div class="rn-linha"><i aria-hidden="true">📍</i><input name="r_local" placeholder="Adicionar local" autocomplete="off"></div>
-    <p class="rn-aviso">Prévia visível só para o administrador: ainda não salva nem aparece para ninguém.</p>
-    <div class="tf-botoes"><button type="button" class="botao" data-av-fechar>Cancelar</button><button type="button" class="botao on" disabled title="Em breve">Salvar reunião (em breve)</button></div>
+    <p class="rn-aviso" hidden data-rn-erro></p>
+    <p class="rn-aviso">A reunião é criada aqui e o sistema a leva para o Google Agenda do sistema, que convida as pessoas. Edite sempre por aqui.</p>
+    <div class="tf-botoes"><button type="button" class="botao" data-av-fechar>Cancelar</button><button type="button" class="botao on" data-reun-salvar>Salvar reunião</button></div>
   </div>`;
 }
 export function formAvulsa(obras, prazo, setorPadrao = '', preset = {}) {
@@ -679,7 +679,7 @@ export function formAvulsa(obras, prazo, setorPadrao = '', preset = {}) {
         ${caixaObservadores('p_obs', [], '')}
       </div>
       <div class="tf-botoes tf-botoes-tarefa"><button type="button" class="botao" data-av-fechar>Cancelar</button><button type="submit" class="botao on">Criar tarefa</button></div>
-      ${reuniaoLiberada() && !preset.os ? painelReuniao(prazo, preset.hora) : ''}
+      ${reuniaoLiberada() && !preset.os ? painelReuniao(prazo, preset.hora, listaObras, setorPadrao) : ''}
     </form>
     <div class="tf-chat tf-dir"><h4>Anotações</h4><p class="pequeno">As anotações ficam disponíveis depois que a tarefa for criada.</p></div>
   </div></div>`;

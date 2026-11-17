@@ -510,3 +510,21 @@ export async function apagarConfiguracao(chave) {
   const { error } = await sb.from('configuracoes').delete().eq('chave', chave);
   if (error) throw new Error(error.message);
 }
+
+// ---------------------------------------------------------------- reuniões (supabase/30-reunioes.sql)
+export async function listarReunioes() {
+  const { data, error } = await sb.from('reunioes').select('*').order('data', { ascending: true }).order('ini', { ascending: true });
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+export async function gravarReunioes(linhas) {
+  const { data, error } = await sb.from('reunioes').insert(linhas).select();
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+export async function atualizarReuniao(id, mud) {
+  const { data, error } = await sb.from('reunioes').update(mud).eq('id', id).select();
+  if (error) throw new Error(error.message);
+  if (!data || !data.length) throw new Error('Sem permissão para mudar esta reunião.');
+  return data[0];
+}

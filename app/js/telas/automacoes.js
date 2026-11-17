@@ -11,7 +11,7 @@ const CATALOGO = [
   { id: 'solides', nome: 'Sólides / Tangerino (ponto)', faz: 'Ponto e faltas do RH (só leitura).', re: /s[óo]lides|tangerino/i },
   { id: 'bitrix', nome: 'Bitrix (comercial)', faz: 'Funil de vendas e propostas do comercial.', re: /bitrix/i },
   { id: 'gmail', nome: 'E-mail (Gmail)', faz: 'Pedidos e documentos recebidos por e-mail.', re: /gmail|e-?mail/i },
-  { id: 'calendar', nome: 'Google Agenda', faz: 'Reuniões e compromissos da equipe.', re: /google\s*agenda|calendar/i },
+  { id: 'calendar', nome: 'Google Agenda (do sistema)', faz: 'Recebe as reuniões criadas no sistema e convida as pessoas; uma única conta, logada no computador do escritório.', re: /google\s*agenda|calendar/i },
 ];
 
 const dataBR = (iso) => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); };

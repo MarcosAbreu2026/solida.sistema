@@ -46,6 +46,7 @@ import * as posGeral from './telas/posobra-geral.js';
 import * as agendaPos from './agenda-pos.js';
 import * as svPos from './servicos-pos.js';
 import * as osq from './os-quadro.js';
+import * as reunioes from './reunioes.js';
 import * as configTela from './telas/configuracoes.js';
 import * as automacoesTela from './telas/automacoes.js';
 import * as obrasOrc from './telas/obras-orcamento.js';
@@ -289,6 +290,11 @@ function ctxPosObra() {
     quadroOs: () => String(osq.renderQuadro({ params: rotaAtual().params, podeEditar, clientesPos: posObrasAtivas(), pendencias: atas.todasPendencias() })),
     agendaPos: () => (estado.base ? String(posGeral.renderAgenda({ base: estado.base, semanaIni: estado.posAgenda.semana, linhasAgenda: agendaPos.linhas, podeEditar, selecionado: estado.posAgenda.sel, erro: agendaPos.erro, extras: apExtras(), equipeProg: estado.equipeProg })) : ''),
   };
+}
+function garantirReunioesCarregadas() {
+  if (estado.reunioesVisitada) return;
+  estado.reunioesVisitada = true;
+  reunioes.carregar().then(() => { setTimeout(() => { estado.reunioesVisitada = false; }, 60000); const r = rotaAtual(); if (emEdicao()) return; if (r.tela === 'agenda') desenhar(); });
 }
 function garantirOsCarregadas() {
   if (estado.osVisitada) return;
@@ -802,8 +808,8 @@ function desenhar() {
   }
   // Agenda: as funções da semana + as tarefas (pendências com prazo) no mesmo calendário
   if (tela === 'agenda') {
-    garantirAtasCarregadas('#agenda');
-    $('#conteudo').innerHTML = `<div>${agendaSemana.render({ dia: estado.dia, CFG, pendAberta: estado.pendAberta, params: rota.params, semanaRef: estado.semanaRef, modo: rota.params.get('modo') === 'dia' ? 'dia' : 'semana', diaRef: ehData(rota.params.get('dia')) ? rota.params.get('dia') : hojeISO(), pendencias: atas.todasPendencias(), eu: nuvem.NA_NUVEM ? (nuvem.perfilAtual() || {}).id : idPessoa(), nomeDe: atas.nomePessoa })}</div>`;
+    garantirAtasCarregadas('#agenda'); garantirReunioesCarregadas();
+    $('#conteudo').innerHTML = `<div>${agendaSemana.render({ dia: estado.dia, CFG, pendAberta: estado.pendAberta, params: rota.params, semanaRef: estado.semanaRef, modo: rota.params.get('modo') === 'dia' ? 'dia' : 'semana', diaRef: ehData(rota.params.get('dia')) ? rota.params.get('dia') : hojeISO(), pendencias: atas.todasPendencias(), eu: nuvem.NA_NUVEM ? (nuvem.perfilAtual() || {}).id : idPessoa(), nomeDe: atas.nomePessoa })}${reunioes.renderLista({ pessoas: atas.pessoasSelecionaveis() })}</div>`;
     return;
   }
   // escritório virtual: tela com animação própria (não redesenha sozinha a cada 5 min)
@@ -2296,6 +2302,62 @@ document.addEventListener('submit', async (e) => {
   try { await atas.anotar(id, texto); desenhar(); }
   catch (err) { campo.disabled = false; alert(`Não foi possível anotar (${err.message || err}).`); }
 });
+// Reuniões: o nome sai sozinho (R_<obra ou departamento>_<título>); salvar cria a reunião (o sistema leva para o Google Agenda do sistema)
+const dadosReuniao = (form) => {
+  const fd = new FormData(form); const obraV = String(fd.get('r_obra') || '');
+  return { obra: obraV === '__nenhuma__' ? '' : obraV, obraEscolhida: obraV, setor: String(fd.get('r_setor') || ''), titulo: String(fd.get('r_titulo') || '').trim(), data: String(fd.get('r_data') || ''), ini: String(fd.get('r_ini') || ''), fim: String(fd.get('r_fim') || ''),
+    local: String(fd.get('r_local') || ''), convidados: fd.getAll('r_conv'), emails: fd.getAll('r_conv_email'), recorrente: fd.has('r_recor'), frequencia: String(fd.get('r_freq') || 'semanal') };
+};
+const erroReuniao = (c, obrigaEscolher = true) => {
+  if (obrigaEscolher && !c.obraEscolhida) return 'Escolha a obra ou o pós-obra (ou "Nenhuma" se for uma reunião de departamento).';
+  if (!c.obra && !c.setor) return 'Sem obra, escolha o departamento da reunião.';
+  if (!c.titulo) return 'Escreva o título da reunião.';
+  if (!c.data || !c.ini || !c.fim) return 'Preencha a data e o horário.';
+  if (c.fim <= c.ini) return 'O horário final precisa ser depois do inicial.';
+  return '';
+};
+const atualizarNomeReuniao = (e) => {
+  const f = e.target.closest && e.target.closest('.tf-reuniao, #reun-form'); if (!f) return;
+  const form = f.closest('form'); const alvo = form && form.querySelector('[data-rn-nome]'); if (!alvo) return;
+  alvo.textContent = reunioes.nomeDaReuniao(dadosReuniao(form));
+};
+document.addEventListener('input', atualizarNomeReuniao);
+document.addEventListener('change', atualizarNomeReuniao);
+document.addEventListener('click', async (e) => {
+  const b = e.target.closest && e.target.closest('[data-reun-salvar]'); if (!b) return;
+  const form = b.closest('form'); const c = dadosReuniao(form); const msg = erroReuniao(c);
+  const caixa = form.querySelector('[data-rn-erro]'); if (caixa) { caixa.hidden = !msg; caixa.textContent = msg; caixa.style.color = '#B3261E'; }
+  if (msg) return;
+  b.disabled = true;
+  try { await reunioes.criar(c); const m = document.getElementById('at-modal'); if (m) m.remove(); estado.reunioesVisitada = false; desenhar(); }
+  catch (err) { b.disabled = false; alert(`Não foi possível salvar a reunião (${err.message || err}).`); }
+});
+document.addEventListener('click', (e) => {
+  const a = e.target.closest && e.target.closest('[data-reun-abrir]'); if (!a) return;
+  const r = reunioes.porId(a.dataset.reunAbrir); if (!r) return;
+  const antigo = document.getElementById('at-modal'); if (antigo) antigo.remove();
+  const m = document.createElement('div'); m.id = 'at-modal'; m.className = 'at-modal';
+  m.innerHTML = `<div class="at-modal-caixa">${String(reunioes.formEdicao(r, { gruposObras: atas.gruposDeObras(obrasDeAtas(), r.obra || '', { criar: false }), setores: atas.SETORES_ATA, pessoas: atas.pessoasSelecionaveis() }))}</div>`;
+  document.body.appendChild(m);
+});
+document.addEventListener('submit', async (e) => {
+  const f = e.target.closest && e.target.closest('#reun-form'); if (!f) return;
+  e.preventDefault();
+  const id = f.dataset.reunForm; const r = reunioes.porId(id); const c = dadosReuniao(f); const msg = erroReuniao(c, false);
+  if (msg) { alert(msg); return; }
+  let escopo = 'uma'; if (r && r.serie) { escopo = await perguntarEscopo('Salvar reunião recorrente'); if (!escopo) return; }
+  try { await reunioes.salvar(id, c, escopo); const m = document.getElementById('at-modal'); if (m) m.remove(); estado.reunioesVisitada = false; desenhar(); }
+  catch (err) { alert(`Não foi possível salvar (${err.message || err}).`); }
+});
+document.addEventListener('click', async (e) => {
+  const b = e.target.closest && e.target.closest('[data-reun-cancelar]'); if (!b) return;
+  const id = b.dataset.reunCancelar; const r = reunioes.porId(id); if (!r) return;
+  let escopo = 'uma';
+  if (r.serie) { escopo = await perguntarEscopo('Cancelar reunião recorrente'); if (!escopo) return; }
+  else if (!confirm(`Cancelar a reunião "${r.nome}"? O evento sai do Google Agenda e os convidados são avisados.`)) return;
+  try { await reunioes.cancelar(id, escopo); const m = document.getElementById('at-modal'); if (m) m.remove(); estado.reunioesVisitada = false; desenhar(); }
+  catch (err) { alert(`Não foi possível cancelar (${err.message || err}).`); }
+});
 // PRÉVIA da Reunião (só para o administrador): alterna Tarefa/Reunião na janela de Nova tarefa e adiciona convidados por e-mail. Ainda não grava nada.
 document.addEventListener('click', (e) => {
   const modo = e.target.closest && e.target.closest('[data-tf-modo]');
@@ -2328,7 +2390,7 @@ document.addEventListener('submit', async (e) => {
   const f = e.target.closest('#ata-form'); const g = e.target.closest('#pend-form');
   if (!f && !g) return;
   e.preventDefault();
-  if (g && g.classList.contains('tf-modo-reuniao')) return;   // prévia da Reunião: não grava
+  if (g && g.classList.contains('tf-modo-reuniao')) return;   // reunião: quem salva é o botão "Salvar reunião" (data-reun-salvar)
   try {
     if (f) {
       const fd = new FormData(f);
