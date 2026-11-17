@@ -660,6 +660,8 @@ export function formAvulsa(obras, prazo, setorPadrao = '', preset = {}) {
       <div class="tf-cab"><h3>${preset.os ? 'Nova pendência da OS' : 'Nova tarefa'}</h3>${preset.os ? html`<span class="at-chip">${preset.os}</span>` : ''}<span class="pequeno">O que tem a borda vermelha precisa ser preenchido.</span></div>
       ${reuniaoLiberada() && !preset.os ? html`<div class="tf-modo" role="tablist"><button type="button" class="on" role="tab" data-tf-modo="tarefa">Tarefa</button><button type="button" role="tab" data-tf-modo="reuniao">Reunião <small>prévia</small></button></div>` : ''}
       <div class="tf-grade pf-linha av-linha" data-tipo="solida" data-kind="pendencia">
+        <label>Obra<select name="av_obra"><option value="">Nenhuma</option>${gruposDeObras(listaObras, preset.obra || '', { criar: true })}</select></label>
+        ${preset.os ? '' : html`<label class="av-os tf-os" hidden>OS em aberto deste PO<select name="av_os"><option value="">— escolher a OS —</option></select></label>`}
         <label class="tf-ass">${preset.os ? 'Assunto (a OS)' : 'Assunto / cômodo'}<input name="p_assunto" class="pf-assunto" placeholder="ex.: ACM" autocomplete="off" value="${preset.os || preset.assunto || ''}" ${preset.os ? html.seguro('readonly') : ''}></label>
         <label class="tf-desc">${preset.os ? 'Descrição (o que fazer)' : 'Título (o que fazer)'}<input name="p_desc" class="tf-req" placeholder="ex.: Retirar da área gourmet" autocomplete="off" value="${preset.desc || ''}"></label>
         <label>Responsável<select name="p_tipo" class="tf-req" data-pf-tipo><option value="solida">Sólida</option><option value="terceirizado">Terceirizado</option><option value="cliente">Cliente</option><option value="arquitetura">Arquitetura</option></select></label>
@@ -667,8 +669,6 @@ export function formAvulsa(obras, prazo, setorPadrao = '', preset = {}) {
           <select name="p_resp" class="pf-sol tf-req"><option value="">Pessoa da Sólida…</option>${opcoesPessoas(preset.resp || '')}</select>
           <input name="p_nome" class="pf-ext tf-req" list="dl-terceiros" placeholder="Nome da empresa ou pessoa" autocomplete="off" hidden></label>
         <label>Departamento<select name="av_setor" class="tf-req" required><option value="">— escolher —</option>${SETORES_ATA.map((s) => html`<option value="${s}" ${s === setorPadrao ? html.seguro('selected') : ''}>${s}</option>`)}</select></label>
-        <label>Obra<select name="av_obra"><option value="">Nenhuma</option>${gruposDeObras(listaObras, preset.obra || '', { criar: true })}</select></label>
-        ${preset.os ? '' : html`<label class="av-os tf-os" hidden>OS em aberto deste PO<select name="av_os"><option value="">— escolher a OS —</option></select></label>`}
         <label>Prazo<input type="date" name="p_prazo" class="tf-req" value="${prazo || ''}"></label>
         <label>Horário na Agenda<input type="time" name="p_hora" value="${preset.hora || ''}"></label>
         <label>Duração<select name="p_dur"><option value="">Padrão</option>${[30, 60, 90, 120, 180, 240].map((m) => html`<option value="${m}" ${String(preset.dur || '') === String(m) ? html.seguro('selected') : ''}>${m >= 60 ? `${m / 60}h${m % 60 ? m % 60 : ''}`.replace(/^(\d+)h$/, '$1 h') : `${m} min`}</option>`)}</select></label>
