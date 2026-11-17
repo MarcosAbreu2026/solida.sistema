@@ -15,6 +15,7 @@ export async function carregarConfig() {
 export const snapshotConfig = () => JSON.stringify(cfg);
 export const listaConfig = (chave) => (Array.isArray(cfg[chave]) ? cfg[chave] : null);
 export const temConfig = (chave) => listaConfig(chave) !== null;
+export const textoConfig = (chave) => (typeof cfg[chave] === 'string' ? cfg[chave] : '');
 // a função vê? (diretoria sempre vê; sem configuração vale o padrão)
 export const funcaoVe = (chave, funcaoId, padrao = true) => { if (funcaoId === 'socio') return true; const l = listaConfig(chave); return l ? l.includes(funcaoId) : padrao; };
 export const secaoVisivel = (pagina, bloco, funcaoId) => funcaoVe(`secao.${pagina}.${bloco}`, funcaoId, true);

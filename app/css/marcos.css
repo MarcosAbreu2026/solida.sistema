@@ -1128,3 +1128,9 @@ body.nav-recolhido .pd, body.nav-recolhido .osq, body.nav-recolhido .pc { max-wi
 .aut-bolinha { width: 12px; height: 12px; border-radius: 50%; background: #9AA8B8; }
 .aut-bolinha.aut-ok { background: #2E9E63; } .aut-bolinha.aut-velha { background: #E0A100; } .aut-bolinha.aut-erro { background: #D9534F; }
 @media (max-width: 760px) { .aut-linha { grid-template-columns: 16px 1fr; } .aut-st { grid-column: 2; } }
+
+.aut-linha { grid-template-columns: 16px minmax(0, 1.2fr) minmax(0, 1fr) minmax(180px, .9fr); }
+.aut-cab { background: #F4F7FA; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: #5B6677; padding-top: 8px; padding-bottom: 8px; }
+.aut-conta { display: flex; flex-direction: column; gap: 2px; } .aut-conta input { font: inherit; font-size: 13px; padding: 5px 8px; border: 1px solid #C9D1DA; border-radius: 6px; background: #fff; width: 100%; box-sizing: border-box; }
+.aut-salvo { color: #1B7F4B; font-weight: 700; }
+@media (max-width: 900px) { .aut-linha { grid-template-columns: 16px 1fr; } .aut-st, .aut-conta { grid-column: 2; } .aut-cab { display: none; } }

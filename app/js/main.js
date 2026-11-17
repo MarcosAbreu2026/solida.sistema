@@ -2272,6 +2272,13 @@ document.addEventListener('change', (e) => {
   const ass = lista.closest('form').querySelector('[name="p_assunto"]'); if (!ass) return;
   if (lista.value && lista.value !== '__sem__') { ass.value = lista.value; ass.readOnly = true; } else if (ass.readOnly) { ass.value = ''; ass.readOnly = false; }
 });
+// Configurações › Automações: anota qual conta está ligada a cada item (salva ao sair do campo)
+document.addEventListener('change', async (e) => {
+  const c = e.target.closest && e.target.closest('[data-aut-conta]'); if (!c) return;
+  const aviso = c.parentElement.querySelector('.aut-salvo');
+  try { await definirConfig(`automacao.${c.dataset.autConta}.conta`, c.value.trim()); if (aviso) { aviso.hidden = false; setTimeout(() => { aviso.hidden = true; }, 1800); } }
+  catch (err) { alert(`Não foi possível salvar a conta (${err.message || err}).`); }
+});
 // Excluir só a tarefa (pendência) de uma OS, sem mexer na OS: botão "excluir" na linha da tarefa (Controle de obras e janela da OS)
 document.addEventListener('click', async (e) => {
   const b = e.target.closest && e.target.closest('[data-pc-pdel]'); if (!b) return;

@@ -2,9 +2,10 @@
 // Google Agenda…) e mostra o status de cada uma: conectado (lido hoje), desatualizado (última leitura antiga), sem acesso ou ainda não conectado.
 // O status vem do que os agentes de cada setor registram em "De onde vêm os dados" (fontes: nome, de onde lê e quando leu); as ligações do próprio sistema (banco) são testadas na hora.
 import { html } from '../formato.js';
+import { textoConfig } from '../config.js';
 
 const CATALOGO = [
-  { id: 'banco', nome: 'Banco de dados e login (Supabase)', faz: 'Guarda tarefas, atas, OS, cadastros e acessos; é o que mantém o sistema igual para todos.', proprio: true },
+  { id: 'banco', nome: 'Banco de dados e login (Supabase)', faz: 'Guarda tarefas, atas, OS, cadastros e acessos; é o que mantém o sistema igual para todos.', proprio: true, contaPadrao: 'Projeto ghqlkznukbdqnbwhqbdn' },
   { id: 'maiscontrole', nome: 'Mais Controle', faz: 'ERP: diário de obras, medições, financeiro e centro de custo.', re: /mais\s*controle/i },
   { id: 'drive', nome: 'Google Drive', faz: 'Pastas das obras, projetos, atas em PDF e planilhas de origem.', re: /drive/i },
   { id: 'whatsapp', nome: 'WhatsApp (grupos)', faz: 'Efetivo e produtividade das obras, ferramentas e compras; cobranças autorizadas.', re: /whats/i },
@@ -45,6 +46,9 @@ export function render({ cfg, naNuvem = false } = {}) {
   return html`<div class="aut">
     <p class="pequeno">As ligações do sistema com outros sistemas e o status de cada uma. O status vem da última leitura registrada pelos agentes de cada setor.</p>
     <div class="aut-resumo"><span class="aut-pil aut-ok">${conta('ok')} conectadas</span><span class="aut-pil aut-velha">${conta('velha')} desatualizadas</span><span class="aut-pil aut-erro">${conta('erro')} com problema</span><span class="aut-pil aut-nao">${conta('nao') + conta('off')} não conectadas</span></div>
-    <div class="aut-lista">${itens.map(({ i, s }) => html`<div class="aut-linha"><span class="aut-bolinha aut-${s.cod}"></span><div class="aut-corpo"><b>${i.nome}</b><span class="pequeno">${i.faz}</span></div><div class="aut-st"><span class="aut-pil aut-${s.cod}">${s.txt}</span><span class="pequeno">${s.det}</span></div></div>`)}</div>
+    <div class="aut-lista"><div class="aut-linha aut-cab"><span></span><b>Item</b><b>Status</b><b>Conta conectada</b></div>
+    ${itens.map(({ i, s }) => html`<div class="aut-linha"><span class="aut-bolinha aut-${s.cod}"></span><div class="aut-corpo"><b>${i.nome}</b><span class="pequeno">${i.faz}</span></div><div class="aut-st"><span class="aut-pil aut-${s.cod}">${s.txt}</span><span class="pequeno">${s.det}</span></div>
+      <div class="aut-conta"><input type="text" data-aut-conta="${i.id}" value="${textoConfig(`automacao.${i.id}.conta`) || i.contaPadrao || ''}" placeholder="Qual conta? (e-mail, número…)" autocomplete="off"><span class="pequeno aut-salvo" hidden>salvo ✓</span></div></div>`)}</div>
+    <p class="pequeno">A conta é só uma anotação sua (qual e-mail, número ou login está ligado a cada item); digite e saia do campo para salvar.</p>
   </div>`;
 }
