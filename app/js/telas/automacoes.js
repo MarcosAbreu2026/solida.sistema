@@ -11,7 +11,7 @@ const CATALOGO = [
   { id: 'solides', nome: 'Sólides / Tangerino (ponto)', faz: 'Ponto e faltas do RH (só leitura).', re: /s[óo]lides|tangerino/i },
   { id: 'bitrix', nome: 'Bitrix (comercial)', faz: 'Funil de vendas e propostas do comercial.', re: /bitrix/i },
   { id: 'gmail', nome: 'E-mail (Gmail)', faz: 'Pedidos e documentos recebidos por e-mail.', re: /gmail|e-?mail/i },
-  { id: 'calendar', nome: 'Google Agenda (do sistema)', faz: 'Recebe as reuniões criadas no sistema e convida as pessoas; uma única conta, logada no computador do escritório.', re: /google\s*agenda|calendar/i },
+  { id: 'calendar', nome: 'Google Agenda (do sistema)', faz: 'Recebe as reuniões criadas no sistema e convida as pessoas; uma única conta Google, ligada pela API do Google (clique para conectar ou desconectar).', re: /google\s*agenda|calendar/i },
 ];
 
 const dataBR = (iso) => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); };
@@ -42,7 +42,7 @@ function painelGoogle(g, redirect) {
     <li>Em <b>Tela de permissão OAuth</b>, escolha "Externo", preencha o nome do app e, em "Usuários de teste", inclua a conta Google do sistema.</li>
     <li>Em <b>Credenciais › Criar credenciais › ID do cliente OAuth › Aplicativo da Web</b>, em "URIs de redirecionamento autorizados" cole: <code>${redirect}</code></li>
     <li>Copie o <b>ID do cliente</b> e a <b>Chave secreta</b> e cole abaixo.</li></ol>`;
-  return html`<section class="aut-google"><h3>Google Agenda do sistema <span class="aut-pil aut-${g.conectado ? 'ok' : 'nao'}">${g.conectado ? 'Conectado' : g.configurado ? 'Falta autorizar a conta' : 'Não configurado'}</span></h3>
+  return html`<section class="aut-google">
     ${g.conectado ? html`<p>Conta ligada: <b>${g.email || '(sem e-mail)'}</b>${g.conectadoEm ? html` <span class="pequeno">desde ${dataBR(g.conectadoEm)}</span>` : ''}. As reuniões criadas ou editadas no sistema vão sozinhas para o Google Agenda dessa conta, que convida as pessoas.</p>
       <button type="button" class="botao" data-gcal-desconectar>Desconectar</button>`
       : html`${!g.configurado ? html`<p class="pequeno">Uma única vez, a diretoria liga a conta Google do sistema. A API do Google Agenda é gratuita.</p>${passos}` : html`<p class="pequeno">Cliente OAuth salvo. Falta entrar com a conta Google do sistema e autorizar.</p>`}
@@ -54,7 +54,7 @@ function painelGoogle(g, redirect) {
   </section>`;
 }
 
-export function render({ cfg, naNuvem = false, contas = null, google = null, redirectGoogle = '' } = {}) {
+export function render({ cfg, naNuvem = false, contas = null, google = null, redirectGoogle = '', aberto = '' } = {}) {
   const doItem = (id) => (id === 'calendar' && google && google.conectado ? { conta: google.email, lidoEm: google.conectadoEm } : (contas && contas.itens && contas.itens[id]) || null);
   const areas = (cfg && cfg.areas) || [];
   // fontes que os agentes usam e que não estão no catálogo: aparecem no fim, para nada ficar escondido
@@ -65,11 +65,10 @@ export function render({ cfg, naNuvem = false, contas = null, google = null, red
   const conta = (cod) => itens.filter((x) => x.s.cod === cod).length;
   return html`<div class="aut">
     <p class="pequeno">As ligações do sistema com outros sistemas e o status de cada uma. O status vem da última leitura registrada pelos agentes de cada setor.</p>
-    ${painelGoogle(google, redirectGoogle)}
     <div class="aut-resumo"><span class="aut-pil aut-ok">${conta('ok')} conectadas</span><span class="aut-pil aut-velha">${conta('velha')} desatualizadas</span><span class="aut-pil aut-erro">${conta('erro')} com problema</span><span class="aut-pil aut-nao">${conta('nao') + conta('off')} não conectadas</span></div>
     <div class="aut-lista"><div class="aut-linha aut-cab"><span></span><b>Item</b><b>Status</b><b>Conta conectada</b></div>
-    ${itens.map(({ i, s }) => html`<div class="aut-linha"><span class="aut-bolinha aut-${s.cod}"></span><div class="aut-corpo"><b>${i.nome}</b><span class="pequeno">${i.faz}</span></div><div class="aut-st"><span class="aut-pil aut-${s.cod}">${s.txt}</span><span class="pequeno">${s.det}</span></div>
-      <div class="aut-conta">${(() => { const c = doItem(i.id); const txt = (c && c.conta) || i.contaPadrao || ''; return txt ? html`<b>${txt}</b>${c && c.lidoEm ? html`<span class="pequeno">visto em ${dataBR(c.lidoEm)}</span>` : ''}` : html`<span class="pequeno aut-nada">Ainda não informada pelo computador do escritório</span>`; })()}</div></div>`)}</div>
+    ${itens.map(({ i, s }) => html`<div class="aut-grupo"><div class="aut-linha ${i.id === 'calendar' && google ? 'aut-clicavel' : ''}" ${i.id === 'calendar' && google ? html.seguro(`data-aut-abrir="calendar" title="Clique para conectar ou desconectar"`) : ''}><span class="aut-bolinha aut-${s.cod}"></span><div class="aut-corpo"><b>${i.nome}</b><span class="pequeno">${i.faz}</span></div><div class="aut-st"><span class="aut-pil aut-${s.cod}">${s.txt}</span><span class="pequeno">${s.det}</span></div>
+      <div class="aut-conta">${(() => { const c = doItem(i.id); const txt = (c && c.conta) || i.contaPadrao || ''; return txt ? html`<b>${txt}</b>${c && c.lidoEm ? html`<span class="pequeno">visto em ${dataBR(c.lidoEm)}</span>` : ''}` : html`<span class="pequeno aut-nada">Ainda não informada pelo computador do escritório</span>`; })()}</div></div>${i.id === 'calendar' && google && aberto === 'calendar' ? html`<div class="aut-det">${painelGoogle(google, redirectGoogle)}</div>` : ''}</div>`)}</div>
     <p class="pequeno">As contas vêm do computador do escritório, que é quem lê as fontes: ele registra qual conta está logada em cada uma${contas && contas.computador ? ` (último envio: ${contas.computador}, ${dataBR(contas.atualizadoEm)})` : ''}. Nada aqui é digitado à mão.</p>
   </div>`;
 }

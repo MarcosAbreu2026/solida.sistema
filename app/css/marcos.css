@@ -1171,3 +1171,7 @@ body.nav-recolhido .pd, body.nav-recolhido .osq, body.nav-recolhido .pc { max-wi
 .rn-prefixo { display: flex; align-items: center; padding: 0 10px; background: #E9EEF5; color: #1F3A56; font-weight: 800; font-size: 15px; white-space: nowrap; max-width: 55%; overflow: hidden; text-overflow: ellipsis; border-right: 1px solid #D0D9E4; }
 .rn-titulo-wrap .rn-titulo { border: 0 !important; border-radius: 0 !important; flex: 1; min-width: 0; margin: 0; box-shadow: none; }
 .rn-grade select.tf-req { border-left: 4px solid #D9534F !important; }
+
+.aut-grupo { border-bottom: 1px solid #EDF0F3; } .aut-grupo:last-child { border-bottom: 0; } .aut-grupo > .aut-linha { border-bottom: 0; }
+.aut-clicavel { cursor: pointer; } .aut-clicavel:hover { background: #F3F7FB; }
+.aut-det { padding: 4px 16px 14px 46px; background: #FAFBFC; } .aut-det .aut-google { border: 0; border-radius: 0; padding: 4px 0; margin: 0; background: transparent; }

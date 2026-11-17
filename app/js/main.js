@@ -760,7 +760,7 @@ function desenhar() {
     if (secao === 'abas') { pinta(configTela.render({ pagina: rota.sub || 'geral', msg: estado.cfgMsg || '' })); estado.cfgMsg = ''; return; }
     if (secao === 'agentes') { pinta(estado.cfg ? criarTelas(estado.cfg, veValores(), opcoesTelas()).telaAgentes() : '<p class="vazio">Os agentes ainda não carregaram.</p>'); return; }
     if (secao === 'automacoes') {
-      const pintaAut = () => pinta(automacoesTela.render({ cfg: estado.cfg, naNuvem: nuvem.NA_NUVEM, contas: estado.contasAutomacoes || null, google: estado.googleAgenda || null, redirectGoogle: `${'https://ghqlkznukbdqnbwhqbdn.supabase.co'}/functions/v1/gcal` }));
+      const pintaAut = () => pinta(automacoesTela.render({ cfg: estado.cfg, naNuvem: nuvem.NA_NUVEM, contas: estado.contasAutomacoes || null, google: estado.googleAgenda || null, aberto: estado.autAberto || '', redirectGoogle: `${'https://ghqlkznukbdqnbwhqbdn.supabase.co'}/functions/v1/gcal` }));
       pintaAut();
       if (nuvem.NA_NUVEM && !estado.googleLido) { estado.googleLido = true; nuvem.googleStatus().then((g) => { estado.googleAgenda = g; const r3 = rotaAtual(); if (r3.tela === 'configuracoes' && r3.params.get('secao') === 'automacoes' && !emEdicao()) pintaAut(); }).catch(() => {}).finally(() => { setTimeout(() => { estado.googleLido = false; }, 20000); }); }
       // as contas vêm do computador do escritório (arquivo automacoes.json na nuvem): carrega e redesenha
@@ -2285,6 +2285,8 @@ document.addEventListener('change', (e) => {
   const ass = lista.closest('form').querySelector('[name="p_assunto"]'); if (!ass) return;
   if (lista.value && lista.value !== '__sem__') { ass.value = lista.value; ass.readOnly = true; } else if (ass.readOnly) { ass.value = ''; ass.readOnly = false; }
 });
+// Automações: clicar no item abre as ações dele (conectar / desconectar)
+document.addEventListener('click', (e) => { const a = e.target.closest && e.target.closest('[data-aut-abrir]'); if (!a) return; estado.autAberto = estado.autAberto === a.dataset.autAbrir ? '' : a.dataset.autAbrir; desenhar(); });
 // Google Agenda do sistema: salvar o cliente OAuth, conectar a conta e desconectar
 document.addEventListener('submit', async (e) => {
   const f = e.target.closest && e.target.closest('[data-gcal-form]'); if (!f) return;
