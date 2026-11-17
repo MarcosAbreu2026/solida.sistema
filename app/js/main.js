@@ -2375,7 +2375,7 @@ const erroReuniao = (c, obrigaEscolher = true) => {
   if (!c.data || !c.ini || !c.fim) return 'Preencha a data e o horário.';
   if (paraMin(c.fim) < paraMin(c.ini) + 60) return 'A reunião precisa ter no mínimo 1 hora, no mesmo dia (o fim tem que ser pelo menos 1 hora depois do início).';
   if (!c.local.trim()) return 'Escreva o local da reunião.';
-  if (!c.convidados.length && !c.emails.length) return 'Convide pelo menos uma pessoa: uma reunião não se faz sozinho.';
+  if (!c.convidados.filter((i) => i !== reunioes.meuId()).length && !c.emails.length) return 'Convide pelo menos mais uma pessoa além de você: uma reunião não se faz sozinho.';
   for (const p of c.emailsPessoas) {
     if (!p.email) return `Informe o e-mail de ${p.nome} (ainda não está no cadastro).`;
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p.email)) return `O e-mail de ${p.nome} está num formato inválido.`;
@@ -2419,7 +2419,7 @@ const atualizarNomeReuniao = (e) => {
   const marca = (el, falta) => { if (el) el.classList.toggle('rn-falta', !!falta); };
   const c2 = dadosReuniao(form);
   marca(form.querySelector('.rn-titulo-wrap'), !c2.titulo); marca(form.querySelector('[name="r_data"]'), !c2.data); marca(form.querySelector('[name="r_ini"]'), !c2.ini); marca(form.querySelector('[name="r_fim"]'), !c2.fim || paraMin(c2.fim) < paraMin(c2.ini) + 60);
-  marca(loc, !c2.local.trim()); marca(form.querySelector('.rn-conv .obs'), !c2.convidados.length && !c2.emails.length);
+  marca(loc, !c2.local.trim()); marca(form.querySelector('.rn-conv .obs'), !c2.convidados.filter((i) => i !== reunioes.meuId()).length && !c2.emails.length);
 };
 document.addEventListener('input', atualizarNomeReuniao);
 document.addEventListener('change', atualizarNomeReuniao);
@@ -2465,6 +2465,7 @@ document.addEventListener('click', (e) => {
   if (modo) {
     const form = modo.closest('form'); if (!form) return;
     form.classList.toggle('tf-modo-reuniao', modo.dataset.tfModo === 'reuniao');
+    if (modo.dataset.tfModo === 'reuniao') { const cxr = form.querySelector('.obs[data-obs="r_conv"]'); if (cxr) { sincronizarEmailsFaltantes(cxr); cxr.dispatchEvent(new Event('change', { bubbles: true })); } }
     form.querySelectorAll('[data-tf-modo]').forEach((b) => b.classList.toggle('on', b === modo));
     const t = form.querySelector(modo.dataset.tfModo === 'reuniao' ? '[name="r_titulo"]' : '[name="p_assunto"]'); if (t) t.focus();
     return;
