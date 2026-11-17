@@ -14,7 +14,7 @@ Segunda-feira: "dia útil anterior" da cobrança das 09:00 é a sexta. Feriado e
 
 ## Regras comuns
 - Só obras em andamento (situação em `dados/json/obras-situacao.json`; Mo465 pausada e Mo565D finalizada ficam de fora).
-- Encarregado de cada obra: Mo358 Carlos; Mo581 Taisa; Mo531 Wanderson; Mo533 Thaissa; Mo565C Maurílio. Mo344 e qualquer obra sem encarregado claro: NÃO cobrar, só avisar no resumo.
+- Encarregado de cada obra: Mo358 Carlos; Mo581 Taisa; Mo531 Wanderson; Mo533 Thaissa; Mo602 (Remax) Maurílio (antes constava como Mo565C). Mo344 e qualquer obra sem encarregado claro: NÃO cobrar, só avisar no resumo.
 - No máximo UMA cobrança de cada tipo por obra por dia. Controle em `dados/json/cobrancas.json`: `{ "dias": { "AAAA-MM-DD": { "Mo358": { "produtividade": "HH:MM", "efetivo": "HH:MM" } } } }`. Leia antes; se já tem registro daquele tipo hoje, não envie; grave o registro logo depois de enviar. A cobrança da manhã (dia anterior) grava a chave `produtividade-ontem`; a da tarde grava `produtividade`.
 - Se o próprio Marcos/Felipe já cobrou a mesma coisa naquele grupo hoje, não envie; só registre.
 - Antes de cobrar, CONFIRA NO GRUPO se a obra realmente não postou (leia as mensagens do dia; use "carregar mais antigas" se preciso). Postou, mesmo atrasado: não cobra.
