@@ -760,7 +760,9 @@ function desenhar() {
     if (secao === 'abas') { pinta(configTela.render({ pagina: rota.sub || 'geral', msg: estado.cfgMsg || '' })); estado.cfgMsg = ''; return; }
     if (secao === 'agentes') { pinta(estado.cfg ? criarTelas(estado.cfg, veValores(), opcoesTelas()).telaAgentes() : '<p class="vazio">Os agentes ainda não carregaram.</p>'); return; }
     if (secao === 'automacoes') {
-      pinta(automacoesTela.render({ cfg: estado.cfg, naNuvem: nuvem.NA_NUVEM, contas: estado.contasAutomacoes || null }));
+      const pintaAut = () => pinta(automacoesTela.render({ cfg: estado.cfg, naNuvem: nuvem.NA_NUVEM, contas: estado.contasAutomacoes || null, google: estado.googleAgenda || null, redirectGoogle: `${'https://ghqlkznukbdqnbwhqbdn.supabase.co'}/functions/v1/gcal` }));
+      pintaAut();
+      if (nuvem.NA_NUVEM && !estado.googleLido) { estado.googleLido = true; nuvem.googleStatus().then((g) => { estado.googleAgenda = g; const r3 = rotaAtual(); if (r3.tela === 'configuracoes' && r3.params.get('secao') === 'automacoes' && !emEdicao()) pintaAut(); }).catch(() => {}).finally(() => { setTimeout(() => { estado.googleLido = false; }, 20000); }); }
       // as contas vêm do computador do escritório (arquivo automacoes.json na nuvem): carrega e redesenha
       if (nuvem.NA_NUVEM && !estado.contasAutomacoesLidas) { estado.contasAutomacoesLidas = true; nuvem.baixar('automacoes').then((c) => { estado.contasAutomacoes = c; const r2 = rotaAtual(); if (r2.tela === 'configuracoes' && r2.params.get('secao') === 'automacoes') pinta(automacoesTela.render({ cfg: estado.cfg, naNuvem: true, contas: c })); setTimeout(() => { estado.contasAutomacoesLidas = false; }, 60000); }).catch(() => { estado.contasAutomacoesLidas = false; }); }
       return;
@@ -2282,6 +2284,19 @@ document.addEventListener('change', (e) => {
   const lista = e.target.closest && e.target.closest('select[name="av_os"]'); if (!lista) return;
   const ass = lista.closest('form').querySelector('[name="p_assunto"]'); if (!ass) return;
   if (lista.value && lista.value !== '__sem__') { ass.value = lista.value; ass.readOnly = true; } else if (ass.readOnly) { ass.value = ''; ass.readOnly = false; }
+});
+// Google Agenda do sistema: salvar o cliente OAuth, conectar a conta e desconectar
+document.addEventListener('submit', async (e) => {
+  const f = e.target.closest && e.target.closest('[data-gcal-form]'); if (!f) return;
+  e.preventDefault(); const fd = new FormData(f);
+  try { await nuvem.googleSalvarCliente(String(fd.get('gc_id') || ''), String(fd.get('gc_sec') || '')); estado.googleLido = false; estado.googleAgenda = await nuvem.googleStatus(); desenhar(); }
+  catch (err) { alert(`Não foi possível salvar (${err.message || err}).`); }
+});
+document.addEventListener('click', async (e) => {
+  const c = e.target.closest && e.target.closest('[data-gcal-conectar]');
+  if (c) { try { const r = await nuvem.googleUrlAutorizar(); location.href = r.url; } catch (err) { alert(`Não foi possível começar a conexão (${err.message || err}).`); } return; }
+  const d = e.target.closest && e.target.closest('[data-gcal-desconectar]');
+  if (d) { if (!confirm('Desconectar o Google Agenda do sistema? As reuniões novas ficam pendentes até conectar de novo.')) return; try { await nuvem.googleDesconectar(); estado.googleAgenda = await nuvem.googleStatus(); desenhar(); } catch (err) { alert(`Não foi possível desconectar (${err.message || err}).`); } }
 });
 // Excluir só a tarefa (pendência) de uma OS, sem mexer na OS: botão "excluir" na linha da tarefa (Controle de obras e janela da OS)
 document.addEventListener('click', async (e) => {

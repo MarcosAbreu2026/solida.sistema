@@ -649,7 +649,7 @@ function painelReuniao(prazo, hora, obras = [], setorPadrao = '') {
     <div class="rn-linha rn-conv"><i aria-hidden="true">👥</i>${caixaConvidados(pessoas)}</div>
     <div class="rn-linha"><i aria-hidden="true">📍</i><input name="r_local" placeholder="Adicionar local" autocomplete="off"></div>
     <p class="rn-aviso" hidden data-rn-erro></p>
-    <p class="rn-aviso">A reunião é criada aqui e o sistema a leva para o Google Agenda do sistema, que convida as pessoas. Edite sempre por aqui.</p>
+    <p class="rn-aviso">A reunião é criada aqui e o sistema a leva sozinho para o Google Agenda do sistema, que convida as pessoas. Edite sempre por aqui.</p>
     <div class="tf-botoes"><button type="button" class="botao" data-av-fechar>Cancelar</button><button type="button" class="botao on" data-reun-salvar>Salvar reunião</button></div>
   </div>`;
 }

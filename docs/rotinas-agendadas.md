@@ -96,7 +96,3 @@ Depois rode: node scripts/enviar-nuvem.mjs medicoes-mc   e confirme o envio. O s
 - Programação semanal e metas são **PDFs** postados nos grupos e salvos no Drive; o coletor já lê o PDF mais novo de cada obra, mas ainda só extrai uma nota.
   Transformar a tabela em metas por dia está na fila.
 - Memórias do Claude (ferramentas, Tangerino, Mais Controle…) são por computador. No escritório, o que vale para todos fica no `CLAUDE.md` e em `docs/`.
-
-## Reuniões no Google Agenda do sistema (17/11/2026)
-
-Rotina `sincronizar-reunioes-google-agenda` (docs/procedimentos/sincronizar-reunioes-google-agenda.md): a cada 10 min em horário comercial, leva as reuniões criadas ou editadas no sistema para o Google Agenda do sistema (conta única logada no Chrome do escritório). Criar com o Claude no computador do escritório, como as outras rotinas.

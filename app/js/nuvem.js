@@ -528,3 +528,28 @@ export async function atualizarReuniao(id, mud) {
   if (!data || !data.length) throw new Error('Sem permissão para mudar esta reunião.');
   return data[0];
 }
+
+// ---------------------------------------------------------------- Google Agenda do sistema (função gcal + tabela google_agenda)
+export async function googleStatus() {
+  const { data, error } = await sb.rpc('google_agenda_status');
+  if (error) throw new Error(error.message);
+  return data;
+}
+export async function googleSalvarCliente(clientId, clientSecret) {
+  const { error } = await sb.rpc('google_agenda_salvar_cliente', { p_client_id: clientId, p_client_secret: clientSecret });
+  if (error) throw new Error(error.message);
+}
+export async function googleDesconectar() {
+  const { error } = await sb.rpc('google_agenda_desconectar');
+  if (error) throw new Error(error.message);
+}
+export async function googleUrlAutorizar() {
+  const { data, error } = await sb.functions.invoke('gcal', { body: { acao: 'url' } });
+  if (error) throw new Error(error.message);
+  if (data && data.erro) throw new Error(data.erro);
+  return data;
+}
+// leva as reuniões ao Google Agenda (cria, atualiza ou apaga o evento e convida); sem conta ligada elas ficam "pendentes" e seguem quando a conta for ligada
+export async function sincronizarReunioesGoogle(ids = []) {
+  try { const { data } = await sb.functions.invoke('gcal', { body: { acao: 'sync', ids } }); return data; } catch { return null; }
+}

@@ -1,10 +1,10 @@
 // Reuniões (pedido do Felipe, 17/11/2026): criadas e editadas AQUI; o sistema leva cada reunião para o Google Agenda do sistema (uma única conta, logada no computador do
 // escritório), que convida as pessoas. Quem criou, as pessoas da Sólida convidadas e a diretoria podem editar. Nome automático: R_<obra ou pós-obra>_<título>
-// (sem obra, R_<departamento>_<título>). Cada reunião guarda o resultado do envio ao Google Agenda (gcal_sync: pendente · ok · erro), que o computador do escritório atualiza.
+// (sem obra, R_<departamento>_<título>). Cada reunião guarda o resultado do envio ao Google Agenda (gcal_sync: pendente · ok · erro).
 // Na nuvem: tabela reunioes (supabase/30-reunioes.sql); no computador de teste: neste navegador.
 import { html } from './formato.js';
 import { hojeISO, somarDias } from './datas.js';
-import { NA_NUVEM, perfilAtual, listarReunioes, gravarReunioes, atualizarReuniao } from './nuvem.js';
+import { NA_NUVEM, perfilAtual, listarReunioes, gravarReunioes, atualizarReuniao, sincronizarReunioesGoogle } from './nuvem.js';
 import { idPessoa, funcaoReal } from './sessao.js';
 
 const CHAVE = 'solida.reunioes';
@@ -42,8 +42,10 @@ export async function criar(c) {
   const base = { nome: nomeDaReuniao(c), titulo: c.titulo.trim(), obra: c.obra || null, setor: c.setor || null, ini: c.ini, fim: c.fim, local: (c.local || '').trim() || null,
     convidados: c.convidados || [], emails_externos: c.emails || [], recorrente: !!c.recorrente, frequencia: c.recorrente ? (c.frequencia === 'mensal' ? 'mensal' : 'semanal') : null, serie, gcal_sync: 'pendente' };
   const linhas = Array.from({ length: n }, (_, k) => ({ ...base, data: dataDaSerie(c.data, base.frequencia, k) }));
-  if (NA_NUVEM) await gravarReunioes(linhas);
+  let novas = [];
+  if (NA_NUVEM) novas = await gravarReunioes(linhas);
   else { const l = lerLocal(); let seq = l.reduce((m, x) => Math.max(m, x.id), 0); for (const x of linhas) l.push({ id: ++seq, ...x, cancelada: false, criado_por: eu(), criado_em: new Date().toISOString(), gcal_event_id: null }); gravarLocal(l); }
+  if (NA_NUVEM) { await sincronizarReunioesGoogle(novas.map((x) => x.id)); }
   await carregar();
 }
 
@@ -62,6 +64,7 @@ export async function salvar(id, c, escopo = 'uma') {
     return { nome: nomeDaReuniao(c), titulo: c.titulo.trim(), obra: c.obra || null, setor: c.setor || null, ini: c.ini, fim: c.fim, local: (c.local || '').trim() || null,
       convidados: c.convidados || [], emails_externos: c.emails || [], data: String(i) === String(id) ? c.data : (delta ? somarDias(x.data, delta) : x.data), gcal_sync: 'pendente', gcal_erro: null, atualizado_em: agora, atualizado_por: eu() };
   });
+  if (NA_NUVEM) await sincronizarReunioesGoogle(alvo.map((x) => x.id));
   await carregar();
 }
 // "excluir" cancela: o Google Agenda precisa apagar o evento, então a linha fica marcada até o envio
@@ -69,6 +72,7 @@ export async function cancelar(id, escopo = 'uma') {
   const r = porId(id); if (!r) return;
   const alvo = escopo === 'seguintes' && r.serie ? lista.filter((x) => x.serie === r.serie && x.data >= r.data) : [r];
   await atualizarVarias(alvo.map((x) => x.id), () => ({ cancelada: true, gcal_sync: 'pendente', gcal_erro: null, atualizado_em: new Date().toISOString(), atualizado_por: eu() }));
+  if (NA_NUVEM) await sincronizarReunioesGoogle(alvo.map((x) => x.id));
   await carregar();
 }
 
@@ -87,7 +91,7 @@ export function caixaConvidados(pessoas, ids = [], emails = []) {
 
 const selo = (r) => (r.gcal_sync === 'ok' ? html`<span class="rn-sync rn-sync-ok" title="Já está no Google Agenda do sistema">no Google Agenda ✓</span>`
   : r.gcal_sync === 'erro' ? html`<span class="rn-sync rn-sync-erro" title="${r.gcal_erro || 'Falhou'}">erro no Google Agenda</span>`
-    : html`<span class="rn-sync rn-sync-pend" title="O computador do escritório leva para o Google Agenda em poucos minutos">indo para o Google Agenda…</span>`);
+    : html`<span class="rn-sync rn-sync-pend" title="Aguardando a conta do Google do sistema ser conectada em Configurações › Automações (ou o envio em andamento)">indo para o Google Agenda…</span>`);
 
 // painel "Reuniões" (na Agenda): as próximas reuniões que a pessoa criou ou para as quais foi convidada (a diretoria vê todas)
 export function renderLista({ pessoas = [], hoje = hojeISO() } = {}) {
