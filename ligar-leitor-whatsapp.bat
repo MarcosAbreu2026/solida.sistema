@@ -3,7 +3,7 @@ rem Liga o leitor do WhatsApp neste computador (so na primeira vez, ou se o What
 rem Abre o Chrome do leitor: escaneie o QR code com o celular (WhatsApp > Aparelhos conectados > Conectar um aparelho).
 cd /d "%~dp0"
 echo Fechando o leitor automatico, se estiver rodando...
-powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='chrome.exe' OR Name='msedge.exe'\" | Where-Object { $_.CommandLine -match 'whatsapp-perfil' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }"
+powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='chrome.exe' OR Name='msedge.exe'\" | Where-Object { $_.CommandLine -match 'whatsapp-perfil' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"
 node scripts\leitor-whatsapp.mjs --login
 echo.
 pause
