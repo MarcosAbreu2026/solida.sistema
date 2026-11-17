@@ -110,6 +110,14 @@ if (MODO_LOGIN) {
 // ---------------------------------------------------------------- leitura
 const logado = await esperar(`!!document.querySelector('${LISTA}') || !!document.querySelector('${QR}')`, 60000)
   && await avaliar(`!!document.querySelector('${LISTA}')`);
+// qual WhatsApp está conectado (a conta do número do leitor): vai para Configurações › Automações (scripts/contas-automacoes.mjs)
+if (logado) {
+  try {
+    const wid = await avaliar("localStorage.getItem('last-wid-md') || localStorage.getItem('last-wid') || ''");
+    const m = /(d{10,15})/.exec(String(wid || ''));
+    if (m) gravarJSON(join(pastaWpp, 'conta.json'), { numero: m[1], lidoEm: agora() });
+  } catch { /* sem o número desta vez */ }
+}
 if (!logado) {
   const motivo = 'WhatsApp Web não está conectado neste computador: rode "ligar-leitor-whatsapp.bat" e escaneie o QR code';
   gravarStatus({ ok: false, motivo }); console.log(motivo); await encerrar(2);

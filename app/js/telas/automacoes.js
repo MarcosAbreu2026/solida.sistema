@@ -2,10 +2,9 @@
 // Google Agenda…) e mostra o status de cada uma: conectado (lido hoje), desatualizado (última leitura antiga), sem acesso ou ainda não conectado.
 // O status vem do que os agentes de cada setor registram em "De onde vêm os dados" (fontes: nome, de onde lê e quando leu); as ligações do próprio sistema (banco) são testadas na hora.
 import { html } from '../formato.js';
-import { textoConfig } from '../config.js';
 
 const CATALOGO = [
-  { id: 'banco', nome: 'Banco de dados e login (Supabase)', faz: 'Guarda tarefas, atas, OS, cadastros e acessos; é o que mantém o sistema igual para todos.', proprio: true, contaPadrao: 'Projeto ghqlkznukbdqnbwhqbdn' },
+  { id: 'banco', nome: 'Banco de dados e login (Supabase)', faz: 'Guarda tarefas, atas, OS, cadastros e acessos; é o que mantém o sistema igual para todos.', proprio: true, contaPadrao: 'App Solida Construção · projeto ghqlkznukbdqnbwhqbdn' },
   { id: 'maiscontrole', nome: 'Mais Controle', faz: 'ERP: diário de obras, medições, financeiro e centro de custo.', re: /mais\s*controle/i },
   { id: 'drive', nome: 'Google Drive', faz: 'Pastas das obras, projetos, atas em PDF e planilhas de origem.', re: /drive/i },
   { id: 'whatsapp', nome: 'WhatsApp (grupos)', faz: 'Efetivo e produtividade das obras, ferramentas e compras; cobranças autorizadas.', re: /whats/i },
@@ -15,6 +14,7 @@ const CATALOGO = [
   { id: 'calendar', nome: 'Google Agenda', faz: 'Reuniões e compromissos da equipe.', re: /google\s*agenda|calendar/i },
 ];
 
+const dataBR = (iso) => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); };
 const dataDe = (txt) => { const m = String(txt || '').match(/(\d{2})\/(\d{2})(?:[,\s]+(\d{2}):(\d{2}))?/); if (!m) return null; const hj = new Date(); const d = new Date(hj.getFullYear(), Number(m[2]) - 1, Number(m[1]), Number(m[3] || 12), Number(m[4] || 0)); if (d > hj) d.setFullYear(d.getFullYear() - 1); return d; };
 const diasAtras = (d) => { const hj = new Date(); return Math.round((new Date(hj.getFullYear(), hj.getMonth(), hj.getDate()) - new Date(d.getFullYear(), d.getMonth(), d.getDate())) / 86400000); };
 
@@ -35,7 +35,8 @@ function statusDe(item, areas, { naNuvem }) {
   return { cod: 'erro', txt: 'Parado', det: `Última leitura ${quando}. Usada por: ${quem}.` };
 }
 
-export function render({ cfg, naNuvem = false } = {}) {
+export function render({ cfg, naNuvem = false, contas = null } = {}) {
+  const doItem = (id) => (contas && contas.itens && contas.itens[id]) || null;
   const areas = (cfg && cfg.areas) || [];
   // fontes que os agentes usam e que não estão no catálogo: aparecem no fim, para nada ficar escondido
   const conhecidas = (nome) => CATALOGO.some((c) => c.re && c.re.test(nome));
@@ -48,7 +49,7 @@ export function render({ cfg, naNuvem = false } = {}) {
     <div class="aut-resumo"><span class="aut-pil aut-ok">${conta('ok')} conectadas</span><span class="aut-pil aut-velha">${conta('velha')} desatualizadas</span><span class="aut-pil aut-erro">${conta('erro')} com problema</span><span class="aut-pil aut-nao">${conta('nao') + conta('off')} não conectadas</span></div>
     <div class="aut-lista"><div class="aut-linha aut-cab"><span></span><b>Item</b><b>Status</b><b>Conta conectada</b></div>
     ${itens.map(({ i, s }) => html`<div class="aut-linha"><span class="aut-bolinha aut-${s.cod}"></span><div class="aut-corpo"><b>${i.nome}</b><span class="pequeno">${i.faz}</span></div><div class="aut-st"><span class="aut-pil aut-${s.cod}">${s.txt}</span><span class="pequeno">${s.det}</span></div>
-      <div class="aut-conta"><input type="text" data-aut-conta="${i.id}" value="${textoConfig(`automacao.${i.id}.conta`) || i.contaPadrao || ''}" placeholder="Qual conta? (e-mail, número…)" autocomplete="off"><span class="pequeno aut-salvo" hidden>salvo ✓</span></div></div>`)}</div>
-    <p class="pequeno">A conta é só uma anotação sua (qual e-mail, número ou login está ligado a cada item); digite e saia do campo para salvar.</p>
+      <div class="aut-conta">${(() => { const c = doItem(i.id); const txt = (c && c.conta) || i.contaPadrao || ''; return txt ? html`<b>${txt}</b>${c && c.lidoEm ? html`<span class="pequeno">visto em ${dataBR(c.lidoEm)}</span>` : ''}` : html`<span class="pequeno aut-nada">Ainda não informada pelo computador do escritório</span>`; })()}</div></div>`)}</div>
+    <p class="pequeno">As contas vêm do computador do escritório, que é quem lê as fontes: ele registra qual conta está logada em cada uma${contas && contas.computador ? ` (último envio: ${contas.computador}, ${dataBR(contas.atualizadoEm)})` : ''}. Nada aqui é digitado à mão.</p>
   </div>`;
 }

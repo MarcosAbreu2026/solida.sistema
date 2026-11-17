@@ -753,7 +753,12 @@ function desenhar() {
     const pinta = (corpo) => { $('#conteudo').innerHTML = `<div class="cfg-hub">${barra}<div class="cfg-hub-corpo">${corpo}</div></div>`; };
     if (secao === 'abas') { pinta(configTela.render({ pagina: rota.sub || 'geral', msg: estado.cfgMsg || '' })); estado.cfgMsg = ''; return; }
     if (secao === 'agentes') { pinta(estado.cfg ? criarTelas(estado.cfg, veValores(), opcoesTelas()).telaAgentes() : '<p class="vazio">Os agentes ainda não carregaram.</p>'); return; }
-    if (secao === 'automacoes') { pinta(automacoesTela.render({ cfg: estado.cfg, naNuvem: nuvem.NA_NUVEM })); return; }
+    if (secao === 'automacoes') {
+      pinta(automacoesTela.render({ cfg: estado.cfg, naNuvem: nuvem.NA_NUVEM, contas: estado.contasAutomacoes || null }));
+      // as contas vêm do computador do escritório (arquivo automacoes.json na nuvem): carrega e redesenha
+      if (nuvem.NA_NUVEM && !estado.contasAutomacoesLidas) { estado.contasAutomacoesLidas = true; nuvem.baixar('automacoes').then((c) => { estado.contasAutomacoes = c; const r2 = rotaAtual(); if (r2.tela === 'configuracoes' && r2.params.get('secao') === 'automacoes') pinta(automacoesTela.render({ cfg: estado.cfg, naNuvem: true, contas: c })); setTimeout(() => { estado.contasAutomacoesLidas = false; }, 60000); }).catch(() => { estado.contasAutomacoesLidas = false; }); }
+      return;
+    }
     if (!nuvem.NA_NUVEM) { pinta('<p class="vazio">Os cadastros ficam no banco: abra o sistema online para editar a equipe e as obras.</p>'); return; }
     pinta('<div class="carregando">Carregando a equipe…</div>');
     Promise.all([nuvem.listarPerfis(), nuvem.listarObras().catch(() => estado.obrasCad || [])]).then(([ps, oc]) => {
@@ -2271,13 +2276,6 @@ document.addEventListener('change', (e) => {
   const lista = e.target.closest && e.target.closest('select[name="av_os"]'); if (!lista) return;
   const ass = lista.closest('form').querySelector('[name="p_assunto"]'); if (!ass) return;
   if (lista.value && lista.value !== '__sem__') { ass.value = lista.value; ass.readOnly = true; } else if (ass.readOnly) { ass.value = ''; ass.readOnly = false; }
-});
-// Configurações › Automações: anota qual conta está ligada a cada item (salva ao sair do campo)
-document.addEventListener('change', async (e) => {
-  const c = e.target.closest && e.target.closest('[data-aut-conta]'); if (!c) return;
-  const aviso = c.parentElement.querySelector('.aut-salvo');
-  try { await definirConfig(`automacao.${c.dataset.autConta}.conta`, c.value.trim()); if (aviso) { aviso.hidden = false; setTimeout(() => { aviso.hidden = true; }, 1800); } }
-  catch (err) { alert(`Não foi possível salvar a conta (${err.message || err}).`); }
 });
 // Excluir só a tarefa (pendência) de uma OS, sem mexer na OS: botão "excluir" na linha da tarefa (Controle de obras e janela da OS)
 document.addEventListener('click', async (e) => {

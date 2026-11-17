@@ -177,3 +177,12 @@ sobre a semana que acabou (a mesma semana que o POP 1.3 fecha na segunda).
 Também entram: dia com produtividade e sem efetivo, equipe na obra sem produtividade, semana sem nenhum relatório, medição ainda não lida.
 O agente **não** precisa repetir essas contas; se quiser, pode acrescentar na área `operacao` do dados.json um alerta `critico` por
 medição "a mais" no formato dos demais ("1.3 · LARISSA — Mo533: Rejunte medido 28 m² a mais que o produzido").
+
+## Contas das automações (Configurações › Automações)
+
+A tela Automações da diretoria mostra, para cada fonte, QUAL CONTA está conectada. Ninguém digita isso: quem sabe é o computador do escritório.
+- O `enviar-nuvem.mjs` (via `scripts/contas-automacoes.mjs`) preenche sozinho: **banco** (conta do coletor + projeto), **whatsapp** (número do WhatsApp Web do leitor, gravado pelo `leitor-whatsapp.mjs` em `dados/whatsapp/conta.json`) e **drive** (e-mail da conta do Google Drive para computador, se achar).
+- O agente que lê **Mais Controle, Sólides/Tangerino, Bitrix, Gmail e Google Agenda** registra a conta que está logada na tela (o nome/e-mail que o próprio site mostra, nunca senha) em `dados/json/automacoes.json`, ao terminar a leitura:
+  `{ "itens": { "maiscontrole": { "conta": "nome ou e-mail logado", "lidoEm": "AAAA-MM-DDTHH:MM:SS" } } }`
+  Ids: `maiscontrole`, `solides`, `bitrix`, `gmail`, `calendar`. Mantenha o que já está no arquivo (só atualize o seu item). Se a fonte pedir login, escreva em `conta` "desconectada (pede login)".
+- O `enviar-nuvem` manda o arquivo junto com os demais.

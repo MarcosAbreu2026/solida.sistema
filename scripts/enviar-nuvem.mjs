@@ -75,7 +75,7 @@ async function enviar(caminho, obj) {
 const pasta = join(raiz, 'dados', 'json');
 const arquivos = {
   obras: 'obras.json', servicos: 'servicos.json', equipe: 'equipe.json', agenda: 'agenda.json', financeiro: 'financeiro.json', listas: 'listas.json',
-  produtividade: 'produtividade.json', 'medicoes-mc': 'medicoes-mc.json', 'posobra-estado': 'posobra-estado.json', orcamentos: 'orcamentos.json', projetos: 'projetos.json', estoque: 'estoque.json', 'equipe-programada': 'equipe-programada.json', 'rotas-semana': 'rotas-semana.json', caixinha: 'caixinha.json', evidencias: 'evidencias.json', 'ferramentas-checklist': 'ferramentas-checklist.json', terceirizados: 'terceirizados.json', efetivo: 'efetivo.json',
+  produtividade: 'produtividade.json', 'medicoes-mc': 'medicoes-mc.json', 'posobra-estado': 'posobra-estado.json', orcamentos: 'orcamentos.json', projetos: 'projetos.json', estoque: 'estoque.json', 'equipe-programada': 'equipe-programada.json', 'rotas-semana': 'rotas-semana.json', caixinha: 'caixinha.json', evidencias: 'evidencias.json', 'ferramentas-checklist': 'ferramentas-checklist.json', terceirizados: 'terceirizados.json', efetivo: 'efetivo.json', automacoes: 'automacoes.json',
 };
 const SO_VALORES = new Set(['financeiro']);   // não vai para todos/
 
@@ -99,6 +99,8 @@ async function mesclarProdutividade(local) {
     return { ...nuvem, ...local, atualizadoEm: [local.atualizadoEm, nuvem.atualizadoEm].filter(Boolean).sort().pop(), registros };
   } catch { return local; }
 }
+// contas ligadas a cada automação (Configurações › Automações): quem sabe é este computador
+try { (await import('./contas-automacoes.mjs')).montarAutomacoes(raiz, cfg); } catch { /* sem as contas desta rodada */ }
 const painel = ler(join(raiz, 'dados', 'painel-cache.json'));
 const tarefas = [];
 if (painel && (!so.size || so.has('painel'))) tarefas.push(['painel', { atualizado: new Date().toISOString(), dados: painel }]);
