@@ -2333,8 +2333,12 @@ const erroReuniao = (c, obrigaEscolher = true) => {
 };
 const atualizarNomeReuniao = (e) => {
   const f = e.target.closest && e.target.closest('.tf-reuniao, #reun-form'); if (!f) return;
-  const form = f.closest('form'); const alvo = form && form.querySelector('[data-rn-nome]'); if (!alvo) return;
-  alvo.textContent = reunioes.nomeDaReuniao(dadosReuniao(form));
+  const form = f.closest('form'); const alvo = form && form.querySelector('[data-rn-prefixo]'); if (!alvo) return;
+  const c = dadosReuniao(form); alvo.textContent = reunioes.prefixoDaReuniao(c);
+  // vermelho = falta preencher: a obra (ou "Nenhuma") e, sem obra, o departamento
+  const so = form.querySelector('[name="r_obra"]'); const ss = form.querySelector('[name="r_setor"]');
+  if (so) so.classList.toggle('tf-req', !c.obraEscolhida && !!form.querySelector('.tf-reuniao'));
+  if (ss) ss.classList.toggle('tf-req', !c.obra && !c.setor);
 };
 document.addEventListener('input', atualizarNomeReuniao);
 document.addEventListener('change', atualizarNomeReuniao);

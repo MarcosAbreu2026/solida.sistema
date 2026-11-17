@@ -639,11 +639,10 @@ function painelReuniao(prazo, hora, obras = [], setorPadrao = '') {
   const ini = hora || '08:30'; const pessoas = pessoasSelecionaveis();
   return html`<div class="tf-reuniao">
     <div class="rn-grade">
-      <label>Obra ou pós-obra<select name="r_obra"><option value="">— escolher —</option><option value="__nenhuma__">Nenhuma (reunião de departamento)</option>${gruposDeObras(obras, '', { criar: false })}</select></label>
-      <label>Departamento <small>(obrigatório se não houver obra)</small><select name="r_setor"><option value="">— escolher —</option>${SETORES_ATA.map((s) => html`<option ${s === setorPadrao ? html.seguro('selected') : ''}>${s}</option>`)}</select></label>
+      <label>Obra ou pós-obra<select name="r_obra" class="tf-req"><option value="">— escolher —</option><option value="__nenhuma__">Nenhuma (reunião de departamento)</option>${gruposDeObras(obras, '', { criar: false })}</select></label>
+      <label>Departamento<select name="r_setor" class="tf-req"><option value="">— escolher (obrigatório sem obra) —</option>${SETORES_ATA.map((s) => html`<option ${s === setorPadrao ? html.seguro('selected') : ''}>${s}</option>`)}</select></label>
     </div>
-    <input name="r_titulo" class="rn-titulo" placeholder="Título da reunião" autocomplete="off">
-    <p class="rn-nomeprev">Nome da reunião: <b data-rn-nome>R__</b></p>
+    <div class="rn-titulo-wrap"><span class="rn-prefixo" data-rn-prefixo title="Parte automática do nome da reunião">R_…_</span><input name="r_titulo" class="rn-titulo" placeholder="título da reunião" autocomplete="off"></div>
     <div class="rn-linha"><i aria-hidden="true">🕐</i><div class="rn-quando"><input type="date" name="r_data" value="${prazo || ''}"><input type="time" name="r_ini" value="${ini}"><span>até</span><input type="time" name="r_fim" value="${somaHora(ini, 60)}"></div></div>
     <div class="rn-linha"><i aria-hidden="true">🔁</i><div class="rn-recor"><label><input type="checkbox" name="r_recor"> Reunião recorrente</label><select name="r_freq" title="Como se repete"><option value="semanal">Toda semana</option><option value="mensal">Todo mês</option></select></div></div>
     <div class="rn-linha rn-conv"><i aria-hidden="true">👥</i>${caixaConvidados(pessoas)}</div>

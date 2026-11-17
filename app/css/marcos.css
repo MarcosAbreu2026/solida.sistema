@@ -1161,3 +1161,13 @@ body.nav-recolhido .pd, body.nav-recolhido .osq, body.nav-recolhido .pc { max-wi
 .aut-gform { display: grid; grid-template-columns: 1fr 1fr auto auto; gap: 8px; align-items: end; } .aut-gform label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; font-weight: 600; color: #5B6677; }
 .aut-gform input { font: inherit; font-size: 13px; padding: 6px 8px; border: 1px solid #C9D1DA; border-radius: 6px; }
 @media (max-width: 800px) { .aut-gform { grid-template-columns: 1fr; } }
+
+/* Reunião: Obra e Departamento alinhados (mesma altura de rótulo) e o prefixo R_..._ do nome dentro do campo Título */
+.rn-grade { align-items: end; }
+.rn-grade label { justify-content: flex-end; }
+.rn-grade select { height: 38px; box-sizing: border-box; width: 100%; }
+.rn-titulo-wrap { display: flex; align-items: stretch; border: 1px solid var(--linha, #C9D1DA); border-radius: 8px; background: #fff; overflow: hidden; margin-bottom: 10px; }
+.rn-titulo-wrap:focus-within { border-color: #2F5F86; box-shadow: 0 0 0 2px rgba(47, 95, 134, .15); }
+.rn-prefixo { display: flex; align-items: center; padding: 0 10px; background: #E9EEF5; color: #1F3A56; font-weight: 800; font-size: 15px; white-space: nowrap; max-width: 55%; overflow: hidden; text-overflow: ellipsis; border-right: 1px solid #D0D9E4; }
+.rn-titulo-wrap .rn-titulo { border: 0 !important; border-radius: 0 !important; flex: 1; min-width: 0; margin: 0; box-shadow: none; }
+.rn-grade select.tf-req { border-left: 4px solid #D9534F !important; }

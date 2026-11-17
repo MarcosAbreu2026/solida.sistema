@@ -26,6 +26,7 @@ export const porId = (id) => lista.find((r) => String(r.id) === String(id));
 // nome automático: R_ + obra (ou pós-obra; sem obra, o departamento) + _ + título
 export const nomeDaReuniao = ({ obra, setor, titulo }) => `R_${String(obra || setor || '').trim()}_${String(titulo || '').trim()}`;
 
+export const prefixoDaReuniao = ({ obra, setor }) => `R_${String(obra || setor || '…').trim()}_`;
 export const podeEditar = (r) => !!r && (r.criado_por === eu() || (r.convidados || []).includes(eu()) || funcaoReal().id === 'socio');
 
 // data da k-ésima repetição: semanal = +7 dias; mensal = mesmo dia do mês (nos meses curtos, o último dia)
@@ -113,10 +114,9 @@ export function formEdicao(r, { gruposObras = '', setores = [], pessoas = [] } =
   return html`<div class="tf tf-nova"><form id="reun-form" data-reun-form="${r.id}" class="tf-esq" autocomplete="off">
     <div class="tf-cab"><h3>Reunião</h3>${selo(r)}${r.serie ? html`<span class="at-chip">recorrente</span>` : ''}</div>
     <div class="tf-grade av-linha">
-      <label>Obra ou pós-obra<select name="r_obra" ${dis}><option value="">— sem obra (reunião de departamento) —</option>${gruposObras}</select></label>
-      <label>Departamento <small>(obrigatório se não houver obra)</small><select name="r_setor" ${dis}><option value="">— escolher —</option>${setores.map((s) => html`<option ${s === r.setor ? html.seguro('selected') : ''}>${s}</option>`)}</select></label>
-      <label class="tf-desc" style="grid-column:1/-1">Título<input name="r_titulo" value="${r.titulo}" required ${dis}></label>
-      <p class="rn-nomeprev" style="grid-column:1/-1">Nome da reunião: <b data-rn-nome>${r.nome}</b></p>
+      <label>Obra ou pós-obra<select name="r_obra" class="tf-req" ${dis}><option value="">— sem obra (reunião de departamento) —</option>${gruposObras}</select></label>
+      <label>Departamento<select name="r_setor" class="tf-req" ${dis}><option value="">— escolher (obrigatório sem obra) —</option>${setores.map((s) => html`<option ${s === r.setor ? html.seguro('selected') : ''}>${s}</option>`)}</select></label>
+      <label class="tf-desc" style="grid-column:1/-1">Título<div class="rn-titulo-wrap"><span class="rn-prefixo" data-rn-prefixo>${prefixoDaReuniao(r)}</span><input name="r_titulo" class="rn-titulo" value="${r.titulo}" required ${dis}></div></label>
       <label>Data<input type="date" name="r_data" value="${r.data}" required ${dis}></label>
       <label>Início<input type="time" name="r_ini" value="${r.ini}" required ${dis}></label>
       <label>Fim<input type="time" name="r_fim" value="${r.fim}" required ${dis}></label>
