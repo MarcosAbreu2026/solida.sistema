@@ -1136,3 +1136,7 @@ body.nav-recolhido .pd, body.nav-recolhido .osq, body.nav-recolhido .pc { max-wi
 @media (max-width: 900px) { .aut-linha { grid-template-columns: 16px 1fr; } .aut-st, .aut-conta { grid-column: 2; } .aut-cab { display: none; } }
 
 .aut-conta b { font-size: 13px; color: #25323F; word-break: break-word; } .aut-nada { color: #8A94A0; font-style: italic; }
+
+/* Nova tarefa: Obra sozinha na primeira linha; escolhido um PO, a lista das OS abertas aparece à direita dela */
+.tf-grade .av-obra-linha { grid-column: 1 / -1; display: grid; grid-template-columns: inherit; gap: inherit; }
+.tf-nova .av-obra-linha { grid-template-columns: 1fr 1fr; gap: 12px 14px; }

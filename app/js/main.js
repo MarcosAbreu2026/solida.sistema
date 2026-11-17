@@ -2367,7 +2367,7 @@ document.addEventListener('submit', async (e) => {
       if (g.dataset.avulsa) {
         const setorV = String(new FormData(g).get('av_setor') || ''); if (!setorV) { alert('Escolha o departamento da pendência.'); return; }
         { const caixaOs = g.querySelector('.av-os'); if (caixaOs && !caixaOs.hidden && !g.querySelector('[name="av_os"]').value) { alert('Este PO tem OS em aberto: escolha a OS da tarefa (ou "Sem OS" se for uma tarefa geral do PO).'); g.querySelector('[name="av_os"]').focus(); return; } }
-        await atas.criarPendencia({ ata_id: null, ...p, obra: String(new FormData(g).get('av_obra') || ''), setor: setorV, os: osEscolhida(g) || g.dataset.os || null, osFase: osFaseDe(g) || g.dataset.osFase || null, observadores: new FormData(g).getAll('p_obs'), hora: String(new FormData(g).get('p_hora') || ''), duracao: new FormData(g).get('p_dur'), recorrente: new FormData(g).has('p_recor'), frequencia: String(new FormData(g).get('p_freq') || 'semanal') });
+        await atas.criarPendencia({ ata_id: null, ...p, obra: String(new FormData(g).get('av_obra') || '').replace('__nenhuma__', ''), setor: setorV, os: osEscolhida(g) || g.dataset.os || null, osFase: osFaseDe(g) || g.dataset.osFase || null, observadores: new FormData(g).getAll('p_obs'), hora: String(new FormData(g).get('p_hora') || ''), duracao: new FormData(g).get('p_dur'), recorrente: new FormData(g).has('p_recor'), frequencia: String(new FormData(g).get('p_freq') || 'semanal') });
         const mod = document.getElementById('at-modal'); if (mod) mod.remove();
       } else await atas.criarPendencia({ ata_id: Number(g.dataset.ata), ...p, obra: g.dataset.obra, setor: g.dataset.setor });
     }
