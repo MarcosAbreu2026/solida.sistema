@@ -74,7 +74,7 @@ const encerrar = async (codigo) => {
 };
 async function pronto() { for (let i = 0; i < 60; i++) { try { const l = await (await fetch(`http://127.0.0.1:${porta}/json`)).json(); const p = l.find((x) => x.type === 'page'); if (p) return p.webSocketDebuggerUrl; } catch { /* ainda subindo */ } await espera(500); } throw new Error(`o ${NOME_NAV} não abriu (o perfil do leitor já está aberto em outra janela?)`); }
 let ws; let seq = 0; const pend = new Map();
-try { ws = new WebSocket(await pronto()); } catch (e) { gravarStatus({ ok: false, motivo: e.message }); console.log(e.message); encerrar(1); }
+try { ws = new WebSocket(await pronto()); } catch (e) { gravarStatus({ ok: false, motivo: e.message }); console.log(e.message); await encerrar(1); }
 await new Promise((res, rej) => { ws.onopen = res; ws.onerror = () => rej(new Error('CDP')); });
 ws.onmessage = (m) => { const d = JSON.parse(m.data); if (d.id && pend.has(d.id)) { pend.get(d.id)(d); pend.delete(d.id); } };
 const cdp = (metodo, params = {}) => new Promise((res, rej) => {
@@ -103,8 +103,8 @@ const BUSCA = `document.querySelector('#side input[data-tab="3"], #side input[ar
 const QR = 'canvas[aria-label], [data-ref], [data-testid="qrcode"]';
 if (MODO_LOGIN) {
   console.log('Escaneie o QR code com o WhatsApp do celular (Aparelhos conectados > Conectar um aparelho). Esperando até 10 minutos...');
-  if (await esperar(`!!document.querySelector('${LISTA}')`, 600000)) { console.log('Conectado. Aguardando a sincronização...'); await espera(25000); console.log('Pronto: o leitor já pode rodar sozinho. Pode fechar esta janela (ou deixe que eu fecho).'); gravarStatus({ ok: true, motivo: 'login feito' }); encerrar(0); }
-  console.log('Tempo esgotado sem conectar.'); encerrar(1);
+  if (await esperar(`!!document.querySelector('${LISTA}')`, 600000)) { console.log('Conectado. Aguardando a sincronização...'); await espera(25000); console.log('Pronto: o leitor já pode rodar sozinho. Pode fechar esta janela (ou deixe que eu fecho).'); gravarStatus({ ok: true, motivo: 'login feito' }); await encerrar(0); }
+  console.log('Tempo esgotado sem conectar.'); await encerrar(1);
 }
 
 // ---------------------------------------------------------------- leitura
@@ -112,12 +112,12 @@ const logado = await esperar(`!!document.querySelector('${LISTA}') || !!document
   && await avaliar(`!!document.querySelector('${LISTA}')`);
 if (!logado) {
   const motivo = 'WhatsApp Web não está conectado neste computador: rode "ligar-leitor-whatsapp.bat" e escaneie o QR code';
-  gravarStatus({ ok: false, motivo }); console.log(motivo); encerrar(2);
+  gravarStatus({ ok: false, motivo }); console.log(motivo); await encerrar(2);
 }
 await espera(sorteio(3000, 6000));
 if (process.argv.includes('--diag')) {   // diagnóstico: mostra como está a lateral do WhatsApp Web (não digita nada)
   console.log(await avaliar(`JSON.stringify({ campos: [...document.querySelectorAll('[contenteditable], input')].map((e) => e.tagName + '|' + (e.getAttribute('data-tab') || '') + '|' + (e.getAttribute('aria-label') || '') + '|' + (e.closest('#side') ? 'side' : e.closest('#main') ? 'main' : '?')), icones: [...document.querySelectorAll('#side [data-icon]')].slice(0, 14).map((e) => e.getAttribute('data-icon')), testids: [...document.querySelectorAll('#side [data-testid]')].slice(0, 14).map((e) => e.getAttribute('data-testid')), botoes: [...document.querySelectorAll('#side button, #side [role=button]')].slice(0, 10).map((e) => e.getAttribute('aria-label') || e.innerText.slice(0, 20)) })`));
-  encerrar(0);
+  await encerrar(0);
 }
 
 const cfg = lerJSON(cfgArq, { conversas: [] });
@@ -255,6 +255,6 @@ const leu = resultado.some((r) => !r.erro);
 if (leu) { check.verificadoEm = agora(); gravarJSON(checklistArq, check); }
 gravarStatus({ ok: leu, ferramentasNovas: adicionados, naoIdentificadas: check.naoIdentificadas.length, conversas: resultado });
 console.log(`WhatsApp: ${resultado.map((r) => `${r.nome}: ${r.erro ? `ERRO (${r.erro})` : `${r.novas} novas`}`).join(' · ')} · ferramentas +${adicionados}`);
-encerrar(leu ? 0 : 1);
+await encerrar(leu ? 0 : 1);
 
 function semAcentoJS() { return "((s) => String(s || '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().replace(/\\s+/g, ' ').trim())"; }
