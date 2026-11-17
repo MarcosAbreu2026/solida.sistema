@@ -14,7 +14,7 @@ import { sessao, idPessoa, funcaoReal, funcaoAtual, simulando } from '../sessao.
 import { lerPessoasTarefas } from '../armazenamento.js';
 import { analisarAta, lerArquivoAta, acharResponsavel, ehAtaDePendencias, lerAtaDePendencias, formatoListaPendencias, lerListaPorPessoa } from '../ata-leitor.js';
 import { analisarReuniao, analisarFala, pareceResumoEmTopicos } from '../fala-leitor.js';
-import { caixaConvidados } from '../reunioes.js';
+import { caixaConvidados, daPessoa as reunioesDaPessoa, cartaoReuniao, horaDe as horaReuniao } from '../reunioes.js';
 
 export const ABAS = [['pendencias', 'Pendências'], ['atas', 'Atas'], ['pautas', 'Pautas'], ['nova', 'Nova ata']];
 export const SETORES_ATA = [...SETORES_ORGANOGRAMA, 'Diretoria / geral'];
@@ -684,13 +684,14 @@ export function formAvulsa(obras, prazo, setorPadrao = '', preset = {}) {
     <div class="tf-chat tf-dir"><h4>Anotações</h4><p class="pequeno">As anotações ficam disponíveis depois que a tarefa for criada.</p></div>
   </div></div>`;
 }
-function vistaPrazo(lista, hoje, setorPadrao = '') {
+function vistaPrazo(lista, hoje, setorPadrao = '', reun = []) {
   return html`<div class="at-quadro">${COLUNAS.map(([id, nome]) => {
+    const reunioesDaColuna = reun.filter((r) => ['hoje', 'semana', 'proxima', 'duas'].includes(id) && coluna({ prazo: r.data, status: 'aberta' }, hoje) === id).sort((a, b) => `${a.data}${a.ini}`.localeCompare(`${b.data}${b.ini}`));
     let itens = lista.filter((p) => coluna(p, hoje) === id);
     if (id === 'concluido') itens = itens.sort((a, b) => String(b.concluida_em).localeCompare(String(a.concluida_em))).slice(0, 30);
     const pz = prazoDaColuna(id, hoje);
     return html`<section class="at-col at-c-${id}" data-col="${id}"><header><b>${nome}</b><span>${lista.filter((p) => coluna(p, hoje) === id).length}</span>${pz ? html`<button type="button" class="at-col-mais" data-av-nova="${pz}" data-av-setor="${setorPadrao}" title="Nova pendência com prazo ${dm(pz)}">+</button>` : ''}</header>
-      <div class="at-itens">${itens.map((p) => cartao(p, hoje))}</div></section>`;
+      <div class="at-itens">${reunioesDaColuna.map((r) => cartaoReuniao(r))}${itens.map((p) => cartao(p, hoje))}</div></section>`;
   })}</div>`;
 }
 
@@ -911,6 +912,7 @@ function vistaDia(params, obras, setorFixo) {
           <label>Ordenar por<select data-atas-filtro="ord"><option value="">Padrão</option>${opt('assunto', 'Assunto', ord)}${opt('prioridade', 'Prioridade', ord)}${opt('responsavel', 'Responsável', ord)}${opt('data', 'Data', ord)}</select></label></div>
       </div>
       <div class="lt-acoes">${atrasadas.length ? html`<button type="button" class="lt-bt lt-bt-grande" data-lt-passar="${atrasadas.map((p) => p.id).join(',')}|${alvoPassar}">Passar ${atrasadas.length} ${atrasadas.length === 1 ? 'pendência' : 'pendências'} para ${dm(alvoPassar).slice(0, 5)}</button>` : ''}</div>
+      ${(() => { const rs = reunioesDaPessoa(pessoaSel).filter((r) => r.data === dia && (!params.get('obra') || codigoDaObra(r.obra) === codigoDaObra(params.get('obra'))) && (!params.get('setor') || r.setor === params.get('setor'))).sort((a, b) => a.ini.localeCompare(b.ini)); return rs.length ? html`<section class="lt-grupo lt-reunioes"><header><h3>Reuniões</h3><span>${rs.length}</span></header>${rs.map((r) => html`<div class="lt-linha lt-reuniao" data-reun-abrir="${r.id}" title="Clique para abrir a reunião"><span class="lt-r-ico">🎥</span><div class="lt-corpo"><span class="lt-tit"><b>${horaReuniao(r)}</b> · ${r.nome}</span><span class="lt-sub">${r.local ? `${r.local} · ` : ''}${(r.convidados || []).length + (r.emails_externos || []).length} convidados</span></div><div class="lt-dir">${r.meet_link ? html`<a class="rn-meet" href="${r.meet_link}" target="_blank" rel="noopener">🎥 Entrar</a>` : ''}</div></div>`)}</section>` : ''; })()}
       ${ordem.length ? ordem.map(([, g]) => html`<section class="lt-grupo"><header><h3>${g.nome}</h3><span>${g.itens.filter((p) => p.status === 'feita').length}/${g.itens.length}</span></header>${g.itens.map(linha)}</section>`) : html`<p class="lt-vazio">Nenhuma tarefa para este dia com esses filtros.</p>`}
     </div>
   </section>`;
@@ -952,7 +954,7 @@ export function renderPendencias({ params, obras = [], setorFixo = '', base = '#
       <div class="card"><div class="card-valor ${atrasadas ? 'tom-ruim' : ''}">${atrasadas}</div><div class="card-rotulo">Atrasadas</div></div>
       <div class="card"><div class="card-valor">${minhas}</div><div class="card-rotulo">Abertas comigo</div></div></div>
     ${barraFiltros(params, obras, 'pendencias', { base, setorFixo })}
-    ${vistaPrazo(lista, hoje, setorFixo)}`;
+    ${vistaPrazo(lista, hoje, setorFixo, reunioesDaPessoa(params.get('pessoa') || 'eu').filter((r) => (!params.get('obra') || codigoDaObra(r.obra) === codigoDaObra(params.get('obra'))) && (!params.get('setor') || r.setor === params.get('setor')) && r.data >= hoje))}`;
 }
 export function render({ params, obras = [], msg = '', sugestoes = [] }) {
   definirSugestoes(sugestoes);

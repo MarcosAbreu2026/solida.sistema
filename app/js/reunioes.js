@@ -34,6 +34,21 @@ export const porId = (id) => lista.find((r) => String(r.id) === String(id));
 export const nomeDaReuniao = ({ obra, setor, titulo }) => `R_${String(obra || setor || '').trim()}_${String(titulo || '').trim()}`;
 
 export const prefixoDaReuniao = ({ obra, setor }) => `R_${String(obra || setor || '…').trim()}_`;
+// reuniões que entram nas telas de Tarefas e Agenda: as que a pessoa criou ou para as quais foi convidada ("Só as minhas");
+// "Todos" mostra todas as que ela pode ver; escolhendo outra pessoa, as dela. Cancelada nunca aparece.
+export function daPessoa(filtro = 'eu') {
+  const me = eu();
+  return lista.filter((r) => {
+    if (r.cancelada) return false;
+    if (filtro === 'todos' || String(filtro).startsWith('tipo:') || String(filtro).startsWith('cat:')) return true;
+    const alvo = filtro === 'eu' || !filtro ? me : filtro;
+    return r.criado_por === alvo || (r.convidados || []).includes(alvo);
+  });
+}
+export const horaDe = (r) => `${r.ini}–${r.fim}`;
+// cartão violeta para o quadro (Tarefas › Tabela) e para a faixa "dia todo" da Agenda
+export const cartaoReuniao = (r, extra = '') => html`<article class="at-card rn-card ${extra}" data-reun-abrir="${r.id}" title="Reunião · ${r.nome} · ${horaDe(r)}${r.local ? ` · ${r.local}` : ''} — clique para abrir">
+  <div class="rn-card-h"><span>🎥 ${horaDe(r)}</span><small>${dm(r.data)}</small></div><div class="rn-card-t">${r.nome}</div>${r.local ? html`<div class="rn-card-l">📍 ${r.local}</div>` : ''}</article>`;
 export const podeEditar = (r) => !!r && (r.criado_por === eu() || (r.convidados || []).includes(eu()) || funcaoReal().id === 'socio');
 
 // data da k-ésima repetição: semanal = +7 dias; mensal = mesmo dia do mês (nos meses curtos, o último dia)

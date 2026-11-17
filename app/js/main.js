@@ -296,7 +296,7 @@ function ctxPosObra() {
 function garantirReunioesCarregadas() {
   if (estado.reunioesVisitada) return;
   estado.reunioesVisitada = true;
-  reunioes.carregar().then(() => { setTimeout(() => { estado.reunioesVisitada = false; }, 60000); const r = rotaAtual(); if (emEdicao()) return; if (r.tela === 'agenda') desenhar(); });
+  reunioes.carregar().then(() => { setTimeout(() => { estado.reunioesVisitada = false; }, 60000); const r = rotaAtual(); if (emEdicao()) return; if (['agenda', 'atas', 'tarefas'].includes(r.tela)) desenhar(); });
 }
 function garantirOsCarregadas() {
   if (estado.osVisitada) return;
@@ -784,6 +784,7 @@ function desenhar() {
     return;
   }
   if (tela === 'atas' || tela === 'tarefas') {
+    garantirReunioesCarregadas();
     $('#conteudo').innerHTML = `<div>${atas.render({ params: rota.params, obras: obrasDeAtas(), sugestoes: ((estado.terceiros && estado.terceiros.empresas) || []).map((e) => e.empresa), msg: estado.atasMsgHash === location.hash ? (estado.atasMsg || '') : '' })}</div>`;
     ordenar.aplicar();
     { const fm = document.getElementById('ata-form'); if (fm) atas.atualizarNomeDoForm(fm); }
@@ -813,7 +814,7 @@ function desenhar() {
   // Agenda: as funções da semana + as tarefas (pendências com prazo) no mesmo calendário
   if (tela === 'agenda') {
     garantirAtasCarregadas('#agenda'); garantirReunioesCarregadas();
-    $('#conteudo').innerHTML = `<div>${agendaSemana.render({ dia: estado.dia, CFG, pendAberta: estado.pendAberta, params: rota.params, semanaRef: estado.semanaRef, modo: rota.params.get('modo') === 'dia' ? 'dia' : 'semana', diaRef: ehData(rota.params.get('dia')) ? rota.params.get('dia') : hojeISO(), pendencias: atas.todasPendencias(), eu: nuvem.NA_NUVEM ? (nuvem.perfilAtual() || {}).id : idPessoa(), nomeDe: atas.nomePessoa })}${reunioes.renderLista({ pessoas: atas.pessoasSelecionaveis() })}</div>`;
+    $('#conteudo').innerHTML = `<div>${agendaSemana.render({ dia: estado.dia, CFG, pendAberta: estado.pendAberta, params: rota.params, semanaRef: estado.semanaRef, modo: rota.params.get('modo') === 'dia' ? 'dia' : 'semana', diaRef: ehData(rota.params.get('dia')) ? rota.params.get('dia') : hojeISO(), pendencias: atas.todasPendencias(), eu: nuvem.NA_NUVEM ? (nuvem.perfilAtual() || {}).id : idPessoa(), nomeDe: atas.nomePessoa, reunioesDoDia: (d) => reunioes.daPessoa('eu').filter((r) => r.data === d).sort((a, b) => a.ini.localeCompare(b.ini)) })}${reunioes.renderLista({ pessoas: atas.pessoasSelecionaveis() })}</div>`;
     return;
   }
   // escritório virtual: tela com animação própria (não redesenha sozinha a cada 5 min)

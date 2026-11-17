@@ -384,7 +384,7 @@ function cartaoTarefa(e, hoje, grande = false) {
     ${grande && e.span >= 2 ? html`<div class="ag-t-det">${p.setor ? html`<span>${p.setor}</span>` : ''}${p.responsavel_nome ? html`<span>${p.responsavel_nome}</span>` : ''}${p.urgencia ? html`<span class="ag-t-urg ag-u-${p.urgencia}">${{ alta: 'Alta', media: 'Média', baixa: 'Baixa' }[p.urgencia] || ''}</span>` : ''}</div>` : ''}
     ${acoesCartao(p)}<div class="ag-alca" title="Puxe para mudar a duração"></div></div>`;
 }
-function agendaDeTarefas(ref, { pendencias = [], eu, modo = 'semana', diaRef = null }) {
+function agendaDeTarefas(ref, { pendencias = [], eu, modo = 'semana', diaRef = null, reunioesDoDia = () => [] }) {
   const hoje = hojeISO(); const ini = inicioDaSemana(ref);
   const modoDia = modo === 'dia'; const diaVis = diaRef || hoje;
   const dias = modoDia ? [diaVis] : [0, 1, 2, 3, 4, 5].map((i) => somarDias(ini, i));
@@ -420,7 +420,8 @@ function agendaDeTarefas(ref, { pendencias = [], eu, modo = 'semana', diaRef = n
   const cabecas = colunas.map(({ c, total, fe }, i) => html`<div class="fq-cab ${c === hoje ? 'hoje' : ''}"><b>${modoDia ? nomeDia(c) : DIA_CURTO[i]} ${c.slice(8, 10)}/${c.slice(5, 7)}</b><small>${resumoDia(total, fe, c)}</small></div>`);
   const cartaoLivre = (e) => { const p = e.p; const feita = p.status === 'feita'; const cls = feita ? 'ok' : p.prazo < hoje ? 'venc' : p.prazo === hoje ? 'hoje' : 'futura'; const [ass, resto] = assuntoDe(p.descricao);
     return html`<div class="ag-lcard ag-t-${cls}" data-tarefa="${p.id}" data-tcard="${p.id}" data-livre="1" title="${ass ? `${ass}: ` : ''}${resto}${p.obra ? ` · ${p.obra}` : ''} — sem horário (dia todo). Arraste para um horário do dia; clique para abrir.">${p.obra ? html`<b>${p.obra}</b> ` : ''}${ass ? `${ass} · ` : ''}${resto}${acoesCartao(p)}</div>`; };
-  const livres = colunas.map(({ c, livres: l }) => html`<div class="ag-livres ${c === hoje ? 'hoje' : ''}" data-livres="${c}">${l.map(cartaoLivre)}</div>`);
+  const cartaoReun = (r) => html`<div class="ag-rcard" data-reun-abrir="${r.id}" title="Reunião · ${r.nome} · ${r.ini}–${r.fim}${r.local ? ` · ${r.local}` : ''} — clique para abrir"><b>🎥 ${r.ini}</b> ${r.nome}</div>`;
+  const livres = colunas.map(({ c, livres: l }) => html`<div class="ag-livres ${c === hoje ? 'hoje' : ''}" data-livres="${c}">${reunioesDoDia(c).map(cartaoReun)}${l.map(cartaoLivre)}</div>`);
   const trilhos = colunas.map(({ c, l }) => html`<div class="fq-trilho ${c === hoje ? 'hoje' : ''}" data-trilho="${c}" style="height:${altTotal}px">${l.map((e) => cartaoTarefa(e, hoje, modoDia))}</div>`);
   const colsCss = `52px repeat(${colunas.length}, minmax(0, 1fr))`;   // todos os dias com a mesma largura: o que se achata são os cartões que caem no mesmo horário, não a coluna
   const vistaQuadro = html`<div class="fq-quadro" style="grid-template-columns:${colsCss}"><div class="fq-canto"></div>${cabecas}<div class="ag-livre-rot">dia todo</div>${livres}<div class="fq-horas" style="height:${altTotal}px">${horas}</div>${trilhos}</div>`;
@@ -428,7 +429,7 @@ function agendaDeTarefas(ref, { pendencias = [], eu, modo = 'semana', diaRef = n
     return html`<div class="ag-tcaixa ag-t-${cls}" data-tarefa="${e.p.id}"><b>${e.p.obra || ''}</b> ${ass ? `${ass} · ` : ''}${resto}<small>${e.semHora ? 'sem horário (dia todo)' : hhmm(e.ini)}</small>${acoesCartao(e.p)}</div>`; };
   const vistaLista = html`<div class="fl-lista" style="--nd:${colunas.length}">${colunas.map(({ c, l, livres: lv, fe, total }, i) => html`<div class="fl-col ${c === hoje ? 'hoje' : ''}">
       <div class="fq-cab ${c === hoje ? 'hoje' : ''}"><b>${modoDia ? nomeDia(c) : DIA_CURTO[i]} ${c.slice(8, 10)}/${c.slice(5, 7)}</b><small>${resumoDia(total, fe, c)}</small></div>
-      ${lv.map(caixa)}${[...l].sort((a, b) => a.faixa - b.faixa).map(caixa)}</div>`)}</div>`;
+      ${reunioesDoDia(c).map((r) => html`<div class="ag-rcaixa" data-reun-abrir="${r.id}"><b>🎥 ${r.ini}–${r.fim}</b> ${r.nome}</div>`)}${lv.map(caixa)}${[...l].sort((a, b) => a.faixa - b.faixa).map(caixa)}</div>`)}</div>`;
   return html`${nav}
     <section class="fn-painel ${modoDia ? 'ag-dia' : ''}">
       <header class="fn-cab"><h3>Agenda${modoDia ? ' do dia' : ''}</h3><span class="fn-cab-dir"><span class="pequeno">${entradas.length ? `${feitas} de ${entradas.length} tarefas concluídas ${modoDia ? 'neste dia' : 'nesta semana'}` : `nenhuma tarefa com prazo ${modoDia ? 'neste dia' : 'nesta semana'}`}</span></span></header>
@@ -440,7 +441,7 @@ function agendaDeTarefas(ref, { pendencias = [], eu, modo = 'semana', diaRef = n
 // Preencher é de quem está na obra. Sócio e coordenação consultam em Operação › Metas e produtividade.
 const veTodasAsObras = () => false;
 
-export function render({ dia, CFG, aba, semanaRef, soFuncoes = false, semFuncoes = false, pendencias = [], eu = null, modo = 'semana', diaRef = null }) {
+export function render({ dia, CFG, aba, semanaRef, soFuncoes = false, semFuncoes = false, pendencias = [], eu = null, modo = 'semana', diaRef = null, reunioesDoDia = () => [] }) {
   const s = sessao();
   const f = funcaoAtual();
   const todas = veTodasAsObras(f);
@@ -457,7 +458,7 @@ export function render({ dia, CFG, aba, semanaRef, soFuncoes = false, semFuncoes
   if (ativa.obra && !CFG) corpo = html`<p class="vazio">Carregando…</p>`;
   else if (ativa.obra && !obras.length) corpo = html`<p class="vazio">Nenhuma obra vinculada ao seu acesso.</p>`;
   else if (ativa.id === 'semana') corpo = telaSemana({ CFG, progs, ref });
-  else if (semFuncoes) corpo = agendaDeTarefas(ref, { pendencias, eu, modo, diaRef });
+  else if (semFuncoes) corpo = agendaDeTarefas(ref, { pendencias, eu, modo, diaRef, reunioesDoDia });
   else corpo = funcoesSemana(ref, CFG);
 
   return html`<div class="pagina">
