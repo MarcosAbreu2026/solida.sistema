@@ -127,7 +127,7 @@ export function formEdicao(r, { gruposObras = '', setores = [], pessoas = [] } =
       <label>Data<input type="date" name="r_data" value="${r.data}" required ${dis}></label>
       <label>Início<input type="time" name="r_ini" value="${r.ini}" required ${dis}></label>
       <label>Fim <span class="rn-dica">(mínimo 1 hora)</span><input type="time" name="r_fim" value="${r.fim}" required ${dis}></label>
-      <label>Local<div class="rn-local"><input name="r_local" value="${r.local || ''}" ${r.local ? '' : html.seguro('disabled')} ${dis}><label class="rn-sem"><input type="checkbox" name="r_sem_local" ${r.local ? '' : html.seguro('checked')} ${dis}> Sem local</label></div></label>
+      <label>Local<input name="r_local" value="${r.local || ''}" required ${dis}></label>
       <label class="rn-meet-chk" style="grid-column:1/-1;flex-direction:row;align-items:center;gap:8px"><input type="checkbox" name="r_meet" ${r.meet ? html.seguro('checked') : ''} ${dis}> Reunião online (link do Google Meet)${r.meet_link ? html` · <a href="${r.meet_link}" target="_blank" rel="noopener">Entrar na reunião</a>` : ''}</label>
     </div>
     ${pode ? html`<div class="rn-col">${caixaConvidados(pessoas, r.convidados || [], r.emails_externos || [])}<label class="rn-sem"><input type="checkbox" name="r_sem_conv" ${(r.convidados || []).length + (r.emails_externos || []).length ? '' : html.seguro('checked')}> Sem convidados</label></div>` : html`<p class="pequeno">Só quem criou a reunião, os convidados da Sólida e a diretoria podem editar.</p>`}

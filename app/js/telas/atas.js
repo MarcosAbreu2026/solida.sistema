@@ -646,7 +646,7 @@ function painelReuniao(prazo, hora, obras = [], setorPadrao = '') {
     <div class="rn-linha"><i aria-hidden="true">🕐</i><div class="rn-quando"><input type="date" name="r_data" value="${prazo || ''}"><input type="time" name="r_ini" value="${ini}"><span>até</span><input type="time" name="r_fim" value="${somaHora(ini, 60)}" min="${somaHora(ini, 60)}"><span class="rn-dica">mínimo 1 hora</span></div></div>
     <div class="rn-linha"><i aria-hidden="true">🔁</i><div class="rn-recor"><label><input type="checkbox" name="r_recor"> Reunião recorrente</label><select name="r_freq" title="Como se repete"><option value="semanal">Toda semana</option><option value="mensal">Todo mês</option></select></div></div>
     <div class="rn-linha rn-conv"><i aria-hidden="true">👥</i><div class="rn-col">${caixaConvidados(pessoas)}<label class="rn-sem"><input type="checkbox" name="r_sem_conv"> Sem convidados</label></div></div>
-    <div class="rn-linha"><i aria-hidden="true">📍</i><div class="rn-local"><input name="r_local" placeholder="Local da reunião" autocomplete="off"><label class="rn-sem"><input type="checkbox" name="r_sem_local"> Sem local</label></div></div>
+    <div class="rn-linha"><i aria-hidden="true">📍</i><input name="r_local" placeholder="Local da reunião (obrigatório)" autocomplete="off"></div>
     <div class="rn-linha"><i aria-hidden="true">🎥</i><label class="rn-meet-chk"><input type="checkbox" name="r_meet" checked> Reunião online: criar o link do Google Meet <span class="pequeno">(desmarque se for só presencial)</span></label></div>
     <p class="rn-aviso" hidden data-rn-erro></p>
     <p class="rn-aviso">A reunião é criada aqui e o sistema a leva sozinho para o Google Agenda do sistema, que convida as pessoas. Edite sempre por aqui.</p>

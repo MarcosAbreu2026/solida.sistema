@@ -2362,7 +2362,7 @@ document.addEventListener('submit', async (e) => {
 const dadosReuniao = (form) => {
   const fd = new FormData(form); const obraV = String(fd.get('r_obra') || '');
   return { obra: obraV === '__nenhuma__' ? '' : obraV, obraEscolhida: obraV, setor: String(fd.get('r_setor') || ''), titulo: String(fd.get('r_titulo') || '').trim(), data: String(fd.get('r_data') || ''), ini: String(fd.get('r_ini') || ''), fim: String(fd.get('r_fim') || ''),
-    local: String(fd.get('r_local') || ''), convidados: fd.getAll('r_conv'), emails: fd.getAll('r_conv_email'), recorrente: fd.has('r_recor'), frequencia: String(fd.get('r_freq') || 'semanal'), meet: fd.has('r_meet'), semLocal: fd.has('r_sem_local'), semConv: fd.has('r_sem_conv'),
+    local: String(fd.get('r_local') || ''), convidados: fd.getAll('r_conv'), emails: fd.getAll('r_conv_email'), recorrente: fd.has('r_recor'), frequencia: String(fd.get('r_freq') || 'semanal'), meet: fd.has('r_meet'), semConv: fd.has('r_sem_conv'),
     emailsPessoas: [...form.querySelectorAll('input[name="r_email_pessoa"]')].map((i) => ({ id: i.dataset.pessoa, nome: i.dataset.nome, email: i.value.trim().toLowerCase(), campo: i })) };
 };
 const paraMin = (hhmm) => { const [h, m] = String(hhmm || '').split(':').map(Number); return Number.isFinite(h) ? h * 60 + (m || 0) : NaN; };
@@ -2373,7 +2373,7 @@ const erroReuniao = (c, obrigaEscolher = true) => {
   if (!c.titulo) return 'Escreva o título da reunião.';
   if (!c.data || !c.ini || !c.fim) return 'Preencha a data e o horário.';
   if (paraMin(c.fim) < paraMin(c.ini) + 60) return 'A reunião precisa ter no mínimo 1 hora, no mesmo dia (o fim tem que ser pelo menos 1 hora depois do início).';
-  if (!c.semLocal && !c.local.trim()) return 'Escreva o local da reunião (ou marque "Sem local").';
+  if (!c.local.trim()) return 'Escreva o local da reunião.';
   if (!c.semConv && !c.convidados.length && !c.emails.length) return 'Escolha os convidados (ou marque "Sem convidados").';
   for (const p of c.emailsPessoas) {
     if (!p.email) return `Informe o e-mail de ${p.nome} (ainda não está no cadastro).`;
@@ -2414,12 +2414,11 @@ const atualizarNomeReuniao = (e) => {
   }
   // sem local / sem convidados
   const loc = form.querySelector('[name="r_local"]');
-  if (loc && e.target && e.target.name === 'r_sem_local') { loc.disabled = e.target.checked; if (e.target.checked) loc.value = ''; }
   // vermelho = falta preencher
   const marca = (el, falta) => { if (el) el.classList.toggle('rn-falta', !!falta); };
   const c2 = dadosReuniao(form);
   marca(form.querySelector('.rn-titulo-wrap'), !c2.titulo); marca(form.querySelector('[name="r_data"]'), !c2.data); marca(form.querySelector('[name="r_ini"]'), !c2.ini); marca(form.querySelector('[name="r_fim"]'), !c2.fim || paraMin(c2.fim) < paraMin(c2.ini) + 60);
-  marca(loc, !c2.semLocal && !c2.local.trim()); marca(form.querySelector('.rn-conv .obs, .rn-col .obs'), !c2.semConv && !c2.convidados.length && !c2.emails.length);
+  marca(loc, !c2.local.trim()); marca(form.querySelector('.rn-conv .obs, .rn-col .obs'), !c2.semConv && !c2.convidados.length && !c2.emails.length);
 };
 document.addEventListener('input', atualizarNomeReuniao);
 document.addEventListener('change', atualizarNomeReuniao);
