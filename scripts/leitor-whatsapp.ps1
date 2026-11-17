@@ -13,7 +13,7 @@ Start-Sleep -Seconds 90   # deixa o servidor e o coletor subirem primeiro
 while ($true) {
   $agora = Get-Date
   $util = $agora.DayOfWeek -ne 'Saturday' -and $agora.DayOfWeek -ne 'Sunday' -and $agora.Hour -ge 7 -and $agora.Hour -lt 18
-  if ($util -and -not (Get-CimInstance Win32_Process -Filter "Name='msedge.exe'" | Where-Object { $_.CommandLine -match 'whatsapp-perfil' })) {
+  if ($util -and -not (Get-CimInstance Win32_Process -Filter "Name='chrome.exe' OR Name='msedge.exe'" | Where-Object { $_.CommandLine -match 'whatsapp-perfil' })) {
     try {
       $saida = & $node (Join-Path $raiz 'scripts\leitor-whatsapp.mjs') 2>&1
       Registrar ($saida -join ' ')

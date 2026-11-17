@@ -1,5 +1,5 @@
 // Leitor do WhatsApp Web do computador do escritório (SOMENTE LEITURA, sem IA e sem API paga).
-//   node scripts/leitor-whatsapp.mjs --login   abre o Edge com o perfil do leitor para escanear o QR do WhatsApp (só na primeira vez)
+//   node scripts/leitor-whatsapp.mjs --login   abre o Chrome com o perfil do leitor para escanear o QR do WhatsApp (só na primeira vez)
 //   node scripts/leitor-whatsapp.mjs           lê as conversas de dados/whatsapp-grupos.json e atualiza os dados do sistema
 // O coletor (iniciar.bat) chama este script de ~15 em 15 minutos, de segunda a sexta, em horário comercial.
 // Ele só abre a conversa e lê o que está na tela: não envia, não reage, não baixa e não apaga nada.
@@ -16,13 +16,20 @@ import { lerEfetivo } from './efetivo-parser.mjs';
 
 const raiz = join(dirname(fileURLToPath(import.meta.url)), '..');
 const pastaWpp = join(raiz, 'dados', 'whatsapp');
-const perfil = join(raiz, 'dados', 'whatsapp-perfil');
+const perfilEdge = join(raiz, 'dados', 'whatsapp-perfil');
 const cfgArq = join(raiz, 'dados', 'whatsapp-grupos.json');
 const checklistArq = join(raiz, 'dados', 'json', 'ferramentas-checklist.json');
 const statusArq = join(pastaWpp, 'status.json');
 const MODO_LOGIN = process.argv.includes('--login');
-const EDGE = ['C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe', 'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe'].find((p) => existsSync(p));
-const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0';
+// Navegador do leitor: o Google Chrome (troca de 17/11/2026); se não houver Chrome neste computador, cai no Edge.
+const CHROMES = ['C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', 'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe', join(process.env.LOCALAPPDATA || '', 'Google', 'Chrome', 'Application', 'chrome.exe')];
+const EDGES = ['C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe', 'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe'];
+const CHROME = CHROMES.find((p) => existsSync(p));
+const NAVEGADOR = CHROME || EDGES.find((p) => existsSync(p));
+const NOME_NAV = CHROME ? 'Google Chrome' : 'Microsoft Edge';
+// perfil próprio de cada navegador (o do Edge não serve para o Chrome): o do Chrome pede o QR do WhatsApp uma vez (ligar-leitor-whatsapp.bat)
+const perfil = CHROME ? join(raiz, 'dados', 'whatsapp-perfil-chrome') : perfilEdge;
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
 
 const espera = (ms) => new Promise((r) => setTimeout(r, ms));
 const sorteio = (a, b) => a + Math.floor(Math.random() * (b - a));
@@ -34,7 +41,7 @@ const lerJSON = (arq, padrao) => { try { return JSON.parse(readFileSync(arq, 'ut
 const gravarJSON = (arq, obj) => { mkdirSync(dirname(arq), { recursive: true }); writeFileSync(arq, `${JSON.stringify(obj, null, 2)}\n`, 'utf8'); };
 const gravarStatus = (obj) => gravarJSON(statusArq, { lidoEm: agora(), ...obj });
 
-if (!EDGE) { gravarStatus({ ok: false, motivo: 'Microsoft Edge não encontrado' }); console.log('Microsoft Edge não encontrado.'); process.exit(1); }
+if (!NAVEGADOR) { gravarStatus({ ok: false, motivo: 'Chrome (ou Edge) não encontrado' }); console.log('Chrome (ou Edge) não encontrado.'); process.exit(1); }
 
 // configuração padrão das conversas lidas (editável): "tipo: ferramentas" também alimenta o controle de ferramentas
 if (!existsSync(cfgArq)) {
@@ -48,15 +55,15 @@ if (!existsSync(cfgArq)) {
   });
 }
 
-// ---------------------------------------------------------------- Edge + CDP
+// ---------------------------------------------------------------- navegador (Chrome) + CDP
 const porta = 9300 + sorteio(0, 500);
 mkdirSync(perfil, { recursive: true });
 const args = [`--remote-debugging-port=${porta}`, `--user-data-dir=${perfil}`, '--window-size=1280,900', '--no-first-run', '--no-default-browser-check', '--disable-gpu'];
 if (!MODO_LOGIN) args.push('--headless=new');
 args.push('about:blank');
-const edge = spawn(EDGE, args, { stdio: 'ignore' });
+const edge = spawn(NAVEGADOR, args, { stdio: 'ignore' });
 const encerrar = (codigo) => { try { edge.kill(); } catch { /* já fechou */ } process.exit(codigo); };
-async function pronto() { for (let i = 0; i < 60; i++) { try { const l = await (await fetch(`http://127.0.0.1:${porta}/json`)).json(); const p = l.find((x) => x.type === 'page'); if (p) return p.webSocketDebuggerUrl; } catch { /* ainda subindo */ } await espera(500); } throw new Error('o Edge não abriu (o perfil do leitor já está aberto em outra janela?)'); }
+async function pronto() { for (let i = 0; i < 60; i++) { try { const l = await (await fetch(`http://127.0.0.1:${porta}/json`)).json(); const p = l.find((x) => x.type === 'page'); if (p) return p.webSocketDebuggerUrl; } catch { /* ainda subindo */ } await espera(500); } throw new Error(`o ${NOME_NAV} não abriu (o perfil do leitor já está aberto em outra janela?)`); }
 let ws; let seq = 0; const pend = new Map();
 try { ws = new WebSocket(await pronto()); } catch (e) { gravarStatus({ ok: false, motivo: e.message }); console.log(e.message); encerrar(1); }
 await new Promise((res, rej) => { ws.onopen = res; ws.onerror = () => rej(new Error('CDP')); });
