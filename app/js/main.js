@@ -47,6 +47,7 @@ import * as agendaPos from './agenda-pos.js';
 import * as svPos from './servicos-pos.js';
 import * as osq from './os-quadro.js';
 import * as configTela from './telas/configuracoes.js';
+import * as automacoesTela from './telas/automacoes.js';
 import * as obrasOrc from './telas/obras-orcamento.js';
 import { ativaNasListas, orcamentoAberto, SITUACOES_POR_TIPO } from './obras-tipos.js';
 import * as posControle from './telas/posobra-controle.js';
@@ -485,7 +486,7 @@ function desenharNav(sel) {
     + (paginaVisivel(f, 'escritorio') ? item('escritorio', 'Escritório virtual') : '')
     + (paginaVisivel(f, 'treinamentos') ? item('treinamentos', 'Treinamentos') : '')
     + (paginaVisivel(f, 'marketing') ? item('marketing', 'Marketing') : '')
-    + (f.veAgentes ? `${grupo('Diretoria')}${item('agentes', 'Agentes')}${nuvem.NA_NUVEM && funcaoReal().id === 'socio' ? item('acessos', 'Cadastros') : ''}${funcaoReal().id === 'socio' ? item('configuracoes', 'Configurações') : ''}` : '')
+    + (f.veAgentes && funcaoReal().id === 'socio' ? `${grupo('Diretoria')}${item('configuracoes', 'Configurações')}` : '')
     + `<div class="navfoot">${estado.sync.origem === 'link' ? 'Atualiza sozinho a cada 5 minutos.' : 'Mostrando os últimos dados baixados.'}</div>`;
   desenharAvatares($('#nav'));
 }
@@ -745,8 +746,21 @@ function desenhar() {
     return;
   }
   if (tela === 'configuracoes') {
-    $('#conteudo').innerHTML = funcaoReal().id === 'socio' ? `<div>${configTela.render({ pagina: rota.sub || 'geral', msg: estado.cfgMsg || '' })}</div>` : '<div class="erro">Só a diretoria acessa as configurações.</div>';
-    estado.cfgMsg = '';
+    if (funcaoReal().id !== 'socio') { $('#conteudo').innerHTML = '<div class="erro">Só a diretoria acessa as configurações.</div>'; return; }
+    // um só lugar para tudo o que a diretoria configura: Abas (quem vê o quê) · Cadastros (equipe e obras) · Agentes · Automações (ligações e status)
+    const secao = ['abas', 'cadastros', 'agentes', 'automacoes'].includes(rota.params.get('secao')) ? rota.params.get('secao') : 'abas';
+    const barra = `<div class="cfg-secoes" role="tablist">${[['abas', 'Abas', '#/configuracoes'], ['cadastros', 'Cadastros', '#/configuracoes?secao=cadastros'], ['agentes', 'Agentes', '#/configuracoes?secao=agentes'], ['automacoes', 'Automações', '#/configuracoes?secao=automacoes']].map(([id, nome, href]) => `<a href="${href}" class="cfg-sec-bt${id === secao ? ' on' : ''}" role="tab" aria-selected="${id === secao}">${nome}</a>`).join('')}</div>`;
+    const pinta = (corpo) => { $('#conteudo').innerHTML = `<div class="cfg-hub">${barra}<div class="cfg-hub-corpo">${corpo}</div></div>`; };
+    if (secao === 'abas') { pinta(configTela.render({ pagina: rota.sub || 'geral', msg: estado.cfgMsg || '' })); estado.cfgMsg = ''; return; }
+    if (secao === 'agentes') { pinta(estado.cfg ? criarTelas(estado.cfg, veValores(), opcoesTelas()).telaAgentes() : '<p class="vazio">Os agentes ainda não carregaram.</p>'); return; }
+    if (secao === 'automacoes') { pinta(automacoesTela.render({ cfg: estado.cfg, naNuvem: nuvem.NA_NUVEM })); return; }
+    if (!nuvem.NA_NUVEM) { pinta('<p class="vazio">Os cadastros ficam no banco: abra o sistema online para editar a equipe e as obras.</p>'); return; }
+    pinta('<div class="carregando">Carregando a equipe…</div>');
+    Promise.all([nuvem.listarPerfis(), nuvem.listarObras().catch(() => estado.obrasCad || [])]).then(([ps, oc]) => {
+      estado.obrasCad = oc; const r2 = rotaAtual(); if (r2.tela !== 'configuracoes' || r2.params.get('secao') !== 'cadastros') return;
+      pinta(String(acessos.render({ perfis: ps, obras: obrasDeAcesso(), posObras: posObrasAtivas(), obrasCad: [...oc, ...obrasSemCadastro(oc)], listaAberta: !!estado.listaObrasAberta, meuId: nuvem.perfilAtual() && nuvem.perfilAtual().id, msg: estado.acessosMsg || '', aviso: estado.acessosAviso })));
+      estado.acessosMsg = ''; estado.acessosAviso = null;
+    });
     return;
   }
   if (tela === 'acessos' && nuvem.NA_NUVEM && funcaoReal().id === 'socio') {
