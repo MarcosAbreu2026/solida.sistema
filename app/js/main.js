@@ -453,7 +453,7 @@ function desenharNav(sel) {
       + (temEstoqueRestrito(f) && paginaVisivel(f, 'estoque') ? item('estoque', 'Estoque') : '') + item('treinamentos', 'Treinamentos')
       + (paginaVisivel(f, 'escritorio') ? item('escritorio', 'Escritório virtual') : '')
       + (paginaVisivel(f, 'feed') ? itemFeed() : '')
-      + (() => { const ex = [...(liberadoExtra(f, 'geral') ? [item('geral', 'Início')] : []), ...DEPARTAMENTOS.filter((d) => liberadoExtra(f, d.id)).map((d) => item(d.id, d.nome)), ...['estoque', 'marketing'].filter((id) => liberadoExtra(f, id)).map((id) => item(id, id === 'estoque' ? 'Estoque' : 'Marketing'))]; return ex.length ? '<div class="nav-grupo">Liberado para você</div>' + ex.join('') : ''; })()
+      + (() => { const ex = [...(liberadoExtra(f, 'geral') ? [item('geral', 'Início')] : []), ...DEPARTAMENTOS.filter((d) => liberadoExtra(f, d.id)).map((d) => item(d.id, d.nome)), ...['estoque', 'marketing'].filter((id) => liberadoExtra(f, id)).map((id) => item(id, id === 'estoque' ? 'Estoque' : 'Marketing'))]; return ex.length ? '<div class="nav-grupo">Departamentos</div>' + ex.join('') : ''; })()
       + `<div class="navfoot">${estado.sync.origem === 'link' ? 'Atualiza sozinho a cada 5 minutos.' : 'Mostrando os últimos dados baixados.'}</div>`;
     desenharAvatares($('#nav'));
     return;
