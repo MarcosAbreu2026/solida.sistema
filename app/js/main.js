@@ -2362,7 +2362,7 @@ document.addEventListener('submit', async (e) => {
 const dadosReuniao = (form) => {
   const fd = new FormData(form); const obraV = String(fd.get('r_obra') || '');
   return { obra: obraV === '__nenhuma__' ? '' : obraV, obraEscolhida: obraV, setor: String(fd.get('r_setor') || ''), titulo: String(fd.get('r_titulo') || '').trim(), data: String(fd.get('r_data') || ''), ini: String(fd.get('r_ini') || ''), fim: String(fd.get('r_fim') || ''),
-    local: String(fd.get('r_local') || ''), convidados: fd.getAll('r_conv'), emails: fd.getAll('r_conv_email'), recorrente: fd.has('r_recor'), frequencia: String(fd.get('r_freq') || 'semanal'), meet: fd.has('r_meet'), semConv: fd.has('r_sem_conv'),
+    local: String(fd.get('r_local') || ''), convidados: fd.getAll('r_conv'), emails: fd.getAll('r_conv_email'), recorrente: fd.has('r_recor'), frequencia: String(fd.get('r_freq') || 'semanal'), meet: fd.has('r_meet'),
     emailsPessoas: [...form.querySelectorAll('input[name="r_email_pessoa"]')].map((i) => ({ id: i.dataset.pessoa, nome: i.dataset.nome, email: i.value.trim().toLowerCase(), campo: i })) };
 };
 const paraMin = (hhmm) => { const [h, m] = String(hhmm || '').split(':').map(Number); return Number.isFinite(h) ? h * 60 + (m || 0) : NaN; };
@@ -2374,7 +2374,7 @@ const erroReuniao = (c, obrigaEscolher = true) => {
   if (!c.data || !c.ini || !c.fim) return 'Preencha a data e o horário.';
   if (paraMin(c.fim) < paraMin(c.ini) + 60) return 'A reunião precisa ter no mínimo 1 hora, no mesmo dia (o fim tem que ser pelo menos 1 hora depois do início).';
   if (!c.local.trim()) return 'Escreva o local da reunião.';
-  if (!c.semConv && !c.convidados.length && !c.emails.length) return 'Escolha os convidados (ou marque "Sem convidados").';
+  if (!c.convidados.length && !c.emails.length) return 'Convide pelo menos uma pessoa: uma reunião não se faz sozinho.';
   for (const p of c.emailsPessoas) {
     if (!p.email) return `Informe o e-mail de ${p.nome} (ainda não está no cadastro).`;
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p.email)) return `O e-mail de ${p.nome} está num formato inválido.`;
@@ -2396,7 +2396,7 @@ function sincronizarEmailsFaltantes(cx) {
     caixa.appendChild(l);
   }
 }
-document.addEventListener('click', (e) => { const x = e.target.closest && e.target.closest('.obs[data-obs="r_conv"] [data-obs-add], .obs[data-obs="r_conv"] [data-obs-del]'); if (!x) return; const cx = x.closest('.obs'); setTimeout(() => sincronizarEmailsFaltantes(cx), 0); }, true);
+document.addEventListener('click', (e) => { const x = e.target.closest && e.target.closest('.obs[data-obs="r_conv"] [data-obs-add], .obs[data-obs="r_conv"] [data-obs-del]'); if (!x) return; const cx = x.closest('.obs'); setTimeout(() => { sincronizarEmailsFaltantes(cx); cx.dispatchEvent(new Event('change', { bubbles: true })); }, 0); }, true);   // depois de escolher/tirar um convidado, o vermelho de "obrigatório" é refeito
 const atualizarNomeReuniao = (e) => {
   const f = e.target.closest && e.target.closest('.tf-reuniao, #reun-form'); if (!f) return;
   const form = f.closest('form'); const alvo = form && form.querySelector('[data-rn-prefixo]'); if (!alvo) return;
@@ -2418,7 +2418,7 @@ const atualizarNomeReuniao = (e) => {
   const marca = (el, falta) => { if (el) el.classList.toggle('rn-falta', !!falta); };
   const c2 = dadosReuniao(form);
   marca(form.querySelector('.rn-titulo-wrap'), !c2.titulo); marca(form.querySelector('[name="r_data"]'), !c2.data); marca(form.querySelector('[name="r_ini"]'), !c2.ini); marca(form.querySelector('[name="r_fim"]'), !c2.fim || paraMin(c2.fim) < paraMin(c2.ini) + 60);
-  marca(loc, !c2.local.trim()); marca(form.querySelector('.rn-conv .obs, .rn-col .obs'), !c2.semConv && !c2.convidados.length && !c2.emails.length);
+  marca(loc, !c2.local.trim()); marca(form.querySelector('.rn-conv .obs'), !c2.convidados.length && !c2.emails.length);
 };
 document.addEventListener('input', atualizarNomeReuniao);
 document.addEventListener('change', atualizarNomeReuniao);
@@ -2485,6 +2485,7 @@ function adicionarEmailConvidado(cx) {
   const chip = document.createElement('span'); chip.className = 'obs-chip obs-ext'; chip.dataset.obsChip = em;
   chip.innerHTML = `${esc(em)} <small>externo</small><button type="button" data-obs-del="${esc(em)}" title="Tirar">×</button><input type="hidden" name="r_conv_email" value="${esc(em)}">`;
   cx.querySelector('.obs-chips').appendChild(chip); campo.value = ''; campo.focus();
+  cx.dispatchEvent(new Event('change', { bubbles: true }));
 }
 document.addEventListener('submit', async (e) => {
   const f = e.target.closest('#ata-form'); const g = e.target.closest('#pend-form');

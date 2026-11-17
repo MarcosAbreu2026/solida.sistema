@@ -130,7 +130,7 @@ export function formEdicao(r, { gruposObras = '', setores = [], pessoas = [] } =
       <label>Local<input name="r_local" value="${r.local || ''}" required ${dis}></label>
       <label class="rn-meet-chk" style="grid-column:1/-1;flex-direction:row;align-items:center;gap:8px"><input type="checkbox" name="r_meet" ${r.meet ? html.seguro('checked') : ''} ${dis}> Reunião online (link do Google Meet)${r.meet_link ? html` · <a href="${r.meet_link}" target="_blank" rel="noopener">Entrar na reunião</a>` : ''}</label>
     </div>
-    ${pode ? html`<div class="rn-col">${caixaConvidados(pessoas, r.convidados || [], r.emails_externos || [])}<label class="rn-sem"><input type="checkbox" name="r_sem_conv" ${(r.convidados || []).length + (r.emails_externos || []).length ? '' : html.seguro('checked')}> Sem convidados</label></div>` : html`<p class="pequeno">Só quem criou a reunião, os convidados da Sólida e a diretoria podem editar.</p>`}
+    ${pode ? caixaConvidados(pessoas, r.convidados || [], r.emails_externos || []) : html`<p class="pequeno">Só quem criou a reunião, os convidados da Sólida e a diretoria podem editar.</p>`}
     <p class="pequeno">Edite sempre por aqui: o sistema atualiza o Google Agenda e avisa os convidados. Mudanças feitas direto no Google Agenda não voltam para cá.</p>
     <div class="tf-botoes"><button type="button" class="botao" data-av-fechar>Fechar</button>${pode ? html`<button type="button" class="botao esc-perigo" data-reun-cancelar="${r.id}">Cancelar reunião</button><button type="submit" class="botao on">Salvar</button>` : ''}</div>
   </form></div>`;
