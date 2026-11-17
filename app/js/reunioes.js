@@ -4,7 +4,7 @@
 // Na nuvem: tabela reunioes (supabase/30-reunioes.sql); no computador de teste: neste navegador.
 import { html } from './formato.js';
 import { hojeISO, somarDias } from './datas.js';
-import { NA_NUVEM, perfilAtual, listarReunioes, gravarReunioes, atualizarReuniao, sincronizarReunioesGoogle } from './nuvem.js';
+import { NA_NUVEM, perfilAtual, listarReunioes, gravarReunioes, atualizarReuniao, sincronizarReunioesGoogle, pessoasSemEmailAgenda, adicionarEmailAgenda } from './nuvem.js';
 import { idPessoa, funcaoReal } from './sessao.js';
 
 const CHAVE = 'solida.reunioes';
@@ -17,9 +17,16 @@ const SEM = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
 export let lista = [];
 export let erro = '';
 
+export let semEmail = new Set();   // pessoas da Sólida ainda sem e-mail para convite (quem cria a reunião informa na hora)
 export async function carregar() {
   try { lista = NA_NUVEM ? await listarReunioes() : lerLocal(); erro = ''; } catch (e) { erro = String(e.message || e); }
+  await carregarSemEmail();
   return lista;
+}
+export async function carregarSemEmail() { if (NA_NUVEM) { try { semEmail = new Set(await pessoasSemEmailAgenda()); } catch { /* sem a lista desta vez */ } } return semEmail; }
+// grava o e-mail informado no cadastro da pessoa (próxima reunião não pede de novo)
+export async function guardarEmailsDasPessoas(lista) {
+  for (const { id, email } of lista) { if (NA_NUVEM) await adicionarEmailAgenda(id, email); semEmail.delete(id); }
 }
 export const porId = (id) => lista.find((r) => String(r.id) === String(id));
 
@@ -119,11 +126,11 @@ export function formEdicao(r, { gruposObras = '', setores = [], pessoas = [] } =
       <label class="tf-desc" style="grid-column:1/-1">Título<div class="rn-titulo-wrap"><span class="rn-prefixo" data-rn-prefixo>${prefixoDaReuniao(r)}</span><input name="r_titulo" class="rn-titulo" value="${r.titulo}" required ${dis}></div></label>
       <label>Data<input type="date" name="r_data" value="${r.data}" required ${dis}></label>
       <label>Início<input type="time" name="r_ini" value="${r.ini}" required ${dis}></label>
-      <label>Fim<input type="time" name="r_fim" value="${r.fim}" required ${dis}></label>
-      <label>Local<input name="r_local" value="${r.local || ''}" ${dis}></label>
+      <label>Fim <span class="rn-dica">(mínimo 1 hora)</span><input type="time" name="r_fim" value="${r.fim}" required ${dis}></label>
+      <label>Local<div class="rn-local"><input name="r_local" value="${r.local || ''}" ${r.local ? '' : html.seguro('disabled')} ${dis}><label class="rn-sem"><input type="checkbox" name="r_sem_local" ${r.local ? '' : html.seguro('checked')} ${dis}> Sem local</label></div></label>
       <label class="rn-meet-chk" style="grid-column:1/-1;flex-direction:row;align-items:center;gap:8px"><input type="checkbox" name="r_meet" ${r.meet ? html.seguro('checked') : ''} ${dis}> Reunião online (link do Google Meet)${r.meet_link ? html` · <a href="${r.meet_link}" target="_blank" rel="noopener">Entrar na reunião</a>` : ''}</label>
     </div>
-    ${pode ? caixaConvidados(pessoas, r.convidados || [], r.emails_externos || []) : html`<p class="pequeno">Só quem criou a reunião, os convidados da Sólida e a diretoria podem editar.</p>`}
+    ${pode ? html`<div class="rn-col">${caixaConvidados(pessoas, r.convidados || [], r.emails_externos || [])}<label class="rn-sem"><input type="checkbox" name="r_sem_conv" ${(r.convidados || []).length + (r.emails_externos || []).length ? '' : html.seguro('checked')}> Sem convidados</label></div>` : html`<p class="pequeno">Só quem criou a reunião, os convidados da Sólida e a diretoria podem editar.</p>`}
     <p class="pequeno">Edite sempre por aqui: o sistema atualiza o Google Agenda e avisa os convidados. Mudanças feitas direto no Google Agenda não voltam para cá.</p>
     <div class="tf-botoes"><button type="button" class="botao" data-av-fechar>Fechar</button>${pode ? html`<button type="button" class="botao esc-perigo" data-reun-cancelar="${r.id}">Cancelar reunião</button><button type="submit" class="botao on">Salvar</button>` : ''}</div>
   </form></div>`;

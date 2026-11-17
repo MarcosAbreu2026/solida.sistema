@@ -1229,3 +1229,41 @@ body.nav-recolhido .pd, body.nav-recolhido .osq, body.nav-recolhido .pc { max-wi
 
 .rn-meet { font-size: 11.5px; font-weight: 700; border-radius: 999px; padding: 3px 11px; white-space: nowrap; background: #E8F0FE; color: #1A56C4; text-decoration: none; } a.rn-meet:hover { background: #D2E3FC; } .rn-meet-pend { background: #F1F3F6; color: #5B6677; }
 .rn-meet-chk { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #3B4652; }
+/* Reunião (nova): linhas alinhadas — coluna fixa para o ícone, controles de 30 px, caixinhas pequenas, tudo mais baixo */
+.tf-nova .tf-reuniao .rn-linha { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 8px; align-items: center; margin: 0 0 6px; }
+.tf-nova .tf-reuniao .rn-linha > i { padding: 0; width: 24px; height: 30px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.tf-nova .tf-reuniao .rn-linha.rn-conv { align-items: start; } .tf-nova .tf-reuniao .rn-linha.rn-conv > i { height: 22px; }
+.tf-nova .tf-reuniao input:not([type="checkbox"]), .tf-nova .tf-reuniao select { height: 30px !important; box-sizing: border-box !important; padding: 2px 8px !important; font-size: 13px !important; border-radius: 6px; }
+.tf-nova .tf-reuniao .rn-quando { flex-wrap: nowrap; gap: 8px; } .tf-nova .tf-reuniao .rn-quando input { width: auto; min-width: 0; }
+.tf-nova .tf-reuniao .rn-recor { padding-top: 0; flex-wrap: nowrap; }
+.tf-nova .tf-reuniao input[type="checkbox"] { width: 16px !important; height: 16px !important; min-width: 16px !important; padding: 0 !important; margin: 0 !important; flex: none; }
+.tf-nova .tf-reuniao .rn-recor label, .tf-nova .tf-reuniao .rn-meet-chk { display: inline-flex !important; flex-direction: row !important; align-items: center; gap: 8px; font-size: 13px; margin: 0; width: auto; }
+.tf-nova .tf-reuniao .rn-meet-chk .pequeno { font-size: 12px; color: #6B7683; }
+.tf-nova .tf-reuniao .obs { display: flex; flex-direction: column; gap: 4px; margin: 0; }
+.tf-nova .tf-reuniao .obs-rot { font-size: 12.5px; margin: 0; } .tf-nova .tf-reuniao .obs-rot small { font-weight: 400; color: #6B7683; }
+.tf-nova .tf-reuniao .obs-lista { max-height: 52px; }
+.tf-nova .tf-reuniao .rn-email { margin-top: 4px; gap: 6px; } .tf-nova .tf-reuniao .rn-email .botao { height: 30px; padding: 0 12px; font-size: 13px; }
+.tf-nova .tf-reuniao .rn-titulo-wrap { height: 34px; margin-bottom: 8px; } .tf-nova .tf-reuniao .rn-titulo-wrap .rn-titulo { height: 100% !important; font-size: 15px !important; padding: 0 10px !important; }
+.tf-nova .tf-reuniao .rn-aviso { margin: 2px 0 6px; padding: 4px 8px; font-size: 11.5px; }
+.tf-nova .tf-reuniao .rn-grade { margin-bottom: 8px; gap: 6px 12px; }
+
+.rn-falta { outline: 2px solid #D9534F; outline-offset: -1px; }
+.rn-titulo-wrap.rn-falta { outline-offset: 0; }
+.rn-local { display: flex; align-items: center; gap: 12px; } .rn-local input[name="r_local"] { flex: 1; min-width: 0; }
+.rn-col { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.rn-sem { display: inline-flex !important; flex-direction: row !important; align-items: center; gap: 6px; font-size: 12.5px; color: #3B4652; white-space: nowrap; width: auto; margin: 0; font-weight: 400; }
+.rn-sem input[type="checkbox"] { width: 16px !important; height: 16px !important; min-width: 16px !important; padding: 0 !important; margin: 0 !important; flex: none; }
+.rn-dica { font-size: 11.5px; color: #8A94A0; white-space: nowrap; font-weight: 400; }
+.rn-local input:disabled { background: #F1F3F6; }
+.tf-nova .tf-reuniao .obs > * { margin-top: 0 !important; margin-bottom: 0 !important; }
+.tf-nova .tf-reuniao .obs-busca { height: 28px !important; }
+.tf-nova .tf-reuniao .obs-rot { line-height: 1.2; }
+
+.rn-emails-faltam { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+.rn-pessoa-email { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12.5px; color: #7A5A12; background: #FFF6E3; border: 1px dashed #E0B04A; border-radius: 8px; padding: 4px 8px; }
+.rn-pessoa-email input { flex: 1; min-width: 200px; height: 28px !important; font: inherit; font-size: 13px; padding: 2px 8px; border: 1px solid #C9D1DA; border-radius: 6px; background: #fff; box-sizing: border-box; }
+.rn-pessoa-email { flex-wrap: nowrap; text-align: left; justify-content: flex-start; padding: 3px 8px; }
+.rn-pessoa-email > span { flex: 1 1 auto; text-align: left; font-weight: 400; min-width: 0; } .rn-pessoa-email > span b { font-weight: 700; }
+.rn-pessoa-email input { flex: 0 0 230px; min-width: 0; }
+.tf-nova .rn-pessoa-email { flex-direction: row !important; align-items: center !important; gap: 10px; }
+.tf-nova .rn-pessoa-email input { flex: 0 0 230px !important; width: 230px; height: 28px !important; }

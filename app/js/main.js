@@ -2362,16 +2362,41 @@ document.addEventListener('submit', async (e) => {
 const dadosReuniao = (form) => {
   const fd = new FormData(form); const obraV = String(fd.get('r_obra') || '');
   return { obra: obraV === '__nenhuma__' ? '' : obraV, obraEscolhida: obraV, setor: String(fd.get('r_setor') || ''), titulo: String(fd.get('r_titulo') || '').trim(), data: String(fd.get('r_data') || ''), ini: String(fd.get('r_ini') || ''), fim: String(fd.get('r_fim') || ''),
-    local: String(fd.get('r_local') || ''), convidados: fd.getAll('r_conv'), emails: fd.getAll('r_conv_email'), recorrente: fd.has('r_recor'), frequencia: String(fd.get('r_freq') || 'semanal'), meet: fd.has('r_meet') };
+    local: String(fd.get('r_local') || ''), convidados: fd.getAll('r_conv'), emails: fd.getAll('r_conv_email'), recorrente: fd.has('r_recor'), frequencia: String(fd.get('r_freq') || 'semanal'), meet: fd.has('r_meet'), semLocal: fd.has('r_sem_local'), semConv: fd.has('r_sem_conv'),
+    emailsPessoas: [...form.querySelectorAll('input[name="r_email_pessoa"]')].map((i) => ({ id: i.dataset.pessoa, nome: i.dataset.nome, email: i.value.trim().toLowerCase(), campo: i })) };
 };
+const paraMin = (hhmm) => { const [h, m] = String(hhmm || '').split(':').map(Number); return Number.isFinite(h) ? h * 60 + (m || 0) : NaN; };
+const deMin = (t) => `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
 const erroReuniao = (c, obrigaEscolher = true) => {
   if (obrigaEscolher && !c.obraEscolhida) return 'Escolha a obra ou o pós-obra (ou "Nenhuma" se for uma reunião de departamento).';
   if (!c.obra && !c.setor) return 'Sem obra, escolha o departamento da reunião.';
   if (!c.titulo) return 'Escreva o título da reunião.';
   if (!c.data || !c.ini || !c.fim) return 'Preencha a data e o horário.';
-  if (c.fim <= c.ini) return 'O horário final precisa ser depois do inicial.';
+  if (paraMin(c.fim) < paraMin(c.ini) + 60) return 'A reunião precisa ter no mínimo 1 hora, no mesmo dia (o fim tem que ser pelo menos 1 hora depois do início).';
+  if (!c.semLocal && !c.local.trim()) return 'Escreva o local da reunião (ou marque "Sem local").';
+  if (!c.semConv && !c.convidados.length && !c.emails.length) return 'Escolha os convidados (ou marque "Sem convidados").';
+  for (const p of c.emailsPessoas) {
+    if (!p.email) return `Informe o e-mail de ${p.nome} (ainda não está no cadastro).`;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p.email)) return `O e-mail de ${p.nome} está num formato inválido.`;
+  }
   return '';
 };
+// convidado da Sólida sem e-mail no cadastro: aparece um campo para informar o e-mail dele(a) na hora; ao salvar a reunião o e-mail fica no cadastro
+function sincronizarEmailsFaltantes(cx) {
+  if (!cx) return;
+  let caixa = cx.parentElement.querySelector('.rn-emails-faltam');
+  if (!caixa) { caixa = document.createElement('div'); caixa.className = 'rn-emails-faltam'; cx.appendChild(caixa); }
+  const chips = [...cx.querySelectorAll('.obs-chip:not(.obs-ext)')].map((c) => ({ id: c.dataset.obsChip, nome: (c.firstChild && c.firstChild.textContent || '').trim() })).filter((p) => reunioes.semEmail.has(p.id));
+  const ids = new Set(chips.map((p) => p.id));
+  caixa.querySelectorAll('[data-pessoa-linha]').forEach((l) => { if (!ids.has(l.dataset.pessoaLinha)) l.remove(); });
+  for (const p of chips) {
+    if (caixa.querySelector(`[data-pessoa-linha="${CSS.escape(p.id)}"]`)) continue;
+    const l = document.createElement('label'); l.className = 'rn-pessoa-email'; l.dataset.pessoaLinha = p.id;
+    l.innerHTML = `<span><b>${esc(p.nome)}</b> ainda não tem e-mail no cadastro. Informe para convidar:</span><input type="email" name="r_email_pessoa" data-pessoa="${esc(p.id)}" data-nome="${esc(p.nome)}" placeholder="nome@construcaosolida.com" autocomplete="off">`;
+    caixa.appendChild(l);
+  }
+}
+document.addEventListener('click', (e) => { const x = e.target.closest && e.target.closest('.obs[data-obs="r_conv"] [data-obs-add], .obs[data-obs="r_conv"] [data-obs-del]'); if (!x) return; const cx = x.closest('.obs'); setTimeout(() => sincronizarEmailsFaltantes(cx), 0); }, true);
 const atualizarNomeReuniao = (e) => {
   const f = e.target.closest && e.target.closest('.tf-reuniao, #reun-form'); if (!f) return;
   const form = f.closest('form'); const alvo = form && form.querySelector('[data-rn-prefixo]'); if (!alvo) return;
@@ -2380,6 +2405,21 @@ const atualizarNomeReuniao = (e) => {
   const so = form.querySelector('[name="r_obra"]'); const ss = form.querySelector('[name="r_setor"]');
   if (so) so.classList.toggle('tf-req', !c.obraEscolhida && !!form.querySelector('.tf-reuniao'));
   if (ss) ss.classList.toggle('tf-req', !c.obra && !c.setor);
+  // horário: no mínimo 1 hora e sempre no mesmo dia; o fim nunca fica antes de início + 1 h
+  const ini = form.querySelector('[name="r_ini"]'); const fim = form.querySelector('[name="r_fim"]');
+  if (ini && fim && e.target && ['r_ini', 'r_fim'].includes(e.target.name) && ini.value) {
+    const min = paraMin(ini.value) + 60;
+    if (min > 23 * 60 + 59) { fim.value = ''; fim.removeAttribute('min'); }
+    else { fim.min = deMin(min); if (!fim.value || paraMin(fim.value) < min) fim.value = deMin(min); }
+  }
+  // sem local / sem convidados
+  const loc = form.querySelector('[name="r_local"]');
+  if (loc && e.target && e.target.name === 'r_sem_local') { loc.disabled = e.target.checked; if (e.target.checked) loc.value = ''; }
+  // vermelho = falta preencher
+  const marca = (el, falta) => { if (el) el.classList.toggle('rn-falta', !!falta); };
+  const c2 = dadosReuniao(form);
+  marca(form.querySelector('.rn-titulo-wrap'), !c2.titulo); marca(form.querySelector('[name="r_data"]'), !c2.data); marca(form.querySelector('[name="r_ini"]'), !c2.ini); marca(form.querySelector('[name="r_fim"]'), !c2.fim || paraMin(c2.fim) < paraMin(c2.ini) + 60);
+  marca(loc, !c2.semLocal && !c2.local.trim()); marca(form.querySelector('.rn-conv .obs, .rn-col .obs'), !c2.semConv && !c2.convidados.length && !c2.emails.length);
 };
 document.addEventListener('input', atualizarNomeReuniao);
 document.addEventListener('change', atualizarNomeReuniao);
@@ -2389,7 +2429,7 @@ document.addEventListener('click', async (e) => {
   const caixa = form.querySelector('[data-rn-erro]'); if (caixa) { caixa.hidden = !msg; caixa.textContent = msg; caixa.style.color = '#B3261E'; }
   if (msg) return;
   b.disabled = true;
-  try { await reunioes.criar(c); const m = document.getElementById('at-modal'); if (m) m.remove(); estado.reunioesVisitada = false; desenhar(); }
+  try { await reunioes.guardarEmailsDasPessoas(c.emailsPessoas); await reunioes.criar(c); const m = document.getElementById('at-modal'); if (m) m.remove(); estado.reunioesVisitada = false; desenhar(); }
   catch (err) { b.disabled = false; alert(`Não foi possível salvar a reunião (${err.message || err}).`); }
 });
 document.addEventListener('click', (e) => {
@@ -2399,6 +2439,7 @@ document.addEventListener('click', (e) => {
   const m = document.createElement('div'); m.id = 'at-modal'; m.className = 'at-modal';
   m.innerHTML = `<div class="at-modal-caixa">${String(reunioes.formEdicao(r, { gruposObras: atas.gruposDeObras(obrasDeAtas(), r.obra || '', { criar: false }), setores: atas.SETORES_ATA, pessoas: atas.pessoasSelecionaveis() }))}</div>`;
   document.body.appendChild(m);
+  sincronizarEmailsFaltantes(m.querySelector('.obs[data-obs="r_conv"]'));
 });
 document.addEventListener('submit', async (e) => {
   const f = e.target.closest && e.target.closest('#reun-form'); if (!f) return;
@@ -2406,7 +2447,7 @@ document.addEventListener('submit', async (e) => {
   const id = f.dataset.reunForm; const r = reunioes.porId(id); const c = dadosReuniao(f); const msg = erroReuniao(c, false);
   if (msg) { alert(msg); return; }
   let escopo = 'uma'; if (r && r.serie) { escopo = await perguntarEscopo('Salvar reunião recorrente'); if (!escopo) return; }
-  try { await reunioes.salvar(id, c, escopo); const m = document.getElementById('at-modal'); if (m) m.remove(); estado.reunioesVisitada = false; desenhar(); }
+  try { await reunioes.guardarEmailsDasPessoas(c.emailsPessoas); await reunioes.salvar(id, c, escopo); const m = document.getElementById('at-modal'); if (m) m.remove(); estado.reunioesVisitada = false; desenhar(); }
   catch (err) { alert(`Não foi possível salvar (${err.message || err}).`); }
 });
 document.addEventListener('click', async (e) => {

@@ -580,3 +580,14 @@ export async function googleUrlAutorizar() {
 export async function sincronizarReunioesGoogle(ids = []) {
   try { const { data } = await sb.functions.invoke('gcal', { body: { acao: 'sync', ids } }); return data; } catch { return null; }
 }
+
+// pessoas da Sólida que ainda não têm e-mail para convite do Google Agenda, e gravar o e-mail que quem cria a reunião informa (fica no cadastro da pessoa)
+export async function pessoasSemEmailAgenda() {
+  const { data, error } = await sb.rpc('pessoas_sem_email_agenda');
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+export async function adicionarEmailAgenda(pessoaId, email) {
+  const { error } = await sb.rpc('adicionar_email_agenda', { p_pessoa: pessoaId, p_email: email });
+  if (error) throw new Error(error.message);
+}
