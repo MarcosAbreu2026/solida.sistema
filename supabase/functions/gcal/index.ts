@@ -69,14 +69,15 @@ async function levar(cfg: Record<string, string | null>, ids: number[]) {
         resultado[id] = 'apagada'; continue;
       }
       const pessoas = ((r.convidados as string[]) || []);
-      const { data: perfis } = pessoas.length ? await sb.from('perfis').select('id,email').in('id', pessoas) : { data: [] };
-      const emails = [...new Set([...(perfis || []).map((p: { email: string | null }) => p.email).filter(Boolean) as string[], ...(((r.emails_externos as string[]) || []))])];
+      const { data: perfis } = pessoas.length ? await sb.from('perfis').select('id,nome,email_agenda').in('id', pessoas) : { data: [] };
+      const semEmail = (perfis || []).filter((p: { email_agenda: string | null }) => !p.email_agenda).map((p: { nome: string }) => p.nome);
+      const emails = [...new Set([...(perfis || []).map((p: { email_agenda: string | null }) => p.email_agenda).filter(Boolean) as string[], ...(((r.emails_externos as string[]) || []))])];
       const corpo = JSON.stringify(eventoDe(r, emails));
       const url = evId ? `https://www.googleapis.com/calendar/v3/calendars/${cal}/events/${evId}?sendUpdates=all` : `https://www.googleapis.com/calendar/v3/calendars/${cal}/events?sendUpdates=all`;
       const resp = await fetch(url, { method: evId ? 'PATCH' : 'POST', headers: H, body: corpo });
       const ev = await resp.json();
       if (!resp.ok) throw new Error(`${resp.status} ${(ev.error && ev.error.message) || ''}`);
-      await sb.from('reunioes').update({ gcal_event_id: ev.id, gcal_sync: 'ok', gcal_erro: null, gcal_sync_em: new Date().toISOString() }).eq('id', r.id);
+      await sb.from('reunioes').update({ gcal_event_id: ev.id, gcal_sync: 'ok', gcal_erro: semEmail.length ? `Sem e-mail da Sólida cadastrado (não foram convidados): ${semEmail.join(', ')}` : null, gcal_sync_em: new Date().toISOString() }).eq('id', r.id);
       resultado[id] = evId ? 'atualizada' : 'criada';
     } catch (e) {
       await sb.from('reunioes').update({ gcal_sync: 'erro', gcal_erro: String((e as Error).message || e).slice(0, 300), gcal_sync_em: new Date().toISOString() }).eq('id', r.id);

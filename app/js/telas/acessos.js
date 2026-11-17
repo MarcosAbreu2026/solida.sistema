@@ -32,7 +32,7 @@ export function render({ perfis = [], obras = [], posObras = [], obrasCad = [], 
     const falta = funcaoPorId(p.funcao || '').porObra && p.funcao && !(p.obras || []).length;
     return html`<form class="ac-pessoa ${p.ativo === false ? 'ac-bloq' : ''}" data-acesso="${p.id}">
     <div class="ac-pessoa-cab">
-      <div class="ac-pessoa-id"><b>${p.nome || p.usuario}</b>
+      <div class="ac-pessoa-id"><b class="ac-nome-click" data-ac-nome title="Clique para ver e editar o e-mail e as configurações">${p.nome || p.usuario}</b>
         <span class="pequeno">usuário <b>${p.usuario || p.email}</b> · ${p.funcao ? funcaoPorId(p.funcao).nome : html`<span class="pendente">sem função</span>`}${p.trocar_senha ? ' · ainda não criou a senha' : ''}${p.ativo === false ? ' · bloqueado' : ''}${p.id === meuId ? ' · você' : ''}${falta ? html` · <span class="pendente">escolha as obras</span>` : ''}</span></div>
       <div class="ac-pessoa-acoes">
         <button type="button" class="botao" data-ac-abrir aria-expanded="false" title="Função, obras e setores desta pessoa">⚙ Configurações ▾</button>
@@ -41,6 +41,7 @@ export function render({ perfis = [], obras = [], posObras = [], obrasCad = [], 
       </div>
     </div>
     <div class="ac-pessoa-corpo" hidden>
+      <label class="ac-pessoa-func">E-mail da Sólida <span class="pequeno">(para convidar para as reuniões no Google Agenda)</span><input type="email" name="email_agenda" value="${p.email_agenda || ''}" placeholder="nome@construcaosolida.com" autocomplete="off"></label>
       <label class="ac-pessoa-func">Função<select name="funcao"><option value="">— escolher —</option>${opcoesFuncao(p.funcao)}</select></label>
       <div class="ac-obras"><span class="ac-rot">Obras e pós-obras <span class="pequeno">(quem a pessoa acompanha)</span></span>${caixinhasObras(obras, p.obras || [], posObras)}</div>
       <div class="ac-obras"><span class="ac-rot">Setores <span class="pequeno">(onde atua: gestor ou estagiário do setor)</span></span>${caixinhasSetores(p.setores || [])}</div>

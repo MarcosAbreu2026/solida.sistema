@@ -154,7 +154,9 @@ function desenharPedido() {
   const p = estado.pedido;
   const meu = (x) => x.pessoa === nomeDoPedido();
   const n = diretoria ? p.lista.filter(pedidos.pendenteAprovacao).length : p.lista.filter((x) => meu(x) && pedidos.emAberto(x)).length;
-  el.innerHTML = String(p.aberto ? pedidos.painel({ ...telaDoPedido(), pedidos: p.lista, msg: p.msg, diretoria }) : pedidos.botao(n, diretoria));
+  // o que a pessoa já digitou no campo não se perde quando o painel é redesenhado (ex.: ao anexar um arquivo)
+  const ta = el.querySelector('#pd-form textarea'); if (ta) p.rascunho = ta.value;
+  el.innerHTML = String(p.aberto ? pedidos.painel({ ...telaDoPedido(), pedidos: p.lista, msg: p.msg, diretoria, arquivos: p.arquivos || [], rascunho: p.rascunho || '' }) : pedidos.botao(n, diretoria));
 }
 const ehDiretoria = () => funcaoReal().id === 'socio';
 const nomeDoPedido = () => { const s = sessao(); return s.nome || s.usuario || ''; };
@@ -1350,6 +1352,30 @@ function configurar() {
     desenharPedido();
     if (estado.pedido.aberto) { const t = document.querySelector('#pd-form textarea'); if (t) t.focus(); atualizarPedidos(); }
   });
+  // anexar print ou arquivo ao pedido (botão, ou colar um print com Ctrl+V no texto); até 4 arquivos de 10 MB
+  const adicionarAnexosPedido = (lista) => {
+    const p = estado.pedido; p.arquivos = p.arquivos || [];
+    for (const f of lista) {
+      if (p.arquivos.length >= 4) { p.msg = 'No máximo 4 anexos por pedido.'; break; }
+      if (f.size > 10 * 1024 * 1024) { p.msg = `"${f.name || 'arquivo'}" passa de 10 MB.`; continue; }
+      p.arquivos.push(f);
+    }
+    desenharPedido();
+  };
+  document.addEventListener('change', (e) => {
+    const i = e.target.closest && e.target.closest('[data-pd-arquivo]'); if (!i) return;
+    adicionarAnexosPedido([...i.files]); i.value = '';
+  });
+  document.addEventListener('paste', (e) => {
+    const t = e.target.closest && e.target.closest('#pd-form textarea'); if (!t) return;
+    const imgs = [...(e.clipboardData ? e.clipboardData.files : [])].filter((f) => /^image\//.test(f.type));
+    if (!imgs.length) return;
+    e.preventDefault(); adicionarAnexosPedido(imgs.map((f, k) => (f.name && f.name !== 'image.png' ? f : new File([f], `print-${Date.now()}-${k}.png`, { type: f.type }))));
+  });
+  document.addEventListener('click', (e) => {
+    const x = e.target.closest && e.target.closest('[data-pd-tirar]'); if (!x) return;
+    (estado.pedido.arquivos || []).splice(Number(x.dataset.pdTirar), 1); desenharPedido();
+  });
   document.addEventListener('submit', async (e) => {
     if (e.target.id !== 'pd-form') return;
     e.preventDefault();
@@ -1357,9 +1383,9 @@ function configurar() {
     const texto = campo.value.trim();
     if (!texto) return;
     try {
-      await pedidos.enviar({ ...telaDoPedido(), texto, pessoa: nomeDoPedido(), funcao: funcaoReal().nome, diretoria: ehDiretoria() });
+      await pedidos.enviar({ ...telaDoPedido(), texto, pessoa: nomeDoPedido(), funcao: funcaoReal().nome, diretoria: ehDiretoria(), arquivos: estado.pedido.arquivos || [] });
       estado.pedido.msg = ehDiretoria() ? 'Pedido enviado ✓' : 'Enviado para a aprovação da diretoria ✓';
-      campo.value = '';
+      campo.value = ''; estado.pedido.rascunho = ''; estado.pedido.arquivos = [];
     } catch (err) {
       estado.pedido.msg = `Não foi possível enviar: ${err.message}`;
     }
@@ -1474,6 +1500,8 @@ const abrirCalendarioDoPrazo = (e) => {
 document.addEventListener('mousedown', abrirCalendarioDoPrazo);
 document.addEventListener('click', abrirCalendarioDoPrazo);
 document.addEventListener('change', (e) => { const el = e.target.closest && e.target.closest(CAMPOS_PRAZO); if (el) avisoDoPrazo(el); });
+// clicar no NOME da pessoa abre a mesma abinha de configurações (onde está o e-mail da Sólida)
+document.addEventListener('click', (e) => { const n = e.target.closest && e.target.closest('[data-ac-nome]'); if (!n) return; const bt = n.closest('form').querySelector('[data-ac-abrir]'); if (bt) bt.click(); });
 // Equipe (Cadastros): a linha curta da pessoa abre as configurações (função, obras, setores) numa abinha
   document.addEventListener('click', (e) => {
     const b = e.target.closest && e.target.closest('[data-ac-abrir]'); if (!b) return;
@@ -1566,7 +1594,9 @@ document.addEventListener('change', (e) => { const el = e.target.closest && e.ta
     const funcao = fd.get('funcao') || null; const obras = fd.getAll('obras');
     if (!funcao) { alert('Escolha a função da pessoa.'); return; }
     if (funcaoPorId(funcao).porObra && !obras.length) { alert('Escolha pelo menos uma obra para esta função.'); return; }
-    try { await nuvem.salvarPerfil(f.dataset.acesso, { funcao, obras, setores: fd.getAll('setores') }); estado.acessosMsg = 'Salvo.'; await sincronizarCadastros({ forcar: true }); }
+    const emailAg = String(fd.get('email_agenda') || '').trim().toLowerCase();
+    if (emailAg && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAg)) { alert('O e-mail da Sólida está num formato inválido.'); return; }
+    try { await nuvem.salvarPerfil(f.dataset.acesso, { funcao, obras, setores: fd.getAll('setores'), email_agenda: emailAg || null }); estado.acessosMsg = 'Salvo.'; await sincronizarCadastros({ forcar: true }); }
     catch (err) { alert(`Não foi possível salvar (${err.message || err}).`); }
   });
   // Feed: publicar, comentar, curtir, fixar e apagar

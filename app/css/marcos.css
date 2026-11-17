@@ -1175,3 +1175,37 @@ body.nav-recolhido .pd, body.nav-recolhido .osq, body.nav-recolhido .pc { max-wi
 .aut-grupo { border-bottom: 1px solid #EDF0F3; } .aut-grupo:last-child { border-bottom: 0; } .aut-grupo > .aut-linha { border-bottom: 0; }
 .aut-clicavel { cursor: pointer; } .aut-clicavel:hover { background: #F3F7FB; }
 .aut-det { padding: 4px 16px 14px 46px; background: #FAFBFC; } .aut-det .aut-google { border: 0; border-radius: 0; padding: 4px 0; margin: 0; background: transparent; }
+/* Janela de nova tarefa / nova reunião mais baixa: campos e espaços menores, para caber sem barra de rolagem ao lado */
+.tf-nova .tf-grade, .tf-nova .rn-grade { gap: 7px 12px; }
+.tf-nova .tf-grade label, .tf-nova .rn-grade label { gap: 2px; font-size: 12px; }
+.tf-nova .tf-grade input, .tf-nova .tf-grade select, .tf-nova .rn-grade select { padding: 4px 8px; font-size: 13px; }
+.tf-nova .rn-grade select { height: 30px; }
+.tf-nova .tf-cab { margin-bottom: 4px; } .tf-nova .tf-modo { margin: 2px 0 6px; }
+.tf-nova .tf-sep { margin: 2px 0; }
+.tf-nova .obs-lista { max-height: 58px; overflow-y: auto; }
+.tf-nova .obs-busca { padding: 3px 4px !important; font-size: 12.5px; }
+.tf-nova .obs-chip, .tf-nova .obs-item { padding-top: 2px !important; padding-bottom: 2px !important; font-size: 12px; }
+.tf-nova .tf-botoes { margin-top: 6px; }
+.tf-nova .tf-recor { min-height: 0; }
+.tf-nova .rn-linha { margin: 2px 0; } .tf-nova .rn-aviso { margin: 4px 0; padding: 4px 8px; font-size: 11.5px; }
+.tf-nova .rn-titulo-wrap { margin-bottom: 4px; } .tf-nova .rn-titulo-wrap .rn-titulo { font-size: 15px !important; padding: 5px 8px !important; }
+.tf-nova .rn-prefixo { font-size: 14px; }
+.tf-nova .rn-email input { padding: 4px 8px; } .tf-nova .rn-email .botao { padding: 4px 12px; }
+.tf-nova .tf-esq { padding-top: 12px; padding-bottom: 10px; }
+
+.ac-nome-click { cursor: pointer; } .ac-nome-click:hover { text-decoration: underline; color: #2F5F86; }
+.ac-pessoa-func input[type="email"] { font: inherit; font-size: 13px; padding: 6px 8px; border: 1px solid #C9D1DA; border-radius: 6px; max-width: 360px; }
+.tf-nova .tf-grade select, .tf-nova .tf-grade input:not([type="checkbox"]) { height: 30px; box-sizing: border-box; }
+.tf-nova .tf-recor { display: flex !important; flex-wrap: nowrap; align-items: center; gap: 10px; grid-column: 1 / -1; }
+.tf-nova .tf-recor select { width: auto; min-width: 130px; flex: none; }
+.tf-nova .tf-recor label { white-space: nowrap; flex-direction: row; align-items: center; gap: 6px; }
+.tf-nova .obs-lista { max-height: 46px; }
+.tf-nova .tf-grade { align-items: end; }
+
+/* Pedir alteração: anexar print ou arquivo */
+.pd-anexos { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 6px 0 2px; }
+.pd-anexar { cursor: pointer; font-size: 12.5px; padding: 4px 10px; }
+.pd-chip { display: inline-flex; align-items: center; gap: 4px; background: #EEF3F8; border: 1px solid #D5DCE4; border-radius: 999px; padding: 2px 4px 2px 10px; font-size: 12px; color: #25323F; }
+.pd-chip button { border: 0; background: transparent; cursor: pointer; font-size: 15px; line-height: 1; color: #8A94A0; } .pd-chip button:hover { color: #B3261E; }
+.pd-anexos-lista { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; } .pd-anexos-lista img { max-height: 70px; max-width: 120px; border: 1px solid #D5DCE4; border-radius: 6px; display: block; }
+.pd-arq { font-size: 12px; color: #2F5F86; text-decoration: none; background: #F4F7FB; border-radius: 6px; padding: 2px 8px; }

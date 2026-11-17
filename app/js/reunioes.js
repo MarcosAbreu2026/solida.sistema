@@ -90,7 +90,7 @@ export function caixaConvidados(pessoas, ids = [], emails = []) {
   </div>`;
 }
 
-const selo = (r) => (r.gcal_sync === 'ok' ? html`<span class="rn-sync rn-sync-ok" title="Já está no Google Agenda do sistema">no Google Agenda ✓</span>`
+const selo = (r) => (r.gcal_sync === 'ok' ? html`<span class="rn-sync rn-sync-ok" title="${r.gcal_erro || 'Já está no Google Agenda do sistema'}">no Google Agenda ✓${r.gcal_erro ? ' (faltou convidar alguém)' : ''}</span>`
   : r.gcal_sync === 'erro' ? html`<span class="rn-sync rn-sync-erro" title="${r.gcal_erro || 'Falhou'}">erro no Google Agenda</span>`
     : html`<span class="rn-sync rn-sync-pend" title="Aguardando a conta do Google do sistema ser conectada em Configurações › Automações (ou o envio em andamento)">indo para o Google Agenda…</span>`);
 

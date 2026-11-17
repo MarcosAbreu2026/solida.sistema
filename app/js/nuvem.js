@@ -343,13 +343,40 @@ export async function acaoFeed({ acao, post, texto, valor }) {
 }
 
 // ---------------------------------------------------------------- pedidos de alteração (formato do servidor local)
+// imagem reduzida (largura máxima 1600) antes de guardar: print de tela fica leve
+function reduzirImagemPedido(arquivo) {
+  return new Promise((ok, falha) => {
+    const img = new Image(); const u = URL.createObjectURL(arquivo);
+    img.onload = () => {
+      const k = Math.min(1, 1600 / Math.max(img.width, img.height)); const c = document.createElement('canvas');
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(u); c.toBlob((b) => (b ? ok(b) : falha(new Error('Imagem inválida'))), 'image/jpeg', 0.85);
+    };
+    img.onerror = () => { URL.revokeObjectURL(u); falha(new Error('Não consegui abrir a imagem.')); };
+    img.src = u;
+  });
+}
+export async function urlsAnexosPedidos(caminhos) {
+  const lista = [...new Set((caminhos || []).filter(Boolean))]; if (!lista.length) return {};
+  const { data } = await sb.storage.from('pedidos-anexos').createSignedUrls(lista, 60 * 60 * 6);
+  const m = {}; for (const x of data || []) if (x.signedUrl) m[x.path] = x.signedUrl; return m;
+}
 export async function listarPedidos() {
   const [{ data: ps }, { data: pf }] = await Promise.all([sb.from('pedidos').select('*').order('criado_em'), sb.from('perfis').select('id, nome, funcao')]);
   const nome = new Map((pf || []).map((p) => [p.id, p]));
-  return (ps || []).map((p) => ({ id: String(p.id), data: p.criado_em, tela: p.tela, titulo: p.titulo, pessoa: (nome.get(p.autor) || {}).nome || '', funcao: (nome.get(p.autor) || {}).funcao || '', texto: p.texto, status: p.status, resposta: p.resposta }));
+  return (ps || []).map((p) => ({ id: String(p.id), data: p.criado_em, tela: p.tela, titulo: p.titulo, pessoa: (nome.get(p.autor) || {}).nome || '', funcao: (nome.get(p.autor) || {}).funcao || '', texto: p.texto, status: p.status, resposta: p.resposta, anexos: p.anexos || [] }));
 }
-export async function enviarPedido({ tela, titulo, texto, diretoria }) {
-  const { error } = await sb.from('pedidos').insert({ autor: perfil.id, tela, titulo, texto, status: diretoria ? 'aberto' : 'aprovacao', aprovado_por: diretoria ? perfil.id : null });
+export async function enviarPedido({ tela, titulo, texto, diretoria, arquivos = [] }) {
+  const anexos = [];
+  for (const [i, f] of arquivos.entries()) {
+    let blob = f; let tipo = f.type || 'application/octet-stream'; let nome = f.name || `anexo-${i + 1}`;
+    if (/^image\//.test(tipo)) { blob = await reduzirImagemPedido(f); tipo = 'image/jpeg'; nome = `${nome.replace(/\.[^.]+$/, '')}.jpg`; }
+    const caminho = `${perfil.id}/${Date.now()}-${i}-${nome.replace(/[^\w.-]+/g, '_')}`;
+    const { error: e1 } = await sb.storage.from('pedidos-anexos').upload(caminho, blob, { contentType: tipo });
+    if (e1) throw new Error(`anexo "${nome}": ${e1.message}`);
+    anexos.push({ nome, tipo, caminho });
+  }
+  const { error } = await sb.from('pedidos').insert({ autor: perfil.id, tela, titulo, texto, anexos, status: diretoria ? 'aberto' : 'aprovacao', aprovado_por: diretoria ? perfil.id : null });
   if (error) throw new Error(error.message);
 }
 export async function decidirPedido(id, status) {

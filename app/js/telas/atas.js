@@ -633,7 +633,7 @@ function prazoDaColuna(id, hoje) {
 // Nova tarefa: o MESMO cartão da janela da tarefa (formulário à esquerda, anotações à direita), com os obrigatórios marcados em vermelho e o botão "Criar tarefa".
 // Os nomes dos campos (p_*, av_obra, av_setor) são os de sempre: quem grava é o mesmo código das pendências avulsas.
 // PRÉVIA (16/11/2026): "Reunião" na criação de tarefa, só para o administrador (conta "(admin)" na nuvem; no teste local sempre). Ainda não grava nada.
-export const reuniaoLiberada = () => !NA_NUVEM || /\(admin\)/i.test((perfilAtual() && perfilAtual().nome) || '');
+export const reuniaoLiberada = () => !NA_NUVEM || /\(admin\)|^felipe paiva/i.test((perfilAtual() && perfilAtual().nome) || '');
 const somaHora = (hhmm, min) => { const [h, m] = String(hhmm || '08:30').split(':').map(Number); const t = (h * 60 + (m || 0) + min) % (24 * 60); return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`; };
 function painelReuniao(prazo, hora, obras = [], setorPadrao = '') {
   const ini = hora || '08:30'; const pessoas = pessoasSelecionaveis();
