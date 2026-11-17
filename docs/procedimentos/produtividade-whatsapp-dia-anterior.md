@@ -27,7 +27,7 @@ META SEMANAL × EXECUTADO (passo extra, depois dos registros diários; alimenta 
 AJUSTES PEDIDOS PELO MARCOS (05/11/2026):
 - O painel NÃO tem mais "não lido": todo dia útil passado de cada obra tem que ficar ou com relatório (enviou) ou com semRelatorio:true (não enviou). Leia o grupo de cada obra de cada dia útil da semana; se o dia não puder ser lido (WhatsApp Web só traz histórico recente), anote em "lacunas" da obra em metasSemanais.
 - Obras fora do acompanhamento: campo metasSemanais.encerradas (hoje {"Mo465":"Pausada","Mo565D":"Finalizada"}): essas obras aparecem no painel com essa situação; não leia nem registre produtividade delas; mantenha o campo (o Marcos avisa quando mudar). O grupo "Mo602. Sólida remax" (azul) é o da Remax (a pasta da Remax é Mo602; antes constava como Mo565, corrigido pelo Felipe em 17/11/2026).
-- Mo565C trabalha em semanas de QUINTA a QUARTA (S3 = 05/11 a 11/11): entra na leitura diária de produtividade e em metasSemanais com ini/fim próprios e semLeitura:false depois que o grupo for lido (o PDF dela é Mo565C_METAS_SEMANAIS_S2-S3.pdf no Drive).
+- Mo602 (Remax; antes Mo565C) trabalha em semanas de QUINTA a QUARTA (S3 = 05/11 a 11/11): entra na leitura diária de produtividade e em metasSemanais com ini/fim próprios e semLeitura:false depois que o grupo for lido (o PDF dela é Mo565C_METAS_SEMANAIS_S2-S3.pdf no Drive, nome antigo da pasta).
 - Cronograma está na pasta de cronogramas, programação semanal na pasta de programação semanal; metas diárias não existem em pasta (só a meta semanal): a meta semanal é a das pastas "METAS SEMANAIS" de cada obra.
 
 MÉTODO ATUAL DA META (05/11/2026, pedido do Marcos): só existem programação semanal e meta semanal, e as duas conversam.

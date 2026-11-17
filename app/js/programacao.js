@@ -117,7 +117,7 @@ function semanaDerivada(inicio, itensTexto) {
   return { inicio, dias, naSemana };
 }
 
-// Ordem das obras: primeiro as obras (Mo), depois as pós-obras (Po); do menor número para o maior (565C vem antes de 581)
+// Ordem das obras: primeiro as obras (Mo), depois as pós-obras (Po); do menor número para o maior (581 vem antes de 602)
 export const chaveObra = (cod) => { const c = String(cod || ''); return [/^p/i.test(c) ? 1 : 0, parseInt(c.replace(/\D/g, ''), 10) || 0, c.replace(/[0-9\s]/g, '').toLowerCase()]; };
 export const ordenarObras = (lista, qual = (x) => x.obra) => [...lista].sort((a, b) => { const x = chaveObra(qual(a)); const y = chaveObra(qual(b)); return x[0] - y[0] || x[1] - y[1] || x[2].localeCompare(y[2]); });
 

@@ -673,7 +673,7 @@ function desenhar() {
   if (!logado()) { mostrarLogin(); desenharPedido(); return; }
   esconderLogin();
   const CFG = estado.cfg;
-  // Cadastros manda nas listas: obra finalizada (ex.: Mo344, Mo565C, Mo565D) sai de todas as telas, mesmo que os agentes ou o Drive ainda tragam a obra
+  // Cadastros manda nas listas: obra finalizada (ex.: Mo344, Mo565D) sai de todas as telas, mesmo que os agentes ou o Drive ainda tragam a obra
   aplicarCadastroNasObras({ cfg: CFG, obrasCad: estado.obrasCad, projetos: estado.drive && estado.drive.projetos, estoque: estado.drive && estado.drive.estoque });
   // onde está cada funcionário: só o efetivo de HOJE (zera todo dia); a lista de nomes vem do RH
   // obra cadastrada em Acessos entra na hora nas telas que usam a lista de obras dos dados (efetivo, ferramentas, orçamentos…)

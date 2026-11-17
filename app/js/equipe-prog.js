@@ -1,6 +1,6 @@
 // RH › Programado × realizado: o que a planilha de distribuição (SL_FUNC_OBRAS) programou para cada funcionário em cada dia
 // da semana × onde ele de fato apareceu (efetivo lido dos grupos de WhatsApp das obras).
-// O texto da planilha é livre ("Mo358 -10 / Mo565C - 09", "PO 03/11", "FÉRIAS"...): o parser abaixo entende dia a dia e a
+// O texto da planilha é livre ("Mo358 -10 / Mo602 - 09", "PO 03/11", "FÉRIAS"...): o parser abaixo entende dia a dia e a
 // célula mostra o texto original ao passar o mouse, para dar para conferir.
 import { html } from './formato.js';
 import { somarDias, inicioDaSemana, hojeISO } from './datas.js';

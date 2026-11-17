@@ -1,5 +1,5 @@
 // O Cadastros manda nas listas de obras (regra do Felipe, 10/11/2026). O dados.json dos agentes e as pastas do Drive ainda trazem obras que
-// já acabaram (ex.: Mo344, Mo565C, Mo565D); aqui elas saem de TODAS as listas de obras de uma vez — Planejamento, Operação, Efetivo, RH,
+// já acabaram (ex.: Mo344, Mo565D); aqui elas saem de TODAS as listas de obras de uma vez — Planejamento, Operação, Efetivo, RH,
 // Projetos — em vez de cada tela filtrar por conta própria. Finalizada e "não fechado" saem; pausada continua (as telas mostram "Pausada").
 // É idempotente: guarda a lista original em _porObraTodas/_obrasTodas, então reabrir uma obra no Cadastros traz ela de volta na próxima tela.
 

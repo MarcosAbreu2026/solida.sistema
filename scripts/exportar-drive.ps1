@@ -580,7 +580,7 @@ if ($arqFerr) {
 
 # RH GERAL\01.01 - DISTRIBUIÇÃO FUNCIONARIOS OBRA\SL_FUNC_OBRAS_Rnn.xlsx, abas "EQUIPE <MÊS>": uma linha por funcionário; as colunas depois do
 # contato são SEMANAS (a data da segunda-feira fica na linha 1, em colunas quase todas ocultas) e a célula é o que foi programado para a
-# pessoa naquela semana, em texto livre ("Mo358 -10 / Mo565C - 09", "MO581", "FÉRIAS", "PO"...). O texto é gravado como está: quem entende
+# pessoa naquela semana, em texto livre ("Mo358 -10 / Mo602 - 09", "MO581", "FÉRIAS", "PO"...). O texto é gravado como está: quem entende
 # o texto (dia a dia) é o sistema (app/js/equipe-prog.js), para dar para conferir. NÃO leva telefone nem dados pessoais: só nome, função e tipo.
 $equipeProg = $null
 $pastaDist = Join-Path $Raiz 'RH GERAL\01.01 - DISTRIBUIÇÃO FUNCIONARIOS OBRA'

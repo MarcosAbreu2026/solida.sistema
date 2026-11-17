@@ -52,7 +52,7 @@ Os horários do WhatsApp são escalonados (nunca dois agentes ao mesmo tempo). M
    sem metas nem pendências; finalizada some. Sem esse arquivo, valem `metasSemanais.encerradas` em
    `dados\json\produtividade.json` e as obras de `planejamento.porObra` (hoje: Mo465 pausada, Mo565D finalizada;
    Mo557, Mo415 e Mo491 não estão em execução).
-   Obras sempre em ordem numérica (menor para maior; 565C antes de 581), primeiro Mo e depois Po.
+   Obras sempre em ordem numérica (menor para maior; 581 antes de 602), primeiro Mo e depois Po.
 6. **Alertas**: um fato por alerta, com obra, data e o responsável ESPECÍFICO daquela obra (nunca um responsável
    geral para todas). Sem alertas sobre solicitações BeeVale/Bivale do Mais Controle (são documentadas lá e
    resolvidas pelo financeiro). Não repetir o mesmo fato em outra área.

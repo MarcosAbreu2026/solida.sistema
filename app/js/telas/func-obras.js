@@ -1,6 +1,6 @@
 // Planejamento › Funcionários por obra: quem está em cada obra nas próximas 4 semanas, a partir da distribuição de funcionários
 // (RH GERAL > 01.01 - DISTRIBUIÇÃO FUNCIONARIOS OBRA > SL_FUNC_OBRAS, lida para dados/json/equipe-programada.json).
-// O texto da planilha é livre ("Mo358 -10 / Mo565C - 09", "PO", "FÉRIAS"); a leitura dia a dia é a mesma do RH (equipe-prog.js › lerProgramacao).
+// O texto da planilha é livre ("Mo358 -10 / Mo602 - 09", "PO", "FÉRIAS"); a leitura dia a dia é a mesma do RH (equipe-prog.js › lerProgramacao).
 // Dois quadros: por obra (quantos de cada função e quem) e por funcionário (onde cada um está), mais quem está livre.
 import { html } from '../formato.js';
 import * as pd from './painel-dep.js';
