@@ -2477,7 +2477,7 @@ document.addEventListener('click', async (e) => {
   const pronto = reunioes.cancelar(id, escopo);
   acompanharReuniao(pronto, b, 'Reunião cancelada ✓', 'Não foi possível cancelar');
 });
-// PRÉVIA da Reunião (só para o administrador): alterna Tarefa/Reunião na janela de Nova tarefa e adiciona convidados por e-mail. Ainda não grava nada.
+// Reunião: alterna Tarefa/Reunião na janela de Nova tarefa e adiciona convidados por e-mail.
 document.addEventListener('click', (e) => {
   const modo = e.target.closest && e.target.closest('[data-tf-modo]');
   if (modo) {

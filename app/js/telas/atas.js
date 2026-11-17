@@ -632,8 +632,8 @@ function prazoDaColuna(id, hoje) {
 // formulário de pendência avulsa (sem ata): janela com rótulos e grade organizada
 // Nova tarefa: o MESMO cartão da janela da tarefa (formulário à esquerda, anotações à direita), com os obrigatórios marcados em vermelho e o botão "Criar tarefa".
 // Os nomes dos campos (p_*, av_obra, av_setor) são os de sempre: quem grava é o mesmo código das pendências avulsas.
-// PRÉVIA (16/11/2026): "Reunião" na criação de tarefa, só para o administrador (conta "(admin)" na nuvem; no teste local sempre). Ainda não grava nada.
-export const reuniaoLiberada = () => !NA_NUVEM || /\(admin\)|^felipe paiva/i.test((perfilAtual() && perfilAtual().nome) || '');
+// Reunião na criação de tarefa: liberada para todos (17/11/2026). Antes era só do administrador e do Felipe Paiva.
+export const reuniaoLiberada = () => true;
 const somaHora = (hhmm, min) => { const [h, m] = String(hhmm || '08:30').split(':').map(Number); const t = (h * 60 + (m || 0) + min) % (24 * 60); return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`; };
 function painelReuniao(prazo, hora, obras = [], setorPadrao = '') {
   const ini = hora || '08:30'; const pessoas = pessoasSelecionaveis();
@@ -658,7 +658,7 @@ export function formAvulsa(obras, prazo, setorPadrao = '', preset = {}) {
   return html`<div class="tf tf-nova"><div class="tf-corpo">
     <form class="at-nova-pend at-avulsa tf-esq" id="pend-form" data-avulsa="1" data-os="${preset.os || ''}" data-os-fase="${preset.osFase || ''}" autocomplete="off">
       <div class="tf-cab"><h3>${preset.os ? 'Nova pendência da OS' : 'Nova tarefa'}</h3>${preset.os ? html`<span class="at-chip">${preset.os}</span>` : ''}<span class="pequeno">O que tem a borda vermelha precisa ser preenchido.</span></div>
-      ${reuniaoLiberada() && !preset.os ? html`<div class="tf-modo" role="tablist"><button type="button" class="on" role="tab" data-tf-modo="tarefa">Tarefa</button><button type="button" role="tab" data-tf-modo="reuniao">Reunião <small>prévia</small></button></div>` : ''}
+      ${reuniaoLiberada() && !preset.os ? html`<div class="tf-modo" role="tablist"><button type="button" class="on" role="tab" data-tf-modo="tarefa">Tarefa</button><button type="button" role="tab" data-tf-modo="reuniao">Reunião</button></div>` : ''}
       <div class="tf-grade pf-linha av-linha" data-tipo="solida" data-kind="pendencia">
         <div class="av-obra-linha"><label>Obra<select name="av_obra" class="tf-req" required><option value="">— escolher —</option><option value="__nenhuma__" ${preset.obra ? '' : ''}>Nenhuma obra (tarefa geral)</option>${gruposDeObras(listaObras, preset.obra || '', { criar: true })}</select></label>
         ${preset.os ? '' : html`<label class="av-os tf-os" hidden>OS em aberto deste PO<select name="av_os"><option value="">— escolher a OS —</option></select></label>`}</div>
