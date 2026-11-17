@@ -1284,3 +1284,9 @@ body.nav-recolhido .pd, body.nav-recolhido .osq, body.nav-recolhido .pc { max-wi
 .at-quadro .rn-card { padding: 4px 8px !important; margin-bottom: 4px; gap: 0; }
 .rn-card .rn-card-h { font-size: 11px; line-height: 1.2; }
 .rn-card .rn-card-t { font-size: 12px; line-height: 1.25; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Reunião na grade da Agenda: cartão violeta no horário certo */
+.ag-rgrade { position: absolute; box-sizing: border-box; cursor: pointer; z-index: 2; overflow: hidden; background: var(--rn-fundo); border: 1px solid var(--rn-borda); border-left: 4px solid var(--rn-cor); border-radius: 6px; padding: 3px 6px; font-size: 12px; color: #2E2250; line-height: 1.25; }
+.ag-rgrade:hover { background: #E8E0F8; } .ag-rgrade > b { color: var(--rn-cor); font-size: 11.5px; display: block; } .ag-rgrade .fq-nome { font-weight: 700; word-break: break-word; } .ag-rgrade .fn-meta { color: #5E4E8C; font-size: 11px; }
+.ag-rgrade.fq-estreito { font-size: 11px; padding: 2px 4px; }
+.ag-rgrade > b { white-space: nowrap; font-size: 11px; } .ag-rgrade .fq-nome { word-break: normal; overflow-wrap: break-word; font-size: 11.5px; line-height: 1.2; }

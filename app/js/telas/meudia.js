@@ -411,7 +411,9 @@ function agendaDeTarefas(ref, { pendencias = [], eu, modo = 'semana', diaRef = n
     <button type="button" class="botao" data-semana-md="${somarDias(ini, 7)}">Próxima semana →</button>
   </div>`;
   // sem horário = faixa "dia todo" no alto de cada dia (como no Google Agenda); com horário = cartão na grade, no horário e pela duração
-  const colunas = dias.map((c) => { const todas = entradas.filter((e) => e.dia === c); return { c, l: lados(todas.filter((e) => !e.semHora)), livres: todas.filter((e) => e.semHora), fe: todas.filter((e) => e.p.status === 'feita').length, total: todas.length }; }).filter(({ total }, i) => modoDia || i < 5 || total);
+  const minDe = (hhmm) => { const [h, m] = String(hhmm || '').split(':').map(Number); return Number.isFinite(h) ? h * 60 + (m || 0) : null; };
+  const reunEntradas = (c) => reunioesDoDia(c).map((r) => { const a = minDe(r.ini); const b = minDe(r.fim); const dur = limitar((b != null && a != null ? b - a : 60), GRADE.passo, GRADE.faixas * GRADE.passo); const span = Math.round(dur / GRADE.passo); const faixa = limitar(Math.round(((a ?? GRADE.ini) - GRADE.ini) / GRADE.passo), 0, GRADE.faixas - span); return { reuniao: r, dia: c, faixa, span, dur: span * GRADE.passo, ini: GRADE.ini + faixa * GRADE.passo, semHora: false, p: { id: `r${r.id}`, status: 'aberta' } }; });
+  const colunas = dias.map((c) => { const todas = entradas.filter((e) => e.dia === c); return { c, l: lados([...todas.filter((e) => !e.semHora), ...reunEntradas(c)]), livres: todas.filter((e) => e.semHora), fe: todas.filter((e) => e.p.status === 'feita').length, total: todas.length }; }).filter(({ total }, i) => modoDia || i < 5 || total);
   const feitas = entradas.filter((e) => e.p.status === 'feita').length;
   const altTotal = GRADE.faixas * GRADE.alt;
   const rotuloSlot = (s) => (s % 60 ? `${Math.floor(s / 60)}h30` : `${s / 60}h`);
@@ -420,16 +422,18 @@ function agendaDeTarefas(ref, { pendencias = [], eu, modo = 'semana', diaRef = n
   const cabecas = colunas.map(({ c, total, fe }, i) => html`<div class="fq-cab ${c === hoje ? 'hoje' : ''}"><b>${modoDia ? nomeDia(c) : DIA_CURTO[i]} ${c.slice(8, 10)}/${c.slice(5, 7)}</b><small>${resumoDia(total, fe, c)}</small></div>`);
   const cartaoLivre = (e) => { const p = e.p; const feita = p.status === 'feita'; const cls = feita ? 'ok' : p.prazo < hoje ? 'venc' : p.prazo === hoje ? 'hoje' : 'futura'; const [ass, resto] = assuntoDe(p.descricao);
     return html`<div class="ag-lcard ag-t-${cls}" data-tarefa="${p.id}" data-tcard="${p.id}" data-livre="1" title="${ass ? `${ass}: ` : ''}${resto}${p.obra ? ` · ${p.obra}` : ''} — sem horário (dia todo). Arraste para um horário do dia; clique para abrir.">${p.obra ? html`<b>${p.obra}</b> ` : ''}${ass ? `${ass} · ` : ''}${resto}${acoesCartao(p)}</div>`; };
-  const cartaoReun = (r) => html`<div class="ag-rcard" data-reun-abrir="${r.id}" title="Reunião · ${r.nome} · ${r.ini}–${r.fim}${r.local ? ` · ${r.local}` : ''} — clique para abrir"><b>🎥 ${r.ini}</b> ${r.nome}</div>`;
-  const livres = colunas.map(({ c, livres: l }) => html`<div class="ag-livres ${c === hoje ? 'hoje' : ''}" data-livres="${c}">${reunioesDoDia(c).map(cartaoReun)}${l.map(cartaoLivre)}</div>`);
-  const trilhos = colunas.map(({ c, l }) => html`<div class="fq-trilho ${c === hoje ? 'hoje' : ''}" data-trilho="${c}" style="height:${altTotal}px">${l.map((e) => cartaoTarefa(e, hoje, modoDia))}</div>`);
+  const livres = colunas.map(({ c, livres: l }) => html`<div class="ag-livres ${c === hoje ? 'hoje' : ''}" data-livres="${c}">${l.map(cartaoLivre)}</div>`);
+  // reunião: cartão violeta no horário certo da grade (não arrasta; clicar abre a reunião)
+  const cartaoReunGrade = (e) => { const r = e.reuniao; const estilo = `top:${e.faixa * GRADE.alt}px;height:${e.span * GRADE.alt - 2}px;left:calc(${e.lane} * 100% / ${e.n} + 2px);width:calc(100% / ${e.n} - 4px)`;
+    return html`<div class="ag-rgrade ${e.n > 1 ? 'fq-estreito' : ''}" style="${estilo}" data-reun-abrir="${r.id}" title="Reunião · ${r.nome} · ${r.ini}–${r.fim}${r.local ? ` · ${r.local}` : ''} — clique para abrir"><b>🎥 ${r.ini}–${r.fim}</b><div class="fq-nome">${html.seguro(String(r.nome).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" })[c]).replace(/_/g, "_<wbr>"))}</div>${e.span >= 2 && r.local ? html`<div class="fn-meta">📍 ${r.local}</div>` : ''}</div>`; };
+  const trilhos = colunas.map(({ c, l }) => html`<div class="fq-trilho ${c === hoje ? 'hoje' : ''}" data-trilho="${c}" style="height:${altTotal}px">${l.map((e) => (e.reuniao ? cartaoReunGrade(e) : cartaoTarefa(e, hoje, modoDia)))}</div>`);
   const colsCss = `52px repeat(${colunas.length}, minmax(0, 1fr))`;   // todos os dias com a mesma largura: o que se achata são os cartões que caem no mesmo horário, não a coluna
   const vistaQuadro = html`<div class="fq-quadro" style="grid-template-columns:${colsCss}"><div class="fq-canto"></div>${cabecas}<div class="ag-livre-rot">dia todo</div>${livres}<div class="fq-horas" style="height:${altTotal}px">${horas}</div>${trilhos}</div>`;
   const caixa = (e) => { const [ass, resto] = assuntoDe(e.p.descricao); const cls = e.p.status === 'feita' ? 'ok' : e.p.prazo < hoje ? 'venc' : e.p.prazo === hoje ? 'hoje' : 'futura';
     return html`<div class="ag-tcaixa ag-t-${cls}" data-tarefa="${e.p.id}"><b>${e.p.obra || ''}</b> ${ass ? `${ass} · ` : ''}${resto}<small>${e.semHora ? 'sem horário (dia todo)' : hhmm(e.ini)}</small>${acoesCartao(e.p)}</div>`; };
   const vistaLista = html`<div class="fl-lista" style="--nd:${colunas.length}">${colunas.map(({ c, l, livres: lv, fe, total }, i) => html`<div class="fl-col ${c === hoje ? 'hoje' : ''}">
       <div class="fq-cab ${c === hoje ? 'hoje' : ''}"><b>${modoDia ? nomeDia(c) : DIA_CURTO[i]} ${c.slice(8, 10)}/${c.slice(5, 7)}</b><small>${resumoDia(total, fe, c)}</small></div>
-      ${reunioesDoDia(c).map((r) => html`<div class="ag-rcaixa" data-reun-abrir="${r.id}"><b>🎥 ${r.ini}–${r.fim}</b> ${r.nome}</div>`)}${lv.map(caixa)}${[...l].sort((a, b) => a.faixa - b.faixa).map(caixa)}</div>`)}</div>`;
+      ${lv.map(caixa)}${[...l].sort((a, b) => a.faixa - b.faixa).map((e) => (e.reuniao ? html`<div class="ag-rcaixa" data-reun-abrir="${e.reuniao.id}"><b>🎥 ${e.reuniao.ini}–${e.reuniao.fim}</b> ${e.reuniao.nome}</div>` : caixa(e)))}</div>`)}</div>`;
   return html`${nav}
     <section class="fn-painel ${modoDia ? 'ag-dia' : ''}">
       <header class="fn-cab"><h3>Agenda${modoDia ? ' do dia' : ''}</h3><span class="fn-cab-dir"><span class="pequeno">${entradas.length ? `${feitas} de ${entradas.length} tarefas concluídas ${modoDia ? 'neste dia' : 'nesta semana'}` : `nenhuma tarefa com prazo ${modoDia ? 'neste dia' : 'nesta semana'}`}</span></span></header>
