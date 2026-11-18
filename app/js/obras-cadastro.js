@@ -11,7 +11,12 @@ export const obraFora = (obrasCad, cod) => {
 export function aplicarCadastroNasObras({ cfg, obrasCad, projetos, estoque }) {
   if (!Array.isArray(obrasCad) || !obrasCad.length) return;   // sem cadastro (modo local): fica o que os agentes mandaram
   const fora = new Set(obrasCad.filter((c) => ['finalizada', 'nao_fechado'].includes(c.situacao)).map((c) => String(c.codigo).toUpperCase()));
-  const ok = (cod) => !fora.has(String(cod || '').toUpperCase());
+  // variante que o cadastro não conhece (Mo565C, Mo565P…) acompanha a família: se a obra-mãe (Mo565) ou outra variante está finalizada e a própria variante não está cadastrada, ela sai também
+  const familia = (cod) => { const m = String(cod || '').trim().match(/^(mo|po)\s*0*(\d+)/i); return m ? m[1].toUpperCase() + m[2] : ''; };
+  const cadastradas = new Set(obrasCad.map((c) => String(c.codigo).toUpperCase()));
+  const familiasFora = new Set(obrasCad.filter((c) => ['finalizada', 'nao_fechado'].includes(c.situacao)).map((c) => familia(c.codigo)).filter(Boolean));
+  const ativasNaFamilia = new Set(obrasCad.filter((c) => !['finalizada', 'nao_fechado'].includes(c.situacao)).map((c) => familia(c.codigo)).filter(Boolean));
+  const ok = (cod) => { const u = String(cod || '').toUpperCase(); if (fora.has(u)) return false; const fam = familia(cod); return !(fam && !cadastradas.has(u) && familiasFora.has(fam) && !ativasNaFamilia.has(fam)); };
   if (cfg) {
     for (const a of (cfg.areas || [])) {
       if (!Array.isArray(a.porObra) && !Array.isArray(a._porObraTodas)) continue;
