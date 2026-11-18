@@ -527,7 +527,7 @@ function filtrar(params, setorFixo = '') {
 }
 
 // só aparecem nos filtros as pessoas e os terceirizados que realmente têm pendência (senão a lista fica enorme)
-// quem dá para escolher em "Responsável": o gestor escolhe quem responde a ele (estagiários e equipe do mesmo setor/obra, por gestores) e quem ele observa;
+// quem dá para escolher em "Ver tarefas de": o gestor escolhe quem responde a ele (estagiários e equipe do mesmo setor/obra, por gestores) e quem ele observa;
 // a diretoria e o administrativo escolhem qualquer um. Quem é de cargo abaixo não enxerga o de cima, a não ser como observador.
 const pessoasParaVer = () => {
   const f = funcaoAtual(); const eu = souEu();
@@ -939,7 +939,7 @@ function vistaDia(params, obras, setorFixo) {
       <div class="lt-filtros">
         <div class="lt-grp"><span>Urgência</span>${pilula('urg', '', 'Todas', urg)}${pilula('urg', 'alta', 'Alta', urg)}${pilula('urg', 'media', 'Média', urg)}${pilula('urg', 'baixa', 'Baixa', urg)}${pilula('urg', 'sem', 'Sem', urg)}</div>
         <div class="lt-grp lt-grp-sel">
-          ${seletorResponsavel(pessoaSel)}
+          <label>Ver tarefas de<select data-atas-filtro="pessoa">${opt('eu', 'Só as minhas', pessoaSel)}${opt('todos', 'Todos (os que eu vejo)', pessoaSel)}${opt('tipo:solida', 'Equipe da Sólida', pessoaSel)}${opt('tipo:terceirizado', 'Terceirizados (todos)', pessoaSel)}${opt('tipo:cliente', 'Clientes', pessoaSel)}${opt('tipo:arquitetura', 'Arquitetura', pessoaSel)}${gente.length ? html`<optgroup label="Pessoas">${gente.map((x) => opt(x.id, x.nome, pessoaSel))}</optgroup>` : ''}</select></label>
           ${setorFixo ? '' : html`<label>Setor<select data-atas-filtro="setor"><option value="">Todos</option>${SETORES_ATA.map((s) => opt(s, s, params.get('setor') || ''))}</select></label>`}
           ${selObraTarefas(obras, params)}
           <label>Procurar<input type="search" data-atas-filtro="q" value="${params.get('q') || ''}" placeholder="texto…"></label>
