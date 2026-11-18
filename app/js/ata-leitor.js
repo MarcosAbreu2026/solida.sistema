@@ -363,7 +363,7 @@ export function analisarAta(texto, { pessoas = [], obras = [], setores = [], hoj
     });
     if (pendV.length) {
       const tit = naoVazias.find((l) => /^ATA DE VISTORIA/i.test(l.trim())) || 'Ata de vistoria';
-      return { titulo: tit.trim(), data, obra, obraForaDaLista: !!obra && !obras.some((o) => o.toLowerCase() === obra.toLowerCase()), setor, participantes: gp.map((p) => p.texto), resumo: resumoVistoria(texto), pendencias: pendV, informativosLista: [], lidoDaTabela: true, informativos: 0, local: obra ? `Obra ${obra}` : '', horario: '', tipoReuniao: 'REUNIÃO' };
+      return { titulo: tit.trim(), data, obra, obraForaDaLista: !!obra && !obras.some((o) => o.toLowerCase() === obra.toLowerCase()), setor, participantes: gp.map((p) => p.texto), resumo: '', pendencias: pendV, informativosLista: [], lidoDaTabela: true, informativos: 0, local: obra ? `Obra ${obra}` : '', horario: '', tipoReuniao: 'REUNIÃO' };
     }
   }
   // 1) tabela do padrão da Sólida
