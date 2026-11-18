@@ -500,7 +500,7 @@ function filtrar(params, setorFixo = '') {
   const modoObra = params.get('mostrar') === 'obra';
   const ativas = modoObra ? ativasDaObra() : null;
   return dados.pendencias.filter((p) => {
-    if (p.status === 'cancelada' || (modoObra ? !(p.da_obra && p.na_lista !== false) : !naLista(p)) || !doEscopo(p, setorFixo)) return false;
+    if (p.status === 'cancelada' || (modoObra ? !(p.obra && p.na_lista !== false) : !naLista(p)) || !doEscopo(p, setorFixo)) return false;
     if (ativas && ativas.size && !ativas.has(codigoDaObra(p.obra))) return false;
     if (pessoa.startsWith('cat:')) { if (p.responsavel_categoria !== pessoa.slice(4)) return false; }
     else if (pessoa.startsWith('tipo:')) { if ((p.responsavel_tipo || 'solida') !== pessoa.slice(5)) return false; }
@@ -582,7 +582,7 @@ function seletorResponsavel(atual) {
     ${[['eu', 'Só as minhas'], ['tipo:terceirizado', 'Terceirizados (todos)'], ['tipo:cliente', 'Clientes'], ['tipo:arquitetura', 'Arquitetura']].map(op)}
     <optgroup label="Equipe da Sólida">${op(['tipo:solida', 'Equipe da Sólida (todos)'])}${pessoas.map((x) => op([x.id, x.nome]))}</optgroup></select></label>`;
 }
-const seletorMostrar = (params) => html`<label>Mostrar<select data-atas-filtro="mostrar"><option value="" ${params.get('mostrar') === 'obra' ? '' : html.seguro('selected')}>Tarefas das pessoas</option><option value="obra" ${params.get('mostrar') === 'obra' ? html.seguro('selected') : ''}>Pendências da obra (por cômodo)</option></select></label>`;
+const seletorMostrar = (params) => html`<label>Mostrar<select data-atas-filtro="mostrar"><option value="" ${params.get('mostrar') === 'obra' ? '' : html.seguro('selected')}>Tarefas das pessoas</option><option value="obra" ${params.get('mostrar') === 'obra' ? html.seguro('selected') : ''}>Pendências por obra</option></select></label>`;
 // obras em curso (as finalizadas no cadastro ficam de fora): a lista vem de obrasDeAtas() e é guardada aqui a cada desenho
 let obrasAtivasDaTela = [];
 const ativasDaObra = () => new Set((obrasAtivasDaTela || []).map((o) => codigoDaObra(typeof o === 'string' ? o : o && (o.obra || o.codigo))));
@@ -968,7 +968,7 @@ export function renderPendencias({ params, obras = [], setorFixo = '', base = '#
   if (params.get('mostrar') === 'obra' && !params.get('pessoa')) { params = new URLSearchParams(params); params.set('pessoa', 'todos'); }
   if (lote) return painelLote(obras);   // lista de pendências importada: conferir antes de criar as tarefas
   const hoje = hojeISO();
-  const doSetor = dados.pendencias.filter((p) => (params.get('mostrar') === 'obra' ? (p.da_obra && p.na_lista !== false && (!ativasDaObra().size || ativasDaObra().has(codigoDaObra(p.obra)))) : naLista(p)) && doEscopo(p, setorFixo));
+  const doSetor = dados.pendencias.filter((p) => (params.get('mostrar') === 'obra' ? (p.obra && p.na_lista !== false && (!ativasDaObra().size || ativasDaObra().has(codigoDaObra(p.obra)))) : naLista(p)) && doEscopo(p, setorFixo));
   const abertas = doSetor.filter((p) => p.status === 'aberta');
   const atrasadas = abertas.filter((p) => p.prazo && p.prazo < hoje).length;
   const eu = souEu(); const minhas = abertas.filter((p) => p.responsavel && p.responsavel === eu).length;
@@ -1156,7 +1156,7 @@ export function detalheTarefa(id, { msg = '', obras = [] } = {}) {
         <div class="tf-ext" ${ext ? '' : html.seguro('hidden')}><label>Quem é<select name="t_tipo"><option value="terceirizado" ${tipo === 'terceirizado' ? html.seguro('selected') : ''}>Terceirizado</option><option value="cliente" ${tipo === 'cliente' ? html.seguro('selected') : ''}>Cliente</option><option value="arquitetura" ${tipo === 'arquitetura' ? html.seguro('selected') : ''}>Arquitetura</option></select></label>
           <label>Nome<input name="t_nome" value="${ext ? (p.responsavel_nome || '') : ''}" list="dl-terceiros" placeholder="empresa ou pessoa"></label></div>
         <label>Obra<select name="t_obra"><option value="">Nenhuma</option>${gruposDeObras(obras, p.obra || '', { criar: true })}</select></label>
-        <label class="tf-daobra" title="Pendência da obra: vem de ata/lista por cômodo e não entra na lista de tarefas das pessoas"><input type="checkbox" name="t_daobra" ${p.da_obra ? html.seguro('checked') : ''}> <span>Pendência da obra (por cômodo): não é tarefa de pessoa</span></label>
+        <label class="tf-daobra" title="Pendência da obra: vem de ata de obra (ou assunto que é cômodo) e não entra na lista de tarefas das pessoas"><input type="checkbox" name="t_daobra" ${p.da_obra ? html.seguro('checked') : ''}> <span>Pendência da obra (por cômodo): não é tarefa de pessoa</span></label>
         <label>Prazo<input type="date" name="t_prazo" value="${p.prazo || ''}"></label>
         ${p.serie ? html`<div class="tf-recor tf-recor-on"><label class="tf-recor-chk"><input type="checkbox" checked disabled> <span>Tarefa recorrente</span></label><small>${p.frequencia === 'mensal' ? 'todo mês' : 'toda semana'}</small></div>` : html`<div class="tf-recor"><label class="tf-recor-chk"><input type="checkbox" name="t_recor"> <span>Tarefa recorrente</span></label><select name="t_freq" title="Como se repete"><option value="semanal">Toda semana</option><option value="mensal">Todo mês</option></select></div>`}
       </div>
