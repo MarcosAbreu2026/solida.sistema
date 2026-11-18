@@ -211,7 +211,7 @@ export async function carregar() {
   try {
     if (NA_NUVEM) dados = { ...(await listarAtasPendencias()), erro: '' };
     else { const l = lerLocal(); dados = { atas: [...l.atas].sort((a, b) => String(b.data).localeCompare(String(a.data)) || b.id - a.id), pendencias: l.pendencias, pessoas: pessoasLocais(), erro: '' }; }
-    for (const p of dados.pendencias) if (p.da_obra == null) p.da_obra = !p.os && pendenciaDaObra(p.descricao);   // modo de teste local: calcula na hora
+    for (const p of dados.pendencias) if (p.da_obra == null) p.da_obra = !p.os && ((!!p.ata_id && !!p.obra) || pendenciaDaObra(p.descricao));   // modo de teste local: calcula na hora
     const todasPend = dados.pendencias;
     dados = { ...dados, pendencias: todasPend.filter((p) => visivelParaMim(p, false, [])), atas: dados.atas.filter((a) => visivelParaMim(a, true, todasPend)) };
   } catch (e) { dados = { ...dados, erro: String(e.message || e) }; }
@@ -340,7 +340,7 @@ export async function criarAta({ titulo, data, tipo, obra, setor, participantes,
   return nova;
 }
 export async function criarPendencia({ daObra, ata_id, descricao, responsavel, externoNome, externoTipo, externoCategoria, prazo, obra, setor, os, osFase, urgencia, funcaoTarefa, observadores, hora, duracao, recorrente = false, frequencia = 'semanal' }) {
-  const p = { da_obra: daObra !== undefined ? !!daObra : (!os && pendenciaDaObra(descricao)), ata_id: ata_id || null, descricao, responsavel: responsavel || null, responsavel_nome: responsavel ? nomeDe(responsavel) : (externoNome || externoCategoria || (externoTipo === 'cliente' ? 'Cliente' : externoTipo === 'arquitetura' ? 'Arquitetura' : null)), responsavel_tipo: responsavel ? 'solida' : (externoTipo || 'terceirizado'), responsavel_categoria: responsavel ? null : (externoCategoria || null), prazo: prazo || null, status: 'aberta', obra: obra || null, setor: setor || null, os: os || null, os_fase: osFase || null, urgencia: urgencia || null, funcao_tarefa: funcaoTarefa || null, observadores: observadores || [], hora: hora || null, duracao: duracao ? Number(duracao) : 60 };
+  const p = { da_obra: daObra !== undefined ? !!daObra : (!os && ((!!ata_id && !!obra) || pendenciaDaObra(descricao))), ata_id: ata_id || null, descricao, responsavel: responsavel || null, responsavel_nome: responsavel ? nomeDe(responsavel) : (externoNome || externoCategoria || (externoTipo === 'cliente' ? 'Cliente' : externoTipo === 'arquitetura' ? 'Arquitetura' : null)), responsavel_tipo: responsavel ? 'solida' : (externoTipo || 'terceirizado'), responsavel_categoria: responsavel ? null : (externoCategoria || null), prazo: prazo || null, status: 'aberta', obra: obra || null, setor: setor || null, os: os || null, os_fase: osFase || null, urgencia: urgencia || null, funcao_tarefa: funcaoTarefa || null, observadores: observadores || [], hora: hora || null, duracao: duracao ? Number(duracao) : 60 };
   if (ata_id) { const a = dados.atas.find((x) => String(x.id) === String(ata_id)); const ns = [...dados.pendencias.filter((x) => String(x.ata_id) === String(ata_id)).map((x) => Number(x.item) || 0), ...((a && a.informativos) || []).map((x) => (x && x.n) || 0)]; p.item = Math.max(0, ...ns) + 1; }
   // recorrente: repete toda semana, no mesmo dia da semana. Cada ocorrência é uma tarefa; as primeiras ${SEMANAS_INICIAIS} semanas já nascem e o resto é criado aos poucos (renovarRecorrentes)
   if (recorrente && p.prazo && !ata_id) {

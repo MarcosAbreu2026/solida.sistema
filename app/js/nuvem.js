@@ -148,7 +148,7 @@ export async function criarAtaNuvem(ata, pendencias) {
   const { data, error } = await sb.from('atas').insert({ ...ata, criado_por: perfil.id, criado_por_nome: perfil.nome }).select().single();
   if (error) throw new Error(error.message);
   if (pendencias.length) {
-    const linhas = pendencias.map((x) => ({ ...x, da_obra: daObraDe(x), ata_id: data.id, criado_por: perfil.id, obra: ata.obra || null, setor: ata.setor || null }));
+    const linhas = pendencias.map((x) => ({ ...x, da_obra: !!ata.obra || daObraDe(x), ata_id: data.id, criado_por: perfil.id, obra: ata.obra || null, setor: ata.setor || null }));
     const { error: e2 } = await sb.from('pendencias').insert(linhas);
     if (e2) throw new Error(e2.message);
   }
