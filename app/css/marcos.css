@@ -1346,3 +1346,9 @@ select.pc-sit-sel { height: 22px !important; font-size: 11px; min-width: 100px; 
 .tf-comodo label { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; margin-left: 6px; } .tf-comodo input[type="checkbox"] { width: 15px !important; height: 15px !important; min-width: 15px !important; padding: 0 !important; margin: 0 !important; }
 .tf-daobra { display: flex !important; flex-direction: row !important; align-items: center; gap: 8px; grid-column: 1 / -1; font-size: 12.5px; } .tf-daobra input { width: 16px !important; height: 16px !important; min-width: 16px !important; padding: 0 !important; margin: 0 !important; }
 .po-comodo { padding: 2px 0 6px; } .po-comodo h4 { margin: 8px 12px 2px; font-size: 12.5px; color: #1F3A56; text-transform: uppercase; letter-spacing: .04em; } .po-comodo h4 small { color: #8A94A0; font-weight: 600; }
+
+/* Clique no nome: só o texto (a área exata que ele ocupa) edita o nome; todo o resto da linha/cartão abre a tarefa */
+.lt-corpo > .lt-tit { align-self: flex-start; max-width: 100%; }
+.at-card .at-tit { width: fit-content; max-width: 100%; }
+.lt-corpo > .lt-tit:has(.tit-edit) { align-self: stretch; }
+.at-card .at-tit:has(.tit-edit) { width: 100%; }
