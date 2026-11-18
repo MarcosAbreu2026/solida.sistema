@@ -18,11 +18,11 @@ Campos reconhecidos (com ou sem rótulo): **PO** (`PO420` ou `PO - Nome`), **cli
 - O que o sistema mesmo escreveu (começa com "🤖 Sistema Sólida:") nunca é lido como pedido.
 - Na primeira rodada, o histórico do grupo é só marcado como visto (não cria nem pergunta nada sobre mensagens antigas).
 
-## Como ligar (computador do escritório)
-1. `git pull` e reiniciar o `iniciar.bat`. O leitor acrescenta sozinho `"os_wpp": { "modo": "simulacao" }` na conversa do grupo em `dados/whatsapp-grupos.json` (ou cria a conversa "Pós Obra - Gestão").
-2. **Simulação** (padrão): não cria nem envia nada; escreve em `dados/whatsapp/os-wpp-log.json` o que FARIA. Deixe alguns dias, confira o log e as regras acima com mensagens reais do grupo.
-3. Para valer: trocar `"modo": "simulacao"` por `"modo": "ativo"` na conversa. Passa a criar as OS e a enviar as perguntas.
-4. Para desligar: voltar para `simulacao` (ou `ativo: false` na conversa).
+## Como liga (computador do escritório)
+Já vem **ativo** (decisão do Felipe, 18/11/2026): é só `git pull` e reiniciar o `iniciar.bat`. O leitor acrescenta sozinho `"os_wpp": { "modo": "ativo" }` na conversa do grupo em `dados/whatsapp-grupos.json` (ou cria a conversa "Pós Obra - Gestão").
+- Na **primeira rodada** o histórico do grupo só é marcado como visto: nada de OS ou pergunta sobre mensagens antigas. Vale a partir das mensagens novas.
+- Para **pausar**: trocar `"modo": "ativo"` por `"simulacao"` (só anota em `dados/whatsapp/os-wpp-log.json` o que faria) ou pôr `ativo: false` na conversa.
+- Tudo o que o sistema faz fica registrado em `dados/whatsapp/os-wpp-log.json`.
 
 ## Limites
 - O WhatsApp Web do leitor precisa estar logado (o mesmo da leitura); se cair, para e avisa.

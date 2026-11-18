@@ -130,13 +130,13 @@ if (process.argv.includes('--diag')) {   // diagnóstico: mostra como está a la
 }
 
 const cfg = lerJSON(cfgArq, { conversas: [] });
-// OS pelo WhatsApp (scripts/os-wpp.mjs): o grupo do Pós-obra ("Pós Obra - Gestão") passa a abrir OS no Quadro de OS. Entra SEMPRE em simulação (só anota o que faria);
-// para valer de verdade, trocar "modo" para "ativo" na conversa dentro de dados/whatsapp-grupos.json.
+// OS pelo WhatsApp (scripts/os-wpp.mjs): o grupo do Pós-obra ("Pós Obra - Gestão") passa a abrir OS no Quadro de OS. Já entra ATIVO (decisão do Felipe, 18/11/2026):
+// cria as OS e manda as perguntas no grupo. Para pausar, trocar "modo" por "simulacao" (só anota em dados/whatsapp/os-wpp-log.json o que faria) na conversa de dados/whatsapp-grupos.json.
 {
-  const ehGrupoPos = (c) => /p[oó]s\s*obra\s*-?\s*gest/i.test(String(c.nome || ''));
+  const ehGrupoPos = (c) => /p[oó]s[\s-]*obra\s*-?\s*gest/i.test(String(c.nome || ''));
   const existente = (cfg.conversas || []).find(ehGrupoPos);
-  if (existente) { if (!existente.os_wpp) { existente.os_wpp = { modo: 'simulacao' }; gravarJSON(cfgArq, cfg); } }
-  else { cfg.conversas = [...(cfg.conversas || []), { nome: 'Pós Obra - Gestão', tipo: 'os', ativo: true, os_wpp: { modo: 'simulacao' } }]; gravarJSON(cfgArq, cfg); }
+  if (existente) { if (!existente.os_wpp || (!existente.os_wpp.versao && existente.os_wpp.modo === 'simulacao')) { existente.os_wpp = { modo: 'ativo', versao: 1 }; gravarJSON(cfgArq, cfg); } }
+  else { cfg.conversas = [...(cfg.conversas || []), { nome: 'Pós Obra - Gestão', tipo: 'os', ativo: true, os_wpp: { modo: 'ativo', versao: 1 } }]; gravarJSON(cfgArq, cfg); }
 }
 const resultado = [];
 const novasFerramentas = [];   // mensagens do Anderson (ferramentas) a avaliar
