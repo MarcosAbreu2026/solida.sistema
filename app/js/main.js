@@ -47,6 +47,7 @@ import * as agendaPos from './agenda-pos.js';
 import * as svPos from './servicos-pos.js';
 import * as osq from './os-quadro.js';
 import * as reunioes from './reunioes.js';
+import * as poConcluir from './po-concluir.js';
 import * as configTela from './telas/configuracoes.js';
 import * as automacoesTela from './telas/automacoes.js';
 import * as obrasOrc from './telas/obras-orcamento.js';
@@ -2347,9 +2348,18 @@ document.addEventListener('change', (e) => {
   const po = e.target.closest && e.target.closest('[data-pc-po-sit]');
   if (po) {
     if (!nuvem.NA_NUVEM) { alert('A situação do PO é gravada no cadastro, que só funciona na versão online.'); desenhar(); return; }
-    const sel = po; sel.disabled = true;
-    nuvem.salvarObra({ codigo: sel.dataset.pcPoSit, situacao: sel.value })
-      .then(() => sincronizarCadastros({ forcar: true })).then(() => { avisoRapido('Situação do PO atualizada ✓'); desenhar(); })
+    const sel = po; const finalizando = sel.value === 'finalizada';
+    if (finalizando) {
+      // finalizar: as OS abertas viram Concluído e as tarefas abertas ficam concluídas; o PO sai da lista
+      const { os, tarefas } = poConcluir.doPO(sel.dataset.pcPoSit);
+      if (!confirm(`Finalizar o PO ${sel.dataset.pcPoSit}?
+
+${os.length} ${os.length === 1 ? 'OS aberta passa' : 'OS abertas passam'} para Concluído e ${tarefas.length} ${tarefas.length === 1 ? 'tarefa aberta fica concluída' : 'tarefas abertas ficam concluídas'}. O PO sai da lista (aparece em "Todas").`)) { desenhar(); return; }
+    }
+    sel.disabled = true; if (finalizando) avisoRapido('Finalizando o PO…');
+    (finalizando ? poConcluir.concluirTudo(sel.dataset.pcPoSit) : Promise.resolve())
+      .then(() => nuvem.salvarObra({ codigo: sel.dataset.pcPoSit, situacao: sel.value }))
+      .then(() => sincronizarCadastros({ forcar: true })).then(() => { avisoRapido(finalizando ? 'PO finalizado ✓ (OS e tarefas concluídas)' : 'Situação do PO atualizada ✓'); desenhar(); })
       .catch((err) => { alert(`Não foi possível mudar a situação (${err.message || err}).`); desenhar(); })
       .finally(() => { sel.disabled = false; });
   }
