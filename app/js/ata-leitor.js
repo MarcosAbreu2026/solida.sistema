@@ -354,16 +354,18 @@ export function analisarAta(texto, { pessoas = [], obras = [], setores = [], hoj
     const gm = String(texto).match(/Gestor\(a\)\s*:\s*([^\n]+?)(?:\s{2,}|\n|$)/i); const gestor = gm ? gm[1].trim() : '';
     const gp = gestor ? lerParticipantes(`${gestor} (Sólida)`) : [];
     const tab = tabelaVistoria(paginas);
+    // o resto da vistoria (vistoria por, referência, resultado por seção, itens conformes, observação) entra DENTRO da ata, como informativos
+    const infosV = resumoVistoria(texto).split('\n').map((l) => l.trim()).filter((l) => l && !/^Resultado da vistoria:?$/i.test(l)).map((l, i) => ({ kind: 'informativo', descricao: `${/^(Vistoria por|Refer[êe]ncia|Itens conformes|Observa[çc][ãa]o)/i.test(l) ? 'VISTORIA' : 'RESULTADO'}, ${l}`, item: i + 1, responsavel: '', externoNome: '', externoTipo: 'solida', externoCategoria: '' }));
     const pendV = tab.map((x, i) => {
       const r = resolverResponsavel(x.responsavel, [...parts, ...gp], pessoas);
       const prazoOk = /\d{1,2}\/\d{1,2}/.test(x.prazo) ? acharPrazo(x.prazo, hoje, data) : '';
       const tema = String(x.tema || '').trim().toLocaleUpperCase('pt-BR');
       const texto1 = x.pendencia.charAt(0).toUpperCase() + x.pendencia.slice(1);
-      return { kind: 'pendencia', descricao: tema ? `${tema}, ${texto1}` : texto1, responsavel: r.responsavel, responsavelAmbiguo: r.ambiguo, externoNome: r.externoNome, externoTipo: r.externoTipo, externoCategoria: r.externoCategoria, prazo: prazoOk, item: i + 1 };
+      return { kind: 'pendencia', descricao: tema ? `${tema}, ${texto1}` : texto1, responsavel: r.responsavel, responsavelAmbiguo: r.ambiguo, externoNome: r.externoNome, externoTipo: r.externoTipo, externoCategoria: r.externoCategoria, prazo: prazoOk, item: infosV.length + i + 1 };
     });
     if (pendV.length) {
       const tit = naoVazias.find((l) => /^ATA DE VISTORIA/i.test(l.trim())) || 'Ata de vistoria';
-      return { titulo: tit.trim(), data, obra, obraForaDaLista: !!obra && !obras.some((o) => o.toLowerCase() === obra.toLowerCase()), setor, participantes: gp.map((p) => p.texto), resumo: '', pendencias: pendV, informativosLista: [], lidoDaTabela: true, informativos: 0, local: obra ? `Obra ${obra}` : '', horario: '', tipoReuniao: 'REUNIÃO' };
+      return { titulo: tit.trim(), data, obra, obraForaDaLista: !!obra && !obras.some((o) => o.toLowerCase() === obra.toLowerCase()), setor, participantes: gp.map((p) => p.texto), resumo: '', pendencias: pendV, informativosLista: infosV, lidoDaTabela: true, informativos: 0, local: obra ? `Obra ${obra}` : '', horario: '', tipoReuniao: 'REUNIÃO' };
     }
   }
   // 1) tabela do padrão da Sólida
