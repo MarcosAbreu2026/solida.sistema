@@ -455,7 +455,7 @@ function coluna(p, hoje) {
 }
 const COLUNAS = [
   ['vencido', 'Vencido'], ['hoje', 'Vencimento hoje'], ['semana', 'Vencimento esta semana'], ['proxima', 'Vencimento na próxima semana'],
-  ['sem', 'Sem prazo'], ['duas', 'Vencimento em duas semanas ou mais'], ['concluido', 'Concluído'],
+  ['concluido', 'Concluído'],
 ];
 
 // padrão da Sólida: o assunto vem primeiro, em negrito, e depois da vírgula o que é ("ACM, Retirar da área gourmet")
