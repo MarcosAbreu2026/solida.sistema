@@ -1,8 +1,8 @@
-// Leitor do WhatsApp Web do computador do escritório (SOMENTE LEITURA, sem IA e sem API paga).
+// Leitor do WhatsApp Web do computador do escritório (leitura; só envia mensagem no caso das OS pelo WhatsApp; sem IA e sem API paga).
 //   node scripts/leitor-whatsapp.mjs --login   abre o Chrome com o perfil do leitor para escanear o QR do WhatsApp (só na primeira vez)
 //   node scripts/leitor-whatsapp.mjs           lê as conversas de dados/whatsapp-grupos.json e atualiza os dados do sistema
 // O coletor (iniciar.bat) chama este script de ~15 em 15 minutos, de segunda a sexta, em horário comercial.
-// Ele só abre a conversa e lê o que está na tela: não envia, não reage, não baixa e não apaga nada.
+// Ele só abre a conversa e lê o que está na tela: não reage, não baixa e não apaga nada. A ÚNICA exceção: na conversa com "os_wpp" no modo "ativo" (OS pelo WhatsApp, docs/procedimentos/os-pelo-whatsapp.md) ele envia as perguntas/avisos da OS.
 // Atenção: abrir uma conversa no WhatsApp Web marca as mensagens dela como lidas (também no celular de quem usa o número).
 // Saídas: dados/whatsapp/<conversa>.json (texto bruto, fica só neste computador), dados/whatsapp/status.json e,
 // para as conversas do tipo "ferramentas", novos registros em dados/json/ferramentas-checklist.json.
