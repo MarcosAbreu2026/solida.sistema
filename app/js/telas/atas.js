@@ -498,12 +498,15 @@ const doEscopo = (p, setorFixo) => !setorFixo || /^po/i.test(p.obra || '') || (p
 // Filtro de obra das Tarefas (pedido do Felipe, 18/11/2026): as tarefas são todas uma lista só. Padrão = "Nenhuma": só as GERAIS (sem obra).
 // "Todas" mostra gerais e de obra; uma obra mostra só as dela. Obra finalizada no cadastro nunca aparece.
 export const OBRA_TODAS = 'todas';
-const obraSel = (params) => { const o = params.get('obra') || ''; return o === OBRA_TODAS ? '' : o; };   // código de uma obra específica ('' = nenhuma ou todas)
+export const OBRA_NENHUMA = 'nenhuma';
+// padrão do filtro de obra: na Lista "Todas" (para não complicar); na Tabela "Nenhuma" (só as gerais)
+const obraEfetiva = (params) => { const o = params.get('obra') || ''; return o || (modoDe(params) === 'lista' ? OBRA_TODAS : OBRA_NENHUMA); };
+const obraSel = (params) => { const o = obraEfetiva(params); return (o === OBRA_TODAS || o === OBRA_NENHUMA) ? '' : o; };   // obra específica   // código de uma obra específica ('' = nenhuma ou todas)
 function visivelNaTela(p, params) {
   if (p.na_lista === false) return false;
-  const o = params.get('obra') || '';
+  const o = obraEfetiva(params);
   if (p.obra) { const ativas = ativasDaObra(); if (ativas.size && !ativas.has(codigoDaObra(p.obra))) return false; }
-  if (o === '') return !p.obra;
+  if (o === OBRA_NENHUMA) return !p.obra;
   if (o === OBRA_TODAS) return true;
   return codigoDaObra(p.obra) === codigoDaObra(o);
 }
@@ -592,7 +595,7 @@ function seletorResponsavel(atual) {
     ${[['eu', 'Só as minhas'], ['tipo:terceirizado', 'Terceirizados (todos)'], ['tipo:cliente', 'Clientes'], ['tipo:arquitetura', 'Arquitetura']].map(op)}
     <optgroup label="Equipe da Sólida">${op(['tipo:solida', 'Equipe da Sólida (todos)'])}${pessoas.map((x) => op([x.id, x.nome]))}</optgroup></select></label>`;
 }
-const selObraTarefas = (obras, params) => { const o = params.get('obra') || ''; return html`<label>Obra<select data-atas-filtro="obra"><option value="" ${o === '' ? html.seguro('selected') : ''}>Nenhuma (gerais)</option><option value="${OBRA_TODAS}" ${o === OBRA_TODAS ? html.seguro('selected') : ''}>Todas</option>${gruposDeObras(obras, o === OBRA_TODAS ? '' : o)}</select></label>`; };
+const selObraTarefas = (obras, params) => { const o = obraEfetiva(params); return html`<label>Obra<select data-atas-filtro="obra"><option value="${OBRA_NENHUMA}" ${o === OBRA_NENHUMA ? html.seguro('selected') : ''}>Nenhuma (gerais)</option><option value="${OBRA_TODAS}" ${o === OBRA_TODAS ? html.seguro('selected') : ''}>Todas</option>${gruposDeObras(obras, (o === OBRA_TODAS || o === OBRA_NENHUMA) ? '' : o)}</select></label>`; };
 // obras em curso (as finalizadas no cadastro ficam de fora): a lista vem de obrasDeAtas() e é guardada aqui a cada desenho
 let obrasAtivasDaTela = [];
 const ativasDaObra = () => new Set((obrasAtivasDaTela || []).map((o) => codigoDaObra(typeof o === 'string' ? o : o && (o.obra || o.codigo))));
