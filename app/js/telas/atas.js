@@ -227,6 +227,8 @@ const nomeDe = (id, reserva) => ((dados.pessoas.find((p) => p.id === id) || {}).
 const mapaInfo = (p) => ({ n: p.item || null, texto: p.descricao, quem: p.responsavel ? nomeDe(p.responsavel) : (p.externoNome || p.externoCategoria || (p.externoTipo === 'cliente' ? 'Cliente' : p.externoTipo === 'arquitetura' ? 'Arquitetura' : '')), tipo: p.responsavel ? 'solida' : (p.externoTipo || 'terceirizado'), categoria: p.responsavel ? null : (p.externoCategoria || null) });
 const camposPend = (p) => ({ item: p.item || null, descricao: p.descricao, responsavel: p.responsavel || null, responsavel_nome: p.responsavel ? nomeDe(p.responsavel) : (p.externoNome || p.externoCategoria || (p.externoTipo === 'cliente' ? 'Cliente' : p.externoTipo === 'arquitetura' ? 'Arquitetura' : null)), responsavel_tipo: p.responsavel ? 'solida' : (p.externoTipo || 'terceirizado'), responsavel_categoria: p.responsavel ? null : (p.externoCategoria || null), prazo: p.prazo || null });
 // tarefas das pessoas (sem as pendências da OBRA por cômodo, que têm lista própria)
+// tarefas concluídas com responsável (pessoas e pendências por obra): base do ranking da Equipe
+export const tarefasConcluidas = () => dados.pendencias.filter((p) => p.status === 'feita' && p.responsavel);
 export const todasPendencias = () => dados.pendencias.filter((p) => !p.da_obra);
 export const pendenciasDaObra = () => dados.pendencias.filter((p) => p.da_obra && p.status !== 'cancelada' && p.na_lista !== false);
 export const ataPorId = (id) => dados.atas.find((x) => String(x.id) === String(id));
