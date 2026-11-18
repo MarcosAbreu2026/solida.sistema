@@ -1432,7 +1432,7 @@ function configurar() {
     const senha = nuvem.senhaProvisoria();
     try {
       await nuvem.redefinirSenha(id, senha);
-      const usuario = b.closest('.ac-linha').querySelector('.ac-quem .pequeno b').textContent;
+      const usuario = (b.closest('[data-acesso]') ? b.closest('[data-acesso]').querySelector('.ac-pessoa-id .pequeno b') : null)?.textContent || nome;
       estado.acessosAviso = { titulo: `Senha nova de ${nome}`, usuario, senha }; desenhar();
     } catch (err) { alert(`Não foi possível (${err.message || err}).`); }
   });
