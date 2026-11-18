@@ -111,6 +111,7 @@ function resolverResponsavel(texto, participantes, pessoas) {
   const um = (parte) => {
     const nt = norm(parte).replace(/[.]/g, '').trim();
     if (/^a definir|^sem responsavel|^-+$/.test(nt)) return {};   // "A definir" não é uma pessoa
+    if (/^(encarregad[oa]s?|mestre de obras?|gestor(a)?|equipe)$/.test(nt)) return {};   // cargo, não uma pessoa: quem confere escolhe
     // só o lado ("Arquitetura", "Cliente", "Sólida"), sem o nome da pessoa: o tipo vem preenchido; o nome só se houver UM participante daquele lado
     // (ex.: Ana Clara, a única da arquitetura); senão fica em branco para quem confere escrever
     const doLado = (lado) => { const ps = participantes.filter((p) => p.papel === lado); return { externoNome: lado !== 'solida' && ps.length === 1 ? nomeCurto(ps[0].nome) : '', externoTipo: lado }; };
@@ -243,6 +244,52 @@ function assuntoEDescritivo(desc) {
   return assunto + ', ' + resto.charAt(0).toUpperCase() + resto.slice(1);
 }
 
+// ---------------------------------------------------------------- ata de VISTORIA (Checklist de Verificação em Obra)
+// Cabeçalho (Obra, Data, Gestor, Vistoria por, Referência), RESULTADO DA VISTORIA (conforme / não conforme por seção, itens conformes, observação) e a tabela
+// OBSERVAÇÕES E PENDÊNCIAS: Tema · Pendência · Responsável · Prazo. O resultado vira o texto da ata (resumo); cada linha da tabela vira uma pendência
+// (assunto = tema). Prazo "[A DEFINIR]" fica em branco para quem confere. Lê as colunas pela posição no PDF.
+export const ehAtaDeVistoria = (texto) => /ATA\s+DE\s+VISTORIA/i.test(String(texto || ''));
+function tabelaVistoria(paginas) {
+  const linhasDe = (area, de, ate) => agruparLinhas(area.filter((it) => it.x >= de && it.x < ate)).map((l) => ({ y: l.y, txt: textoDaLinha(l) }));
+  const itens = [];
+  for (const pag of paginas) {
+    const cab = (nome) => pag.find((it) => norm(it.str.trim()) === nome);
+    const hTema = cab('tema'); const hPend = cab('pendencia'); const hResp = cab('responsavel'); const hPrazo = cab('prazo');
+    if (!hTema || !hPend || !hResp || !hPrazo) continue;
+    const area = pag.filter((it) => it.y < hTema.y - 3);
+    const b1 = hPend.x - 6; const b2 = hResp.x - 6; const b3 = hPrazo.x - 6;
+    const prazos = linhasDe(area, b3, 1e9); if (!prazos.length) continue;
+    const ys = prazos.map((p) => p.y);
+    const pendL = repartir(linhasDe(area, b1, b2), ys);
+    const perto = (linhas, y) => linhas.filter((l) => Math.abs(l.y - y) <= 14).sort((a, b) => Math.abs(a.y - y) - Math.abs(b.y - y))[0];
+    const temaL = linhasDe(area, hTema.x - 6, b1); const respL = linhasDe(area, b2, b3);
+    prazos.forEach((p, i) => {
+      itens.push({ tema: (perto(temaL, p.y) || {}).txt || '', pendencia: emendar(pendL[i].map((l) => l.txt)), responsavel: (perto(respL, p.y) || {}).txt || '', prazo: p.txt });
+    });
+  }
+  return itens.filter((x) => x.pendencia);
+}
+// texto da ata: tudo o que vem no PDF antes da tabela de pendências (vistoria por, referência, resultado por seção, itens conformes, observação)
+function resumoVistoria(texto) {
+  const linhas = String(texto || '').replace(/\r/g, '').split('\n').map((l) => l.trim()).filter(Boolean);
+  const ini = linhas.findIndex((l) => /^INFORMA[ÇC][ÕO]ES DA VISTORIA/i.test(l)); const fim = linhas.findIndex((l) => /^OBSERVA[ÇC][ÕO]ES E PEND[ÊE]NCIAS/i.test(l));
+  const corpo = linhas.slice(ini >= 0 ? ini + 1 : 0, fim >= 0 ? fim : linhas.length);
+  const out = []; let secoes = false; let ultimo = -1;
+  for (const l of corpo) {
+    if (/^RESULTADO DA VISTORIA/i.test(l)) { out.push('', 'Resultado da vistoria:'); secoes = true; continue; }
+    if (/^Se[çc][ãa]o\s+Conforme\s+N[ãa]o conforme/i.test(l)) continue;
+    let m = secoes && l.match(/^(.+?)\s+(\d+)\s+(\d+)$/);
+    if (m) { out.push(`${m[1]}: ${m[2]} ${Number(m[2]) === 1 ? 'conforme' : 'conformes'}, ${m[3]} ${Number(m[3]) === 1 ? 'não conforme' : 'não conformes'}`); ultimo = -1; continue; }
+    if (/^(Obra|Data|Gestor)/i.test(l)) continue;   // já vão para os campos da ata
+    if (/^(Itens conformes|Observa[çc][ãa]o)\s*:/i.test(l)) { out.push(l); ultimo = out.length - 1; continue; }
+    if (/^(Vistoria por|Refer[êe]ncia)\s*:/i.test(l)) { out.push(l); ultimo = out.length - 1; continue; }
+    if (ultimo >= 0) out[ultimo] += ` ${l}`; else out.push(l);   // linha que continua a anterior (texto quebrado)
+  }
+  // "Vistoria por" e "Referência" primeiro, depois o resultado
+  const cab = out.filter((l) => /^(Vistoria por|Refer[êe]ncia)\s*:/i.test(l)); const resto = out.filter((l) => !/^(Vistoria por|Refer[êe]ncia)\s*:/i.test(l));
+  return [...cab, ...resto].join('\n').replace(/^\n+/, '').trim();
+}
+
 // ---------------------------------------------------------------- análise
 export function analisarAta(texto, { pessoas = [], obras = [], setores = [], hoje, nomeArquivo = '', paginas = null } = {}) {
   const linhas = String(texto || '').replace(/\r/g, '').split('\n').map((l) => l.replace(/\s+$/, ''));
@@ -302,6 +349,23 @@ export function analisarAta(texto, { pessoas = [], obras = [], setores = [], hoj
   const papeis = new Set(parts.map((p) => p.papel));
   const tipoReuniao = papeis.has('cliente') && papeis.has('arquitetura') ? 'ARQUITETURA-CLIENTE' : papeis.has('cliente') ? 'CLIENTE' : papeis.has('arquitetura') ? 'ARQUITETURA' : 'REUNIÃO';
 
+  // 0) ata de vistoria (Checklist de Verificação em Obra)
+  if (paginas && ehAtaDeVistoria(texto)) {
+    const gm = String(texto).match(/Gestor\(a\)\s*:\s*([^\n]+?)(?:\s{2,}|\n|$)/i); const gestor = gm ? gm[1].trim() : '';
+    const gp = gestor ? lerParticipantes(`${gestor} (Sólida)`) : [];
+    const tab = tabelaVistoria(paginas);
+    const pendV = tab.map((x, i) => {
+      const r = resolverResponsavel(x.responsavel, [...parts, ...gp], pessoas);
+      const prazoOk = /\d{1,2}\/\d{1,2}/.test(x.prazo) ? acharPrazo(x.prazo, hoje, data) : '';
+      const tema = String(x.tema || '').trim().toLocaleUpperCase('pt-BR');
+      const texto1 = x.pendencia.charAt(0).toUpperCase() + x.pendencia.slice(1);
+      return { kind: 'pendencia', descricao: tema ? `${tema}, ${texto1}` : texto1, responsavel: r.responsavel, responsavelAmbiguo: r.ambiguo, externoNome: r.externoNome, externoTipo: r.externoTipo, externoCategoria: r.externoCategoria, prazo: prazoOk, item: i + 1 };
+    });
+    if (pendV.length) {
+      const tit = naoVazias.find((l) => /^ATA DE VISTORIA/i.test(l.trim())) || 'Ata de vistoria';
+      return { titulo: tit.trim(), data, obra, obraForaDaLista: !!obra && !obras.some((o) => o.toLowerCase() === obra.toLowerCase()), setor, participantes: gp.map((p) => p.texto), resumo: resumoVistoria(texto), pendencias: pendV, informativosLista: [], lidoDaTabela: true, informativos: 0, local: obra ? `Obra ${obra}` : '', horario: '', tipoReuniao: 'REUNIÃO' };
+    }
+  }
   // 1) tabela do padrão da Sólida
   const tabela = paginas ? lerTabela(paginas) : null;
   if (tabela && tabela.some((x) => /^PEND|^A[ÇC]|^PROVID/iu.test(x.tipo))) {
