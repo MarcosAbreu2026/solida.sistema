@@ -968,7 +968,7 @@ export function renderPendencias({ params, obras = [], setorFixo = '', base = '#
   if (params.get('mostrar') === 'obra' && !params.get('pessoa')) { params = new URLSearchParams(params); params.set('pessoa', 'todos'); }
   if (lote) return painelLote(obras);   // lista de pendências importada: conferir antes de criar as tarefas
   const hoje = hojeISO();
-  const doSetor = dados.pendencias.filter((p) => (params.get('mostrar') === 'obra' ? (p.da_obra && p.na_lista !== false && ativasDaObra().has(codigoDaObra(p.obra))) : naLista(p)) && doEscopo(p, setorFixo));
+  const doSetor = dados.pendencias.filter((p) => (params.get('mostrar') === 'obra' ? (p.da_obra && p.na_lista !== false && (!ativasDaObra().size || ativasDaObra().has(codigoDaObra(p.obra)))) : naLista(p)) && doEscopo(p, setorFixo));
   const abertas = doSetor.filter((p) => p.status === 'aberta');
   const atrasadas = abertas.filter((p) => p.prazo && p.prazo < hoje).length;
   const eu = souEu(); const minhas = abertas.filter((p) => p.responsavel && p.responsavel === eu).length;
