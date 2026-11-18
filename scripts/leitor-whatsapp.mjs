@@ -13,6 +13,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { extrair } from './whatsapp-extrator.mjs';
 import { lerEfetivo } from './efetivo-parser.mjs';
+import { rodar as rodarOsWpp } from './os-wpp.mjs';
 
 const raiz = join(dirname(fileURLToPath(import.meta.url)), '..');
 const pastaWpp = join(raiz, 'dados', 'whatsapp');
@@ -114,7 +115,7 @@ const logado = await esperar(`!!document.querySelector('${LISTA}') || !!document
 if (logado) {
   try {
     const wid = await avaliar("localStorage.getItem('last-wid-md') || localStorage.getItem('last-wid') || ''");
-    const m = /(d{10,15})/.exec(String(wid || ''));
+    const m = /(\d{10,15})/.exec(String(wid || ''));
     if (m) gravarJSON(join(pastaWpp, 'conta.json'), { numero: m[1], lidoEm: agora() });
   } catch { /* sem o número desta vez */ }
 }
@@ -129,6 +130,14 @@ if (process.argv.includes('--diag')) {   // diagnóstico: mostra como está a la
 }
 
 const cfg = lerJSON(cfgArq, { conversas: [] });
+// OS pelo WhatsApp (scripts/os-wpp.mjs): o grupo do Pós-obra ("Pós Obra - Gestão") passa a abrir OS no Quadro de OS. Entra SEMPRE em simulação (só anota o que faria);
+// para valer de verdade, trocar "modo" para "ativo" na conversa dentro de dados/whatsapp-grupos.json.
+{
+  const ehGrupoPos = (c) => /p[oó]s\s*obra\s*-?\s*gest/i.test(String(c.nome || ''));
+  const existente = (cfg.conversas || []).find(ehGrupoPos);
+  if (existente) { if (!existente.os_wpp) { existente.os_wpp = { modo: 'simulacao' }; gravarJSON(cfgArq, cfg); } }
+  else { cfg.conversas = [...(cfg.conversas || []), { nome: 'Pós Obra - Gestão', tipo: 'os', ativo: true, os_wpp: { modo: 'simulacao' } }]; gravarJSON(cfgArq, cfg); }
+}
 const resultado = [];
 const novasFerramentas = [];   // mensagens do Anderson (ferramentas) a avaliar
 const gruposEfetivo = [];      // grupos de obra lidos agora (para o efetivo do dia)
@@ -188,6 +197,25 @@ for (const conv of (cfg.conversas || []).filter((c) => c && c.ativo !== false &&
       gravarJSON(arqConv, { conversa: conv.nome, lidoEm: agora(), mensagens: todas });
     }
     if (conv.tipo === 'ferramentas') for (const m of lidas.values()) novasFerramentas.push({ ...m, conversa: conv.nome });
+    if (conv.os_wpp) {
+      // OS pelo WhatsApp: abre OS com o que foi pedido no grupo e pergunta o que faltar (só no modo "ativo"; em "simulacao" só anota o que faria em dados/whatsapp/os-wpp-log.json)
+      const modoOs = conv.os_wpp.modo === 'ativo' ? 'ativo' : 'simulacao';
+      const enviarNoGrupo = modoOs === 'ativo' ? async (texto) => {
+        const caixa = `document.querySelector('#main footer div[contenteditable="true"][data-tab="10"]') || document.querySelector('#main footer div[contenteditable="true"]')`;
+        if (!(await clicar(caixa))) throw new Error('não achei a caixa de mensagem do grupo');
+        await espera(500);
+        const linhas = String(texto).split('\n');
+        for (let i = 0; i < linhas.length; i++) { if (linhas[i]) await cdp('Input.insertText', { text: linhas[i] }); if (i < linhas.length - 1) await tecla('Enter', 'Enter', 8); await espera(150); }
+        await espera(600);
+        await tecla('Enter', 'Enter');
+        await espera(1500);
+        const sobrou = await avaliar(`((${caixa}) || {}).innerText || ''`).catch(() => '');
+        if (String(sobrou).trim()) throw new Error('a mensagem não saiu (ficou escrita na caixa)');
+        await espera(sorteio(2000, 4000));
+      } : null;
+      const r = await rodarOsWpp({ raiz, mensagens: novas, modo: modoOs, enviar: enviarNoGrupo });
+      resultado.push({ nome: `${conv.nome} (OS pelo WhatsApp)`, ...r });
+    }
     if (conv.tipo === 'efetivo') {
       // grupo de obra: o código (Mo533) vem do nome; grupo que não é de uma obra (ex.: gestão do pós-obra) diz o local em "obra" na configuração
       const cod = (conv.nome.match(/\b(mo|po)\s*-?\s*(\d{3})/i) || []);
