@@ -497,8 +497,11 @@ function filtrar(params, setorFixo = '') {
   const q = (params.get('q') || '').trim().toLocaleLowerCase('pt-BR');
   const pessoa = params.get('pessoa') || 'eu'; const setor = params.get('setor') || ''; const obra = params.get('obra') || '';
   const eu = souEu();
+  const modoObra = params.get('mostrar') === 'obra';
+  const ativas = modoObra ? ativasDaObra() : null;
   return dados.pendencias.filter((p) => {
-    if (p.status === 'cancelada' || !naLista(p) || !doEscopo(p, setorFixo)) return false;
+    if (p.status === 'cancelada' || (modoObra ? !(p.da_obra && p.na_lista !== false) : !naLista(p)) || !doEscopo(p, setorFixo)) return false;
+    if (ativas && ativas.size && !ativas.has(codigoDaObra(p.obra))) return false;
     if (pessoa.startsWith('cat:')) { if (p.responsavel_categoria !== pessoa.slice(4)) return false; }
     else if (pessoa.startsWith('tipo:')) { if ((p.responsavel_tipo || 'solida') !== pessoa.slice(5)) return false; }
     else if (pessoa === 'sup') { if (!(p.gestores || []).includes(eu)) return false; }
@@ -579,12 +582,16 @@ function seletorResponsavel(atual) {
     ${[['eu', 'Só as minhas'], ['tipo:terceirizado', 'Terceirizados (todos)'], ['tipo:cliente', 'Clientes'], ['tipo:arquitetura', 'Arquitetura']].map(op)}
     <optgroup label="Equipe da Sólida">${op(['tipo:solida', 'Equipe da Sólida (todos)'])}${pessoas.map((x) => op([x.id, x.nome]))}</optgroup></select></label>`;
 }
+const seletorMostrar = (params) => html`<label>Mostrar<select data-atas-filtro="mostrar"><option value="" ${params.get('mostrar') === 'obra' ? '' : html.seguro('selected')}>Tarefas das pessoas</option><option value="obra" ${params.get('mostrar') === 'obra' ? html.seguro('selected') : ''}>Pendências da obra (por cômodo)</option></select></label>`;
+// obras em curso (as finalizadas no cadastro ficam de fora): a lista vem de obrasDeAtas() e é guardada aqui a cada desenho
+let obrasAtivasDaTela = [];
+const ativasDaObra = () => new Set((obrasAtivasDaTela || []).map((o) => codigoDaObra(typeof o === 'string' ? o : o && (o.obra || o.codigo))));
 function barraFiltros(params, obras, aba, ctx = {}) {
   const base = ctx.base || '#/atas';
   const sel = (nome, rotulo, opcoes, atual) => html`<label>${rotulo}<select data-atas-filtro="${nome}"><option value="">Todos</option>${opcoes.map(([v, t]) => html`<option value="${v}" ${atual === v ? html.seguro('selected') : ''}>${t}</option>`)}</select></label>`;
   const vista = params.get('vista') === 'lista' ? 'lista' : 'prazo';
   return html`<div class="at-filtros">
-    ${aba === 'atas' ? '' : html`<label>Mostrar<select data-atas-filtro="mostrar"><option value="" selected>Tarefas das pessoas</option><option value="obra">Pendências da obra (por cômodo)</option></select></label>`}
+    ${aba === 'atas' ? '' : html`${seletorMostrar(params)}`}
     ${aba === 'atas' ? '' : seletorResponsavel(params.get('pessoa') || 'eu')}
     ${ctx.setorFixo ? '' : sel('setor', 'Setor', SETORES_ATA.map((s) => [s, s]), params.get('setor') || '')}
     ${selObra(obras, params.get('obra') || '')}
@@ -690,31 +697,18 @@ export function formAvulsa(obras, prazo, setorPadrao = '', preset = {}) {
     <div class="tf-chat tf-dir"><h4>Anotações</h4><p class="pequeno">As anotações ficam disponíveis depois que a tarefa for criada.</p></div>
   </div></div>`;
 }
-// Pendências da OBRA: as que vêm de ata/lista por cômodo (assunto = cômodo). Ficam por obra e, dentro dela, por cômodo; não são tarefas de pessoa.
-function vistaPendenciasObra(params, obras) {
-  const st = params.get('status') || 'abertas'; const q = chaveTxt(params.get('q') || ''); const obraF = params.get('obra') || '';
-  const ativas = new Set((obras || []).map((o) => codigoDaObra(typeof o === 'string' ? o : o && (o.obra || o.codigo))));   // só obras em curso (as finalizadas no cadastro ficam de fora)
-  const lista = pendenciasDaObra().filter((p) => !ativas.size || ativas.has(codigoDaObra(p.obra))).filter((p) => (st === 'todas' ? true : st === 'feitas' ? p.status === 'feita' : p.status === 'aberta')
-    && (!obraF || codigoDaObra(p.obra) === codigoDaObra(obraF)) && (!q || chaveTxt(`${p.descricao} ${p.obra} ${p.responsavel_nome}`).includes(q)));
-  const porObra = new Map();
-  for (const p of lista) { const k = p.obra ? codigoDaObra(p.obra) : ''; if (!porObra.has(k)) porObra.set(k, { nome: p.obra || 'Sem obra', comodos: new Map() }); const g = porObra.get(k); const c = comodoDe(assuntoDaDescricao(p.descricao)) || 'Outros'; if (!g.comodos.has(c)) g.comodos.set(c, []); g.comodos.get(c).push(p); }
-  const ordenadas = [...porObra.entries()].sort(([a], [b]) => (a === '' ? 1 : b === '' ? -1 : a.localeCompare(b, 'pt-BR', { numeric: true })));
-  const hoje = hojeISO();
-  const item = (p) => { const ass = assuntoDaDescricao(p.descricao); const resto = ass ? p.descricao.slice(p.descricao.indexOf(',') + 1).trim() : p.descricao; const atras = p.status === 'aberta' && p.prazo && p.prazo < hoje;
-    return html`<div class="lt-linha ${p.status === 'feita' ? 'lt-feita' : ''}"><input type="checkbox" class="lt-chk" data-pend="${p.id}|${p.status === 'feita' ? 'aberta' : 'feita'}" ${p.status === 'feita' ? html.seguro('checked') : ''} title="${p.status === 'feita' ? 'Reabrir' : 'Concluir'}">
-      <div class="lt-corpo"><span class="lt-tit" data-tarefa="${p.id}" title="Abrir a pendência">${ass ? html`<b class="lt-obra">${ass}</b> ` : ''}${resto}</span>${p.prazo ? html`<span class="lt-sub ${atras ? 'lt-atraso' : ''}">${atras ? 'Venceu em ' : 'Prazo '}${dm(p.prazo).slice(0, 5)}</span>` : ''}</div>
-      <div class="lt-dir">${p.responsavel_nome ? html`<span class="lt-quem">${p.responsavel_nome}</span>` : ''}</div></div>`; };
-  return html`<div class="lt-corpo-geral po-obra-pend">
-    <p class="pequeno">Pendências da obra por cômodo: vêm das atas e das listas, não são tarefas de uma pessoa e por isso não aparecem na lista de tarefas, na Agenda nem nos contadores. ${lista.length} ${lista.length === 1 ? 'pendência' : 'pendências'} ${st === 'feitas' ? 'concluídas' : st === 'todas' ? 'no total' : 'em aberto'}.</p>
-    <div class="lt-filtros"><div class="lt-grp lt-grp-sel">
-      <label>Mostrar<select data-atas-filtro="mostrar"><option value="">Tarefas das pessoas</option><option value="obra" selected>Pendências da obra (por cômodo)</option></select></label>
-      ${selObra(obras, obraF)}
-      <label>Situação<select data-atas-filtro="status"><option value="abertas" ${st === 'abertas' ? html.seguro('selected') : ''}>Abertas</option><option value="feitas" ${st === 'feitas' ? html.seguro('selected') : ''}>Concluídas</option><option value="todas" ${st === 'todas' ? html.seguro('selected') : ''}>Todas</option></select></label>
-      <label>Procurar<input type="search" data-atas-filtro="q" value="${params.get('q') || ''}" placeholder="cômodo, texto…"></label></div></div>
-    ${ordenadas.length ? ordenadas.map(([, g]) => html`<section class="lt-grupo"><header><h3>${g.nome}</h3><span>${[...g.comodos.values()].reduce((n, l) => n + l.length, 0)}</span></header>
-      ${[...g.comodos.entries()].sort(([a], [b]) => (a === 'Outros' ? 1 : b === 'Outros' ? -1 : a.localeCompare(b, 'pt-BR'))).map(([nome, l]) => html`<div class="po-comodo"><h4>${nome} <small>${l.length}</small></h4>${l.map(item)}</div>`)}</section>`) : html`<p class="lt-vazio">Nenhuma pendência da obra com esses filtros.</p>`}
-  </div>`;
+// Pendências da OBRA no modo Tabela: mesmas pendências, mesmos cartões, mas uma coluna por cômodo (assunto reconhecido pelo dicionário; o resto vai em "Outros")
+function vistaComodos(lista, hoje, setorPadrao = '') {
+  const abertas = lista.filter((p) => p.status === 'aberta');
+  const porComodo = new Map();
+  for (const p of abertas) { const c = comodoDe(assuntoDaDescricao(p.descricao)) || 'Outros'; if (!porComodo.has(c)) porComodo.set(c, []); porComodo.get(c).push(p); }
+  const cols = [...porComodo.entries()].sort(([a], [b]) => (a === 'Outros' ? 1 : b === 'Outros' ? -1 : a.localeCompare(b, 'pt-BR')));
+  if (!cols.length) return html`<p class="lt-vazio">Nenhuma pendência da obra com esses filtros.</p>`;
+  const ordem = (a, b) => (a.status === b.status ? String(a.prazo || '9999').localeCompare(String(b.prazo || '9999')) : (a.status === 'feita' ? 1 : -1));
+  return html`<div class="at-quadro">${cols.map(([nome, itens]) => html`<section class="at-col at-c-sem" data-col="comodo"><header><b>${nome}</b><span>${itens.length}</span></header>
+      <div class="at-itens">${[...itens].sort(ordem).map((p) => cartao(p, hoje))}</div></section>`)}</div>`;
 }
+
 function vistaPrazo(lista, hoje, setorPadrao = '', reun = []) {
   return html`<div class="at-quadro">${COLUNAS.map(([id, nome]) => {
     const reunioesDaColuna = reun.filter((r) => ['hoje', 'semana', 'proxima', 'duas'].includes(id) && coluna({ prazo: r.data, status: 'aberta' }, hoje) === id).sort((a, b) => `${a.data}${a.ini}`.localeCompare(`${b.data}${b.ini}`));
@@ -936,7 +930,7 @@ function vistaDia(params, obras, setorFixo) {
       <div class="lt-filtros">
         <div class="lt-grp"><span>Urgência</span>${pilula('urg', '', 'Todas', urg)}${pilula('urg', 'alta', 'Alta', urg)}${pilula('urg', 'media', 'Média', urg)}${pilula('urg', 'baixa', 'Baixa', urg)}${pilula('urg', 'sem', 'Sem', urg)}</div>
         <div class="lt-grp lt-grp-sel">
-          <label>Mostrar<select data-atas-filtro="mostrar"><option value="" selected>Tarefas das pessoas</option><option value="obra">Pendências da obra (por cômodo)</option></select></label>
+          ${seletorMostrar(params)}
           <label>Ver tarefas de<select data-atas-filtro="pessoa">${opt('eu', 'Só as minhas', pessoaSel)}${opt('todos', 'Todos (os que eu vejo)', pessoaSel)}${opt('tipo:solida', 'Equipe da Sólida', pessoaSel)}${opt('tipo:terceirizado', 'Terceirizados (todos)', pessoaSel)}${opt('tipo:cliente', 'Clientes', pessoaSel)}${opt('tipo:arquitetura', 'Arquitetura', pessoaSel)}${gente.length ? html`<optgroup label="Pessoas">${gente.map((x) => opt(x.id, x.nome, pessoaSel))}</optgroup>` : ''}</select></label>
           ${setorFixo ? '' : html`<label>Setor<select data-atas-filtro="setor"><option value="">Todos</option>${SETORES_ATA.map((s) => opt(s, s, params.get('setor') || ''))}</select></label>`}
           ${selObra(obras, params.get('obra') || '')}
@@ -970,9 +964,11 @@ function cabecalhoImpressao(params, modo, hoje, setorFixo = '') {
 }
 export function renderPendencias({ params, obras = [], setorFixo = '', base = '#/atas', sugestoes = [] }) {
   definirSugestoes(sugestoes);
+  obrasAtivasDaTela = obras;
+  if (params.get('mostrar') === 'obra' && !params.get('pessoa')) { params = new URLSearchParams(params); params.set('pessoa', 'todos'); }
   if (lote) return painelLote(obras);   // lista de pendências importada: conferir antes de criar as tarefas
   const hoje = hojeISO();
-  const doSetor = dados.pendencias.filter((p) => naLista(p) && doEscopo(p, setorFixo));
+  const doSetor = dados.pendencias.filter((p) => (params.get('mostrar') === 'obra' ? (p.da_obra && p.na_lista !== false && ativasDaObra().has(codigoDaObra(p.obra))) : naLista(p)) && doEscopo(p, setorFixo));
   const abertas = doSetor.filter((p) => p.status === 'aberta');
   const atrasadas = abertas.filter((p) => p.prazo && p.prazo < hoje).length;
   const eu = souEu(); const minhas = abertas.filter((p) => p.responsavel && p.responsavel === eu).length;
@@ -980,14 +976,13 @@ export function renderPendencias({ params, obras = [], setorFixo = '', base = '#
   const cmpTab = comparador(params.get('ord') || ''); if (cmpTab) lista = [...lista].sort(cmpTab);
   const modo = modoDe(params);
   const cabImp = cabecalhoImpressao(params, modo, hoje, setorFixo);
-  if (params.get('mostrar') === 'obra') return html`${cabImp}${datalistTerceiros()}${vistaPendenciasObra(params, obras)}`;
   if (modo === 'lista') return html`${cabImp}${datalistTerceiros()}${dados.erro ? html`<p class="erro">Não consegui carregar: ${dados.erro}</p>` : ''}${vistaDia(params, obras, setorFixo)}`;
   return html`${cabImp}${datalistTerceiros()}${dados.erro ? html`<p class="erro">Não consegui carregar: ${dados.erro}</p>` : ''}
     <div class="cards at-cards"><div class="card"><div class="card-valor">${abertas.length}</div><div class="card-rotulo">Pendências abertas</div></div>
       <div class="card"><div class="card-valor ${atrasadas ? 'tom-ruim' : ''}">${atrasadas}</div><div class="card-rotulo">Atrasadas</div></div>
       <div class="card"><div class="card-valor">${minhas}</div><div class="card-rotulo">Abertas comigo</div></div></div>
     ${barraFiltros(params, obras, 'pendencias', { base, setorFixo })}
-    ${vistaPrazo(lista, hoje, setorFixo, reunioesDaPessoa(params.get('pessoa') || 'eu').filter((r) => (!params.get('obra') || codigoDaObra(r.obra) === codigoDaObra(params.get('obra'))) && (!params.get('setor') || r.setor === params.get('setor')) && r.data >= hoje))}`;
+    ${params.get('mostrar') === 'obra' ? vistaComodos(lista, hoje, setorFixo) : vistaPrazo(lista, hoje, setorFixo, reunioesDaPessoa(params.get('pessoa') || 'eu').filter((r) => (!params.get('obra') || codigoDaObra(r.obra) === codigoDaObra(params.get('obra'))) && (!params.get('setor') || r.setor === params.get('setor')) && r.data >= hoje))}`;
 }
 export function render({ params, obras = [], msg = '', sugestoes = [] }) {
   definirSugestoes(sugestoes);
