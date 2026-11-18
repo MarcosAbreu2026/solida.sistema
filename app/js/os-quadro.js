@@ -73,7 +73,7 @@ async function gravar(linha) {
 async function gravarBase(linha) {
   if (NA_NUVEM) { const r = await gravarOsQuadro(linha); const i = lista.findIndex((o) => o.id === r.id); if (i >= 0) lista[i] = r; else lista.unshift(r); return r; }
   const todas = lerLocal(); let o;
-  if (linha.id) { o = todas.find((x) => x.id === linha.id); Object.assign(o, linha); } else { o = { id: todas.reduce((m, x) => Math.max(m, x.id), 0) + 1, fotos: [], criado_em: new Date().toISOString(), d_solicitacao: hojeISO(), ...linha }; todas.push(o); }
+  if (linha.id) { o = todas.find((x) => String(x.id) === String(linha.id)); if (!o) throw new Error('OS não encontrada.'); Object.assign(o, { ...linha, id: o.id }); } else { o = { id: todas.reduce((m, x) => Math.max(m, x.id), 0) + 1, fotos: [], criado_em: new Date().toISOString(), d_solicitacao: hojeISO(), ...linha }; todas.push(o); }
   aplicarRegrasLocais(o); gravarLocal(todas); lista = todas.sort((a, b) => b.id - a.id); return o;
 }
 

@@ -951,7 +951,7 @@ function desenhar() {
     else if (tela === 'funcionarios') out = T.telaPessoas(estado.pessoas);
     else if (tela === 'agentes') out = T.telaAgentes();
     else if (area && area.id === 'posobra') {
-      const { abas, conteudo, resumo } = telaPosObraPlanilha(rota.sub ? rota : { ...rota, sub: 'datas-os' });
+      const { abas, conteudo, resumo } = telaPosObraPlanilha(rota.sub ? rota : { ...rota, sub: 'controle' });
       out = `<div>${abas}${conteudo}</div>`; void resumo;
     } else if (area) out = T.telaArea(area);
     else out = T.telaGeral();
@@ -2339,6 +2339,20 @@ document.addEventListener('click', async (e) => {
   if (c) { try { const r = await nuvem.googleUrlAutorizar(); location.href = r.url; } catch (err) { alert(`Não foi possível começar a conexão (${err.message || err}).`); } return; }
   const d = e.target.closest && e.target.closest('[data-gcal-desconectar]');
   if (d) { if (!confirm('Desconectar o Google Agenda do sistema? As reuniões novas ficam pendentes até conectar de novo.')) return; try { await nuvem.googleDesconectar(); estado.googleAgenda = await nuvem.googleStatus(); desenhar(); } catch (err) { alert(`Não foi possível desconectar (${err.message || err}).`); } }
+});
+// Controle de obras: trocar o status da OS ou a situação do PO direto na lista
+document.addEventListener('change', (e) => {
+  const os = e.target.closest && e.target.closest('[data-pc-os-status]');
+  if (os) { const sel = os; sel.disabled = true; osqFazer(() => osq.mover(sel.dataset.pcOsStatus, sel.value)).finally(() => { sel.disabled = false; }); return; }
+  const po = e.target.closest && e.target.closest('[data-pc-po-sit]');
+  if (po) {
+    if (!nuvem.NA_NUVEM) { alert('A situação do PO é gravada no cadastro, que só funciona na versão online.'); desenhar(); return; }
+    const sel = po; sel.disabled = true;
+    nuvem.salvarObra({ codigo: sel.dataset.pcPoSit, situacao: sel.value })
+      .then(() => sincronizarCadastros({ forcar: true })).then(() => { avisoRapido('Situação do PO atualizada ✓'); desenhar(); })
+      .catch((err) => { alert(`Não foi possível mudar a situação (${err.message || err}).`); desenhar(); })
+      .finally(() => { sel.disabled = false; });
+  }
 });
 // Excluir só a tarefa (pendência) de uma OS, sem mexer na OS: botão "excluir" na linha da tarefa (Controle de obras e janela da OS)
 document.addEventListener('click', async (e) => {
