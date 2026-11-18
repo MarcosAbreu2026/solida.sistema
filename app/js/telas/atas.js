@@ -693,7 +693,8 @@ export function formAvulsa(obras, prazo, setorPadrao = '', preset = {}) {
 // Pendências da OBRA: as que vêm de ata/lista por cômodo (assunto = cômodo). Ficam por obra e, dentro dela, por cômodo; não são tarefas de pessoa.
 function vistaPendenciasObra(params, obras) {
   const st = params.get('status') || 'abertas'; const q = chaveTxt(params.get('q') || ''); const obraF = params.get('obra') || '';
-  const lista = pendenciasDaObra().filter((p) => (st === 'todas' ? true : st === 'feitas' ? p.status === 'feita' : p.status === 'aberta')
+  const ativas = new Set((obras || []).map((o) => codigoDaObra(typeof o === 'string' ? o : o && (o.obra || o.codigo))));   // só obras em curso (as finalizadas no cadastro ficam de fora)
+  const lista = pendenciasDaObra().filter((p) => !ativas.size || ativas.has(codigoDaObra(p.obra))).filter((p) => (st === 'todas' ? true : st === 'feitas' ? p.status === 'feita' : p.status === 'aberta')
     && (!obraF || codigoDaObra(p.obra) === codigoDaObra(obraF)) && (!q || chaveTxt(`${p.descricao} ${p.obra} ${p.responsavel_nome}`).includes(q)));
   const porObra = new Map();
   for (const p of lista) { const k = p.obra ? codigoDaObra(p.obra) : ''; if (!porObra.has(k)) porObra.set(k, { nome: p.obra || 'Sem obra', comodos: new Map() }); const g = porObra.get(k); const c = comodoDe(assuntoDaDescricao(p.descricao)) || 'Outros'; if (!g.comodos.has(c)) g.comodos.set(c, []); g.comodos.get(c).push(p); }
