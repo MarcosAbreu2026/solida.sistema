@@ -625,7 +625,7 @@ function cartao(p, hoje) {
     <div class="at-tit" title="Clique para editar o nome da tarefa">${descRica(p.descricao)}</div>
     <div class="at-linha2"><span class="at-esq">${prazoBtn(p, rotuloPrazo, `at-prazo at-p-${col}`)}</span><span class="at-dir">${p.urgencia ? chipUrg(p.urgencia) : ""}</span></div>
     <div class="at-linha3"><span class="at-esq"><span class="at-pessoa">${nomeDe(p.responsavel, p.responsavel_nome)}</span>${p.responsavel_tipo && p.responsavel_tipo !== 'solida' ? html`<span class="at-tipo at-t-${p.responsavel_tipo}">${ROTULO_TIPO[p.responsavel_tipo] || 'Externo'}${p.responsavel_categoria ? ` · ${p.responsavel_categoria}` : ''}</span>` : ''}</span><span class="at-dir">${onde2 ? html`<span class="at-chip">${onde2}</span>` : ''}</span></div>
-    ${a ? html`<div class="at-linha4"><a class="at-ata" href="#/atas?aba=atas&ata=${a.id}" title="Ata de origem">ata ${dm(a.data).slice(0, 5)}</a></div>` : ''}
+
     <div class="at-acoes">
       ${p.status === 'feita' ? html`<button type="button" class="ac-mini" data-pend="${p.id}|aberta">↺ reabrir</button>` : html`<button type="button" class="ac-mini at-ok" data-pend="${p.id}|feita">✓ concluir</button>`}
       <button type="button" class="ac-mini" data-pend-del="${p.id}" title="${p.ata_id ? 'Tirar da lista de pendências (o item continua na ata)' : 'Excluir esta pendência'}">${p.ata_id ? 'tirar da lista' : 'excluir'}</button>
