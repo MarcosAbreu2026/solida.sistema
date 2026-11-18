@@ -242,7 +242,7 @@ function telaPosObraPlanilha(rota) {
     if (!estado.base) return semBase();
     carregarAgendaSemana();
     const podeEditar = ['socio', 'posobra', 'coord_operacoes'].includes(funcaoAtual().id);
-    return { abas, conteudo: `<div class="pagina" style="margin-top:26px">${String(posGeral.renderAgenda({ base: estado.base, semanaIni: estado.posAgenda.semana, linhasAgenda: agendaPos.linhas, podeEditar, selecionado: estado.posAgenda.sel, erro: agendaPos.erro, extras: apExtras(), equipeProg: estado.equipeProg }))}</div>` };
+    return { abas, conteudo: `<div class="pagina" style="margin-top:26px">${String(posGeral.renderAgenda({ base: estado.base, semanaIni: estado.posAgenda.semana, linhasAgenda: agendaPos.linhas, podeEditar, selecionado: estado.posAgenda.sel, erro: agendaPos.erro, extras: apExtras(), obrasLista: obrasDeAtas(), equipeProg: estado.equipeProg }))}</div>` };
   }
 
   // página de uma obra: simples e didática (a completa fica em ?completo=1)
@@ -290,7 +290,7 @@ function ctxPosObra() {
   const podeEditar = podeEditarPos();
   return {
     quadroOs: () => String(osq.renderQuadro({ params: rotaAtual().params, podeEditar, clientesPos: posObrasAtivas(), pendencias: atas.todasPendencias() })),
-    agendaPos: () => (estado.base ? String(posGeral.renderAgenda({ base: estado.base, semanaIni: estado.posAgenda.semana, linhasAgenda: agendaPos.linhas, podeEditar, selecionado: estado.posAgenda.sel, erro: agendaPos.erro, extras: apExtras(), equipeProg: estado.equipeProg })) : ''),
+    agendaPos: () => (estado.base ? String(posGeral.renderAgenda({ base: estado.base, semanaIni: estado.posAgenda.semana, linhasAgenda: agendaPos.linhas, podeEditar, selecionado: estado.posAgenda.sel, erro: agendaPos.erro, extras: apExtras(), obrasLista: obrasDeAtas(), equipeProg: estado.equipeProg })) : ''),
   };
 }
 function garantirReunioesCarregadas() {

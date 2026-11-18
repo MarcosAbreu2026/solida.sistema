@@ -8,6 +8,7 @@ import { partesObra } from '../obras-pos.js';
 import { depPorId } from '../organograma.js';
 import { reprogramado, tituloReprogramacao } from '../servicos-pos.js';
 import { chipSituacao, chipPrazo, rotaObra, fmt } from '../componentes.js';
+import { gruposDeObras } from './atas.js';
 
 const DIAS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const dm = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
@@ -173,13 +174,25 @@ export function pessoasSoNaPlanilha(base, equipeProg) {
   }
   return [...achados.values()];
 }
-export function renderAgenda({ base, semanaIni, linhasAgenda, podeEditar, selecionado, erro, extras = [], equipeProg = null }) {
+// chave que iguala as formas de escrever a mesma obra (Po577 · PO577 · PO577 - nome · Mo358)
+const chaveObra = (n) => { const s = String(n || '').trim(); const m = /^(?:mo|po)s*[-_]?s*(d+[a-z]?)/i.exec(s); return m ? `${/^mo/i.test(s) ? 'mo' : 'po'}${m[1].toLowerCase()}` : s.toLowerCase(); };
+export function renderAgenda({ base, semanaIni, linhasAgenda, podeEditar, selecionado, erro, extras = [], equipeProg = null, obrasLista = [] }) {
   const todasEm = obrasEmAndamento(base);
   const dias = DIAS.map((_, i) => somarDias(semanaIni, i));
   // só aparecem as obras com alguém escalado (ou escrito na planilha) nesta semana, mais as que você escolher em "+ Adicionar pós-obra"
   const comMovimento = (o) => linhasAgenda.some((l) => l.obra === o.obra) || base.agenda.some((a) => a.obra === o.obra && dias.includes(a.data));
+  // linhas: as obras da planilha com movimento ou escolhidas, e também qualquer obra cadastrada que a pessoa escolheu (ou que já tem gente escalada nela)
+  const todasBase = base.obras;
+  const daBase = (nome) => todasBase.find((o) => chaveObra(o.obra) === chaveObra(nome));
   const obras = todasEm.filter((o) => comMovimento(o) || extras.includes(o.obra));
-  const outras = todasEm.filter((o) => !obras.includes(o));
+  const chavesMostradas = () => new Set(obras.map((o) => chaveObra(o.obra)));
+  for (const nome of [...extras, ...linhasAgenda.map((l) => l.obra)].filter(Boolean)) {
+    if (chavesMostradas().has(chaveObra(nome))) continue;
+    obras.push(daBase(nome) || { obra: nome, situacao: '' });
+  }
+  const jaNaTela = chavesMostradas();
+  // o seletor mostra TODAS as obras cadastradas (Obras, Pós-obras e Obras em orçamento, como nos outros seletores) que ainda não estão na semana
+  const nomesParaEscolher = [...new Set([...obrasLista, ...todasEm.map((o) => o.obra)])].filter((n) => !jaNaTela.has(chaveObra(n)));
   const gente = [...base.equipe.filter((e) => e.profissional && !/\(/.test(e.profissional)), ...pessoasSoNaPlanilha(base, equipeProg)].sort((a, b) => a.profissional.localeCompare(b.profissional, 'pt-BR'));
   const naSemana = (nome) => new Set(linhasAgenda.filter((l) => l.pessoa === nome).map((l) => l.data)).size;
   const planilha = (obra, data) => base.agenda.filter((a) => a.obra === obra && a.data === data).map((a) => a.texto).filter(Boolean);
@@ -209,9 +222,9 @@ export function renderAgenda({ base, semanaIni, linhasAgenda, podeEditar, seleci
           <b>${e.profissional}</b><small>${e.funcao || ''}${e.vinculo ? ` · ${e.vinculo}` : ''}</small><span class="ap-n">${naSemana(e.profissional)} ${naSemana(e.profissional) === 1 ? 'dia' : 'dias'}</span></div>`)}
       </aside>` : ''}
       <div class="ap-grade tabela-rolagem"><table class="ap-tab"><thead><tr><th>Obra</th>${dias.map((d, i) => html`<th>${DIAS[i]} <small>${dm(d)}</small></th>`)}</tr></thead>
-        <tbody>${obras.map((o) => { const pt = partesObra(o); return html`<tr><th class="ap-obra"><a href="${rotaObra(o.obra)}" title="${pt.sub}">${pt.titulo}</a><small>${pt.sub || o.situacao || ''}</small>${podeEditar && extras.includes(o.obra) && !comMovimento(o) ? html`<button type="button" class="ac-mini" data-ap-tirar-obra="${o.obra}">tirar da semana</button>` : ''}</th>${dias.map((d) => celula(o, d))}</tr>`; })}</tbody></table>
+        <tbody>${obras.map((o) => { const pt = partesObra(o); return html`<tr><th class="ap-obra"><a href="${/^po/i.test(o.obra) ? rotaObra(o.obra) : `#/obra/${encodeURIComponent(o.obra)}`}" title="${pt.sub}">${pt.titulo}</a><small>${pt.sub || o.situacao || ''}</small>${podeEditar && extras.includes(o.obra) && !comMovimento(o) ? html`<button type="button" class="ac-mini" data-ap-tirar-obra="${o.obra}">tirar da semana</button>` : ''}</th>${dias.map((d) => celula(o, d))}</tr>`; })}</tbody></table>
         ${!obras.length ? html`<p class="vazio">Ninguém escalado nesta semana. Escolha um pós-obra abaixo ou traga o que está na planilha.</p>` : ''}
-        ${podeEditar && outras.length ? html`<p class="ap-mais"><label>+ Adicionar pós-obra à semana <select data-ap-mais><option value="">escolher…</option>${outras.map((o) => html`<option value="${o.obra}">${partesObra(o).titulo}</option>`)}</select></label></p>` : ''}</div>
+        ${podeEditar && nomesParaEscolher.length ? html`<p class="ap-mais"><label>+ Adicionar obra à semana <select data-ap-mais><option value="">escolher…</option>${gruposDeObras(nomesParaEscolher, '')}</select></label></p>` : ''}</div>
     </div>
   </section>`;
 }
