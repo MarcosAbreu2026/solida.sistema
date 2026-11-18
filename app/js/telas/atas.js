@@ -238,13 +238,13 @@ export function ataComoRascunho(a) {
     const t = typeof x === 'string' ? { texto: x } : x; const pessoa = t.quem ? dados.pessoas.find((q) => semA(q.nome) === semA(t.quem)) : null;
     return { kind: 'informativo', item: t.n || (1000 + i), descricao: t.texto, responsavel: pessoa ? pessoa.id : '', externoTipo: pessoa ? '' : (t.tipo || 'solida'), externoCategoria: t.categoria || '', externoNome: pessoa ? '' : (t.quem || '') };
   });
-  return { data: a.data, obra: a.obra || '', setor: a.setor || '', local: a.local || '', participantes: a.participantes || [], tipoReuniao: a.tipo_reuniao || 'REUNIÃO', vistoria: a.vistoria || null, resumo: a.resumo || '', pendencias: pend, informativosLista: infos, revisando: a };
+  return { data: a.data, obra: a.obra || '', setor: a.setor || '', local: a.local || '', participantes: a.participantes || [], tipoReuniao: a.tipo_reuniao || 'REUNIÃO', resumo: a.resumo || '', pendencias: pend, informativosLista: infos, revisando: a };
 }
-export async function revisar(id, { data, tipoReuniao, obra, setor, local, participantes, resumo, pendencias, informativos, vistoria }) {
+export async function revisar(id, { data, tipoReuniao, obra, setor, local, participantes, resumo, pendencias, informativos }) {
   const a = ataPorId(id); if (!a) throw new Error('ata não encontrada');
   const revisao = (Number(a.revisao) || 0) + 1;
   const titulo = nomePadrao({ obra, setor, data, tipo: tipoReuniao, revisao });
-  const mudAta = { titulo, data, tipo: obra ? 'obra' : 'departamento', obra: obra || null, setor: setor || null, participantes, resumo, tipo_reuniao: tipoReuniao || 'REUNIÃO', vistoria: vistoria || null, revisao, local: local || null, informativos: informativos.map(mapaInfo), arquivo: null, arquivada_em: null, arquivo_erro: null };
+  const mudAta = { titulo, data, tipo: obra ? 'obra' : 'departamento', obra: obra || null, setor: setor || null, participantes, resumo, tipo_reuniao: tipoReuniao || 'REUNIÃO', revisao, local: local || null, informativos: informativos.map(mapaInfo), arquivo: null, arquivada_em: null, arquivo_erro: null };
   const existentes = dados.pendencias.filter((p) => String(p.ata_id) === String(id) && p.status !== 'cancelada');
   const manter = new Set(pendencias.filter((p) => p.pid).map((p) => String(p.pid)));
   const remover = existentes.filter((e) => !manter.has(String(e.id)));
@@ -295,7 +295,7 @@ export function pautaTexto(a) {
 // ---------------------------------------------------------------- nome padrão da ata
 // Obra (ou pós-obra) _ aaaa.mm.dd _ ATA _ tipo _ Rnn   ex.: Mo344_2026.07.10_ATA_ARQUITETURA-CLIENTE_R00
 // Salva no Drive, na pasta da obra: GERENCIAMENTO\ATA (obra) ou PÓS OBRA\PO_OBRAS\<ano>\Po_NNN\GERENCIAMENTO\ATA (pós-obra).
-export const TIPOS_REUNIAO = ['REUNIÃO', 'VISTORIA', 'ARQUITETURA', 'CLIENTE', 'ARQUITETURA-CLIENTE', 'TERCEIRIZADO', 'PLANEJAMENTO'];
+export const TIPOS_REUNIAO = ['REUNIÃO', 'ARQUITETURA', 'CLIENTE', 'ARQUITETURA-CLIENTE', 'TERCEIRIZADO', 'PLANEJAMENTO'];
 const semAcento = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '');
 // A ata é da obra E do departamento (a obra manda no nome e na pasta do Drive); reunião só do escritório não tem nenhum dos dois.
 const semEspaco = (s) => semAcento(s).replace(/\s*\/\s*/g, '-').replace(/\s+/g, '');
@@ -321,10 +321,10 @@ export function atualizarNomeDoForm(form) {
   return nome;
 }
 
-export async function criarAta({ titulo, data, tipo, obra, setor, participantes, resumo, pendencias, informativos = [], tipoReuniao, revisao, local, horario, vistoria }) {
+export async function criarAta({ titulo, data, tipo, obra, setor, participantes, resumo, pendencias, informativos = [], tipoReuniao, revisao, local, horario }) {
   // informativo = texto + quem informou (Sólida, terceirizado ou cliente)
   informativos = informativos.map((p) => ({ n: p.item || null, texto: p.descricao, quem: p.responsavel ? nomeDe(p.responsavel) : (p.externoNome || p.externoCategoria || (p.externoTipo === 'cliente' ? 'Cliente' : p.externoTipo === 'arquitetura' ? 'Arquitetura' : '')), tipo: p.responsavel ? 'solida' : (p.externoTipo || 'terceirizado'), categoria: p.responsavel ? null : (p.externoCategoria || null) }));
-  const ata = { informativos, titulo, data, tipo, obra: obra || null, setor: setor || null, participantes, resumo, tipo_reuniao: tipoReuniao || 'REUNIÃO', vistoria: vistoria || null, revisao: Number(revisao) || 0, local: local || null, horario: horario || null };
+  const ata = { informativos, titulo, data, tipo, obra: obra || null, setor: setor || null, participantes, resumo, tipo_reuniao: tipoReuniao || 'REUNIÃO', revisao: Number(revisao) || 0, local: local || null, horario: horario || null };
   const pends = pendencias.map((p) => ({ item: p.item || null, descricao: p.descricao, responsavel: p.responsavel || null, responsavel_nome: p.responsavel ? nomeDe(p.responsavel) : (p.externoNome || p.externoCategoria || (p.externoTipo === 'cliente' ? 'Cliente' : p.externoTipo === 'arquitetura' ? 'Arquitetura' : null)), responsavel_tipo: p.responsavel ? 'solida' : (p.externoTipo || 'terceirizado'), responsavel_categoria: p.responsavel ? null : (p.externoCategoria || null), prazo: p.prazo || null, status: 'aberta' }));
   let nova;
   if (NA_NUVEM) nova = await criarAtaNuvem(ata, pends);
@@ -751,17 +751,6 @@ function linhasDaAta(a, ps) {
   const itens = [...ps.map((p, i) => ({ kind: 'pend', p, n: Number(p.item) || 0, i })), ...((a.informativos || []).map((x, i) => ({ kind: 'info', x, n: (x && x.n) || 0, i: 1000 + i })))];
   return itens.sort((x, y) => ((x.n || 1e6) - (y.n || 1e6)) || (x.i - y.i));
 }
-// Resultado da vistoria (modelo "Ata de vistoria – Checklist de Verificação em Obra"): quem vistoriou, resultado por seção, itens conformes e observação
-function blocoVistoria(v) {
-  const sec = (v.secoes || []).filter((s) => s && s.nome); const tc = sec.reduce((n, s) => n + (Number(s.c) || 0), 0); const tn = sec.reduce((n, s) => n + (Number(s.n) || 0), 0);
-  return html`<div class="sd-vist">
-    <div class="sd-linha"><b>GESTOR(A):</b> ${v.gestor || '—'} · <b>VISTORIA POR:</b> ${v.por || '[A DEFINIR]'}</div>
-    ${v.referencia ? html`<div class="sd-linha"><b>REFERÊNCIA:</b> ${v.referencia}</div>` : ''}
-    ${sec.length ? html`<table class="sd-tab sd-res"><thead><tr><th>SEÇÃO</th><th>CONFORME</th><th>NÃO CONFORME</th></tr></thead><tbody>${sec.map((s) => html`<tr><td>${s.nome}</td><td class="c">${Number(s.c) || 0}</td><td class="c">${Number(s.n) || 0}</td></tr>`)}<tr class="sd-total"><td><b>Total</b></td><td class="c"><b>${tc}</b></td><td class="c"><b>${tn}</b></td></tr></tbody></table>` : ''}
-    ${v.conformes ? html`<div class="sd-linha"><b>ITENS CONFORMES:</b> ${v.conformes}</div>` : ''}
-    ${v.obs ? html`<div class="sd-linha"><b>OBSERVAÇÃO:</b> ${v.obs}</div>` : ''}
-  </div>`;
-}
 function detalheAta(id, hoje, obras) {
   const a = dados.atas.find((x) => String(x.id) === String(id));
   if (!a) return html`<p class="vazio">Ata não encontrada (ou você não tem acesso a ela). <a class="link" href="#/atas?aba=atas">Voltar às atas</a></p>`;
@@ -776,11 +765,10 @@ function detalheAta(id, hoje, obras) {
       <div class="sd-folha">
         <div class="sd-cab">
           <div class="sd-logo"></div>
-          <div class="sd-tit">ATA DE ${a.vistoria ? 'VISTORIA' : 'REUNIÃO'} ${dm(a.data).replace(/\//g, '.')}</div><div class="sd-cod">${a.obra || a.setor || ''}</div><div class="sd-cod">R${String(Number(a.revisao) || 0).padStart(2, '0')}</div>
+          <div class="sd-tit">ATA DE REUNIÃO ${dm(a.data).replace(/\//g, '.')}</div><div class="sd-cod">${a.obra || a.setor || ''}</div><div class="sd-cod">R${String(Number(a.revisao) || 0).padStart(2, '0')}</div>
           <div class="sd-linha"><b>LOCAL:</b> ${a.local || '—'}${a.setor ? html` · <b>DEPARTAMENTO:</b> ${a.setor}` : ''}</div>
           <div class="sd-linha"><b>PARTICIPANTES:</b> ${participantesRico(a.participantes)}</div>
         </div>
-        ${a.vistoria ? blocoVistoria(a.vistoria) : ''}
         <div class="tabela-rolagem"><table class="sd-tab"><thead><tr><th>ITEM</th><th>TIPO</th><th></th><th>RESPONSÁVEL</th><th>DATA LIMITE</th><th class="sd-sem-pdf"></th></tr></thead><tbody>
           ${linhasDaAta(a, ps).map((r, k) => r.kind === 'info' ? html`<tr><td class="c">${k + 1}</td><td class="c sd-t-info">INFORMATIVO</td><td>${descRica(typeof r.x === 'string' ? r.x : r.x.texto)}</td><td class="c">${typeof r.x === 'string' || !r.x.quem ? '—' : html`${String(r.x.quem).toLocaleUpperCase('pt-BR')}${r.x.tipo && r.x.tipo !== 'solida' ? html`<small>${ROTULO_TIPO[r.x.tipo] || 'Externo'}${r.x.categoria ? ` · ${r.x.categoria}` : ''}</small>` : ''}`}</td><td class="c"></td><td class="sd-sem-pdf"></td></tr>`
             : html`<tr class="${r.p.status === 'feita' ? 'sd-feita' : ''}"><td class="c">${k + 1}</td><td class="c sd-t-pend">PENDÊNCIA</td><td>${descRica(r.p.descricao)}${naLista(r.p) ? '' : html` <span class="at-fora-lista" title="Tirada da lista de pendências; continua nesta ata">fora da lista</span>`}</td><td class="c">${String(nomeDe(r.p.responsavel, r.p.responsavel_nome)).toLocaleUpperCase('pt-BR')}${r.p.responsavel_tipo && r.p.responsavel_tipo !== 'solida' ? html`<small>${ROTULO_TIPO[r.p.responsavel_tipo] || 'Externo'}${r.p.responsavel_categoria ? ` · ${r.p.responsavel_categoria}` : ''}</small>` : ''}</td>
@@ -826,15 +814,6 @@ function formNova(obras, revisarId = '') {
     </div>
     <p class="at-nome-linha">Nome da ata: <b id="ata-nome">escolha a data</b> <span class="pequeno" id="ata-destino"></span></p>
     <div class="at-form-grade2"><label>Local<input name="local" required autocomplete="off" placeholder="ex.: online, ou o endereço" value="${r && r.local ? r.local : ''}"></label></div>
-    <div class="at-vist" data-vist ${(r && r.tipoReuniao === 'VISTORIA') ? '' : html.seguro('hidden')}>
-      <h3>Vistoria <span class="pequeno">modelo "Checklist de Verificação em Obra": resultado por seção e itens conformes; as não conformidades viram pendências abaixo (o assunto é o tema: Segurança, Canteiro…)</span></h3>
-      <div class="at-form-grade2"><label>Gestor(a)<input name="v_gestor" autocomplete="off" value="${(r && r.vistoria && r.vistoria.gestor) || ''}"></label><label>Vistoria por<input name="v_por" autocomplete="off" placeholder="[A DEFINIR]" value="${(r && r.vistoria && r.vistoria.por) || ''}"></label></div>
-      <label>Referência<input name="v_ref" autocomplete="off" placeholder="ex.: Checklist de Verificação em Obra (segurança, canteiro e madeirite)" value="${(r && r.vistoria && r.vistoria.referencia) || ''}"></label>
-      <div class="v-secs">${((r && r.vistoria && r.vistoria.secoes && r.vistoria.secoes.length) ? r.vistoria.secoes : [{}, {}, {}]).map((s) => html`<div class="v-sec"><input name="v_sec_nome" placeholder="Seção, ex.: 1. Segurança e identificação" value="${s.nome || ''}"><input name="v_sec_c" type="number" min="0" placeholder="Conforme" value="${s.nome ? s.c : ''}"><input name="v_sec_n" type="number" min="0" placeholder="Não conforme" value="${s.nome ? s.n : ''}"><button type="button" class="ac-mini" data-v-del title="Tirar a seção">×</button></div>`)}</div>
-      <p><button type="button" class="ac-mini" data-v-add>+ seção</button></p>
-      <label>Itens conformes <span class="pequeno">texto livre, resumido</span><textarea name="v_conf" rows="2">${(r && r.vistoria && r.vistoria.conformes) || ''}</textarea></label>
-      <label>Observação<textarea name="v_obs" rows="2">${(r && r.vistoria && r.vistoria.obs) || ''}</textarea></label>
-    </div>
     <label>Participantes <span class="pequeno">escreva os nomes separados por vírgula; pode pôr a empresa entre parênteses</span><input name="participantes" required autocomplete="off" placeholder="ex.: Marcos (Sólida), Fernanda (Arquitetura), Julio (Cliente)" value="${r ? r.participantes.join(', ') : ''}"></label>
     <textarea name="resumo" hidden>${r ? r.resumo : ''}</textarea>
     <h3>Pendências <span class="pequeno">o que precisa de ação: quem faz e até quando</span></h3>

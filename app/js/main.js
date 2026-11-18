@@ -2568,12 +2568,12 @@ document.addEventListener('submit', async (e) => {
       const nome = atas.atualizarNomeDoForm(f); if (!nome) { alert('Escolha a data: o nome da ata sai dela.'); return; }
       if (f.dataset.revisar) {
         const idRev = f.dataset.revisar;
-        await atas.revisar(idRev, { data: fd.get('data'), tipoReuniao: fd.get('tipo_reuniao'), obra: obraA, setor: setorA, local: String(fd.get('local') || '').trim(), participantes: String(fd.get('participantes') || '').split(/[,;]/).map((x) => x.trim()).filter(Boolean), resumo: String(fd.get('resumo') || ''), pendencias, informativos, vistoria: lerVistoria(fd) });
+        await atas.revisar(idRev, { data: fd.get('data'), tipoReuniao: fd.get('tipo_reuniao'), obra: obraA, setor: setorA, local: String(fd.get('local') || '').trim(), participantes: String(fd.get('participantes') || '').split(/[,;]/).map((x) => x.trim()).filter(Boolean), resumo: String(fd.get('resumo') || ''), pendencias, informativos });
         estado.atasMsg = `Revisão salva: ${nome}. O PDF novo vai para o Drive em instantes.`;
         estado.atasMsgHash = `#/atas?aba=atas&ata=${idRev}`; location.hash = estado.atasMsgHash; desenhar();
         return;
       }
-      const nova = await atas.criarAta({ titulo: nome, tipoReuniao: fd.get('tipo_reuniao'), revisao: fd.get('revisao'), local: String(fd.get('local') || '').trim(), data: fd.get('data'), tipo: obraA ? 'obra' : 'departamento', obra: obraA, setor: setorA, participantes: String(fd.get('participantes') || '').split(/[,;]/).map((x) => x.trim()).filter(Boolean), resumo: String(fd.get('resumo') || ''), pendencias, informativos, vistoria: lerVistoria(fd) });
+      const nova = await atas.criarAta({ titulo: nome, tipoReuniao: fd.get('tipo_reuniao'), revisao: fd.get('revisao'), local: String(fd.get('local') || '').trim(), data: fd.get('data'), tipo: obraA ? 'obra' : 'departamento', obra: obraA, setor: setorA, participantes: String(fd.get('participantes') || '').split(/[,;]/).map((x) => x.trim()).filter(Boolean), resumo: String(fd.get('resumo') || ''), pendencias, informativos });
       estado.atasMsg = `Ata salva${pendencias.length ? ` com ${pendencias.length} ${pendencias.length === 1 ? 'pendência' : 'pendências'}` : ''}${informativos.length ? `${pendencias.length ? ' e' : ' com'} ${informativos.length} ${informativos.length === 1 ? 'informativo' : 'informativos'}` : ''}.`;
       estado.atasMsgHash = `#/atas?aba=atas&ata=${nova.id}`; location.hash = estado.atasMsgHash;
     } else {
@@ -2732,19 +2732,4 @@ document.addEventListener('change', (e) => {
 });
 document.addEventListener('input', (e) => {
   if (e.target && e.target.name === 'revisao' && e.target.closest && e.target.closest('#ata-form')) { e.target.dataset.manual = '1'; atas.atualizarNomeDoForm(e.target.form); }
-});
-
-// Ata de vistoria (modelo "Checklist de Verificação em Obra"): o bloco do formulário só aparece quando o tipo é VISTORIA
-function lerVistoria(fd) {
-  if (fd.get('tipo_reuniao') !== 'VISTORIA') return null;
-  const nomes = fd.getAll('v_sec_nome'); const cs = fd.getAll('v_sec_c'); const ns = fd.getAll('v_sec_n');
-  const secoes = nomes.map((n, i) => ({ nome: String(n).trim(), c: Number(cs[i]) || 0, n: Number(ns[i]) || 0 })).filter((s) => s.nome);
-  const t = (k) => String(fd.get(k) || '').trim();
-  return { gestor: t('v_gestor'), por: t('v_por'), referencia: t('v_ref'), secoes, conformes: t('v_conf'), obs: t('v_obs') };
-}
-document.addEventListener('change', (e) => { if (e.target && e.target.name === 'tipo_reuniao') { const b = document.querySelector('[data-vist]'); if (b) b.hidden = e.target.value !== 'VISTORIA'; } });
-document.addEventListener('click', (e) => {
-  const add = e.target.closest && e.target.closest('[data-v-add]'); const del = e.target.closest && e.target.closest('[data-v-del]');
-  if (add) { const box = add.closest('[data-vist]').querySelector('.v-secs'); const l = box.querySelector('.v-sec'); if (l) { const n = l.cloneNode(true); n.querySelectorAll('input').forEach((i) => { i.value = ''; }); box.appendChild(n); } }
-  if (del) { const l = del.closest('.v-sec'); const box = l.parentElement; if (box.querySelectorAll('.v-sec').length > 1) l.remove(); else l.querySelectorAll('input').forEach((i) => { i.value = ''; }); }
 });

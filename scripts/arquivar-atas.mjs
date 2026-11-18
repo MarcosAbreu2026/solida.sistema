@@ -62,12 +62,6 @@ function htmlDaAta(a, pends) {
   }).join('');
   const partes = (a.participantes || []).map((t) => { const m = String(t).match(/^(.*?)\s*(\(.*\))\s*$/); return m ? `${esc(m[1])} <span class="papel">${esc(m[2])}</span>` : esc(t); }).join(', ');
   const rev = `R${String(Number(a.revisao) || 0).padStart(2, '0')}`;
-  // ata de vistoria (modelo "Checklist de Verificação em Obra"): quem vistoriou, resultado por seção, itens conformes e observação
-  const vistoria = (() => {
-    const v = a.vistoria; if (!v) return '';
-    const sec = (v.secoes || []).filter((x) => x && x.nome); const tc = sec.reduce((n, x) => n + (Number(x.c) || 0), 0); const tn = sec.reduce((n, x) => n + (Number(x.n) || 0), 0);
-    return `<div class="vist"><div class="vl"><b>GESTOR(A):</b> ${esc(v.gestor || '—')} · <b>VISTORIA POR:</b> ${esc(v.por || '[A DEFINIR]')}</div>${v.referencia ? `<div class="vl"><b>REFERÊNCIA:</b> ${esc(v.referencia)}</div>` : ''}${sec.length ? `<table class="res"><thead><tr><th>SEÇÃO</th><th>CONFORME</th><th>NÃO CONFORME</th></tr></thead><tbody>${sec.map((x) => `<tr><td>${esc(x.nome)}</td><td class="c">${Number(x.c) || 0}</td><td class="c">${Number(x.n) || 0}</td></tr>`).join('')}<tr class="tot"><td><b>Total</b></td><td class="c"><b>${tc}</b></td><td class="c"><b>${tn}</b></td></tr></tbody></table>` : ''}${v.conformes ? `<div class="vl"><b>ITENS CONFORMES:</b> ${esc(v.conformes)}</div>` : ''}${v.obs ? `<div class="vl"><b>OBSERVAÇÃO:</b> ${esc(v.obs)}</div>` : ''}</div>`;
-  })();
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${esc(a.titulo)}</title><style>
 @page { size: A4; margin: 5mm; }   /* afastamento de 0,5 cm em todos os lados (vale para todo PDF que o sistema gerar) */
 * { box-sizing: border-box; }
@@ -87,17 +81,14 @@ td { padding: 4px 7px; border-top: 1px solid #C9D0D8; vertical-align: middle; }
 td.c { text-align: center; } tr { break-inside: avoid; }
 td.pend { background: #F3E4E2; color: #7A1F1A; font-weight: 600; } td.info { background: #E3ECE5; color: #1E4D2B; font-weight: 600; }
 td.repro { background: #F4EBD0; } small { display: block; color: #6B7580; font-size: 8px; } td.repro small { color: #6E4F00; }
-.vist { border-bottom: 1px solid #8C98A6; } .vl { padding: 5px 10px; border-top: 1px solid #C9D0D8; font-size: 10.5px; } .vl b { color: #14283C; }
-.res { width: calc(100% - 20px); margin: 4px 10px 6px; } .res th:nth-child(1), .res th:nth-child(2), .res th:nth-child(3) { width: auto; } .res th:not(:first-child), .res td.c { width: 120px; } .tot td { background: #F3F5F7; }
 .rodape { margin-top: 10px; font-size: 8.5px; color: #8A939D; }
 </style></head><body>
 <div class="folha">
 <div class="cab">
-<div class="logo"></div><div class="tit">ATA DE ${a.vistoria ? 'VISTORIA' : 'REUNIÃO'} ${esc(dbr(a.data).replace(/\//g, '.'))}</div><div class="cod">${esc(a.obra || a.setor || '')}</div><div class="cod">${rev}</div>
+<div class="logo"></div><div class="tit">ATA DE REUNIÃO ${esc(dbr(a.data).replace(/\//g, '.'))}</div><div class="cod">${esc(a.obra || a.setor || '')}</div><div class="cod">${rev}</div>
 <div class="linha"><b>LOCAL:</b> ${esc(String(a.local || '').replace(/^\s*local\s*:\s*/i, '') || '—')}${a.setor ? ` · <b>DEPARTAMENTO:</b> ${esc(a.setor)}` : ''}</div>
 <div class="linha"><b>PARTICIPANTES:</b> ${partes || '—'}</div>
 </div>
-${vistoria}
 <table><thead><tr><th>ITEM</th><th>TIPO</th><th></th><th>RESPONSÁVEL</th><th>DATA LIMITE</th></tr></thead><tbody>${linhas}</tbody></table>
 </div>
 <p class="rodape">${esc(a.titulo)} · registrada no Sistema Sólida${a.criado_por_nome ? ` por ${esc(a.criado_por_nome)}` : ''} em ${dbr(String(a.criado_em || '').slice(0, 10))}.</p>
