@@ -1340,3 +1340,9 @@ select.pc-sit-sel { height: 22px !important; font-size: 11px; min-width: 100px; 
 .pc-po-sit { height: 20px; font-size: 11px; padding: 0 8px; }
 .pc .at-filtros select { max-width: 138px; } .pc .at-filtros input[type="search"] { width: 130px; }
 .pc .at-filtros .pc-novo-po { padding: 0 10px; }
+
+/* Pendências da obra (por cômodo) */
+.tf-comodo { background: #EEF6EE; border: 1px solid #BBD9BD; color: #24502B; font-size: 12px; border-radius: 8px; padding: 5px 9px; margin: 4px 0; line-height: 1.35; } .tf-comodo[hidden] { display: none; }
+.tf-comodo label { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; margin-left: 6px; } .tf-comodo input[type="checkbox"] { width: 15px !important; height: 15px !important; min-width: 15px !important; padding: 0 !important; margin: 0 !important; }
+.tf-daobra { display: flex !important; flex-direction: row !important; align-items: center; gap: 8px; grid-column: 1 / -1; font-size: 12.5px; } .tf-daobra input { width: 16px !important; height: 16px !important; min-width: 16px !important; padding: 0 !important; margin: 0 !important; }
+.po-comodo { padding: 2px 0 6px; } .po-comodo h4 { margin: 8px 12px 2px; font-size: 12.5px; color: #1F3A56; text-transform: uppercase; letter-spacing: .04em; } .po-comodo h4 small { color: #8A94A0; font-weight: 600; }

@@ -141,18 +141,21 @@ export async function listarAtasPendencias() {
   if (p.error) throw new Error(p.error.message);
   return { atas: a.data || [], pendencias: p.data || [], pessoas: (q.data || []).filter((x) => x.funcao && x.funcao !== 'coletor') };
 }
+// pendência cujo ASSUNTO é um cômodo é da OBRA (não é tarefa de uma pessoa): app/js/comodos.js
+import { pendenciaDaObra } from './comodos.js';
+const daObraDe = (p) => (p.da_obra !== undefined ? !!p.da_obra : (!p.os && pendenciaDaObra(p.descricao)));
 export async function criarAtaNuvem(ata, pendencias) {
   const { data, error } = await sb.from('atas').insert({ ...ata, criado_por: perfil.id, criado_por_nome: perfil.nome }).select().single();
   if (error) throw new Error(error.message);
   if (pendencias.length) {
-    const linhas = pendencias.map((x) => ({ ...x, ata_id: data.id, criado_por: perfil.id, obra: ata.obra || null, setor: ata.setor || null }));
+    const linhas = pendencias.map((x) => ({ ...x, da_obra: daObraDe(x), ata_id: data.id, criado_por: perfil.id, obra: ata.obra || null, setor: ata.setor || null }));
     const { error: e2 } = await sb.from('pendencias').insert(linhas);
     if (e2) throw new Error(e2.message);
   }
   return data;
 }
 export async function criarPendenciaNuvem(p) {
-  const { error } = await sb.from('pendencias').insert({ ...p, criado_por: perfil.id });
+  const { error } = await sb.from('pendencias').insert({ ...p, da_obra: daObraDe(p), criado_por: perfil.id });
   if (error) throw new Error(error.message);
 }
 // agenda semanal do pós-obra (quem vai para qual obra em qual dia)
@@ -256,7 +259,7 @@ export async function atualizarAtaNuvem(id, mudancas) {
 }
 export async function criarPendenciasNuvemLote(lista) {
   if (!lista.length) return [];
-  const { data, error } = await sb.from('pendencias').insert(lista.map((p) => ({ ...p, criado_por: perfil.id }))).select('id');
+  const { data, error } = await sb.from('pendencias').insert(lista.map((p) => ({ ...p, da_obra: daObraDe(p), criado_por: perfil.id }))).select('id');
   if (error) throw new Error(error.message);
   return (data || []).map((x) => x.id);
 }

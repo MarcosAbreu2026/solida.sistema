@@ -15,6 +15,7 @@ import { lerPessoasTarefas } from '../armazenamento.js';
 import { analisarAta, lerArquivoAta, acharResponsavel, ehAtaDePendencias, lerAtaDePendencias, formatoListaPendencias, lerListaPorPessoa } from '../ata-leitor.js';
 import { analisarReuniao, analisarFala, pareceResumoEmTopicos } from '../fala-leitor.js';
 import { caixaConvidados, daPessoa as reunioesDaPessoa, cartaoReuniao, horaDe as horaReuniao } from '../reunioes.js';
+import { comodoDe, pendenciaDaObra, assuntoDaDescricao } from '../comodos.js';
 
 export const ABAS = [['pendencias', 'Pendências'], ['atas', 'Atas'], ['pautas', 'Pautas'], ['nova', 'Nova ata']];
 export const SETORES_ATA = [...SETORES_ORGANOGRAMA, 'Diretoria / geral'];
@@ -210,6 +211,7 @@ export async function carregar() {
   try {
     if (NA_NUVEM) dados = { ...(await listarAtasPendencias()), erro: '' };
     else { const l = lerLocal(); dados = { atas: [...l.atas].sort((a, b) => String(b.data).localeCompare(String(a.data)) || b.id - a.id), pendencias: l.pendencias, pessoas: pessoasLocais(), erro: '' }; }
+    for (const p of dados.pendencias) if (p.da_obra == null) p.da_obra = !p.os && pendenciaDaObra(p.descricao);   // modo de teste local: calcula na hora
     const todasPend = dados.pendencias;
     dados = { ...dados, pendencias: todasPend.filter((p) => visivelParaMim(p, false, [])), atas: dados.atas.filter((a) => visivelParaMim(a, true, todasPend)) };
   } catch (e) { dados = { ...dados, erro: String(e.message || e) }; }
@@ -224,7 +226,9 @@ const nomeDe = (id, reserva) => ((dados.pessoas.find((p) => p.id === id) || {}).
 // O nome ganha o próximo Rnn e o PDF novo vai para o Drive (o PDF da revisão anterior continua lá).
 const mapaInfo = (p) => ({ n: p.item || null, texto: p.descricao, quem: p.responsavel ? nomeDe(p.responsavel) : (p.externoNome || p.externoCategoria || (p.externoTipo === 'cliente' ? 'Cliente' : p.externoTipo === 'arquitetura' ? 'Arquitetura' : '')), tipo: p.responsavel ? 'solida' : (p.externoTipo || 'terceirizado'), categoria: p.responsavel ? null : (p.externoCategoria || null) });
 const camposPend = (p) => ({ item: p.item || null, descricao: p.descricao, responsavel: p.responsavel || null, responsavel_nome: p.responsavel ? nomeDe(p.responsavel) : (p.externoNome || p.externoCategoria || (p.externoTipo === 'cliente' ? 'Cliente' : p.externoTipo === 'arquitetura' ? 'Arquitetura' : null)), responsavel_tipo: p.responsavel ? 'solida' : (p.externoTipo || 'terceirizado'), responsavel_categoria: p.responsavel ? null : (p.externoCategoria || null), prazo: p.prazo || null });
-export const todasPendencias = () => dados.pendencias;
+// tarefas das pessoas (sem as pendências da OBRA por cômodo, que têm lista própria)
+export const todasPendencias = () => dados.pendencias.filter((p) => !p.da_obra);
+export const pendenciasDaObra = () => dados.pendencias.filter((p) => p.da_obra && p.status !== 'cancelada' && p.na_lista !== false);
 export const ataPorId = (id) => dados.atas.find((x) => String(x.id) === String(id));
 // a ata salva, na forma que o formulário entende (para editar)
 export function ataComoRascunho(a) {
@@ -335,8 +339,8 @@ export async function criarAta({ titulo, data, tipo, obra, setor, participantes,
   await carregar();
   return nova;
 }
-export async function criarPendencia({ ata_id, descricao, responsavel, externoNome, externoTipo, externoCategoria, prazo, obra, setor, os, osFase, urgencia, funcaoTarefa, observadores, hora, duracao, recorrente = false, frequencia = 'semanal' }) {
-  const p = { ata_id: ata_id || null, descricao, responsavel: responsavel || null, responsavel_nome: responsavel ? nomeDe(responsavel) : (externoNome || externoCategoria || (externoTipo === 'cliente' ? 'Cliente' : externoTipo === 'arquitetura' ? 'Arquitetura' : null)), responsavel_tipo: responsavel ? 'solida' : (externoTipo || 'terceirizado'), responsavel_categoria: responsavel ? null : (externoCategoria || null), prazo: prazo || null, status: 'aberta', obra: obra || null, setor: setor || null, os: os || null, os_fase: osFase || null, urgencia: urgencia || null, funcao_tarefa: funcaoTarefa || null, observadores: observadores || [], hora: hora || null, duracao: duracao ? Number(duracao) : 60 };
+export async function criarPendencia({ daObra, ata_id, descricao, responsavel, externoNome, externoTipo, externoCategoria, prazo, obra, setor, os, osFase, urgencia, funcaoTarefa, observadores, hora, duracao, recorrente = false, frequencia = 'semanal' }) {
+  const p = { da_obra: daObra !== undefined ? !!daObra : (!os && pendenciaDaObra(descricao)), ata_id: ata_id || null, descricao, responsavel: responsavel || null, responsavel_nome: responsavel ? nomeDe(responsavel) : (externoNome || externoCategoria || (externoTipo === 'cliente' ? 'Cliente' : externoTipo === 'arquitetura' ? 'Arquitetura' : null)), responsavel_tipo: responsavel ? 'solida' : (externoTipo || 'terceirizado'), responsavel_categoria: responsavel ? null : (externoCategoria || null), prazo: prazo || null, status: 'aberta', obra: obra || null, setor: setor || null, os: os || null, os_fase: osFase || null, urgencia: urgencia || null, funcao_tarefa: funcaoTarefa || null, observadores: observadores || [], hora: hora || null, duracao: duracao ? Number(duracao) : 60 };
   if (ata_id) { const a = dados.atas.find((x) => String(x.id) === String(ata_id)); const ns = [...dados.pendencias.filter((x) => String(x.ata_id) === String(ata_id)).map((x) => Number(x.item) || 0), ...((a && a.informativos) || []).map((x) => (x && x.n) || 0)]; p.item = Math.max(0, ...ns) + 1; }
   // recorrente: repete toda semana, no mesmo dia da semana. Cada ocorrência é uma tarefa; as primeiras ${SEMANAS_INICIAIS} semanas já nascem e o resto é criado aos poucos (renovarRecorrentes)
   if (recorrente && p.prazo && !ata_id) {
@@ -580,6 +584,7 @@ function barraFiltros(params, obras, aba, ctx = {}) {
   const sel = (nome, rotulo, opcoes, atual) => html`<label>${rotulo}<select data-atas-filtro="${nome}"><option value="">Todos</option>${opcoes.map(([v, t]) => html`<option value="${v}" ${atual === v ? html.seguro('selected') : ''}>${t}</option>`)}</select></label>`;
   const vista = params.get('vista') === 'lista' ? 'lista' : 'prazo';
   return html`<div class="at-filtros">
+    ${aba === 'atas' ? '' : html`<label>Mostrar<select data-atas-filtro="mostrar"><option value="" selected>Tarefas das pessoas</option><option value="obra">Pendências da obra (por cômodo)</option></select></label>`}
     ${aba === 'atas' ? '' : seletorResponsavel(params.get('pessoa') || 'eu')}
     ${ctx.setorFixo ? '' : sel('setor', 'Setor', SETORES_ATA.map((s) => [s, s]), params.get('setor') || '')}
     ${selObra(obras, params.get('obra') || '')}
@@ -593,7 +598,7 @@ const reprogramada = (p) => !!p.prazo_original && p.prazo_original !== p.prazo;
 const tituloRepro = (p) => `Prazo original ${dm(p.prazo_original)}${(p.reprogramacoes || []).length ? ` · ${(p.reprogramacoes || []).length} ${(p.reprogramacoes || []).length === 1 ? 'reprogramação' : 'reprogramações'}: ${(p.reprogramacoes || []).map((r) => `${dm(r.de)} → ${dm(r.para)}${r.por ? ` (${r.por})` : ''}`).join('; ')}` : ''}`;
 // clicar na data abre o mini calendário (com feriados) para reprogramar; só nas pendências abertas
 const prazoBtn = (p, conteudo, cls = '') => (p.status === 'feita' ? html`<span class="${cls}">${conteudo}</span>` : html`<button type="button" class="at-data-btn ${cls}" data-cal-prazo="${p.id}" title="Clique para reprogramar (escolher outra data)">${conteudo}</button>`);
-const naLista = (p) => p.na_lista !== false;   // false = tirada da lista de pendências (continua só na ata)
+const naLista = (p) => p.na_lista !== false && !p.da_obra;   // false = tirada da lista de pendências (continua só na ata)
 export const pendenciaPorId = (id) => dados.pendencias.find((x) => String(x.id) === String(id));
 export async function reprogramar(id, novo) {
   const p = dados.pendencias.find((x) => String(x.id) === String(id)); if (!p || (novo || '') === (p.prazo || '')) return;
@@ -662,7 +667,7 @@ export function formAvulsa(obras, prazo, setorPadrao = '', preset = {}) {
       <div class="tf-grade pf-linha av-linha" data-tipo="solida" data-kind="pendencia">
         <div class="av-obra-linha"><label>Obra<select name="av_obra" class="tf-req" required><option value="">— escolher —</option><option value="__nenhuma__" ${preset.obra ? '' : ''}>Nenhuma obra (tarefa geral)</option>${gruposDeObras(listaObras, preset.obra || '', { criar: true })}</select></label>
         ${preset.os ? '' : html`<label class="av-os tf-os" hidden>OS em aberto deste PO<select name="av_os"><option value="">— escolher a OS —</option></select></label>`}</div>
-        <label class="tf-ass">${preset.os ? 'Assunto (a OS)' : 'Assunto / cômodo'}<input name="p_assunto" class="pf-assunto" placeholder="ex.: ACM" autocomplete="off" value="${preset.os || preset.assunto || ''}" ${preset.os ? html.seguro('readonly') : ''}></label>
+        <label class="tf-ass">${preset.os ? 'Assunto (a OS)' : 'Assunto / cômodo'}<input data-comodo-aviso name="p_assunto" class="pf-assunto" placeholder="ex.: ACM" autocomplete="off" value="${preset.os || preset.assunto || ''}" ${preset.os ? html.seguro('readonly') : ''}></label>
         <label class="tf-desc">${preset.os ? 'Descrição (o que fazer)' : 'Título (o que fazer)'}<input name="p_desc" class="tf-req" placeholder="ex.: Retirar da área gourmet" autocomplete="off" value="${preset.desc || ''}"></label>
         <label>Responsável<select name="p_tipo" class="tf-req" data-pf-tipo><option value="solida">Sólida</option><option value="terceirizado">Terceirizado</option><option value="cliente">Cliente</option><option value="arquitetura">Arquitetura</option></select></label>
         <label class="av-quem">Quem
@@ -678,11 +683,36 @@ export function formAvulsa(obras, prazo, setorPadrao = '', preset = {}) {
         <label>Urgência<select name="p_urg"><option value="">Sem urgência</option>${Object.entries(URG).map(([v, [t]]) => html`<option value="${v}">${t[0] + t.slice(1).toLocaleLowerCase('pt-BR')}</option>`)}</select></label>
         ${caixaObservadores('p_obs', [], '')}
       </div>
+      <p class="tf-comodo" data-tf-comodo hidden></p>
       <div class="tf-botoes tf-botoes-tarefa"><button type="button" class="botao" data-av-fechar>Cancelar</button><button type="submit" class="botao on">Criar tarefa</button></div>
       ${reuniaoLiberada() && !preset.os ? painelReuniao(prazo, preset.hora, listaObras, setorPadrao) : ''}
     </form>
     <div class="tf-chat tf-dir"><h4>Anotações</h4><p class="pequeno">As anotações ficam disponíveis depois que a tarefa for criada.</p></div>
   </div></div>`;
+}
+// Pendências da OBRA: as que vêm de ata/lista por cômodo (assunto = cômodo). Ficam por obra e, dentro dela, por cômodo; não são tarefas de pessoa.
+function vistaPendenciasObra(params, obras) {
+  const st = params.get('status') || 'abertas'; const q = chaveTxt(params.get('q') || ''); const obraF = params.get('obra') || '';
+  const lista = pendenciasDaObra().filter((p) => (st === 'todas' ? true : st === 'feitas' ? p.status === 'feita' : p.status === 'aberta')
+    && (!obraF || codigoDaObra(p.obra) === codigoDaObra(obraF)) && (!q || chaveTxt(`${p.descricao} ${p.obra} ${p.responsavel_nome}`).includes(q)));
+  const porObra = new Map();
+  for (const p of lista) { const k = p.obra ? codigoDaObra(p.obra) : ''; if (!porObra.has(k)) porObra.set(k, { nome: p.obra || 'Sem obra', comodos: new Map() }); const g = porObra.get(k); const c = comodoDe(assuntoDaDescricao(p.descricao)) || 'Outros'; if (!g.comodos.has(c)) g.comodos.set(c, []); g.comodos.get(c).push(p); }
+  const ordenadas = [...porObra.entries()].sort(([a], [b]) => (a === '' ? 1 : b === '' ? -1 : a.localeCompare(b, 'pt-BR', { numeric: true })));
+  const hoje = hojeISO();
+  const item = (p) => { const ass = assuntoDaDescricao(p.descricao); const resto = ass ? p.descricao.slice(p.descricao.indexOf(',') + 1).trim() : p.descricao; const atras = p.status === 'aberta' && p.prazo && p.prazo < hoje;
+    return html`<div class="lt-linha ${p.status === 'feita' ? 'lt-feita' : ''}"><input type="checkbox" class="lt-chk" data-pend="${p.id}|${p.status === 'feita' ? 'aberta' : 'feita'}" ${p.status === 'feita' ? html.seguro('checked') : ''} title="${p.status === 'feita' ? 'Reabrir' : 'Concluir'}">
+      <div class="lt-corpo"><span class="lt-tit" data-tarefa="${p.id}" title="Abrir a pendência">${ass ? html`<b class="lt-obra">${ass}</b> ` : ''}${resto}</span>${p.prazo ? html`<span class="lt-sub ${atras ? 'lt-atraso' : ''}">${atras ? 'Venceu em ' : 'Prazo '}${dm(p.prazo).slice(0, 5)}</span>` : ''}</div>
+      <div class="lt-dir">${p.responsavel_nome ? html`<span class="lt-quem">${p.responsavel_nome}</span>` : ''}</div></div>`; };
+  return html`<div class="lt-corpo-geral po-obra-pend">
+    <p class="pequeno">Pendências da obra por cômodo: vêm das atas e das listas, não são tarefas de uma pessoa e por isso não aparecem na lista de tarefas, na Agenda nem nos contadores. ${lista.length} ${lista.length === 1 ? 'pendência' : 'pendências'} ${st === 'feitas' ? 'concluídas' : st === 'todas' ? 'no total' : 'em aberto'}.</p>
+    <div class="lt-filtros"><div class="lt-grp lt-grp-sel">
+      <label>Mostrar<select data-atas-filtro="mostrar"><option value="">Tarefas das pessoas</option><option value="obra" selected>Pendências da obra (por cômodo)</option></select></label>
+      ${selObra(obras, obraF)}
+      <label>Situação<select data-atas-filtro="status"><option value="abertas" ${st === 'abertas' ? html.seguro('selected') : ''}>Abertas</option><option value="feitas" ${st === 'feitas' ? html.seguro('selected') : ''}>Concluídas</option><option value="todas" ${st === 'todas' ? html.seguro('selected') : ''}>Todas</option></select></label>
+      <label>Procurar<input type="search" data-atas-filtro="q" value="${params.get('q') || ''}" placeholder="cômodo, texto…"></label></div></div>
+    ${ordenadas.length ? ordenadas.map(([, g]) => html`<section class="lt-grupo"><header><h3>${g.nome}</h3><span>${[...g.comodos.values()].reduce((n, l) => n + l.length, 0)}</span></header>
+      ${[...g.comodos.entries()].sort(([a], [b]) => (a === 'Outros' ? 1 : b === 'Outros' ? -1 : a.localeCompare(b, 'pt-BR'))).map(([nome, l]) => html`<div class="po-comodo"><h4>${nome} <small>${l.length}</small></h4>${l.map(item)}</div>`)}</section>`) : html`<p class="lt-vazio">Nenhuma pendência da obra com esses filtros.</p>`}
+  </div>`;
 }
 function vistaPrazo(lista, hoje, setorPadrao = '', reun = []) {
   return html`<div class="at-quadro">${COLUNAS.map(([id, nome]) => {
@@ -905,6 +935,7 @@ function vistaDia(params, obras, setorFixo) {
       <div class="lt-filtros">
         <div class="lt-grp"><span>Urgência</span>${pilula('urg', '', 'Todas', urg)}${pilula('urg', 'alta', 'Alta', urg)}${pilula('urg', 'media', 'Média', urg)}${pilula('urg', 'baixa', 'Baixa', urg)}${pilula('urg', 'sem', 'Sem', urg)}</div>
         <div class="lt-grp lt-grp-sel">
+          <label>Mostrar<select data-atas-filtro="mostrar"><option value="" selected>Tarefas das pessoas</option><option value="obra">Pendências da obra (por cômodo)</option></select></label>
           <label>Ver tarefas de<select data-atas-filtro="pessoa">${opt('eu', 'Só as minhas', pessoaSel)}${opt('todos', 'Todos (os que eu vejo)', pessoaSel)}${opt('tipo:solida', 'Equipe da Sólida', pessoaSel)}${opt('tipo:terceirizado', 'Terceirizados (todos)', pessoaSel)}${opt('tipo:cliente', 'Clientes', pessoaSel)}${opt('tipo:arquitetura', 'Arquitetura', pessoaSel)}${gente.length ? html`<optgroup label="Pessoas">${gente.map((x) => opt(x.id, x.nome, pessoaSel))}</optgroup>` : ''}</select></label>
           ${setorFixo ? '' : html`<label>Setor<select data-atas-filtro="setor"><option value="">Todos</option>${SETORES_ATA.map((s) => opt(s, s, params.get('setor') || ''))}</select></label>`}
           ${selObra(obras, params.get('obra') || '')}
@@ -948,6 +979,7 @@ export function renderPendencias({ params, obras = [], setorFixo = '', base = '#
   const cmpTab = comparador(params.get('ord') || ''); if (cmpTab) lista = [...lista].sort(cmpTab);
   const modo = modoDe(params);
   const cabImp = cabecalhoImpressao(params, modo, hoje, setorFixo);
+  if (params.get('mostrar') === 'obra') return html`${cabImp}${datalistTerceiros()}${vistaPendenciasObra(params, obras)}`;
   if (modo === 'lista') return html`${cabImp}${datalistTerceiros()}${dados.erro ? html`<p class="erro">Não consegui carregar: ${dados.erro}</p>` : ''}${vistaDia(params, obras, setorFixo)}`;
   return html`${cabImp}${datalistTerceiros()}${dados.erro ? html`<p class="erro">Não consegui carregar: ${dados.erro}</p>` : ''}
     <div class="cards at-cards"><div class="card"><div class="card-valor">${abertas.length}</div><div class="card-rotulo">Pendências abertas</div></div>
@@ -1053,7 +1085,7 @@ export async function salvarTarefa(id, c) {
   const p = pendenciaPorId(id); if (!p) throw new Error('Tarefa não encontrada.');
   const desc = String(c.desc || '').trim(); const ass = String(c.assunto || '').trim();
   if (!desc && !ass) throw new Error('Escreva o título da tarefa.');
-  const mud = { obra: c.obra === undefined ? p.obra : (c.obra || null), descricao: ass ? `${ass}, ${desc}` : desc, urgencia: c.urgencia || null, funcao_tarefa: c.funcaoTarefa || null, observadores: c.observadores || [], hora: c.hora || null, duracao: c.duracao ? Number(c.duracao) : null };
+  const mud = { ...(c.daObra === undefined ? {} : { da_obra: !!c.daObra }), obra: c.obra === undefined ? p.obra : (c.obra || null), descricao: ass ? `${ass}, ${desc}` : desc, urgencia: c.urgencia || null, funcao_tarefa: c.funcaoTarefa || null, observadores: c.observadores || [], hora: c.hora || null, duracao: c.duracao ? Number(c.duracao) : null };
   if (c.resp === 'ext') {
     const tipo = c.tipo || 'terceirizado';
     Object.assign(mud, { responsavel: null, responsavel_nome: String(c.nome || '').trim() || (tipo === 'cliente' ? 'Cliente' : tipo === 'arquitetura' ? 'Arquitetura' : null), responsavel_tipo: tipo, responsavel_categoria: null });
@@ -1128,6 +1160,7 @@ export function detalheTarefa(id, { msg = '', obras = [] } = {}) {
         <div class="tf-ext" ${ext ? '' : html.seguro('hidden')}><label>Quem é<select name="t_tipo"><option value="terceirizado" ${tipo === 'terceirizado' ? html.seguro('selected') : ''}>Terceirizado</option><option value="cliente" ${tipo === 'cliente' ? html.seguro('selected') : ''}>Cliente</option><option value="arquitetura" ${tipo === 'arquitetura' ? html.seguro('selected') : ''}>Arquitetura</option></select></label>
           <label>Nome<input name="t_nome" value="${ext ? (p.responsavel_nome || '') : ''}" list="dl-terceiros" placeholder="empresa ou pessoa"></label></div>
         <label>Obra<select name="t_obra"><option value="">Nenhuma</option>${gruposDeObras(obras, p.obra || '', { criar: true })}</select></label>
+        <label class="tf-daobra" title="Pendência da obra: vem de ata/lista por cômodo e não entra na lista de tarefas das pessoas"><input type="checkbox" name="t_daobra" ${p.da_obra ? html.seguro('checked') : ''}> <span>Pendência da obra (por cômodo): não é tarefa de pessoa</span></label>
         <label>Prazo<input type="date" name="t_prazo" value="${p.prazo || ''}"></label>
         ${p.serie ? html`<div class="tf-recor tf-recor-on"><label class="tf-recor-chk"><input type="checkbox" checked disabled> <span>Tarefa recorrente</span></label><small>${p.frequencia === 'mensal' ? 'todo mês' : 'toda semana'}</small></div>` : html`<div class="tf-recor"><label class="tf-recor-chk"><input type="checkbox" name="t_recor"> <span>Tarefa recorrente</span></label><select name="t_freq" title="Como se repete"><option value="semanal">Toda semana</option><option value="mensal">Todo mês</option></select></div>`}
       </div>

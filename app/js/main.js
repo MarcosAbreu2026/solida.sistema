@@ -48,6 +48,7 @@ import * as svPos from './servicos-pos.js';
 import * as osq from './os-quadro.js';
 import * as reunioes from './reunioes.js';
 import * as poConcluir from './po-concluir.js';
+import { comodoDe } from './comodos.js';
 import * as configTela from './telas/configuracoes.js';
 import * as automacoesTela from './telas/automacoes.js';
 import * as obrasOrc from './telas/obras-orcamento.js';
@@ -2038,7 +2039,7 @@ document.addEventListener('submit', async (e) => {
   e.preventDefault(); const fd = new FormData(f); const id = f.dataset.tf;
   try {
     let escopo = 'uma'; if (atas.ehRecorrente(id)) { escopo = await perguntarEscopo('Salvar tarefa recorrente'); if (!escopo) return; }
-    await atas.salvarTarefa(id, { escopo, obra: fd.get('t_obra'), recorrente: fd.has('t_recor'), frequencia: String(fd.get('t_freq') || 'semanal'), hora: fd.get('t_hora'), duracao: fd.get('t_dur'), observadores: fd.getAll('t_obs'), funcaoTarefa: fd.get('t_func'), urgencia: fd.get('t_urg'), assunto: fd.get('t_assunto'), desc: fd.get('t_desc'), resp: fd.get('t_resp'), tipo: fd.get('t_tipo'), nome: fd.get('t_nome'), gestor: fd.get('t_gestor'), prazo: fd.get('t_prazo') });
+    await atas.salvarTarefa(id, { daObra: fd.has('t_daobra'), escopo, obra: fd.get('t_obra'), recorrente: fd.has('t_recor'), frequencia: String(fd.get('t_freq') || 'semanal'), hora: fd.get('t_hora'), duracao: fd.get('t_dur'), observadores: fd.getAll('t_obs'), funcaoTarefa: fd.get('t_func'), urgencia: fd.get('t_urg'), assunto: fd.get('t_assunto'), desc: fd.get('t_desc'), resp: fd.get('t_resp'), tipo: fd.get('t_tipo'), nome: fd.get('t_nome'), gestor: fd.get('t_gestor'), prazo: fd.get('t_prazo') });
     await redesenharTarefas(id, 'Salvo ✓');
   } catch (err) { alert(`Não foi possível salvar (${err.message || err}).`); }
 });
@@ -2364,6 +2365,15 @@ ${os.length} ${os.length === 1 ? 'OS aberta passa' : 'OS abertas passam'} para C
       .finally(() => { sel.disabled = false; });
   }
 });
+// Nova tarefa: se o assunto é um cômodo ("Cozinha", "A/S", "Qto 2"…), avisa que ela vai para a lista da OBRA e não para as tarefas das pessoas (dá para desmarcar)
+document.addEventListener('input', (e) => {
+  const campo = e.target.closest && e.target.closest('[data-comodo-aviso]'); if (!campo) return;
+  const form = campo.closest('form'); const aviso = form && form.querySelector('[data-tf-comodo]'); if (!aviso) return;
+  const c = comodoDe(campo.value);
+  if (!c) { aviso.hidden = true; aviso.innerHTML = ''; return; }
+  aviso.hidden = false;
+  aviso.innerHTML = `🏠 <b>${c}</b> é um cômodo: esta pendência vai para a lista da <b>obra</b> (Tarefas › Mostrar › Pendências da obra) e <b>não</b> entra na lista de tarefas das pessoas. <label><input type="checkbox" name="p_pessoal"> É uma tarefa de pessoa mesmo assim</label>`;
+});
 // Excluir só a tarefa (pendência) de uma OS, sem mexer na OS: botão "excluir" na linha da tarefa (Controle de obras e janela da OS)
 document.addEventListener('click', async (e) => {
   const b = e.target.closest && e.target.closest('[data-pc-pdel]'); if (!b) return;
@@ -2574,7 +2584,7 @@ document.addEventListener('submit', async (e) => {
       if (g.dataset.avulsa) {
         const setorV = String(new FormData(g).get('av_setor') || ''); if (!setorV) { alert('Escolha o departamento da pendência.'); return; }
         { const caixaOs = g.querySelector('.av-os'); if (caixaOs && !caixaOs.hidden && !g.querySelector('[name="av_os"]').value) { alert('Este PO tem OS em aberto: escolha a OS da tarefa (ou "Sem OS" se for uma tarefa geral do PO).'); g.querySelector('[name="av_os"]').focus(); return; } }
-        await atas.criarPendencia({ ata_id: null, ...p, obra: String(new FormData(g).get('av_obra') || '').replace('__nenhuma__', ''), setor: setorV, os: osEscolhida(g) || g.dataset.os || null, osFase: osFaseDe(g) || g.dataset.osFase || null, observadores: new FormData(g).getAll('p_obs'), hora: String(new FormData(g).get('p_hora') || ''), duracao: new FormData(g).get('p_dur'), recorrente: new FormData(g).has('p_recor'), frequencia: String(new FormData(g).get('p_freq') || 'semanal') });
+        await atas.criarPendencia({ daObra: !!comodoDe(String(new FormData(g).get('p_assunto') || '')) && !new FormData(g).has('p_pessoal') && !g.dataset.os, ata_id: null, ...p, obra: String(new FormData(g).get('av_obra') || '').replace('__nenhuma__', ''), setor: setorV, os: osEscolhida(g) || g.dataset.os || null, osFase: osFaseDe(g) || g.dataset.osFase || null, observadores: new FormData(g).getAll('p_obs'), hora: String(new FormData(g).get('p_hora') || ''), duracao: new FormData(g).get('p_dur'), recorrente: new FormData(g).has('p_recor'), frequencia: String(new FormData(g).get('p_freq') || 'semanal') });
         const mod = document.getElementById('at-modal'); if (mod) mod.remove();
       } else await atas.criarPendencia({ ata_id: Number(g.dataset.ata), ...p, obra: g.dataset.obra, setor: g.dataset.setor });
     }
