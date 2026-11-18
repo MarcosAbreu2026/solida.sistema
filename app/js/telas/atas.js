@@ -495,15 +495,24 @@ export function linhaForm(v = {}) {
 }
 export const datalistTerceiros = () => html`<datalist id="dl-terceiros">${nomesConhecidos().map((n) => html`<option value="${n}">`)}</datalist>`;
 const doEscopo = (p, setorFixo) => !setorFixo || /^po/i.test(p.obra || '') || (p.setor === setorFixo && !/^mo/i.test(p.obra || ''));   // escopo fixo (ex.: tela do Pós-obra): o setor, ou obras Po…
+// Filtro de obra das Tarefas (pedido do Felipe, 18/11/2026): as tarefas são todas uma lista só. Padrão = "Nenhuma": só as GERAIS (sem obra).
+// "Todas" mostra gerais e de obra; uma obra mostra só as dela. Obra finalizada no cadastro nunca aparece.
+export const OBRA_TODAS = 'todas';
+const obraSel = (params) => { const o = params.get('obra') || ''; return o === OBRA_TODAS ? '' : o; };   // código de uma obra específica ('' = nenhuma ou todas)
+function visivelNaTela(p, params) {
+  if (p.na_lista === false) return false;
+  const o = params.get('obra') || '';
+  if (p.obra) { const ativas = ativasDaObra(); if (ativas.size && !ativas.has(codigoDaObra(p.obra))) return false; }
+  if (o === '') return !p.obra;
+  if (o === OBRA_TODAS) return true;
+  return codigoDaObra(p.obra) === codigoDaObra(o);
+}
 function filtrar(params, setorFixo = '') {
   const q = (params.get('q') || '').trim().toLocaleLowerCase('pt-BR');
-  const pessoa = params.get('pessoa') || 'eu'; const setor = params.get('setor') || ''; const obra = params.get('obra') || '';
+  const pessoa = params.get('pessoa') || 'eu'; const setor = params.get('setor') || '';
   const eu = souEu();
-  const modoObra = params.get('mostrar') === 'obra';
-  const ativas = modoObra ? ativasDaObra() : null;
   return dados.pendencias.filter((p) => {
-    if (p.status === 'cancelada' || (modoObra ? !(p.obra && p.na_lista !== false) : !naLista(p)) || !doEscopo(p, setorFixo)) return false;
-    if (ativas && ativas.size && !ativas.has(codigoDaObra(p.obra))) return false;
+    if (p.status === 'cancelada' || !visivelNaTela(p, params) || !doEscopo(p, setorFixo)) return false;
     if (pessoa.startsWith('cat:')) { if (p.responsavel_categoria !== pessoa.slice(4)) return false; }
     else if (pessoa.startsWith('tipo:')) { if ((p.responsavel_tipo || 'solida') !== pessoa.slice(5)) return false; }
     else if (pessoa === 'sup') { if (!(p.gestores || []).includes(eu)) return false; }
@@ -512,7 +521,6 @@ function filtrar(params, setorFixo = '') {
     const terc = params.get('terc') || '';
     if (terc && (p.responsavel || (terc.startsWith('cat:') ? p.responsavel_categoria !== terc.slice(4) : p.responsavel_nome !== terc.slice(5)))) return false;
     if (setor && p.setor !== setor) return false;
-    if (obra && codigoDaObra(p.obra) !== codigoDaObra(obra)) return false;
     if (q && !`${p.descricao} ${nomeDe(p.responsavel, p.responsavel_nome)} ${onde(p)} ${(ataDe(p) || {}).titulo || ''}`.toLocaleLowerCase('pt-BR').includes(q)) return false;
     return true;
   });
@@ -584,7 +592,7 @@ function seletorResponsavel(atual) {
     ${[['eu', 'Só as minhas'], ['tipo:terceirizado', 'Terceirizados (todos)'], ['tipo:cliente', 'Clientes'], ['tipo:arquitetura', 'Arquitetura']].map(op)}
     <optgroup label="Equipe da Sólida">${op(['tipo:solida', 'Equipe da Sólida (todos)'])}${pessoas.map((x) => op([x.id, x.nome]))}</optgroup></select></label>`;
 }
-const seletorMostrar = (params) => html`<label>Mostrar<select data-atas-filtro="mostrar"><option value="" ${params.get('mostrar') === 'obra' ? '' : html.seguro('selected')}>Tarefas das pessoas</option><option value="obra" ${params.get('mostrar') === 'obra' ? html.seguro('selected') : ''}>Pendências por obra</option></select></label>`;
+const selObraTarefas = (obras, params) => { const o = params.get('obra') || ''; return html`<label>Obra<select data-atas-filtro="obra"><option value="" ${o === '' ? html.seguro('selected') : ''}>Nenhuma (gerais)</option><option value="${OBRA_TODAS}" ${o === OBRA_TODAS ? html.seguro('selected') : ''}>Todas</option>${gruposDeObras(obras, o === OBRA_TODAS ? '' : o)}</select></label>`; };
 // obras em curso (as finalizadas no cadastro ficam de fora): a lista vem de obrasDeAtas() e é guardada aqui a cada desenho
 let obrasAtivasDaTela = [];
 const ativasDaObra = () => new Set((obrasAtivasDaTela || []).map((o) => codigoDaObra(typeof o === 'string' ? o : o && (o.obra || o.codigo))));
@@ -593,10 +601,9 @@ function barraFiltros(params, obras, aba, ctx = {}) {
   const sel = (nome, rotulo, opcoes, atual) => html`<label>${rotulo}<select data-atas-filtro="${nome}"><option value="">Todos</option>${opcoes.map(([v, t]) => html`<option value="${v}" ${atual === v ? html.seguro('selected') : ''}>${t}</option>`)}</select></label>`;
   const vista = params.get('vista') === 'lista' ? 'lista' : 'prazo';
   return html`<div class="at-filtros">
-    ${aba === 'atas' ? '' : html`${seletorMostrar(params)}`}
     ${aba === 'atas' ? '' : seletorResponsavel(params.get('pessoa') || 'eu')}
     ${ctx.setorFixo ? '' : sel('setor', 'Setor', SETORES_ATA.map((s) => [s, s]), params.get('setor') || '')}
-    ${selObra(obras, params.get('obra') || '')}
+    ${aba === 'atas' ? selObra(obras, params.get('obra') || '') : selObraTarefas(obras, params)}
     <label>Procurar<input type="search" data-atas-filtro="q" value="${params.get('q') || ''}" placeholder="texto…"></label>
     ${aba === 'atas' ? '' : html`<label>Ordenar por<select data-atas-filtro="ord"><option value="">Padrão</option>${[['prioridade', 'Prioridade'], ['data', 'Data'], ['assunto', 'Assunto'], ['responsavel', 'Responsável']].map(([v, t]) => html`<option value="${v}" ${params.get('ord') === v ? html.seguro('selected') : ''}>${t}</option>`)}</select></label>`}
   </div>`;
@@ -922,7 +929,7 @@ function vistaDia(params, obras, setorFixo) {
         <div><h3>${nomeSel}</h3><p>${feitas} de ${itens.length} ${itens.length === 1 ? 'tarefa concluída' : 'tarefas concluídas'}</p>
           <div class="lt-urgs">${['alta', 'media', 'baixa'].map((u) => (contaUrg(u) ? html`<span class="lt-urg ${URG[u][1]}"><i></i>${contaUrg(u)} ${URG[u][0]}</span>` : ''))}</div></div>
         <div class="lt-nav">
-          <button type="button" class="lt-nova" data-av-nova="${dia}" data-av-setor="${params.get('setor') || ''}" data-av-obra="${params.get('obra') || ''}" data-av-resp="${pessoaSel === 'eu' ? souEu() : (pessoaSel !== 'todos' ? pessoaSel : '')}">+ Nova tarefa</button>
+          <button type="button" class="lt-nova" data-av-nova="${dia}" data-av-setor="${params.get('setor') || ''}" data-av-obra="${obraSel(params)}" data-av-resp="${pessoaSel === 'eu' ? souEu() : (pessoaSel !== 'todos' ? pessoaSel : '')}">+ Nova tarefa</button>
           <button type="button" class="lt-seta" data-lt-dia="${somarDias(dia, -1)}" title="Dia anterior" aria-label="Dia anterior">‹</button>
           <button type="button" class="lt-hoje" data-lt-dia="${hoje}">Hoje</button>
           <div class="lt-data"><span>${diaSem}${dia === hoje ? ' · hoje' : ''}</span><b>${dm(dia)}</b></div>
@@ -932,15 +939,14 @@ function vistaDia(params, obras, setorFixo) {
       <div class="lt-filtros">
         <div class="lt-grp"><span>Urgência</span>${pilula('urg', '', 'Todas', urg)}${pilula('urg', 'alta', 'Alta', urg)}${pilula('urg', 'media', 'Média', urg)}${pilula('urg', 'baixa', 'Baixa', urg)}${pilula('urg', 'sem', 'Sem', urg)}</div>
         <div class="lt-grp lt-grp-sel">
-          ${seletorMostrar(params)}
           <label>Ver tarefas de<select data-atas-filtro="pessoa">${opt('eu', 'Só as minhas', pessoaSel)}${opt('todos', 'Todos (os que eu vejo)', pessoaSel)}${opt('tipo:solida', 'Equipe da Sólida', pessoaSel)}${opt('tipo:terceirizado', 'Terceirizados (todos)', pessoaSel)}${opt('tipo:cliente', 'Clientes', pessoaSel)}${opt('tipo:arquitetura', 'Arquitetura', pessoaSel)}${gente.length ? html`<optgroup label="Pessoas">${gente.map((x) => opt(x.id, x.nome, pessoaSel))}</optgroup>` : ''}</select></label>
           ${setorFixo ? '' : html`<label>Setor<select data-atas-filtro="setor"><option value="">Todos</option>${SETORES_ATA.map((s) => opt(s, s, params.get('setor') || ''))}</select></label>`}
-          ${selObra(obras, params.get('obra') || '')}
+          ${selObraTarefas(obras, params)}
           <label>Procurar<input type="search" data-atas-filtro="q" value="${params.get('q') || ''}" placeholder="texto…"></label>
           <label>Ordenar por<select data-atas-filtro="ord"><option value="">Padrão</option>${opt('assunto', 'Assunto', ord)}${opt('prioridade', 'Prioridade', ord)}${opt('responsavel', 'Responsável', ord)}${opt('data', 'Data', ord)}</select></label></div>
       </div>
       <div class="lt-acoes">${atrasadas.length ? html`<button type="button" class="lt-bt lt-bt-grande" data-lt-passar="${atrasadas.map((p) => p.id).join(',')}|${alvoPassar}">Passar ${atrasadas.length} ${atrasadas.length === 1 ? 'pendência' : 'pendências'} para ${dm(alvoPassar).slice(0, 5)}</button>` : ''}</div>
-      ${(() => { const rs = reunioesDaPessoa(pessoaSel).filter((r) => r.data === dia && (!params.get('obra') || codigoDaObra(r.obra) === codigoDaObra(params.get('obra'))) && (!params.get('setor') || r.setor === params.get('setor'))).sort((a, b) => a.ini.localeCompare(b.ini)); return rs.length ? html`<section class="lt-grupo lt-reunioes"><header><h3>Reuniões</h3><span>${rs.length}</span></header>${rs.map((r) => html`<div class="lt-linha lt-reuniao" data-reun-abrir="${r.id}" title="Clique para abrir a reunião"><span class="lt-r-ico">🎥</span><div class="lt-corpo"><span class="lt-tit"><b>${horaReuniao(r)}</b> · ${r.nome}</span><span class="lt-sub">${r.local ? `${r.local} · ` : ''}${(r.convidados || []).length + (r.emails_externos || []).length} convidados</span></div><div class="lt-dir">${r.meet_link ? html`<a class="rn-meet" href="${r.meet_link}" target="_blank" rel="noopener">🎥 Entrar</a>` : ''}</div></div>`)}</section>` : ''; })()}
+      ${(() => { const rs = reunioesDaPessoa(pessoaSel).filter((r) => r.data === dia && (!obraSel(params) || codigoDaObra(r.obra) === codigoDaObra(obraSel(params))) && (!params.get('setor') || r.setor === params.get('setor'))).sort((a, b) => a.ini.localeCompare(b.ini)); return rs.length ? html`<section class="lt-grupo lt-reunioes"><header><h3>Reuniões</h3><span>${rs.length}</span></header>${rs.map((r) => html`<div class="lt-linha lt-reuniao" data-reun-abrir="${r.id}" title="Clique para abrir a reunião"><span class="lt-r-ico">🎥</span><div class="lt-corpo"><span class="lt-tit"><b>${horaReuniao(r)}</b> · ${r.nome}</span><span class="lt-sub">${r.local ? `${r.local} · ` : ''}${(r.convidados || []).length + (r.emails_externos || []).length} convidados</span></div><div class="lt-dir">${r.meet_link ? html`<a class="rn-meet" href="${r.meet_link}" target="_blank" rel="noopener">🎥 Entrar</a>` : ''}</div></div>`)}</section>` : ''; })()}
       ${ordem.length ? ordem.map(([, g]) => html`<section class="lt-grupo"><header><h3>${g.nome}</h3><span>${g.itens.filter((p) => p.status === 'feita').length}/${g.itens.length}</span></header>${g.itens.map(linha)}</section>`) : html`<p class="lt-vazio">Nenhuma tarefa para este dia com esses filtros.</p>`}
     </div>
   </section>`;
@@ -948,7 +954,7 @@ function vistaDia(params, obras, setorFixo) {
 // Cabeçalho que só aparece na impressão das tarefas (Tabela e Lista), no mesmo desenho da ata: logo, título e, no canto de cima à direita, a OBRA ou o DEPARTAMENTO filtrado.
 // Embaixo, uma linha por filtro ativo, para quem lê o papel saber o que está vendo.
 function cabecalhoImpressao(params, modo, hoje, setorFixo = '') {
-  const obra = params.get('obra') || ''; const setor = params.get('setor') || setorFixo || '';
+  const obra = obraSel(params); const setor = params.get('setor') || setorFixo || '';
   const canto = obra ? (setor ? `${obra} · ${setor}` : obra) : setor || 'TODAS AS OBRAS';
   const rotCanto = obra ? 'OBRA' : setor ? 'DEPARTAMENTO' : '';
   const pes = params.get('pessoa') || 'eu';
@@ -967,10 +973,9 @@ function cabecalhoImpressao(params, modo, hoje, setorFixo = '') {
 export function renderPendencias({ params, obras = [], setorFixo = '', base = '#/atas', sugestoes = [] }) {
   definirSugestoes(sugestoes);
   obrasAtivasDaTela = obras;
-  if (params.get('mostrar') === 'obra' && !params.get('pessoa')) { params = new URLSearchParams(params); params.set('pessoa', 'todos'); }
   if (lote) return painelLote(obras);   // lista de pendências importada: conferir antes de criar as tarefas
   const hoje = hojeISO();
-  const doSetor = dados.pendencias.filter((p) => (params.get('mostrar') === 'obra' ? (p.obra && p.na_lista !== false && (!ativasDaObra().size || ativasDaObra().has(codigoDaObra(p.obra)))) : naLista(p)) && doEscopo(p, setorFixo));
+  const doSetor = dados.pendencias.filter((p) => visivelNaTela(p, params) && doEscopo(p, setorFixo));
   const abertas = doSetor.filter((p) => p.status === 'aberta');
   const atrasadas = abertas.filter((p) => p.prazo && p.prazo < hoje).length;
   const eu = souEu(); const minhas = abertas.filter((p) => p.responsavel && p.responsavel === eu).length;
@@ -984,7 +989,7 @@ export function renderPendencias({ params, obras = [], setorFixo = '', base = '#
       <div class="card"><div class="card-valor ${atrasadas ? 'tom-ruim' : ''}">${atrasadas}</div><div class="card-rotulo">Atrasadas</div></div>
       <div class="card"><div class="card-valor">${minhas}</div><div class="card-rotulo">Abertas comigo</div></div></div>
     ${barraFiltros(params, obras, 'pendencias', { base, setorFixo })}
-    ${vistaPrazo(lista, hoje, setorFixo, reunioesDaPessoa(params.get('pessoa') || 'eu').filter((r) => (!params.get('obra') || codigoDaObra(r.obra) === codigoDaObra(params.get('obra'))) && (!params.get('setor') || r.setor === params.get('setor')) && r.data >= hoje))}`;
+    ${vistaPrazo(lista, hoje, setorFixo, reunioesDaPessoa(params.get('pessoa') || 'eu').filter((r) => (!obraSel(params) || codigoDaObra(r.obra) === codigoDaObra(obraSel(params))) && (!params.get('setor') || r.setor === params.get('setor')) && r.data >= hoje))}`;
 }
 export function render({ params, obras = [], msg = '', sugestoes = [] }) {
   definirSugestoes(sugestoes);
