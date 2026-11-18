@@ -1352,3 +1352,14 @@ select.pc-sit-sel { height: 22px !important; font-size: 11px; min-width: 100px; 
 .at-card .at-tit { width: fit-content; max-width: 100%; }
 .lt-corpo > .lt-tit:has(.tit-edit) { align-self: stretch; }
 .at-card .at-tit:has(.tit-edit) { width: 100%; }
+
+/* Ata de vistoria */
+.at-vist { border: 1px solid #CBD9EA; border-radius: 10px; padding: 10px 14px 12px; margin: 10px 0; background: #F4F7FB; }
+.at-vist h3 { margin: 0 0 8px; }
+.at-vist textarea, .at-vist input { width: 100%; box-sizing: border-box; }
+.v-sec { display: grid; grid-template-columns: 1fr 110px 110px 30px; gap: 6px; margin-bottom: 5px; }
+.sd-vist { border-bottom: 1px solid #CBD9EA; }
+.sd-res { margin: 6px 12px; width: calc(100% - 24px); } .sd-res th:not(:first-child), .sd-res td.c { text-align: center; width: 140px; } .sd-total td { background: #F4F7FB; }
+@media print { .at-vist { display: none; } }
+.sd-res { table-layout: fixed; } .sd-res th:first-child, .sd-res td:first-child { width: auto; text-align: left; } .sd-res th:not(:first-child) { width: 130px; }
+.sd-vist .sd-linha { padding: 6px 12px; }
