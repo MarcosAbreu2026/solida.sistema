@@ -982,7 +982,7 @@ export function renderPendencias({ params, obras = [], setorFixo = '', base = '#
       <div class="card"><div class="card-valor ${atrasadas ? 'tom-ruim' : ''}">${atrasadas}</div><div class="card-rotulo">Atrasadas</div></div>
       <div class="card"><div class="card-valor">${minhas}</div><div class="card-rotulo">Abertas comigo</div></div></div>
     ${barraFiltros(params, obras, 'pendencias', { base, setorFixo })}
-    ${params.get('mostrar') === 'obra' ? vistaComodos(lista, hoje, setorFixo) : vistaPrazo(lista, hoje, setorFixo, reunioesDaPessoa(params.get('pessoa') || 'eu').filter((r) => (!params.get('obra') || codigoDaObra(r.obra) === codigoDaObra(params.get('obra'))) && (!params.get('setor') || r.setor === params.get('setor')) && r.data >= hoje))}`;
+    ${vistaPrazo(lista, hoje, setorFixo, reunioesDaPessoa(params.get('pessoa') || 'eu').filter((r) => (!params.get('obra') || codigoDaObra(r.obra) === codigoDaObra(params.get('obra'))) && (!params.get('setor') || r.setor === params.get('setor')) && r.data >= hoje))}`;
 }
 export function render({ params, obras = [], msg = '', sugestoes = [] }) {
   definirSugestoes(sugestoes);
