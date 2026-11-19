@@ -2346,3 +2346,4 @@ td select[data-cx-usuario] { font: inherit; font-size: 13px; padding: 5px 8px; b
 .al-fcel { border: 1px solid #C9D0D8; padding: 3px; vertical-align: top; min-width: 84px; }
 .al-fchip { display: inline-block; color: #fff; border-radius: 3px; padding: 1px 6px; margin: 0 3px 3px 0; font-size: 12px; }
 .al-fchip small { opacity: .85; }
+.al-fchip.al-pos { background: #111827; }

@@ -4,7 +4,7 @@
 // Na nuvem: tabela alocacao_obras (supabase/33-alocacao-obras.sql); no computador do escritório (teste): neste navegador.
 import { html } from './formato.js';
 import { somarDias } from './datas.js';
-import { NA_NUVEM, listarAlocacao, criarAlocacao, atualizarAlocacao, apagarAlocacao } from './nuvem.js';
+import { NA_NUVEM, listarAlocacao, criarAlocacao, atualizarAlocacao, apagarAlocacao, listarAgendaPos } from './nuvem.js';
 
 const CHAVE = 'solida.alocacaoObras';
 const lerLocal = () => { try { return JSON.parse(localStorage.getItem(CHAVE)) || { linhas: [], seq: 1 }; } catch { return { linhas: [], seq: 1 }; } };
@@ -53,7 +53,7 @@ const FUNCOES = [
 ];
 export const corDaFuncao = (f) => { const t = sem(f); const x = FUNCOES.find(([, re]) => re.test(t)); return x ? x[2] : '#6B7280'; };
 export const nomeDaFuncao = (f) => { const t = sem(f); const x = FUNCOES.find(([, re]) => re.test(t)); return x ? x[0] : 'Outras funções'; };
-const legenda = () => html`<p class="al-legenda">${FUNCOES.map(([n, , c]) => html`<span><i style="background:${c}"></i>${n}</span>`)}<span><i style="background:#6B7280"></i>Outras funções</span></p>`;
+const legenda = () => html`<p class="al-legenda">${FUNCOES.map(([n, , c]) => html`<span><i style="background:${c}"></i>${n}</span>`)}<span><i style="background:#6B7280"></i>Outras funções</span><span><i style="background:#111827"></i>Pós-obra (qualquer PO)</span></p>`;
 
 // ---------------------------------------------------------------- telas
 const chaveNome = (n) => sem(n).replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim();
@@ -67,7 +67,7 @@ function gente(equipeProg) {
   return [...vistos.values()].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
 }
 
-export function render({ semanaIni, vista, podeEditar, obras = [], equipeProg = null, selecionado = '' }) {
+export function render({ semanaIni, vista, podeEditar, obras = [], equipeProg = null, selecionado = '', posLinhas = [] }) {
   const dias = DIAS.map((_, i) => somarDias(semanaIni, i));
   const todos = gente(equipeProg);
   const funcaoDe = (nome) => (todos.find((g) => chaveNome(g.nome) === chaveNome(nome)) || {}).funcao || '';
@@ -79,15 +79,20 @@ export function render({ semanaIni, vista, podeEditar, obras = [], equipeProg = 
     <span class="al-vistas"><button type="button" class="botao ${vista === 'func' ? '' : 'on'}" data-al-vista="obras">Obras × dias</button><button type="button" class="botao ${vista === 'func' ? 'on' : ''}" data-al-vista="func">Funcionários × semana</button></span>
   </div>`;
   const naSemana = (nome) => new Set(linhas.filter((l) => chaveNome(l.pessoa) === chaveNome(nome)).map((l) => l.data)).size;
+  // pós-obra: quem está na agenda do pós-obra naquele dia aparece como "Pós-obra" (não importa em qual PO); casa o nome inteiro ou a primeira palavra
+  const primeiro = (n) => chaveNome(n).split(/[\s-]+/)[0];
+  const emPos = (nome, d) => (posLinhas || []).some((l) => l.data === d && (chaveNome(l.pessoa) === chaveNome(nome) || (primeiro(nome).length > 2 && primeiro(l.pessoa) === primeiro(nome))));
+  const diasTotais = (nome) => new Set([...linhas.filter((l) => chaveNome(l.pessoa) === chaveNome(nome)).map((l) => l.data), ...dias.filter((d) => emPos(nome, d))]).size;
   let corpo;
   if (vista === 'func') {
     const nomes = [...new Set([...todos.map((g) => g.nome), ...linhas.map((l) => l.pessoa)])].sort((a, b) => a.localeCompare(b, 'pt-BR'));
     const celula = (nome, d) => {
       const ls = linhas.filter((l) => chaveNome(l.pessoa) === chaveNome(nome) && l.data === d);
-      return html`<td class="al-fcel">${ls.map((l) => html`<span class="al-fchip" style="background:${corDaFuncao(funcaoDe(nome))}" title="${nome} · ${funcaoDe(nome) || 'função não informada'} · ${l.obra}">${l.obra}${ls.length > 1 ? html` <small>1/${ls.length}</small>` : ''}</span>`)}</td>`;
+      const pos = emPos(nome, d);
+      return html`<td class="al-fcel">${ls.map((l) => html`<span class="al-fchip" style="background:${corDaFuncao(funcaoDe(nome))}" title="${nome} · ${funcaoDe(nome) || 'função não informada'} · ${l.obra}">${l.obra}${(ls.length + (pos ? 1 : 0)) > 1 ? html` <small>1/${ls.length + (pos ? 1 : 0)}</small>` : ''}</span>`)}${pos ? html`<span class="al-fchip al-pos" title="${nome} está no pós-obra neste dia (agenda do pós-obra)">Pós-obra${ls.length ? html` <small>1/${ls.length + 1}</small>` : ''}</span>` : ''}</td>`;
     };
     corpo = html`${legenda()}<div class="ap-grade tabela-rolagem"><table class="ap-tab al-ftab"><thead><tr><th>Funcionário</th>${dias.map((d, i) => html`<th>${DIAS[i]} <small>${dm(d)}</small></th>`)}<th>Dias</th></tr></thead>
-      <tbody>${nomes.map((n) => html`<tr><th class="ap-obra"><span class="al-dot" style="background:${corDaFuncao(funcaoDe(n))}"></span>${n}<small>${funcaoDe(n) || ''}</small></th>${dias.map((d) => celula(n, d))}<td class="n">${naSemana(n)}</td></tr>`)}</tbody></table>
+      <tbody>${nomes.map((n) => html`<tr><th class="ap-obra"><span class="al-dot" style="background:${corDaFuncao(funcaoDe(n))}"></span>${n}<small>${funcaoDe(n) || ''}</small></th>${dias.map((d) => celula(n, d))}<td class="n">${diasTotais(n)}</td></tr>`)}</tbody></table>
       ${nomes.length ? '' : html`<p class="vazio">Sem funcionários lidos do RH ainda.</p>`}</div>`;
   } else {
     const celula = (o, d) => {
@@ -124,4 +129,13 @@ export function equipeDaObraHtml(obra, semanaIni, rows, podeVer = true) {
   if (!pessoas.length) return html`<p class="pd-vazio">Ninguém alocado nesta obra na semana de ${dm(semanaIni)}. A alocação é feita em Operações › Alocação das obras em andamento.</p>`;
   return html`<div class="pd-tab-caixa"><table class="pd-tab"><thead><tr><th>Funcionário</th>${dias.map((d, i) => html`<th>${DIAS[i]} <small>${dm(d)}</small></th>`)}<th>Dias</th></tr></thead>
     <tbody>${pessoas.map((n) => html`<tr><td class="pd-t1"><b>${n}</b></td>${dias.map((d) => html`<td>${daObra.some((l) => l.pessoa === n && l.data === d) ? '●' : ''}</td>`)}<td class="n">${new Set(daObra.filter((l) => l.pessoa === n).map((l) => l.data)).size}</td></tr>`)}</tbody></table></div>`;
+}
+
+// agenda do pós-obra da semana (quem está em qual PO em cada dia): só serve para marcar "Pós-obra" na visão funcionários × semana
+export async function buscarPos(de, ate) {
+  try {
+    if (NA_NUVEM) return await listarAgendaPos(de, ate);
+    const v = JSON.parse(localStorage.getItem('solida.agendaPos')) || { linhas: [] };
+    return (v.linhas || []).filter((x) => x.data >= de && x.data <= ate);
+  } catch { return []; }
 }

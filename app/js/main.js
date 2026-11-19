@@ -567,10 +567,17 @@ function alocDaSemana(seg) {
   aloc.buscar(seg, somarDias(seg, 5)).then((l) => { alocCache[seg] = { linhas: l }; if (!emEdicao()) desenhar(); });
   return null;
 }
+const alocPosCache = {};
+function alocPosDaSemana(seg) {
+  const c = alocPosCache[seg]; if (c && Date.now() - c.t < 60000) return c.linhas || [];
+  alocPosCache[seg] = { linhas: c ? c.linhas : null, t: Date.now() };
+  aloc.buscarPos(seg, somarDias(seg, 5)).then((l) => { const mudou = JSON.stringify((alocPosCache[seg] || {}).linhas) !== JSON.stringify(l); alocPosCache[seg] = { linhas: l, t: Date.now() }; if (mudou && !emEdicao()) desenhar(); });
+  return c ? c.linhas || [] : [];
+}
 const alocObras = () => (estado.obrasCad || []).filter((c) => ativaNasListas(c) && c.situacao !== 'pausada' && /^mo/i.test(String(c.codigo))).map((c) => c.codigo).sort(numerico);
 function ctxAlocacao() {
   carregarAloc();
-  return { quadroAloc: () => { const a = alocSem(); return String(aloc.render({ semanaIni: a.semana, vista: a.vista, podeEditar: podeEditarAloc(), obras: alocObras(), equipeProg: estado.equipeProg, selecionado: a.sel })); } };
+  return { quadroAloc: () => { const a = alocSem(); return String(aloc.render({ semanaIni: a.semana, vista: a.vista, podeEditar: podeEditarAloc(), obras: alocObras(), equipeProg: estado.equipeProg, selecionado: a.sel, posLinhas: alocPosDaSemana(a.semana) })); } };
 }
 // Orçamento Terceirizado Laranja: os cards (Kanban) entram no painel
 const podeEditarTerc = () => ['socio', 'orc_terceirizado', 'orc_obras_novas', 'planejamento', 'coord_operacoes'].includes(funcaoAtual().id);
