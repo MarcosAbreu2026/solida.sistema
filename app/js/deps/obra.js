@@ -6,6 +6,7 @@ import * as pd from '../telas/painel-dep.js';
 import * as oc from './obras-comum.js';
 import { somarDias } from '../datas.js';
 import * as progObra from '../telas/prog-obra.js';
+import { equipeDaObraHtml } from '../alocacao.js';
 
 export const ABAS = [
   { id: '', nome: 'Resumo' }, { id: 'cronograma', nome: 'Cronograma' }, { id: 'programacao', nome: 'Programação semanal' },
@@ -111,6 +112,7 @@ export function resumo(ctx, cod) {
     ${plan}
     ${blocos}
     ${progObra.secoes(ctx, oc.projetoDa(ctx, cod), cod)}
+    ${ctx.alocObra && ctx.alocObra.linhas ? pd.secao('Equipe alocada nesta semana', 'Do quadro de alocação (Operações): quem vai para esta obra em cada dia', equipeDaObraHtml(cod, ctx.alocObra.semana, ctx.alocObra.linhas)) : ''}
     ${pd.secao('Quem precisa agir nesta obra', 'Alertas dos agentes que citam a obra · alerta vira tarefa com data-limite', pd.quemAgir(agir, { obra: cod, setor: 'Operação' }))}
     ${pd.secao('Escopo e aditivos', es && es.arquivo ? `Drive · ${es.arquivo}${ctx.veValores ? '' : ' · valores só para sócios'}` : '', escopo)}`;
 }

@@ -5,7 +5,7 @@
 import { html } from '../formato.js';
 import * as pd from './painel-dep.js';
 import { somarDias, inicioDaSemana, hojeISO } from '../datas.js';
-import { alocacaoPorObra } from './func-obras.js';
+import { alocacaoPorObra, alocacaoDeLinhas } from './func-obras.js';
 import { programacaoDaObra } from './prog-obra.js';
 import { obrasComProjeto } from './projetos.js';
 import { cronogramaDa } from './operacao.js';
@@ -126,7 +126,7 @@ function escopoDaObra(CFG, drive, cod, p, hoje, rend, alocSemana) {
 }
 const STATUS_FRACO = /^(novo|revisado)/i;   // média ainda estimada/revisada: validar medindo na obra
 
-export function render({ CFG, drive, eqp, obrasCad, params, hoje = hojeISO() }) {
+export function render({ CFG, drive, eqp, obrasCad, params, hoje = hojeISO(), alocLinhas = null, alocSemana = '' }) {
   const proj = drive && drive.projetos;
   const rend = proj && proj.rendimentos;
   if (!rend || rend.erro || !(rend.itens || []).length) {
@@ -134,7 +134,9 @@ export function render({ CFG, drive, eqp, obrasCad, params, hoje = hojeISO() }) 
   }
   const ini = inicioDaSemana((params && params.get('s')) || hoje);
   const obras = obrasComProjeto({ areas: (CFG && CFG.areas) || [], obrasCad }, proj, null).filter((o) => !o.pausada);
-  const aloc = alocacaoPorObra(eqp, ini);
+  // o quadro de alocação feito no sistema (Operações) vale mais que a distribuição da planilha, quando a semana tem lançamentos
+  const doSistema = (seg) => (alocSemana === seg && alocLinhas && alocLinhas.length ? alocacaoDeLinhas(alocLinhas, eqp) : null);
+  const aloc = doSistema(ini) || alocacaoPorObra(eqp, ini);
   const blocos = []; let semDados = []; let totalFalta = 0; let totalSemMedia = 0;
   for (const o of obras) {
     const t = tarefasDaObra(CFG, o, o.obra, ini, hoje);
@@ -169,7 +171,7 @@ export function render({ CFG, drive, eqp, obrasCad, params, hoje = hojeISO() }) 
     blocos.push(pd.secao(`${o.obra} · ${t.rotulo}`, t.arquivo ? `${t.arquivo}` : '', html`${resumo}${pd.tabela(['Profissional', 'Necessário (homens-dia)', 'Pessoas', 'Alocado na distribuição (homens-dia)', 'Situação'], linhasProf, { vazio: 'Nenhuma tarefa com média nesta semana.' })}${acimaTxt}${semMediaTxt}`));
   }
   // escopo × prazo: uma tabela por obra em andamento (não pausada, não em fase de pendências); a alocação é a da semana de hoje
-  const alocHoje = alocacaoPorObra(eqp, inicioDaSemana(hoje));
+  const alocHoje = doSistema(inicioDaSemana(hoje)) || alocacaoPorObra(eqp, inicioDaSemana(hoje));
   const ultimaMeta = ((((CFG && CFG.metasSemanais) || {}).semanas) || []).slice(-1)[0];
   const emPendencias = (cod, p) => (p && p.programacao && p.programacao.tipo === 'pendencias') || (!!ultimaMeta && (ultimaMeta.obras || []).some((x) => x.obra === cod && x.tipo === 'pendencias'));
   const escopoBlocos = obras.filter((o) => !emPendencias(o.obra, o)).map((o) => pd.secao(`${o.obra} · escopo × prazo`, 'obra inteira · escopo da pasta × produtividade média × cronograma', escopoDaObra(CFG, drive, o.obra, o, hoje, rend, alocHoje.cobre ? (alocHoje.obras.get(o.obra) || { prof: {} }).prof : null)));

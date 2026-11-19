@@ -109,3 +109,19 @@ export function render({ semanaIni, vista, podeEditar, obras = [], equipeProg = 
     <p class="pequeno">${vista === 'func' ? 'Cada linha é um funcionário e cada cor é uma função. Quem está em mais de uma obra no dia divide a diária.' : podeEditar ? 'Arraste o funcionário (à esquerda) para a obra e o dia, ou toque no nome e depois no quadrado. Dá para arrastar o nome de um dia para outro e tirar no ×. Use as setas para ver e planejar outras semanas.' : 'Só a coordenação, o planejamento, o gestor de obra e a diretoria mexem na alocação; você vê quem vai para onde.'}</p>
     ${corpo}</section>`;
 }
+
+// consulta de uma semana sem mexer no quadro carregado (usada pela obra e pelo dimensionamento)
+export async function buscar(de, ate) {
+  try { return NA_NUVEM ? await listarAlocacao(de, ate) : lerLocal().linhas.filter((x) => x.data >= de && x.data <= ate); } catch { return []; }
+}
+
+// bloco "Equipe alocada" da página da obra: quem o quadro de alocação (Operações) põe na obra em cada dia da semana
+export function equipeDaObraHtml(obra, semanaIni, rows, podeVer = true) {
+  if (!podeVer) return '';
+  const dias = DIAS.map((_, i) => somarDias(semanaIni, i));
+  const daObra = (rows || []).filter((l) => String(l.obra).toUpperCase() === String(obra).toUpperCase());
+  const pessoas = [...new Set(daObra.map((l) => l.pessoa))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  if (!pessoas.length) return html`<p class="pd-vazio">Ninguém alocado nesta obra na semana de ${dm(semanaIni)}. A alocação é feita em Operações › Alocação das obras em andamento.</p>`;
+  return html`<div class="pd-tab-caixa"><table class="pd-tab"><thead><tr><th>Funcionário</th>${dias.map((d, i) => html`<th>${DIAS[i]} <small>${dm(d)}</small></th>`)}<th>Dias</th></tr></thead>
+    <tbody>${pessoas.map((n) => html`<tr><td class="pd-t1"><b>${n}</b></td>${dias.map((d) => html`<td>${daObra.some((l) => l.pessoa === n && l.data === d) ? '●' : ''}</td>`)}<td class="n">${new Set(daObra.filter((l) => l.pessoa === n).map((l) => l.data)).size}</td></tr>`)}</tbody></table></div>`;
+}

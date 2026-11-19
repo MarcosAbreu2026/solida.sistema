@@ -214,3 +214,18 @@ function secaoPresenca(eqp, efetivo, obrasCad, hoje) {
   ].filter(Boolean);
   return pd.secao(`Conferência de hoje · quem estava programado × quem apareceu`, 'Programado (SL_FUNC_OBRAS) × efetivo lido dos grupos de WhatsApp das obras', html`${cartoes}${aviso.length ? pd.caixa('Atenção', pd.itens(aviso)) : ''}${pd.tabela(['Funcionário', 'Função', 'Programado hoje', 'Esteve em', 'Situação'], linhas, { vazio: 'Ninguém programado para hoje na distribuição.' })}`);
 }
+
+// mesma saída de alocacaoPorObra, mas a partir do quadro de alocação feito no sistema (Operações): linhas { data, obra, pessoa }
+export function alocacaoDeLinhas(linhas, eqp) {
+  const out = new Map();
+  const nomeKey = (n) => sem(String(n || '').replace(/\([^)]*\)/g, ' ')).replace(/\s+/g, ' ').trim();
+  const func = new Map((eqp && eqp.pessoas || []).map((p) => [nomeKey(p.nome), p.funcao]));
+  const dias = new Map();   // obra|pessoa → dias distintos
+  for (const l of linhas || []) { const k = `${l.obra}|${l.pessoa}`; if (!dias.has(k)) dias.set(k, { obra: l.obra, pessoa: l.pessoa, d: new Set() }); dias.get(k).d.add(l.data); }
+  for (const { obra, pessoa, d } of dias.values()) {
+    const prof = PROF_CANON[rotuloFuncao(func.get(nomeKey(pessoa)))]; if (!prof) continue;
+    const o = out.get(obra) || { prof: {} }; const e = o.prof[prof] || { hd: 0, pessoas: [] };
+    e.hd += Math.min(5, d.size); e.pessoas.push(pessoa); o.prof[prof] = e; out.set(obra, o);
+  }
+  return { cobre: true, obras: out };
+}

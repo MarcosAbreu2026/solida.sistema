@@ -546,7 +546,8 @@ function ctxPainel(dep, area) {
     pendencias: atas.todasPendencias(), hoje: hojeISO(), visiveis: f.porObra ? obrasDaPessoa() : null, sync: estado.sync, obrasMenu: obrasDoMenu(),
     ...(dep && dep.id === 'posobra' ? ctxPosObra() : {}),
     ...(dep && dep.id === 'orc-terceirizado' ? ctxTerc() : {}),
-    ...(dep && dep.id === 'operacao' ? ctxAlocacao() : {}) };
+    ...(dep && dep.id === 'operacao' ? ctxAlocacao() : {}),
+    alocObra: { semana: inicioDaSemana(hojeISO()), linhas: alocDaSemana(inicioDaSemana(hojeISO())) } };
 }
 // Operações: quadro de alocação (funcionários × obras em andamento × dias) e a visão funcionários × semana
 const podeEditarAloc = () => ['socio', 'coord_operacoes', 'planejamento', 'gestor_obra'].includes(funcaoAtual().id);
@@ -556,6 +557,15 @@ function carregarAloc() {
   if (a.chave === chave) return;
   a.chave = chave;
   aloc.carregar(de, somarDias(de, 5)).then(() => { const r = rotaAtual(); if (!emEdicao() && r.tela !== 'atas') desenhar(); });
+}
+// linhas do quadro de alocação de uma semana (para a página da obra e o dimensionamento): busca uma vez por semana e redesenha
+const alocCache = {};
+function alocDaSemana(seg) {
+  const c = alocCache[seg];
+  if (c) return c.linhas;
+  alocCache[seg] = { linhas: null };
+  aloc.buscar(seg, somarDias(seg, 5)).then((l) => { alocCache[seg] = { linhas: l }; if (!emEdicao()) desenhar(); });
+  return null;
 }
 const alocObras = () => (estado.obrasCad || []).filter((c) => ativaNasListas(c) && c.situacao !== 'pausada' && /^mo/i.test(String(c.codigo))).map((c) => c.codigo).sort(numerico);
 function ctxAlocacao() {
@@ -909,7 +919,7 @@ atas.definirFuncionarios(nomesDeFuncionarios(estado.equipeProg, CFG));   // list
       if (!estado.celCarregado) { estado.celCarregado = true; celularObra.carregar(() => desenhar()); }
       if (f.porObra && !obrasDaPessoa().includes(rota.sub)) out = `<div class="erro">A obra ${esc(rota.sub)} não está entre as suas obras.</div>`;
       else out = String(celularObra.render(ctxPainel(depPorId('operacao'), CFG.areas.find((a) => a.id === 'operacao')), rota.sub, rota.params));
-    } else if (dep && dep.id === 'planejamento' && rota.sub === 'dimensionamento') out = String(dimens.render({ CFG, drive: estado.drive, eqp: estado.equipeProg, obrasCad: estado.obrasCad, params: rota.params }));
+    } else if (dep && dep.id === 'planejamento' && rota.sub === 'dimensionamento') { const segDim = inicioDaSemana((rota.params.get('s')) || hojeISO()); out = String(dimens.render({ CFG, drive: estado.drive, eqp: estado.equipeProg, obrasCad: estado.obrasCad, params: rota.params, alocLinhas: alocDaSemana(segDim), alocSemana: segDim })); }
     else if (dep && dep.id === 'planejamento' && rota.sub === 'metas') out = String(metasHist.render({ CFG, params: rota.params }));
     else if (dep && dep.id === 'planejamento' && rota.sub === 'funcionarios') out = String(funcObras.render({ eqp: estado.equipeProg, obrasCad: estado.obrasCad, efetivo: estado.efetivo, params: rota.params }));
     else if (ehObraPlan) out = T.telaObra(rota.arg);
@@ -2834,7 +2844,7 @@ document.addEventListener('change', (e) => {
 
 // Operações › alocação das obras: arrastar o funcionário para a obra e o dia (ou tocar no nome e depois no quadrado); outras semanas pelas setas
 const alFaixa = () => [alocSem().semana, somarDias(alocSem().semana, 5)];
-async function alFazer(fn) { try { await fn(...alFaixa()); desenhar(); } catch (err) { alert(`Não foi possível mexer na alocação (${err.message || err}).`); } }
+async function alFazer(fn) { try { await fn(...alFaixa()); for (const k of Object.keys(alocCache)) delete alocCache[k]; desenhar(); } catch (err) { alert(`Não foi possível mexer na alocação (${err.message || err}).`); } }
 document.addEventListener('click', (e) => {
   const sem = e.target.closest && e.target.closest('[data-al-sem]');
   if (sem) { const v = sem.dataset.alSem; const a = alocSem(); a.semana = inicioDaSemana(v === 'hoje' ? hojeISO() : v); a.chave = ''; desenhar(); return; }
