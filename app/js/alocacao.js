@@ -22,8 +22,11 @@ export async function carregar(de, ate) {
 }
 export async function atribuir({ data, obra, pessoa }, de, ate) {
   if (linhas.some((x) => x.data === data && x.obra === obra && x.pessoa === pessoa)) return;
-  if (NA_NUVEM) await criarAlocacao({ data, obra, pessoa });
-  else { const l = lerLocal(); l.linhas.push({ id: l.seq++, data, obra, pessoa }); gravarLocal(l); }
+  const jaNoDia = linhas.filter((x) => x.data === data && chaveNome(x.pessoa) === chaveNome(pessoa) && (x.periodo || 'dia') === 'dia');
+  const periodo = jaNoDia.length ? 'tarde' : 'dia';
+  for (const x of jaNoDia) await mudarPeriodoBase(x.id, 'manha');
+  if (NA_NUVEM) await criarAlocacao({ data, obra, pessoa, periodo });
+  else { const l = lerLocal(); l.linhas.push({ id: l.seq++, data, obra, pessoa, periodo }); gravarLocal(l); }
   await carregar(de, ate);
 }
 export async function mover(id, { data, obra }, de, ate) {
@@ -82,14 +85,15 @@ export function render({ semanaIni, vista, podeEditar, obras = [], equipeProg = 
   // pós-obra: quem está na agenda do pós-obra naquele dia aparece como "Pós-obra" (não importa em qual PO); casa o nome inteiro ou a primeira palavra
   const primeiro = (n) => chaveNome(n).split(/[\s-]+/)[0];
   const emPos = (nome, d) => (posLinhas || []).some((l) => l.data === d && (chaveNome(l.pessoa) === chaveNome(nome) || (primeiro(nome).length > 2 && primeiro(l.pessoa) === primeiro(nome))));
-  const diasTotais = (nome) => new Set([...linhas.filter((l) => chaveNome(l.pessoa) === chaveNome(nome)).map((l) => l.data), ...dias.filter((d) => emPos(nome, d))]).size;
+  const posPeriodo = (nome, d) => { const l = (posLinhas || []).find((x) => x.data === d && (chaveNome(x.pessoa) === chaveNome(nome) || (primeiro(nome).length > 2 && primeiro(x.pessoa) === primeiro(nome)))); return (l && l.periodo) || 'dia'; };
+  const diasTotais =(nome) => new Set([...linhas.filter((l) => chaveNome(l.pessoa) === chaveNome(nome)).map((l) => l.data), ...dias.filter((d) => emPos(nome, d))]).size;
   let corpo;
   if (vista === 'func') {
     const nomes = [...new Set([...todos.map((g) => g.nome), ...linhas.map((l) => l.pessoa)])].sort((a, b) => a.localeCompare(b, 'pt-BR'));
     const celula = (nome, d) => {
       const ls = linhas.filter((l) => chaveNome(l.pessoa) === chaveNome(nome) && l.data === d);
       const pos = emPos(nome, d);
-      return html`<td class="al-fcel">${ls.map((l) => html`<span class="al-fchip" style="background:${corDaFuncao(funcaoDe(nome))}" title="${nome} · ${funcaoDe(nome) || 'função não informada'} · ${l.obra}">${l.obra}${(ls.length + (pos ? 1 : 0)) > 1 ? html` <small>1/${ls.length + (pos ? 1 : 0)}</small>` : ''}</span>`)}${pos ? html`<span class="al-fchip al-pos" title="${nome} está no pós-obra neste dia (agenda do pós-obra)">Pós-obra${ls.length ? html` <small>1/${ls.length + 1}</small>` : ''}</span>` : ''}</td>`;
+      return html`<td class="al-fcel">${ls.map((l) => html`<span class="al-fchip" style="background:${corDaFuncao(funcaoDe(nome))}" title="${nome} · ${funcaoDe(nome) || 'função não informada'} · ${l.obra}">${l.obra}${(l.periodo || 'dia') !== 'dia' ? html` <small>${PERIODO_ROT[l.periodo]}</small>` : ((ls.length + (pos ? 1 : 0)) > 1 ? html` <small>1/${ls.length + (pos ? 1 : 0)}</small>` : '')}</span>`)}${pos ? html`<span class="al-fchip al-pos" title="${nome} está no pós-obra neste dia (agenda do pós-obra)">Pós-obra${posPeriodo(nome, d) !== 'dia' ? html` <small>${PERIODO_ROT[posPeriodo(nome, d)]}</small>` : (ls.length ? html` <small>1/${ls.length + 1}</small>` : '')}</span>` : ''}</td>`;
     };
     corpo = html`${legenda()}<div class="ap-grade tabela-rolagem"><table class="ap-tab al-ftab"><thead><tr><th>Funcionário</th>${dias.map((d, i) => html`<th>${DIAS[i]} <small>${dm(d)}</small></th>`)}<th>Dias</th></tr></thead>
       <tbody>${nomes.map((n) => html`<tr><th class="ap-obra"><span class="al-dot" style="background:${corDaFuncao(funcaoDe(n))}"></span>${n}<small>${funcaoDe(n) || ''}</small></th>${dias.map((d) => celula(n, d))}<td class="n">${diasTotais(n)}</td></tr>`)}</tbody></table>
@@ -99,7 +103,7 @@ export function render({ semanaIni, vista, podeEditar, obras = [], equipeProg = 
       const daqui = linhas.filter((l) => l.obra === o && l.data === d);
       return html`<td class="al-cel" data-al-obra="${o}" data-al-data="${d}">${daqui.map((l) => {
         const n = linhas.filter((x) => x.data === d && chaveNome(x.pessoa) === chaveNome(l.pessoa)).length;
-        return html`<span class="ap-chip al-chip ${n > 1 ? 'ap-div' : ''}" style="border-left:4px solid ${corDaFuncao(funcaoDe(l.pessoa))}" ${podeEditar ? html.seguro('draggable="true"') : ''} data-al-chip="${l.id}" title="${n > 1 ? `${l.pessoa} está em ${n} obras neste dia: a diária é dividida` : l.pessoa}">${l.pessoa}${n > 1 ? html` <small>1/${n}</small>` : ''}${podeEditar ? html`<button type="button" data-al-del="${l.id}" title="Tirar da obra">×</button>` : ''}</span>`;
+        return html`<span class="ap-chip al-chip ${n > 1 ? 'ap-div' : ''}" style="border-left:4px solid ${corDaFuncao(funcaoDe(l.pessoa))}" ${podeEditar ? html.seguro('draggable="true"') : ''} data-al-chip="${l.id}" title="${n > 1 ? `${l.pessoa} está em ${n} obras neste dia: escolha manhã ou tarde em cada uma` : l.pessoa}">${l.pessoa}${(l.periodo || 'dia') !== 'dia' || n > 1 ? (podeEditar ? html` <button type="button" class="ap-per ap-per-${l.periodo || 'dia'}" data-al-per="${l.id}" title="Clique para mudar: dia todo → manhã → tarde">${PERIODO_ROT[l.periodo || 'dia']}</button>` : html` <small>${PERIODO_ROT[l.periodo || 'dia']}</small>`) : ''}${podeEditar ? html`<button type="button" data-al-del="${l.id}" title="Tirar da obra">×</button>` : ''}</span>`;
       })}</td>`;
     };
     corpo = html`${legenda()}<div class="ap-corpo">
@@ -139,3 +143,14 @@ export async function buscarPos(de, ate) {
     return (v.linhas || []).filter((x) => x.data >= de && x.data <= ate);
   } catch { return []; }
 }
+
+// período do funcionário na obra: dia todo → manhã → tarde → dia todo
+async function mudarPeriodoBase(id, periodo) {
+  if (NA_NUVEM) await atualizarAlocacao(id, { periodo });
+  else { const l = lerLocal(); const y = l.linhas.find((q) => String(q.id) === String(id)); if (y) y.periodo = periodo; gravarLocal(l); }
+}
+export async function trocarPeriodo(id, de, ate) {
+  const x = linhas.find((l) => String(l.id) === String(id)); if (!x) return;
+  await mudarPeriodoBase(id, { dia: 'manha', manha: 'tarde', tarde: 'dia' }[x.periodo || 'dia']); await carregar(de, ate);
+}
+export const PERIODO_ROT = { dia: 'dia todo', manha: 'manhã', tarde: 'tarde' };

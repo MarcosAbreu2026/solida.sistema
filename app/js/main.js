@@ -2880,3 +2880,11 @@ document.addEventListener('drop', (e) => {
   if (tipo === 'alp') alFazer((de, ate) => aloc.atribuir({ ...alvo, pessoa: valor }, de, ate));
   else if (tipo === 'alm') alFazer((de, ate) => aloc.mover(valor, alvo, de, ate));
 });
+
+// Manhã / tarde em vez de "meio dia": clicar no período do nome muda dia todo → manhã → tarde (agenda do pós-obra e alocação das obras)
+document.addEventListener('click', (e) => {
+  const ap = e.target.closest && e.target.closest('[data-ap-per]');
+  if (ap) { e.preventDefault(); apFazer((de, ate) => agendaPos.trocarPeriodo(ap.dataset.apPer, de, ate)); return; }
+  const al = e.target.closest && e.target.closest('[data-al-per]');
+  if (al) { e.preventDefault(); alFazer((de, ate) => aloc.trocarPeriodo(al.dataset.alPer, de, ate)); }
+});

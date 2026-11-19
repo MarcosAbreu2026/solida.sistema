@@ -19,8 +19,12 @@ export async function carregar(de, ate) {
 // coloca a pessoa na obra naquele dia (a mesma pessoa não entra duas vezes na mesma obra e dia)
 export async function atribuir({ data, obra, pessoa }, de, ate) {
   if (linhas.some((x) => x.data === data && x.obra === obra && x.pessoa === pessoa)) return;
-  if (NA_NUVEM) await criarAgendaPos({ data, obra, pessoa });
-  else { const l = lerLocal(); l.linhas.push({ id: l.seq++, data, obra, pessoa }); gravarLocal(l); }
+  // quem já está em outra obra no dia (dia todo): a que já estava vira manhã e a nova entra à tarde (dá para trocar no botão do nome)
+  const jaNoDia = linhas.filter((x) => x.data === data && x.pessoa === pessoa && (x.periodo || 'dia') === 'dia');
+  const periodo = jaNoDia.length ? 'tarde' : 'dia';
+  for (const x of jaNoDia) await mudarPeriodoBase(x.id, 'manha');
+  if (NA_NUVEM) await criarAgendaPos({ data, obra, pessoa, periodo });
+  else { const l = lerLocal(); l.linhas.push({ id: l.seq++, data, obra, pessoa, periodo }); gravarLocal(l); }
   await carregar(de, ate);
 }
 export async function mover(id, { data, obra }, de, ate) {
@@ -44,4 +48,15 @@ export async function importar(lista, de, ate) {
   else { const l = lerLocal(); for (const n of novas) l.linhas.push({ id: l.seq++, ...n }); gravarLocal(l); }
   await carregar(de, ate);
   return novas.length;
+}
+
+// período do funcionário na obra: dia todo → manhã → tarde → dia todo
+async function mudarPeriodoBase(id, periodo) {
+  if (NA_NUVEM) await atualizarAgendaPos(id, { periodo });
+  else { const l = lerLocal(); const y = l.linhas.find((q) => String(q.id) === String(id)); if (y) y.periodo = periodo; gravarLocal(l); }
+}
+export async function trocarPeriodo(id, de, ate) {
+  const x = linhas.find((l) => String(l.id) === String(id)); if (!x) return;
+  const prox = { dia: 'manha', manha: 'tarde', tarde: 'dia' }[x.periodo || 'dia'];
+  await mudarPeriodoBase(id, prox); await carregar(de, ate);
 }

@@ -176,6 +176,7 @@ export function pessoasSoNaPlanilha(base, equipeProg) {
 }
 // chave que iguala as formas de escrever a mesma obra (Po577 · PO577 · PO577 - nome · Mo358)
 const chaveObra = (n) => { const s = String(n || '').trim(); const m = /^(?:mo|po)s*[-_]?s*(d+[a-z]?)/i.exec(s); return m ? `${/^mo/i.test(s) ? 'mo' : 'po'}${m[1].toLowerCase()}` : s.toLowerCase(); };
+export const PERIODO_ROT = { dia: 'dia todo', manha: 'manhã', tarde: 'tarde' };
 export function renderAgenda({ base, semanaIni, linhasAgenda, podeEditar, selecionado, erro, extras = [], equipeProg = null, obrasLista = [] }) {
   const todasEm = obrasEmAndamento(base);
   const dias = DIAS.map((_, i) => somarDias(semanaIni, i));
@@ -200,7 +201,7 @@ export function renderAgenda({ base, semanaIni, linhasAgenda, podeEditar, seleci
   const celula = (o, d) => {
     const { daqui, todas } = partes(o.obra, d); const txt = planilha(o.obra, d);
     return html`<td class="ap-cel" data-ap-obra="${o.obra}" data-ap-data="${d}">
-      ${daqui.map((l) => { const n = todas.filter((x) => x.pessoa === l.pessoa).length; return html`<span class="ap-chip ${n > 1 ? 'ap-div' : ''}" ${podeEditar ? html.seguro('draggable="true"') : ''} data-ap-chip="${l.id}" title="${n > 1 ? `${l.pessoa} está em ${n} obras neste dia: a diária é dividida` : l.pessoa}">${l.pessoa}${n > 1 ? html` <small>1/${n}</small>` : ''}${podeEditar ? html`<button type="button" data-ap-del="${l.id}" title="Tirar da agenda">×</button>` : ''}</span>`; })}
+      ${daqui.map((l) => { const n = todas.filter((x) => x.pessoa === l.pessoa).length; return html`<span class="ap-chip ${n > 1 ? 'ap-div' : ''}" ${podeEditar ? html.seguro('draggable="true"') : ''} data-ap-chip="${l.id}" title="${n > 1 ? `${l.pessoa} está em ${n} obras neste dia: escolha manhã ou tarde em cada uma` : l.pessoa}">${l.pessoa}${(l.periodo && l.periodo !== 'dia') || n > 1 ? (podeEditar ? html` <button type="button" class="ap-per ap-per-${l.periodo || 'dia'}" data-ap-per="${l.id}" title="Clique para mudar: dia todo → manhã → tarde">${PERIODO_ROT[l.periodo || 'dia']}</button>` : html` <small>${PERIODO_ROT[l.periodo || 'dia']}</small>`) : ''}${podeEditar ? html`<button type="button" data-ap-del="${l.id}" title="Tirar da agenda">×</button>` : ''}</span>`; })}
       ${txt.map((t) => html`<div class="ap-plan" title="Escrito na planilha do pós-obra">${t}</div>`)}
     </td>`;
   };
