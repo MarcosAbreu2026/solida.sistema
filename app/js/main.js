@@ -1777,7 +1777,7 @@ document.addEventListener('click', (e) => {
   const nova = e.target.closest && e.target.closest('[data-osq-nova]');
   if (nova) { osqAbrir(osq.formNova(nova.dataset.osqNova, posObrasAtivas())); const c = document.querySelector('#osq-form-nova [name="cliente"]'); if (c) c.focus(); return; }
   const c = e.target.closest && e.target.closest('[data-osq]');
-  if (c) { if (c.dataset.arrastou) return; if (c.tagName === 'TR' && e.target.closest('button, select, input, textarea')) return; e.preventDefault(); osqDetalhe(c.dataset.osq); }
+  if (c) { if (c.dataset.arrastou) return; if (c.tagName === 'TR' && e.target.closest('button, select, input, textarea, [data-pc-edit]')) return; e.preventDefault(); osqDetalhe(c.dataset.osq); }
 });
 document.addEventListener('dragstart', (e) => {
   const c = e.target.closest && e.target.closest('.osq-card[data-osq]'); if (!c) return;
@@ -2887,4 +2887,18 @@ document.addEventListener('click', (e) => {
   if (ap) { e.preventDefault(); apFazer((de, ate) => agendaPos.trocarPeriodo(ap.dataset.apPer, de, ate)); return; }
   const al = e.target.closest && e.target.closest('[data-al-per]');
   if (al) { e.preventDefault(); alFazer((de, ate) => aloc.trocarPeriodo(al.dataset.alPer, de, ate)); }
+});
+
+// Controle de obras do pós-obra: duplo clique no assunto, problema ou solução da OS edita ali mesmo (Enter ou sair do campo salva; Esc cancela)
+document.addEventListener('dblclick', (e) => {
+  const el = e.target.closest && e.target.closest('[data-pc-edit]'); if (!el || !podeEditarPos() || el.querySelector('.pc-edit-campo')) return;
+  e.preventDefault(); const [id, campo] = el.dataset.pcEdit.split('|'); const o = osq.porIdOs(id); if (!o) return;
+  const antigo = String(o[campo] || '');
+  const c = document.createElement(campo === 'assunto' ? 'input' : 'textarea'); c.className = 'pc-edit-campo'; c.value = antigo;
+  if (campo !== 'assunto') c.rows = Math.max(2, Math.ceil(antigo.length / 70));
+  el.textContent = ''; el.appendChild(c); c.focus(); c.select();
+  let fim = false;
+  const salvar = () => { if (fim) return; fim = true; const v = c.value.trim(); if (v === antigo.trim() || (campo === 'assunto' && !v)) { desenhar(); return; } osqFazer(() => osq.salvar(Number(id) || id, { [campo]: v || null })); };
+  c.addEventListener('keydown', (k) => { if (k.key === 'Escape') { fim = true; desenhar(); } else if (k.key === 'Enter' && !k.shiftKey) { k.preventDefault(); salvar(); } });
+  c.addEventListener('blur', salvar);
 });
