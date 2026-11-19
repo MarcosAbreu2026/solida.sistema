@@ -728,6 +728,14 @@ function nomesDeFuncionarios(eqp, CFG) {
   return brutos.map((n) => String(n || '').replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim()).filter((n) => n.length > 2)
     .map((n) => n.toLocaleLowerCase('pt-BR').replace(/(^|[\s-])\S/g, (c) => c.toLocaleUpperCase('pt-BR')));
 }
+// Ex-funcionários (pedido do Marcos, 19/11/2026): saem de todas as listas de pessoas do sistema (RH, alocação, agenda, executor). A lista vem daqui e da configuração funcionarios.desligados.
+const DESLIGADOS_BASE = ['william', 'uilson', 'romulo max', 'jose claudiano', 'jose cristiano', 'jorge pimentel'];
+const semAc = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim();
+const ehDesligado = (nome) => { const k = semAc(nome); return [...DESLIGADOS_BASE, ...(listaConfig('funcionarios.desligados') || [])].some((d) => semAc(d) === k); };
+function tirarDesligados(eqp, CFG) {
+  if (eqp && Array.isArray(eqp.pessoas)) { eqp._pessoasTodas = eqp._pessoasTodas || eqp.pessoas; eqp.pessoas = eqp._pessoasTodas.filter((p) => !ehDesligado(p.nome)); }
+  if (CFG && Array.isArray(CFG.funcionariosRH)) { CFG._rhTodos = CFG._rhTodos || CFG.funcionariosRH; CFG.funcionariosRH = CFG._rhTodos.filter((p) => !ehDesligado(p && p.nome)); }
+}
 function desenhar() {
   if (!logado()) { mostrarLogin(); desenharPedido(); return; }
   esconderLogin();
@@ -738,7 +746,9 @@ atas.definirFuncionarios(nomesDeFuncionarios(estado.equipeProg, CFG));   // list
   // onde está cada funcionário: só o efetivo de HOJE (zera todo dia); a lista de nomes vem do RH
   // obra cadastrada em Acessos entra na hora nas telas que usam a lista de obras dos dados (efetivo, ferramentas, orçamentos…)
   if (CFG) { CFG.obrasDados = CFG.obrasDados || [...(CFG.obras || [])]; CFG.obras = [...new Set([...CFG.obrasDados, ...(estado.obrasCad || []).filter(ativaNasListas).map((c) => c.codigo)])]; }
-  if (CFG) { CFG.funcionariosRH = CFG.funcionariosRH || CFG.funcionarios; CFG.funcionarios = efetivoTela.funcionariosDeHoje(CFG.funcionariosRH, estado.efetivo); }
+  if (CFG) { CFG.funcionariosRH = CFG.funcionariosRH || CFG.funcionarios; }
+  tirarDesligados(estado.equipeProg, CFG);
+  if (CFG) { CFG.funcionarios = efetivoTela.funcionariosDeHoje(CFG.funcionariosRH, estado.efetivo); }
   let rota = rotaAtual();
   let tela = rota.tela;
   const f = funcaoAtual();
@@ -2907,4 +2917,14 @@ document.addEventListener('dblclick', (e) => {
 document.addEventListener('change', async (e) => {
   const s = e.target.closest && e.target.closest('[data-pc-pfase]'); if (!s) return;
   try { await atas.definirFaseTarefa(s.dataset.pcPfase, s.value); desenhar(); } catch (err) { alert(`Não foi possível mudar a fase (${err.message || err}).`); }
+});
+
+// Operações › alocação: salvar a visão como imagem (para o grupo de WhatsApp)
+document.addEventListener('click', (e) => {
+  const b = e.target.closest && e.target.closest('[data-al-img]'); if (!b) return;
+  const a = alocSem();
+  try {
+    const url = aloc.imagemPNG({ semanaIni: a.semana, vista: a.vista, obras: alocObras(), equipeProg: estado.equipeProg, posLinhas: alocPosDaSemana(a.semana) });
+    const l = document.createElement('a'); l.href = url; l.download = `distribuicao-${a.vista === 'func' ? 'funcionarios' : 'obras'}-${a.semana}.png`; document.body.appendChild(l); l.click(); l.remove();
+  } catch (err) { alert(`Não foi possível gerar a imagem (${err.message || err}).`); }
 });

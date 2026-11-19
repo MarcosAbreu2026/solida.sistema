@@ -2349,3 +2349,15 @@ td select[data-cx-usuario] { font: inherit; font-size: 13px; padding: 5px 8px; b
 .al-fchip.al-pos { background: #111827; }
 .ap-per { border: 0; border-radius: 3px; padding: 0 5px; font-size: 11px; cursor: pointer; background: #D9C58A; color: #3b3210; }
 .ap-per-manha { background: #FCE7A8; color: #5b4300; } .ap-per-tarde { background: #C9DDF2; color: #14385c; }
+.al-imp-tit { display: none; }
+@media print {
+  .al .ap-nav, .al .ap-func, .al > .pequeno, .al .al-vistas, .al .ap-chip button, .al .al-vazia, .al .vazio { display: none !important; }
+  .al .al-imp-tit { display: block; margin: 0 0 6px; font-size: 16pt; color: #000; }
+  .al .ap-corpo { display: block; }
+  .al .tabela-rolagem { overflow: visible !important; }
+  .al .ap-tab { width: 100%; font-size: 10pt; }
+  .al .ap-tab th, .al .ap-tab td { padding: 3px 5px; }
+  .al .ap-tab tr { break-inside: avoid; }
+  .al .al-fchip, .al .al-dot, .al-legenda i, .al .ap-chip { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .al .al-fchip { font-size: 9pt; }
+}

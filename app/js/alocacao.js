@@ -79,7 +79,7 @@ export function render({ semanaIni, vista, podeEditar, obras = [], equipeProg = 
     <div class="atual"><span>Semana</span><b>${dm(semanaIni)} a ${dm(somarDias(semanaIni, 5))}</b></div>
     <button type="button" class="botao" data-al-sem="hoje">Esta semana</button>
     <button type="button" class="botao" data-al-sem="${somarDias(semanaIni, 7)}">Próxima semana →</button>
-    <span class="al-vistas"><button type="button" class="botao ${vista === 'func' ? '' : 'on'}" data-al-vista="obras">Obras × dias</button><button type="button" class="botao ${vista === 'func' ? 'on' : ''}" data-al-vista="func">Funcionários × semana</button></span>
+    <span class="al-vistas"><button type="button" class="botao ${vista === 'func' ? '' : 'on'}" data-al-vista="obras">Obras × dias</button><button type="button" class="botao ${vista === 'func' ? 'on' : ''}" data-al-vista="func">Funcionários × semana</button><button type="button" class="botao" data-al-img title="Baixa uma imagem (PNG) desta visão, só com quem tem alocação, para colar no grupo do WhatsApp">📷 Salvar imagem</button><button type="button" class="botao" data-imprimir="" title="Imprimir esta visão">🖨 Imprimir</button></span>
   </div>`;
   const naSemana = (nome) => new Set(linhas.filter((l) => chaveNome(l.pessoa) === chaveNome(nome)).map((l) => l.data)).size;
   // pós-obra: quem está na agenda do pós-obra naquele dia aparece como "Pós-obra" (não importa em qual PO); casa o nome inteiro ou a primeira palavra
@@ -96,7 +96,7 @@ export function render({ semanaIni, vista, podeEditar, obras = [], equipeProg = 
       return html`<td class="al-fcel">${ls.map((l) => html`<span class="al-fchip" style="background:${corDaFuncao(funcaoDe(nome))}" title="${nome} · ${funcaoDe(nome) || 'função não informada'} · ${l.obra}">${l.obra}${(l.periodo || 'dia') !== 'dia' ? html` <small>${PERIODO_ROT[l.periodo]}</small>` : ((ls.length + (pos ? 1 : 0)) > 1 ? html` <small>1/${ls.length + (pos ? 1 : 0)}</small>` : '')}</span>`)}${pos ? html`<span class="al-fchip al-pos" title="${nome} está no pós-obra neste dia (agenda do pós-obra)">Pós-obra${posPeriodo(nome, d) !== 'dia' ? html` <small>${PERIODO_ROT[posPeriodo(nome, d)]}</small>` : (ls.length ? html` <small>1/${ls.length + 1}</small>` : '')}</span>` : ''}</td>`;
     };
     corpo = html`${legenda()}<div class="ap-grade tabela-rolagem"><table class="ap-tab al-ftab"><thead><tr><th>Funcionário</th>${dias.map((d, i) => html`<th>${DIAS[i]} <small>${dm(d)}</small></th>`)}<th>Dias</th></tr></thead>
-      <tbody>${nomes.map((n) => html`<tr><th class="ap-obra"><span class="al-dot" style="background:${corDaFuncao(funcaoDe(n))}"></span>${n}<small>${funcaoDe(n) || ''}</small></th>${dias.map((d) => celula(n, d))}<td class="n">${diasTotais(n)}</td></tr>`)}</tbody></table>
+      <tbody>${nomes.map((n) => html`<tr class="${diasTotais(n) ? '' : 'al-vazia'}"><th class="ap-obra"><span class="al-dot" style="background:${corDaFuncao(funcaoDe(n))}"></span>${n}<small>${funcaoDe(n) || ''}</small></th>${dias.map((d) => celula(n, d))}<td class="n">${diasTotais(n)}</td></tr>`)}</tbody></table>
       ${nomes.length ? '' : html`<p class="vazio">Sem funcionários lidos do RH ainda.</p>`}</div>`;
   } else {
     const celula = (o, d) => {
@@ -114,7 +114,7 @@ export function render({ semanaIni, vista, podeEditar, obras = [], equipeProg = 
         <tbody>${obras.map((o) => html`<tr><th class="ap-obra"><a href="#/obra/${encodeURIComponent(o)}">${o}</a></th>${dias.map((d) => celula(o, d))}</tr>`)}</tbody></table>
         ${obras.length ? '' : html`<p class="vazio">Nenhuma obra em andamento no cadastro.</p>`}</div></div>`;
   }
-  return html`<section class="ap al">${nav}${erro ? html`<p class="erro">${erro}</p>` : ''}
+  return html`<section class="ap al"><h2 class="al-imp-tit">${vista === 'func' ? 'Funcionários da semana' : 'Obras da semana'} · ${dm(semanaIni)} a ${dm(somarDias(semanaIni, 5))}</h2>${nav}${erro ? html`<p class="erro">${erro}</p>` : ''}
     <p class="pequeno">${vista === 'func' ? 'Cada linha é um funcionário e cada cor é uma função. Quem está em mais de uma obra no dia divide a diária.' : podeEditar ? 'Arraste o funcionário (à esquerda) para a obra e o dia, ou toque no nome e depois no quadrado. Dá para arrastar o nome de um dia para outro e tirar no ×. Use as setas para ver e planejar outras semanas.' : 'Só a coordenação, o planejamento, o gestor de obra e a diretoria mexem na alocação; você vê quem vai para onde.'}</p>
     ${corpo}</section>`;
 }
@@ -154,3 +154,69 @@ export async function trocarPeriodo(id, de, ate) {
   await mudarPeriodoBase(id, { dia: 'manha', manha: 'tarde', tarde: 'dia' }[x.periodo || 'dia']); await carregar(de, ate);
 }
 export const PERIODO_ROT = { dia: 'dia todo', manha: 'manhã', tarde: 'tarde' };
+
+// ---------------------------------------------------------------- imagem (PNG) para mandar no grupo de WhatsApp
+// Desenha a visão escolhida (Obras × dias ou Funcionários × semana) só com quem tem alocação na semana, letra grande, uma cor por função.
+export function imagemPNG({ semanaIni, vista, obras = [], equipeProg = null, posLinhas = [] }) {
+  const dias = DIAS.map((_, i) => somarDias(semanaIni, i));
+  const todos = gente(equipeProg);
+  const funcaoDe = (nome) => (todos.find((g) => chaveNome(g.nome) === chaveNome(nome)) || {}).funcao || '';
+  const primeiro = (n) => chaveNome(n).split(/[\s-]+/)[0];
+  const posDe = (nome, d) => (posLinhas || []).find((l) => l.data === d && (chaveNome(l.pessoa) === chaveNome(nome) || (primeiro(nome).length > 2 && primeiro(l.pessoa) === primeiro(nome))));
+  const PER = { manha: 'manhã', tarde: 'tarde' };
+  // linhas da tabela: [{ titulo, sub, cor, celulas: [[{ txt, cor }]...6] }]
+  let linhasTab;
+  if (vista === 'func') {
+    const nomes = [...new Set([...todos.map((g) => g.nome), ...linhas.map((l) => l.pessoa)])].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    linhasTab = nomes.map((n) => ({
+      titulo: n, sub: funcaoDe(n), cor: corDaFuncao(funcaoDe(n)),
+      celulas: dias.map((d) => {
+        const it = linhas.filter((l) => chaveNome(l.pessoa) === chaveNome(n) && l.data === d).map((l) => ({ txt: l.obra + ((l.periodo || 'dia') !== 'dia' ? ` (${PER[l.periodo]})` : ''), cor: corDaFuncao(funcaoDe(n)) }));
+        const p = posDe(n, d); if (p) it.push({ txt: `Pós-obra${(p.periodo || 'dia') !== 'dia' ? ` (${PER[p.periodo]})` : ''}`, cor: '#111827' });
+        return it;
+      }),
+    })).filter((r) => r.celulas.some((c) => c.length));
+  } else {
+    const nomesObras = [...new Set([...obras, ...linhas.map((l) => l.obra)])];
+    linhasTab = nomesObras.map((o) => ({
+      titulo: o, sub: '', cor: '#1F3A56',
+      celulas: dias.map((d) => linhas.filter((l) => l.obra === o && l.data === d).map((l) => ({ txt: l.pessoa + ((l.periodo || 'dia') !== 'dia' ? ` (${PER[l.periodo]})` : ''), cor: corDaFuncao(funcaoDe(l.pessoa)) }))),
+    })).filter((r) => r.celulas.some((c) => c.length));
+  }
+  const W = 1500; const colN = 300; const colD = (W - colN) / 6; const pad = 10; const linhaH = 30;
+  const altLinha = (r) => Math.max(56, Math.max(...r.celulas.map((c) => c.length)) * linhaH + pad * 2);
+  const topo = 110; const cab = 44; const rodape = 100;
+  const H = topo + cab + linhasTab.reduce((s, r) => s + altLinha(r), 0) + rodape + (linhasTab.length ? 0 : 80);
+  const esc = 2; const cv = document.createElement('canvas'); cv.width = W * esc; cv.height = H * esc;
+  const g = cv.getContext('2d'); g.scale(esc, esc);
+  g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
+  g.fillStyle = '#14283C'; g.font = 'bold 34px Arial'; g.fillText(vista === 'func' ? 'Funcionários da semana · onde cada um vai' : 'Obras da semana · quem vai em cada obra', 24, 48);
+  g.fillStyle = '#4B5560'; g.font = '22px Arial'; g.fillText(`Semana de ${dm(semanaIni)} a ${dm(somarDias(semanaIni, 5))} · Construtora Sólida · Operações`, 24, 84);
+  // cabeçalho
+  let y = topo; g.fillStyle = '#1F3A56'; g.fillRect(24, y, W - 48, cab);
+  g.fillStyle = '#fff'; g.font = 'bold 22px Arial';
+  g.fillText(vista === 'func' ? 'Funcionário' : 'Obra', 36, y + 29);
+  dias.forEach((d, i) => g.fillText(`${DIAS[i]} ${dm(d)}`, 24 + colN + i * colD + 14, y + 29));
+  y += cab;
+  const caber = (txt, larg) => { let t = txt; while (g.measureText(t).width > larg && t.length > 3) t = t.slice(0, -2); return t === txt ? t : `${t}…`; };
+  linhasTab.forEach((r, ri) => {
+    const h = altLinha(r);
+    g.fillStyle = ri % 2 ? '#F3F5F8' : '#fff'; g.fillRect(24, y, W - 48, h);
+    g.fillStyle = r.cor; g.fillRect(24, y, 8, h);
+    g.fillStyle = '#0F1B27'; g.font = 'bold 22px Arial'; g.fillText(caber(r.titulo, colN - 30), 44, y + (r.sub ? 28 : h / 2 + 8));
+    if (r.sub) { g.fillStyle = '#5B6677'; g.font = '16px Arial'; g.fillText(caber(r.sub, colN - 30), 44, y + 50); }
+    r.celulas.forEach((c, i) => c.forEach((it, k) => {
+      const x = 24 + colN + i * colD + 8; const yy = y + pad + k * linhaH; const lw = colD - 16;
+      g.fillStyle = it.cor; g.beginPath(); if (g.roundRect) g.roundRect(x, yy, lw, linhaH - 4, 6); else g.rect(x, yy, lw, linhaH - 4); g.fill();
+      g.fillStyle = '#fff'; g.font = 'bold 18px Arial'; g.fillText(caber(it.txt, lw - 16), x + 8, yy + 20);
+    }));
+    g.strokeStyle = '#D5DCE4'; g.lineWidth = 1; g.beginPath(); g.moveTo(24, y + h); g.lineTo(W - 24, y + h); g.stroke();
+    y += h;
+  });
+  if (!linhasTab.length) { g.fillStyle = '#5B6677'; g.font = '22px Arial'; g.fillText('Ninguém alocado nesta semana ainda.', 36, y + 50); y += 80; }
+  // legenda
+  let lx = 24; g.font = '16px Arial';
+  const leg = [...FUNCOES.map(([n, , c]) => [n, c]), ['Pós-obra', '#111827']];
+  leg.forEach(([n, c]) => { const w = g.measureText(n).width + 34; if (lx + w > W - 24) { lx = 24; y += 26; } g.fillStyle = c; g.fillRect(lx, y + 26, 14, 14); g.fillStyle = '#333'; g.fillText(n, lx + 20, y + 38); lx += w + 10; });
+  return cv.toDataURL('image/png');
+}
