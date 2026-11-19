@@ -1398,3 +1398,10 @@ select.pc-sit-sel { height: 22px !important; font-size: 11px; min-width: 100px; 
   .pc .pc-tab .pc-pend-venc { background: #fff !important; }
   .pc .pc-tab .pc-venc, .pc .pc-tab .pc-atraso { color: #000 !important; font-weight: 700; }
 }
+@media print {
+  /* faixa do PO na impressão: número e nome do PO em preto (antes saíam brancos sobre o cinza claro) */
+  .pc .pc-tab .pc-po td, .pc .pc-tab .pc-po td *, .pc .pc-tab .pc-po .pc-nome, .pc .pc-tab .pc-po b { color: #000 !important; }
+  .pc .pc-tab .pc-po b { font-weight: 800; font-size: 14pt; }
+  .pc .pc-tab .pc-po .pc-nome { font-size: 12.5pt; font-weight: 600; }
+  .pc .pc-tab .pc-po .pc-cont, .pc .pc-tab .pc-po small, .pc .pc-tab .pc-po .pequeno { color: #222 !important; font-size: 9.5pt; }
+}
