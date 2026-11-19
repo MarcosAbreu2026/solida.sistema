@@ -8,7 +8,7 @@
 import { html, data as fmtData } from '../formato.js';
 import { hojeISO, somarDias, inicioDaSemana, diasEntre, ehData } from '../datas.js';
 import { NA_NUVEM, perfilAtual, listarAtasPendencias, criarAtaNuvem, criarPendenciaNuvem, criarPendenciasNuvemLote, atualizarPendenciaNuvem, atualizarAtaNuvem, apagarPendenciaNuvem, apagarPendenciasNuvem, atualizarPendenciasNuvem, apagarAtaNuvem, listarNotasPend, listarNotasPendVarias, criarNotaPend, apagarNotaPend } from '../nuvem.js';
-import { SETORES, SETORES_ORGANOGRAMA, funcoesDoCargo } from '../funcoes.js';
+import { SETORES, SETORES_ORGANOGRAMA, funcoesDoCargo, FUNCOES } from '../funcoes.js';
 import { funcaoVe } from '../config.js';
 import { sessao, idPessoa, funcaoReal, funcaoAtual, simulando } from '../sessao.js';
 import { lerPessoasTarefas } from '../armazenamento.js';
@@ -225,7 +225,7 @@ const nomeDe = (id, reserva) => ((dados.pessoas.find((p) => p.id === id) || {}).
 // Os itens mantidos continuam sendo as mesmas pendências (status e reprogramações preservados); os tirados somem; os novos entram.
 // O nome ganha o próximo Rnn e o PDF novo vai para o Drive (o PDF da revisão anterior continua lá).
 const mapaInfo = (p) => ({ n: p.item || null, texto: p.descricao, quem: p.responsavel ? nomeDe(p.responsavel) : (p.externoNome || p.externoCategoria || (p.externoTipo === 'cliente' ? 'Cliente' : p.externoTipo === 'arquitetura' ? 'Arquitetura' : '')), tipo: p.responsavel ? 'solida' : (p.externoTipo || 'terceirizado'), categoria: p.responsavel ? null : (p.externoCategoria || null) });
-const camposPend = (p) => ({ item: p.item || null, descricao: p.descricao, responsavel: p.responsavel || null, responsavel_nome: p.responsavel ? nomeDe(p.responsavel) : (p.externoNome || p.externoCategoria || (p.externoTipo === 'cliente' ? 'Cliente' : p.externoTipo === 'arquitetura' ? 'Arquitetura' : null)), responsavel_tipo: p.responsavel ? 'solida' : (p.externoTipo || 'terceirizado'), responsavel_categoria: p.responsavel ? null : (p.externoCategoria || null), executor: p.executor || null, prazo: p.prazo || null });
+const camposPend = (p) => ({ item: p.item || null, descricao: p.descricao, responsavel: p.responsavel || null, responsavel_nome: p.responsavel ? nomeDe(p.responsavel) : (p.externoNome || p.externoCategoria || (p.externoTipo === 'cliente' ? 'Cliente' : p.externoTipo === 'arquitetura' ? 'Arquitetura' : null)), responsavel_tipo: p.responsavel ? 'solida' : (p.externoTipo || 'terceirizado'), responsavel_categoria: p.responsavel ? null : (p.externoCategoria || null), executor: p.executor || null, cargo: p.cargo || null, prazo: p.prazo || null });
 // tarefas das pessoas (sem as pendências da OBRA por cômodo, que têm lista própria)
 // tarefas concluídas com responsável (pessoas e pendências por obra): base do ranking da Equipe
 export const tarefasConcluidas = () => dados.pendencias.filter((p) => p.status === 'feita' && p.responsavel);
@@ -327,7 +327,7 @@ export async function criarAta({ titulo, data, tipo, obra, setor, participantes,
   // informativo = texto + quem informou (Sólida, terceirizado ou cliente)
   informativos = informativos.map((p) => ({ n: p.item || null, texto: p.descricao, quem: p.responsavel ? nomeDe(p.responsavel) : (p.externoNome || p.externoCategoria || (p.externoTipo === 'cliente' ? 'Cliente' : p.externoTipo === 'arquitetura' ? 'Arquitetura' : '')), tipo: p.responsavel ? 'solida' : (p.externoTipo || 'terceirizado'), categoria: p.responsavel ? null : (p.externoCategoria || null) }));
   const ata = { informativos, titulo, data, tipo, obra: obra || null, setor: setor || null, participantes, resumo, tipo_reuniao: tipoReuniao || 'REUNIÃO', revisao: Number(revisao) || 0, local: local || null, horario: horario || null };
-  const pends = pendencias.map((p) => ({ item: p.item || null, descricao: p.descricao, responsavel: p.responsavel || null, responsavel_nome: p.responsavel ? nomeDe(p.responsavel) : (p.externoNome || p.externoCategoria || (p.externoTipo === 'cliente' ? 'Cliente' : p.externoTipo === 'arquitetura' ? 'Arquitetura' : null)), responsavel_tipo: p.responsavel ? 'solida' : (p.externoTipo || 'terceirizado'), responsavel_categoria: p.responsavel ? null : (p.externoCategoria || null), executor: p.executor || null, prazo: p.prazo || null, status: 'aberta' }));
+  const pends = pendencias.map((p) => ({ item: p.item || null, descricao: p.descricao, responsavel: p.responsavel || null, responsavel_nome: p.responsavel ? nomeDe(p.responsavel) : (p.externoNome || p.externoCategoria || (p.externoTipo === 'cliente' ? 'Cliente' : p.externoTipo === 'arquitetura' ? 'Arquitetura' : null)), responsavel_tipo: p.responsavel ? 'solida' : (p.externoTipo || 'terceirizado'), responsavel_categoria: p.responsavel ? null : (p.externoCategoria || null), executor: p.executor || null, cargo: p.cargo || null, prazo: p.prazo || null, status: 'aberta' }));
   let nova;
   if (NA_NUVEM) nova = await criarAtaNuvem(ata, pends);
   else {
@@ -341,8 +341,8 @@ export async function criarAta({ titulo, data, tipo, obra, setor, participantes,
   await carregar();
   return nova;
 }
-export async function criarPendencia({ daObra, ata_id, descricao, responsavel, executor, externoNome, externoTipo, externoCategoria, prazo, obra, setor, os, osFase, urgencia, funcaoTarefa, observadores, hora, duracao, recorrente = false, frequencia = 'semanal' }) {
-  const p = { da_obra: daObra !== undefined ? !!daObra : (!os && ((!!ata_id && !!obra) || pendenciaDaObra(descricao))), ata_id: ata_id || null, descricao, responsavel: responsavel || null, responsavel_nome: responsavel ? nomeDe(responsavel) : (externoNome || externoCategoria || (externoTipo === 'cliente' ? 'Cliente' : externoTipo === 'arquitetura' ? 'Arquitetura' : null)), responsavel_tipo: responsavel ? 'solida' : (externoTipo || 'terceirizado'), responsavel_categoria: responsavel ? null : (externoCategoria || null), executor: executor || null, prazo: prazo || null, status: 'aberta', obra: obra || null, setor: setor || null, os: os || null, os_fase: osFase || null, urgencia: urgencia || null, funcao_tarefa: funcaoTarefa || null, observadores: observadores || [], hora: hora || null, duracao: duracao ? Number(duracao) : 60 };
+export async function criarPendencia({ daObra, ata_id, descricao, responsavel, executor, cargo, externoNome, externoTipo, externoCategoria, prazo, obra, setor, os, osFase, urgencia, funcaoTarefa, observadores, hora, duracao, recorrente = false, frequencia = 'semanal' }) {
+  const p = { da_obra: daObra !== undefined ? !!daObra : (!os && ((!!ata_id && !!obra) || pendenciaDaObra(descricao))), ata_id: ata_id || null, descricao, responsavel: responsavel || null, responsavel_nome: responsavel ? nomeDe(responsavel) : (externoNome || externoCategoria || (externoTipo === 'cliente' ? 'Cliente' : externoTipo === 'arquitetura' ? 'Arquitetura' : null)), responsavel_tipo: responsavel ? 'solida' : (externoTipo || 'terceirizado'), responsavel_categoria: responsavel ? null : (externoCategoria || null), executor: executor || null, cargo: cargo || null, prazo: prazo || null, status: 'aberta', obra: obra || null, setor: setor || null, os: os || null, os_fase: osFase || null, urgencia: urgencia || null, funcao_tarefa: funcaoTarefa || null, observadores: observadores || [], hora: hora || null, duracao: duracao ? Number(duracao) : 60 };
   if (ata_id) { const a = dados.atas.find((x) => String(x.id) === String(ata_id)); const ns = [...dados.pendencias.filter((x) => String(x.ata_id) === String(ata_id)).map((x) => Number(x.item) || 0), ...((a && a.informativos) || []).map((x) => (x && x.n) || 0)]; p.item = Math.max(0, ...ns) + 1; }
   // recorrente: repete toda semana, no mesmo dia da semana. Cada ocorrência é uma tarefa; as primeiras ${SEMANAS_INICIAIS} semanas já nascem e o resto é criado aos poucos (renovarRecorrentes)
   if (recorrente && p.prazo && !ata_id) {
@@ -389,7 +389,7 @@ export async function renovarRecorrentes() {
       const fimGeracao = mensal ? somarDias(hoje, 365) : somarDias(hoje, 7 * SEMANAS_INICIAIS);
       let d = dataDaSerie(u.prazo, u.frequencia, 1); let k = 1;
       while (d < fimGeracao) {
-        if (d >= hoje) novas.push({ descricao: u.descricao, responsavel: u.responsavel, responsavel_nome: u.responsavel_nome, responsavel_tipo: u.responsavel_tipo, responsavel_categoria: u.responsavel_categoria, executor: u.executor || null, prazo: d, status: 'aberta', obra: u.obra, setor: u.setor, os: u.os, urgencia: u.urgencia, funcao_tarefa: u.funcao_tarefa, observadores: u.observadores || [], hora: u.hora, duracao: u.duracao, serie: u.serie, recorrente: true, frequencia: u.frequencia || 'semanal' });
+        if (d >= hoje) novas.push({ descricao: u.descricao, responsavel: u.responsavel, responsavel_nome: u.responsavel_nome, responsavel_tipo: u.responsavel_tipo, responsavel_categoria: u.responsavel_categoria, executor: u.executor || null, cargo: u.cargo || null, prazo: d, status: 'aberta', obra: u.obra, setor: u.setor, os: u.os, urgencia: u.urgencia, funcao_tarefa: u.funcao_tarefa, observadores: u.observadores || [], hora: u.hora, duracao: u.duracao, serie: u.serie, recorrente: true, frequencia: u.frequencia || 'semanal' });
         k += 1; d = dataDaSerie(u.prazo, u.frequencia, k);
       }
     }
@@ -486,6 +486,14 @@ export function campoExecutor(pref, valor = '') {
   const outra = !!v && !naLista;
   return html`<select name="${pref}_exec" class="pf-exec" data-exec-sel title="Quem vai executar a tarefa (o responsável continua sendo quem responde por ela)"><option value="" ${!v ? html.seguro('selected') : ''}>Nenhum executor</option>${nomes.map((n) => html`<option value="${n}" ${naLista && chaveNome(n) === chaveNome(v) ? html.seguro('selected') : ''}>${n}</option>`)}<option value="__outra__" ${outra ? html.seguro('selected') : ''}>Outra pessoa…</option></select><input name="${pref}_exec_outra" class="pf-exec-outra" placeholder="Nome de quem vai executar" value="${outra ? v : ''}" ${outra ? '' : html.seguro('hidden')}>`;
 }
+// ---- Cargo da tarefa (pedido do Marcos, 19/11/2026): associa a tarefa a um cargo (função do sistema) para ver, no cargo, as tarefas dele.
+export const cargosLista = () => FUNCOES.filter((f) => f.id !== 'socio' || true).map((f) => ({ id: f.id, nome: f.nome })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+export const nomeDoCargo = (id) => { const c = cargosLista().find((x) => x.id === id); return c ? c.nome : (id || ''); };
+export function campoCargo(pref, valor = '') {
+  const v = String(valor || '');
+  return html`<select name="${pref}_cargo" class="pf-exec" title="A que cargo esta tarefa pertence (no painel do departamento dá para abrir o cargo e ver as tarefas dele)"><option value="" ${!v ? html.seguro('selected') : ''}>Sem cargo</option>${cargosLista().map((c) => html`<option value="${c.id}" ${c.id === v ? html.seguro('selected') : ''}>${c.nome}</option>`)}</select>`;
+}
+export const lerCargo = (raiz, pref) => { const s = raiz.querySelector(`[name="${pref}_cargo"]`); return s ? s.value : undefined; };
 // lê o executor de um container (linha ou formulário): '' = nenhum
 export function lerExecutor(raiz, pref) {
   const s = raiz.querySelector(`[name="${pref}_exec"]`); if (!s) return undefined;
@@ -515,7 +523,7 @@ export function linhaForm(v = {}) {
     <select name="p_tipo" data-pf-tipo title="De onde é a pessoa: escolha para liberar o nome"><option value="" ${tipo === '' ? html.seguro('selected') : ''}>De onde é…</option><option value="solida" ${tipo === 'solida' ? html.seguro('selected') : ''}>Sólida</option><option value="terceirizado" ${tipo === 'terceirizado' ? html.seguro('selected') : ''}>Terceirizado</option><option value="cliente" ${tipo === 'cliente' ? html.seguro('selected') : ''}>Cliente</option><option value="arquitetura" ${tipo === 'arquitetura' ? html.seguro('selected') : ''}>Arquitetura</option></select>
     <select name="p_resp" class="pf-sol ${falta ? 'pf-falta' : ''}" title="${falta ? dica : ''}" ${tipo === 'solida' ? '' : html.seguro('hidden')}><option value="">Pessoa da Sólida…</option>${opcoesPessoas(v.responsavel || '')}</select>
     <input name="p_nome" class="pf-ext" list="dl-terceiros" placeholder="Nome da pessoa" autocomplete="off" value="${nome}" ${tipo === 'solida' ? html.seguro('hidden') : ''} ${tipo === '' ? html.seguro('disabled') : ''}>
-    ${info ? '' : campoExecutor('p', v.executor || '')}
+    ${info ? '' : campoExecutor('p', v.executor || '')}${info ? '' : campoCargo('p', v.cargo || '')}
     <input type="date" name="p_prazo" title="Prazo" value="${v.prazo || ''}"><button type="button" class="pf-x" data-pf-del title="Tirar esta linha">×</button><button type="button" class="pf-arrastar" draggable="true" data-pf-mover aria-label="Mudar a ordem desta linha" title="Arraste para mudar a ordem (ou use as setas ↑ ↓ do teclado)">⇅</button></div>`);
 }
 export const datalistTerceiros = () => html`<datalist id="dl-terceiros">${nomesConhecidos().map((n) => html`<option value="${n}">`)}</datalist>`;
@@ -1085,7 +1093,7 @@ export async function apagarNota(notaId, pendId) {
 // de origem e sem a recorrência. Devolve o id da cópia para a janela abrir nela.
 export async function duplicarTarefa(id) {
   const p = pendenciaPorId(id); if (!p) throw new Error('Tarefa não encontrada.');
-  const copia = { ata_id: null, descricao: p.descricao, responsavel: p.responsavel || null, responsavel_nome: p.responsavel_nome || null, responsavel_tipo: p.responsavel_tipo || 'solida', responsavel_categoria: p.responsavel_categoria || null, executor: p.executor || null,
+  const copia = { ata_id: null, descricao: p.descricao, responsavel: p.responsavel || null, responsavel_nome: p.responsavel_nome || null, responsavel_tipo: p.responsavel_tipo || 'solida', responsavel_categoria: p.responsavel_categoria || null, executor: p.executor || null, cargo: p.cargo || null,
     prazo: p.prazo || null, status: 'aberta', obra: p.obra || null, setor: p.setor || null, os: p.os || null, urgencia: p.urgencia || null, funcao_tarefa: p.funcao_tarefa || null,
     observadores: p.observadores || [], hora: p.hora || null, duracao: p.duracao || 60 };
   let novo;
@@ -1116,7 +1124,7 @@ export async function salvarTarefa(id, c) {
   const p = pendenciaPorId(id); if (!p) throw new Error('Tarefa não encontrada.');
   const desc = String(c.desc || '').trim(); const ass = String(c.assunto || '').trim();
   if (!desc && !ass) throw new Error('Escreva o título da tarefa.');
-  const mud = { ...(c.daObra === undefined ? {} : { da_obra: !!c.daObra }), ...(c.executor === undefined ? {} : { executor: String(c.executor || '').trim() || null }), obra: c.obra === undefined ? p.obra : (c.obra || null), descricao: ass ? `${ass}, ${desc}` : desc, urgencia: c.urgencia || null, funcao_tarefa: c.funcaoTarefa || null, observadores: c.observadores || [], hora: c.hora || null, duracao: c.duracao ? Number(c.duracao) : null };
+  const mud = { ...(c.daObra === undefined ? {} : { da_obra: !!c.daObra }), ...(c.executor === undefined ? {} : { executor: String(c.executor || '').trim() || null }),  ...(c.cargo === undefined ? {} : { cargo: String(c.cargo || '').trim() || null }), obra: c.obra === undefined ? p.obra : (c.obra || null), descricao: ass ? `${ass}, ${desc}` : desc, urgencia: c.urgencia || null, funcao_tarefa: c.funcaoTarefa || null, observadores: c.observadores || [], hora: c.hora || null, duracao: c.duracao ? Number(c.duracao) : null };
   if (c.resp === 'ext') {
     const tipo = c.tipo || 'terceirizado';
     Object.assign(mud, { responsavel: null, responsavel_nome: String(c.nome || '').trim() || (tipo === 'cliente' ? 'Cliente' : tipo === 'arquitetura' ? 'Arquitetura' : null), responsavel_tipo: tipo, responsavel_categoria: null });
@@ -1137,7 +1145,7 @@ export async function salvarTarefa(id, c) {
     const base = c.prazo || p.prazo;
     const freq = c.frequencia === 'mensal' ? 'mensal' : 'semanal';
     Object.assign(mud, { serie, recorrente: true, frequencia: freq });
-    novasDaSerie = Array.from({ length: SEMANAS_INICIAIS - 1 }, (_, k) => ({ descricao: mud.descricao, responsavel: mud.responsavel ?? p.responsavel ?? null, responsavel_nome: mud.responsavel_nome ?? p.responsavel_nome ?? null, responsavel_tipo: mud.responsavel_tipo ?? p.responsavel_tipo ?? null, responsavel_categoria: mud.responsavel_categoria ?? p.responsavel_categoria ?? null, executor: mud.executor !== undefined ? mud.executor : (p.executor || null), prazo: dataDaSerie(base, freq, k + 1), status: 'aberta', obra: p.obra || null, setor: p.setor || null, os: p.os || null, urgencia: mud.urgencia, funcao_tarefa: mud.funcao_tarefa, observadores: mud.observadores || [], hora: mud.hora, duracao: mud.duracao, serie, recorrente: true, frequencia: freq }));
+    novasDaSerie = Array.from({ length: SEMANAS_INICIAIS - 1 }, (_, k) => ({ descricao: mud.descricao, responsavel: mud.responsavel ?? p.responsavel ?? null, responsavel_nome: mud.responsavel_nome ?? p.responsavel_nome ?? null, responsavel_tipo: mud.responsavel_tipo ?? p.responsavel_tipo ?? null, responsavel_categoria: mud.responsavel_categoria ?? p.responsavel_categoria ?? null, executor: mud.executor !== undefined ? mud.executor : (p.executor || null), cargo: mud.cargo !== undefined ? mud.cargo : (p.cargo || null), prazo: dataDaSerie(base, freq, k + 1), status: 'aberta', obra: p.obra || null, setor: p.setor || null, os: p.os || null, urgencia: mud.urgencia, funcao_tarefa: mud.funcao_tarefa, observadores: mud.observadores || [], hora: mud.hora, duracao: mud.duracao, serie, recorrente: true, frequencia: freq }));
   }
   if (NA_NUVEM) await atualizarPendenciaNuvem(id, mud);
   else { const l = lerLocal(); const q = l.pendencias.find((x) => String(x.id) === String(id)); if (q) Object.assign(q, mud); gravarLocal(l); }
@@ -1191,6 +1199,7 @@ export function detalheTarefa(id, { msg = '', obras = [] } = {}) {
         <div class="tf-ext" ${ext ? '' : html.seguro('hidden')}><label>Quem é<select name="t_tipo"><option value="terceirizado" ${tipo === 'terceirizado' ? html.seguro('selected') : ''}>Terceirizado</option><option value="cliente" ${tipo === 'cliente' ? html.seguro('selected') : ''}>Cliente</option><option value="arquitetura" ${tipo === 'arquitetura' ? html.seguro('selected') : ''}>Arquitetura</option></select></label>
           <label>Nome<input name="t_nome" value="${ext ? (p.responsavel_nome || '') : ''}" list="dl-terceiros" placeholder="empresa ou pessoa"></label></div>
         <label class="tf-exec">Executor${campoExecutor('t', p.executor || '')}</label>
+        <label class="tf-exec">Cargo${campoCargo('t', p.cargo || '')}</label>
         <label>Obra<select name="t_obra"><option value="">Nenhuma</option>${gruposDeObras(obras, p.obra || '', { criar: true })}</select></label>
         <label class="tf-daobra" title="Pendência da obra: vem de ata de obra (ou assunto que é cômodo) e não entra na lista de tarefas das pessoas"><input type="checkbox" name="t_daobra" ${p.da_obra ? html.seguro('checked') : ''}> <span>Pendência da obra (por cômodo): não é tarefa de pessoa</span></label>
         <label>Prazo<input type="date" name="t_prazo" value="${p.prazo || ''}"></label>

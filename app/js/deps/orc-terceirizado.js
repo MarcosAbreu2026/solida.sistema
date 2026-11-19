@@ -7,6 +7,7 @@ import * as pd from '../telas/painel-dep.js';
 import { programacoes } from '../programacao.js';
 import { cronogramaDa } from '../telas/operacao.js';
 import { avisoLeitura } from './comum.js';
+import { FUNCOES } from '../funcoes.js';
 
 const curto = (s, n = 150) => { const t = String(s || '').replace(/\s+/g, ' ').trim(); return t.length > n ? `${t.slice(0, n).replace(/\s+\S*$/, '')}…` : t; };
 const tipoDe = (t) => (/aditivo/i.test(t) ? 'Aditivo' : /contrat|or[çc]ament|cota[çc]/i.test(t) ? 'Contratação' : /compra|pedido|entrega|chegar|material/i.test(t) ? 'Compra' : 'Fornecedor');
@@ -59,7 +60,25 @@ export function painel(ctx) {
   return html`${pd.pergunta(ctx.dep.pergunta)}
     ${avisoLeitura(ctx, 'Programação e alertas lidos pelo agente em')}
     ${pd.secao('Cards de orçamento terceirizado', 'Cada card é um item a contratar ou comprar (ex.: louças e metais) ligado a uma obra: arraste para a coluna certa; as tarefas e as fotos ficam dentro do card', ctx.quadroTerc ? html.seguro(ctx.quadroTerc()) : '')}
+    ${pd.secao('Tarefas por cargo', 'Abra o cargo para ver as tarefas dele · o cargo é escolhido em cada tarefa', tarefasPorCargo(ctx))}
     ${pd.secao('Pendências de contratação', 'Quanto mais perto do fim da obra, maior a prioridade · itens laranja da programação, contratos no Mais Controle e alertas',
       pd.tabela(['Obra', 'Pendência', 'Tipo', 'Situação', 'Impacto'], linhas, { vazio: 'Nenhum item de terceiro ou fornecedor na programação das obras.' }))}
     ${pd.secao('Quem precisa agir', 'Cada alerta vira tarefa com responsável e data-limite', pd.quemAgir(ordenados.filter((i) => i.nivel === 'critico' || /sem contrato/i.test(i.texto)).map((i) => ({ nivel: 'critico', texto: `${i.obra ? `${i.obra}: ` : ''}${curto(i.texto, 200)}`, resp: i.resp || 'Júlia', obra: i.obra })), { setor: ctx.dep.setor }, { vazio: 'Nenhuma contratação crítica agora.' }))}`;
+}
+
+// Tarefas do departamento agrupadas por cargo: abrir o cargo mostra as tarefas dele (campo Cargo da tarefa)
+export function tarefasPorCargo(ctx) {
+  const SETOR = 'ORC Terceirizado Laranja';
+  const nomes = Object.fromEntries(FUNCOES.map((f) => [f.id, f.nome]));
+  const ts = (ctx.pendencias || []).filter((p) => p.status !== 'cancelada' && p.na_lista !== false && (p.setor === SETOR || /^TL-/.test(String(p.os || ''))));
+  if (!ts.length) return html`<p class="pd-vazio">Nenhuma tarefa deste departamento ainda. Ao criar uma tarefa, escolha o cargo dela.</p>`;
+  const grupos = new Map();
+  for (const p of ts) { const k = p.cargo || ''; if (!grupos.has(k)) grupos.set(k, []); grupos.get(k).push(p); }
+  const ordem = [...grupos.keys()].sort((a, b) => (a === '' ? 1 : b === '' ? -1 : (nomes[a] || a).localeCompare(nomes[b] || b, 'pt-BR')));
+  return html`${ordem.map((k) => {
+    const l = grupos.get(k).sort((a, b) => String(a.prazo || '9').localeCompare(String(b.prazo || '9')));
+    const ab = l.filter((p) => p.status === 'aberta').length;
+    return html`<details class="caixa"><summary><span class="caixa-tit">${k ? (nomes[k] || k) : 'Sem cargo'}</span><span class="pequeno">${ab} em aberto · ${l.length} no total</span></summary>
+      <div style="padding:6px 18px 12px">${pd.tabela(['Tarefa', 'Obra', 'Responsável', 'Executor', 'Prazo', 'Situação'], l.map((p) => [p.descricao, p.obra || '', p.responsavel_nome || '', p.executor || '', p.prazo && /^\d{4}/.test(p.prazo) ? pd.dma(p.prazo) : '', p.status === 'feita' ? 'feita' : 'aberta']), { vazio: '' })}</div></details>`;
+  })}`;
 }

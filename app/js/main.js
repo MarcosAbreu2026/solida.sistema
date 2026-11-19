@@ -2138,7 +2138,7 @@ document.addEventListener('submit', async (e) => {
   e.preventDefault(); const fd = new FormData(f); const id = f.dataset.tf;
   try {
     let escopo = 'uma'; if (atas.ehRecorrente(id)) { escopo = await perguntarEscopo('Salvar tarefa recorrente'); if (!escopo) return; }
-    await atas.salvarTarefa(id, { daObra: fd.has('t_daobra'), escopo, obra: fd.get('t_obra'), recorrente: fd.has('t_recor'), frequencia: String(fd.get('t_freq') || 'semanal'), hora: fd.get('t_hora'), duracao: fd.get('t_dur'), observadores: fd.getAll('t_obs'), executor: atas.lerExecutor(f, 't'), funcaoTarefa: fd.get('t_func'), urgencia: fd.get('t_urg'), assunto: fd.get('t_assunto'), desc: fd.get('t_desc'), resp: fd.get('t_resp'), tipo: fd.get('t_tipo'), nome: fd.get('t_nome'), gestor: fd.get('t_gestor'), prazo: fd.get('t_prazo') });
+    await atas.salvarTarefa(id, { daObra: fd.has('t_daobra'), escopo, obra: fd.get('t_obra'), recorrente: fd.has('t_recor'), frequencia: String(fd.get('t_freq') || 'semanal'), hora: fd.get('t_hora'), duracao: fd.get('t_dur'), observadores: fd.getAll('t_obs'), executor: atas.lerExecutor(f, 't'), cargo: atas.lerCargo(f, 't'), funcaoTarefa: fd.get('t_func'), urgencia: fd.get('t_urg'), assunto: fd.get('t_assunto'), desc: fd.get('t_desc'), resp: fd.get('t_resp'), tipo: fd.get('t_tipo'), nome: fd.get('t_nome'), gestor: fd.get('t_gestor'), prazo: fd.get('t_prazo') });
     await redesenharTarefas(id, 'Salvo ✓');
   } catch (err) { alert(`Não foi possível salvar (${err.message || err}).`); }
 });
@@ -2759,6 +2759,7 @@ function lerLinhaPendencia(l) {
     urgencia: (l.querySelector('[name="p_urg"]') || {}).value || '',
     funcaoTarefa: (l.querySelector('[name="p_func"]') || {}).value || '',
     executor: atas.lerExecutor(l, 'p') || '',
+    cargo: atas.lerCargo(l, 'p') || '',
   };
 }
 // Bolinha à esquerda de cada linha da ata: arrastar muda a posição da pendência ou do informativo (a ordem da lista é a ordem salva)
