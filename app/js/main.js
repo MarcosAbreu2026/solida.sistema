@@ -1959,7 +1959,7 @@ document.addEventListener('submit', (e) => {
   const nf = e.target.closest && e.target.closest('#oq-form-nova');
   if (nf) {
     e.preventDefault(); const fd = new FormData(nf);
-    oqFazer(async () => { const n = await oq.criar({ obra: fd.get('obra'), cliente: String(fd.get('cliente') || '').trim(), arquitetura: String(fd.get('arquitetura') || '').trim(), titulo: fd.get('titulo'), status: nf.dataset.status }); await oqSincronizarCadastro(n, { criar: true }); },
+    oqFazer(async () => { const n = await oq.criar({ obra: fd.get('obra'), cliente: String(fd.get('cliente') || '').trim(), arquitetura: String(fd.get('arquitetura') || '').trim(), tipo_obra: String(fd.get('tipo_obra') || '').trim(), titulo: fd.get('titulo'), status: nf.dataset.status }); await oqSincronizarCadastro(n, { criar: true }); },
       { depois: () => { const m = document.getElementById('at-modal'); if (m) m.remove(); } });
     return;
   }
@@ -1968,7 +1968,7 @@ document.addEventListener('submit', (e) => {
     e.preventDefault(); const fd = new FormData(f); const id = f.dataset.oqForm;
     const meses = fd.get('meses') === '' || fd.get('meses') == null ? null : Number(fd.get('meses'));
     const inicio = fd.get('inicio_previsto') || null;
-    const campos = { obra: String(fd.get('obra') || '').trim(), cliente: String(fd.get('cliente') || '').trim() || null, arquitetura: String(fd.get('arquitetura') || '').trim() || null, titulo: String(fd.get('titulo') || '').trim(),
+    const campos = { obra: String(fd.get('obra') || '').trim(), cliente: String(fd.get('cliente') || '').trim() || null, arquitetura: String(fd.get('arquitetura') || '').trim() || null, tipo_obra: String(fd.get('tipo_obra') || '').trim() || null, titulo: String(fd.get('titulo') || '').trim(),
       status: fd.get('status'), responsavel: String(fd.get('responsavel') || '').trim() || null, prazo: fd.get('prazo') || null, viavel: fd.has('viavel'), inicio_previsto: inicio, meses,
       fim_previsto: fd.get('fim_previsto') || oq.fimDe(inicio, meses) || null, descricao: fd.get('descricao') || null };
     if (fd.has('valor')) campos.valor = fd.get('valor') === '' ? null : Number(fd.get('valor'));

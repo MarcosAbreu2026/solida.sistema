@@ -1460,3 +1460,4 @@ td.cg-sem-data { background: #fff8e1; color: #8a6d00; font-style: italic; font-s
   body[data-imprime="cronograma"] .tabela-rolagem { overflow: visible !important; }
   .cg-tab td, .cg-tab th, .cg-grupo td { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+.oq-tipo { background: #E8EEF6; color: #1f3d5c; font-weight: 600; } .oq-tipo.oq-sem { background: #fff3cd; color: #8a6d00; font-style: italic; }

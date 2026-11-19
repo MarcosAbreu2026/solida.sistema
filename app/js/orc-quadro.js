@@ -16,6 +16,9 @@ export const STATUS = [
   { id: 'nao_fechou', nome: 'Não fechou', cor: '#A23B3B', cad: 'nao_fechado' },
 ];
 const porId = Object.fromEntries(STATUS.map((s) => [s.id, s]));
+// tipo de obra do orçamento (lista sugerida; dá para digitar outro)
+export const TIPOS_OBRA = ['Apartamento – reforma', 'Casa – reforma', 'Casa – construção', 'Cobertura – reforma', 'Escritório', 'Corporativo', 'Loja / comercial', 'Demolição', 'Projeto / consultoria'];
+const listaTipos = () => html`<datalist id="oq-tipos">${[...new Set([...TIPOS_OBRA, ...lista.map((o) => o.tipo_obra).filter(Boolean)])].map((t) => html`<option value="${t}">`)}</datalist>`;
 export const situacaoCadastro = (status) => (porId[status] || {}).cad || null;
 const CHAVE = 'solida.orcQuadro';
 const lerLocal = () => { try { return JSON.parse(localStorage.getItem(CHAVE)) || []; } catch { return []; } };
@@ -52,7 +55,7 @@ async function gravar(linha) {
   else { o = { id: todas.reduce((m, x) => Math.max(m, x.id), 0) + 1, criado_em: new Date().toISOString(), viavel: false, ...linha }; todas.push(o); }
   aplicarRegrasLocais(o); gravarLocal(todas); lista = todas.sort((a, b) => b.id - a.id); return o;
 }
-export const criar = (c) => gravar({ obra: String(c.obra || '').trim(), cliente: c.cliente || null, arquitetura: c.arquitetura || null, titulo: String(c.titulo || '').trim(), status: c.status || 'solicitacao' });
+export const criar = (c) => gravar({ obra: String(c.obra || '').trim(), cliente: c.cliente || null, arquitetura: c.arquitetura || null, tipo_obra: c.tipo_obra || null, titulo: String(c.titulo || '').trim(), status: c.status || 'solicitacao' });
 export const salvar = (id, campos) => gravar({ id, ...campos });
 export const mover = (id, status) => gravar({ id, status });
 export async function apagar(id) {
@@ -69,8 +72,8 @@ const prazoCls = (o, hoje) => (!o.prazo || ['fechado', 'nao_fechou'].includes(o.
 const opcoesObra = (obras) => html`<datalist id="oq-obras">${obras.map((c) => html`<option value="${c.codigo}">${c.nome || c.cliente || ''}</option>`)}</datalist>`;
 
 const filtrar = (params, pendencias) => {
-  const q = (params.get('oqq') || '').toLocaleLowerCase('pt-BR'); const v = params.get('oqv') || '';
-  return lista.filter((o) => (!q || `${o.obra} ${o.cliente || ''} ${o.arquitetura || ''} ${o.titulo || ''}`.toLocaleLowerCase('pt-BR').includes(q))
+  const q = (params.get('oqq') || '').toLocaleLowerCase('pt-BR'); const v = params.get('oqv') || ''; const tp = params.get('oqtipo') || '';
+  return lista.filter((o) => (!q || `${o.obra} ${o.cliente || ''} ${o.arquitetura || ''} ${o.titulo || ''} ${o.tipo_obra || ''}`.toLocaleLowerCase('pt-BR').includes(q)) && (!tp || o.tipo_obra === tp)
     && (!v || (v === 'sim' ? o.viavel : !o.viavel)) && (params.get('oqt') !== 'com' || tarefasDo(o, pendencias).some((p) => p.status === 'aberta')));
 };
 
@@ -83,7 +86,7 @@ export function renderQuadro({ params, podeEditar, veValores = false, obrasCad =
     return html`<article class="at-card osq-card oq-card ${prazoCls(o, hoje)}" data-oq="${o.id}" ${podeEditar ? html.seguro('draggable="true"') : ''} title="Clique para abrir${podeEditar ? ' · arraste para mudar a coluna' : ''}">
       <div class="at-tit"><b>${o.obra}</b> ${o.viavel ? html`<span class="oq-viavel" title="Orçamento que acreditamos fechar">★ viável</span>` : ''}</div>
       <div class="oq-cli">${o.cliente || ''}</div>
-      <div class="at-meta">${o.arquitetura ? html`<span class="at-chip">🏛 ${o.arquitetura}</span>` : ''}${o.titulo ? html`<span class="at-chip">${o.titulo}</span>` : ''}${t.length ? html`<span class="at-chip" title="Tarefas em aberto / total">☑ ${ab}/${t.length}</span>` : ''}</div>
+      <div class="at-meta">${o.tipo_obra ? html`<span class="at-chip oq-tipo">${o.tipo_obra}</span>` : html`<span class="at-chip oq-tipo oq-sem" title="Falta dizer o tipo de obra">tipo?</span>`}${o.arquitetura ? html`<span class="at-chip">🏛 ${o.arquitetura}</span>` : ''}${o.titulo ? html`<span class="at-chip">${o.titulo}</span>` : ''}${t.length ? html`<span class="at-chip" title="Tarefas em aberto / total">☑ ${ab}/${t.length}</span>` : ''}</div>
       <div class="oq-datas">${o.prazo ? html`<span class="oq-prazo" title="Prazo para entregar o orçamento">⏱ entrega ${dCurta(o.prazo)}</span>` : ''}${o.inicio_previsto ? html`<span title="Início previsto da obra${o.fim_previsto ? ` · fim previsto ${dBR(o.fim_previsto)}` : ''}">🏗 ${dCurta(o.inicio_previsto)}${o.fim_previsto ? ` → ${dCurta(o.fim_previsto)}` : ''}</span>` : ''}${veValores && o.valor ? html`<span class="oq-valor">${brl(o.valor)}</span>` : ''}</div>
       ${lista3(t)}</article>`;
   };
@@ -91,6 +94,7 @@ export function renderQuadro({ params, podeEditar, veValores = false, obrasCad =
     ${erro ? html`<p class="erro">${erro}</p>` : ''}
     <div class="at-filtros">
       <label>Procurar<input type="search" data-atas-filtro="oqq" value="${params.get('oqq') || ''}" placeholder="Código, cliente, arquiteto…"></label>
+      <label>Tipo de obra<select data-atas-filtro="oqtipo"><option value="">Todos</option>${[...new Set([...TIPOS_OBRA, ...lista.map((o) => o.tipo_obra).filter(Boolean)])].map((t) => html`<option value="${t}" ${sel(t === params.get('oqtipo'))}>${t}</option>`)}</select></label>
       <label>Viabilidade<select data-atas-filtro="oqv"><option value="">Todos</option><option value="sim" ${sel(params.get('oqv') === 'sim')}>★ Viáveis de fechar</option><option value="nao" ${sel(params.get('oqv') === 'nao')}>Sem marcação</option></select></label>
       <label>Tarefas<select data-atas-filtro="oqt"><option value="">Todos os cards</option><option value="com" ${sel(params.get('oqt') === 'com')}>Com tarefa em aberto</option></select></label>
     </div>
@@ -111,9 +115,10 @@ export function formNova(status, obrasCad = []) {
       <label class="av-m">Código<input name="obra" list="oq-obras" required autocomplete="off" placeholder="ex.: Mo613"></label>
       <label class="av-m">Cliente<input name="cliente" required autocomplete="off" placeholder="ex.: Ana Paula e Flávio"></label>
       <label class="av-m">Arquitetura<input name="arquitetura" autocomplete="off" placeholder="ex.: PKB"></label>
-      <label class="av-m">Observação curta<input name="titulo" autocomplete="off" placeholder="ex.: apartamento 3 quartos"></label>
+      <label class="av-m">Tipo de obra<input name="tipo_obra" list="oq-tipos" autocomplete="off" placeholder="ex.: Apartamento – reforma"></label>
+      <label class="av-m">Observação curta<input name="titulo" autocomplete="off" placeholder="ex.: 3 quartos"></label>
     </div>
-    ${opcoesObra(obrasCad)}
+    ${opcoesObra(obrasCad)}${listaTipos()}
     <div class="at-av-botoes"><button type="button" class="botao" data-av-fechar>Cancelar</button><button type="submit" class="botao on">Criar card</button></div></form>`;
 }
 
@@ -129,6 +134,7 @@ export function detalhe(id, { podeEditar, veValores = false, obrasCad = [], msg 
         <label>Código<input name="obra" list="oq-obras" value="${o.obra}" required ${dis}></label>
         <label>Cliente<input name="cliente" value="${o.cliente || ''}" ${dis}></label>
         <label>Arquitetura<input name="arquitetura" value="${o.arquitetura || ''}" ${dis}></label>
+        <label>Tipo de obra<input name="tipo_obra" list="oq-tipos" value="${o.tipo_obra || ''}" placeholder="casa, apartamento, escritório…" ${dis}></label>
         <label>Observação curta<input name="titulo" value="${o.titulo || ''}" ${dis}></label>
         <label>Coluna<select name="status" ${dis}>${STATUS.map((s) => html`<option value="${s.id}" ${sel(s.id === o.status)}>${s.nome}</option>`)}</select></label>
         <label>Responsável pelo orçamento<input name="responsavel" value="${o.responsavel || ''}" ${dis}></label>
@@ -144,7 +150,7 @@ export function detalhe(id, { podeEditar, veValores = false, obrasCad = [], msg 
       <div class="osq-pends"><h4>Tarefas deste orçamento <span class="pequeno">${tarefas.filter((p) => p.status === 'aberta').length} em aberto · ${tarefas.length} no total</span>${podeEditar ? html`<button type="button" class="ac-mini" data-oq-pend="${o.codigo}" data-oq-obra="${o.obra}" data-oq-fase="${o.status}">+ Nova tarefa</button>` : ''}</h4>
         ${tarefas.length ? '' : html`<p class="pequeno">Nenhuma tarefa ainda.</p>`}
         ${tarefas.map((p) => html`<div class="osq-pend" data-tarefa="${p.id}"><span class="osq-pend-txt">${p.descricao}</span><span class="osq-pend-quem">${p.responsavel_nome || html`<span class="pc-sem-txt">[definir]</span>`}${p.executor && p.executor !== p.responsavel_nome ? html` → ${p.executor}` : ''}</span><span class="osq-pend-st ${p.status === 'feita' ? 'ok' : ''}">${p.status === 'feita' ? 'feita' : `aberta${p.prazo && /^\d{4}/.test(p.prazo) ? ` · ${dBR(p.prazo)}` : ''}`}</span>${podeEditar ? html`<button type="button" class="ac-mini pc-pdel" data-pc-pdel="${p.id}" title="Excluir só esta tarefa (o card continua)">excluir</button>` : ''}</div>`)}</div>
-      ${opcoesObra(obrasCad)}
+      ${opcoesObra(obrasCad)}${listaTipos()}
       <div class="tf-botoes">
         ${podeEditar ? html`<button type="submit" class="botao on">Salvar</button><button type="button" class="botao ac-excluir" data-oq-del="${o.id}">Excluir card</button>` : ''}
         <button type="button" class="botao" data-av-fechar>Fechar</button>${msg ? html`<span class="tf-msg">${msg}</span>` : ''}
