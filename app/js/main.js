@@ -680,12 +680,19 @@ function esconderLogin() {
   $('#login').innerHTML = '';
 }
 
+// todos os funcionários de obra (distribuição SL_FUNC_OBRAS e RH), sem o apelido entre parênteses e com iniciais maiúsculas; os logins entram em atas.nomesExecutores
+function nomesDeFuncionarios(eqp, CFG) {
+  const brutos = [...((eqp && eqp.pessoas) || []).map((p) => p.nome), ...((CFG && CFG.funcionariosRH) || []).map((p) => p && p.nome)];
+  return brutos.map((n) => String(n || '').replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim()).filter((n) => n.length > 2)
+    .map((n) => n.toLocaleLowerCase('pt-BR').replace(/(^|[\s-])\S/g, (c) => c.toLocaleUpperCase('pt-BR')));
+}
 function desenhar() {
   if (!logado()) { mostrarLogin(); desenharPedido(); return; }
   esconderLogin();
   const CFG = estado.cfg;
   // Cadastros manda nas listas: obra finalizada (ex.: Mo344, Mo565D) sai de todas as telas, mesmo que os agentes ou o Drive ainda tragam a obra
   aplicarCadastroNasObras({ cfg: CFG, obrasCad: estado.obrasCad, projetos: estado.drive && estado.drive.projetos, estoque: estado.drive && estado.drive.estoque });
+atas.definirFuncionarios(nomesDeFuncionarios(estado.equipeProg, CFG));   // lista do campo Executor das tarefas
   // onde está cada funcionário: só o efetivo de HOJE (zera todo dia); a lista de nomes vem do RH
   // obra cadastrada em Acessos entra na hora nas telas que usam a lista de obras dos dados (efetivo, ferramentas, orçamentos…)
   if (CFG) { CFG.obrasDados = CFG.obrasDados || [...(CFG.obras || [])]; CFG.obras = [...new Set([...CFG.obrasDados, ...(estado.obrasCad || []).filter(ativaNasListas).map((c) => c.codigo)])]; }
@@ -2039,7 +2046,7 @@ document.addEventListener('submit', async (e) => {
   e.preventDefault(); const fd = new FormData(f); const id = f.dataset.tf;
   try {
     let escopo = 'uma'; if (atas.ehRecorrente(id)) { escopo = await perguntarEscopo('Salvar tarefa recorrente'); if (!escopo) return; }
-    await atas.salvarTarefa(id, { daObra: fd.has('t_daobra'), escopo, obra: fd.get('t_obra'), recorrente: fd.has('t_recor'), frequencia: String(fd.get('t_freq') || 'semanal'), hora: fd.get('t_hora'), duracao: fd.get('t_dur'), observadores: fd.getAll('t_obs'), funcaoTarefa: fd.get('t_func'), urgencia: fd.get('t_urg'), assunto: fd.get('t_assunto'), desc: fd.get('t_desc'), resp: fd.get('t_resp'), tipo: fd.get('t_tipo'), nome: fd.get('t_nome'), gestor: fd.get('t_gestor'), prazo: fd.get('t_prazo') });
+    await atas.salvarTarefa(id, { daObra: fd.has('t_daobra'), escopo, obra: fd.get('t_obra'), recorrente: fd.has('t_recor'), frequencia: String(fd.get('t_freq') || 'semanal'), hora: fd.get('t_hora'), duracao: fd.get('t_dur'), observadores: fd.getAll('t_obs'), executor: atas.lerExecutor(f, 't'), funcaoTarefa: fd.get('t_func'), urgencia: fd.get('t_urg'), assunto: fd.get('t_assunto'), desc: fd.get('t_desc'), resp: fd.get('t_resp'), tipo: fd.get('t_tipo'), nome: fd.get('t_nome'), gestor: fd.get('t_gestor'), prazo: fd.get('t_prazo') });
     await redesenharTarefas(id, 'Salvo ✓');
   } catch (err) { alert(`Não foi possível salvar (${err.message || err}).`); }
 });
@@ -2659,6 +2666,7 @@ function lerLinhaPendencia(l) {
     prazo: l.querySelector('[name="p_prazo"]').value,
     urgencia: (l.querySelector('[name="p_urg"]') || {}).value || '',
     funcaoTarefa: (l.querySelector('[name="p_func"]') || {}).value || '',
+    executor: atas.lerExecutor(l, 'p') || '',
   };
 }
 // Bolinha à esquerda de cada linha da ata: arrastar muda a posição da pendência ou do informativo (a ordem da lista é a ordem salva)
@@ -2732,4 +2740,12 @@ document.addEventListener('change', (e) => {
 });
 document.addEventListener('input', (e) => {
   if (e.target && e.target.name === 'revisao' && e.target.closest && e.target.closest('#ata-form')) { e.target.dataset.manual = '1'; atas.atualizarNomeDoForm(e.target.form); }
+});
+
+// Executor da tarefa: "Outra pessoa…" abre o campo para escrever um nome que não está na lista
+document.addEventListener('change', (e) => {
+  const s = e.target.closest && e.target.closest('[data-exec-sel]'); if (!s) return;
+  const outra = s.parentElement.querySelector('.pf-exec-outra'); if (!outra) return;
+  outra.hidden = s.value !== '__outra__';
+  if (!outra.hidden) outra.focus();
 });

@@ -2328,3 +2328,9 @@ td select[data-cx-usuario] { font: inherit; font-size: 13px; padding: 5px 8px; b
   .tv-seta { width: 38px; height: 38px; font-size: 24px; line-height: 34px; } .tv-seta-esq { left: 4px; } .tv-seta-dir { right: 4px; }
   .tv-slide .tv-palco { padding: 8px 44px; flex-basis: 40%; } .tv-slide .tv-texto { padding: 10px 46px 6px; }
 }
+
+/* Executor da tarefa */
+.pf-exec { min-width: 150px; max-width: 200px; }
+.pf-exec-outra { min-width: 150px; }
+.tf-exec select, .tf-exec input { width: 100%; }
+.tf-exec .pf-exec-outra { margin-top: 6px; }
