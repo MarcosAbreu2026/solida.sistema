@@ -79,9 +79,10 @@ export function painel(ctx) {
 
   return html`${pd.pergunta(ctx.dep.pergunta)}
     ${avisoLeitura(ctx, 'Base: leitura dos agentes')}
+    ${pd.secao('Cronograma geral de obras', 'Obras em andamento nos próximos 4 meses, semana a semana · pós-obras com mais de 4 semanas · orçamentos que acreditamos fechar', ctx.cronogramaGeral ? html.seguro(ctx.cronogramaGeral()) : '', { id: 'cronograma-geral' })}
     ${pd.secao('Alocação das obras em andamento', 'Arraste o funcionário para a obra e o dia (semana atual, próximas e anteriores) · a outra aba mostra onde cada funcionário está na semana, com uma cor por função', ctx.quadroAloc ? html.seguro(ctx.quadroAloc()) : '')}
     ${pd.secao('Resumo das obras', `Fonte: planejamento e grupos das obras · leitura ${leitura}`, resumo)}
-    ${pd.secao('Cronograma geral de obras', 'Fonte: cronogramas no Drive (GERENCIAMENTO › CRONOGRAMA)', pd.tabela(['Obra', 'Início', 'Término contratual', 'Previsão atual', 'Desvio × contrato', 'Semanas até a previsão', 'Avanço médio', 'Situação'], cronLinhas))}
+    ${pd.secao('Datas dos cronogramas no Drive', 'Fonte: cronogramas no Drive (GERENCIAMENTO › CRONOGRAMA)', pd.tabela(['Obra', 'Início', 'Término contratual', 'Previsão atual', 'Desvio × contrato', 'Semanas até a previsão', 'Avanço médio', 'Situação'], cronLinhas))}
     ${pd.secao('Hoje por obra: equipe, meta e pendência maior', 'Equipe: efetivo do grupo da obra · meta do dia: programação semanal', pd.tabela(['Obra', 'Equipe de hoje', 'Meta do dia (foco)', 'Pendência maior'], hojeLinhas))}
     ${pd.secao('Efetivo real × planejado (semana)', 'Real: efetivo dos grupos (média por dia) · planejado: sai da distribuição de equipe (DIST), ainda não lida pelo sistema', pd.tabela(['Obra', 'Real / planejado', 'Terceirizados', 'Leitura'], efLinhas))}
     ${pd.secao('Quem precisa agir', 'Alerta clicado vira tarefa com responsável e data-limite', pd.quemAgir(agir, { setor: 'Operação' }))}

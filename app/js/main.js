@@ -47,6 +47,8 @@ import * as agendaPos from './agenda-pos.js';
 import * as svPos from './servicos-pos.js';
 import * as osq from './os-quadro.js';
 import * as tcq from './terc-quadro.js';
+import * as oq from './orc-quadro.js';
+import * as cg from './cronograma-geral.js';
 import * as aloc from './alocacao.js';
 import * as reunioes from './reunioes.js';
 import * as poConcluir from './po-concluir.js';
@@ -54,7 +56,7 @@ import { comodoDe } from './comodos.js';
 import * as configTela from './telas/configuracoes.js';
 import * as automacoesTela from './telas/automacoes.js';
 import * as obrasOrc from './telas/obras-orcamento.js';
-import { ativaNasListas, orcamentoAberto, SITUACOES_POR_TIPO } from './obras-tipos.js';
+import { ativaNasListas, orcamentoAberto, SITUACOES_POR_TIPO, tipoDe as tipoDeCad } from './obras-tipos.js';
 import * as posControle from './telas/posobra-controle.js';
 import { carregarConfig, definirConfig, restaurarConfig, snapshotConfig, listaConfig } from './config.js';
 import * as tvSlides from './treinamentos-slides.js';
@@ -546,7 +548,8 @@ function ctxPainel(dep, area) {
     pendencias: atas.todasPendencias(), hoje: hojeISO(), visiveis: f.porObra ? obrasDaPessoa() : null, sync: estado.sync, obrasMenu: obrasDoMenu(),
     ...(dep && dep.id === 'posobra' ? ctxPosObra() : {}),
     ...(dep && dep.id === 'orc-terceirizado' ? ctxTerc() : {}),
-    ...(dep && dep.id === 'operacao' ? ctxAlocacao() : {}),
+    ...(dep && dep.id === 'operacao' ? { ...ctxAlocacao(), ...ctxCronograma() } : {}),
+    ...(dep && dep.id === 'orcamentos' ? ctxOrcQuadro() : {}),
     alocObra: { semana: inicioDaSemana(hojeISO()), linhas: alocDaSemana(inicioDaSemana(hojeISO())) } };
 }
 // Operações: quadro de alocação (funcionários × obras em andamento × dias) e a visão funcionários × semana
@@ -585,6 +588,23 @@ function ctxTerc() {
   if (!estado.tercVisitada) { estado.tercVisitada = true; tcq.carregar().then(() => { const r = rotaAtual(); if (!emEdicao() && r.tela !== 'atas') desenhar(); }); }
   garantirAtasCarregadas('#terc');
   return { quadroTerc: () => String(tcq.renderQuadro({ params: rotaAtual().params, podeEditar: podeEditarTerc(), projetos: obrasDeAtas(), pendencias: atas.todasPendencias() })) };
+}
+
+// CRM dos orçamentos novos (Kanban) e cronograma geral de obras (Operações)
+const podeEditarOrc = () => ['socio', 'orc_obras_novas', 'planejamento'].includes(funcaoAtual().id);
+const podeEditarCron = () => ['socio', 'coord_operacoes', 'planejamento'].includes(funcaoAtual().id);
+function carregarOrcCron() {
+  if (estado.orcCronVisitada) return;
+  estado.orcCronVisitada = true;
+  Promise.all([oq.carregar(), cg.carregar()]).then(() => { const r = rotaAtual(); if (!emEdicao() && r.tela !== 'atas') desenhar(); });
+}
+function ctxOrcQuadro() {
+  carregarOrcCron(); garantirAtasCarregadas('#orc');
+  return { quadroOrc: () => String(oq.renderQuadro({ params: rotaAtual().params, podeEditar: podeEditarOrc(), veValores: veValores(), obrasCad: (estado.obrasCad || []).filter((c) => tipoDeCad(c) === 'orcamento'), pendencias: atas.todasPendencias() })) };
+}
+function ctxCronograma() {
+  carregarOrcCron();
+  return { cronogramaGeral: () => String(cg.render({ hoje: hojeISO(), obrasCad: estado.obrasCad || [], orcs: oq.lista, podeEditar: podeEditarCron() })) };
 }
 
 // bonequinho do escritório como foto do perfil (nenhuma foto é guardada)
@@ -1886,6 +1906,84 @@ document.addEventListener('change', (e) => {
   if (fo) { const id = fo.dataset.tcqFoto; const arqs = [...fo.files]; tcqFazer(async () => { for (const a of arqs) await tcq.adicionarFoto(id, a); }, { depois: () => tcqDetalhe(id) }); }
 });
 
+// ---- CRM de orçamentos novos (cards) e edição do cronograma geral
+let oqArrastando = null;
+const orcObrasCad = () => (estado.obrasCad || []).filter((c) => tipoDeCad(c) === 'orcamento');
+const oqFazer = async (fn, { depois = null } = {}) => {
+  try { await fn(); try { await atas.carregar(); } catch { /* sem as tarefas: segue */ } desenhar(); if (depois) depois(); } catch (err) { alert(`Não foi possível mexer no card (${err.message || err}).`); }
+};
+const oqDetalhe = (id, msg = '') => osqAbrir(oq.detalhe(id, { podeEditar: podeEditarOrc(), veValores: veValores(), obrasCad: orcObrasCad(), msg, pendencias: atas.todasPendencias() }), 'osq-caixa');
+// a coluna do card acompanha a situação da obra em orçamento no Cadastros (cadastro = fonte única das listas)
+async function oqSincronizarCadastro(o, { criar = false } = {}) {
+  if (!nuvem.NA_NUVEM || !o) return;
+  const sit = oq.situacaoCadastro(o.status); const c = (estado.obrasCad || []).find((x) => String(x.codigo).toUpperCase() === String(o.obra).toUpperCase());
+  if (!c) { if (criar) await nuvem.salvarObra({ codigo: o.obra, tipo: 'orcamento', situacao: sit || 'orcamento', cliente: o.cliente || o.obra, arquitetura: o.arquitetura || '' }); }
+  else if (tipoDeCad(c) === 'orcamento' && sit && c.situacao !== sit) await nuvem.salvarObra({ codigo: c.codigo, situacao: sit });
+  await sincronizarCadastros({ forcar: true });
+}
+document.addEventListener('click', (e) => {
+  const nova = e.target.closest && e.target.closest('[data-oq-nova]');
+  if (nova) { osqAbrir(oq.formNova(nova.dataset.oqNova, orcObrasCad())); const c = document.querySelector('#oq-form-nova [name="obra"]'); if (c) c.focus(); return; }
+  const c = e.target.closest && e.target.closest('[data-oq]');
+  if (c) { if (c.dataset.arrastou) return; e.preventDefault(); oqDetalhe(c.dataset.oq); return; }
+  const np = e.target.closest && e.target.closest('[data-oq-pend]');
+  if (np) {
+    const antigo = document.getElementById('at-modal'); if (antigo) antigo.remove();
+    const m = document.createElement('div'); m.id = 'at-modal'; m.className = 'at-modal';
+    m.innerHTML = `<div class="at-modal-caixa">${String(atas.formAvulsa(obrasDeAtas(), '', 'ORC Obras Novas', { obra: np.dataset.oqObra, os: np.dataset.oqPend, osFase: '' }))}</div>`; document.body.appendChild(m);
+    const campo = m.querySelector('[name="p_desc"]'); if (campo) campo.focus();
+    return;
+  }
+  const del = e.target.closest && e.target.closest('[data-oq-del]');
+  if (del && confirm('Excluir este card de orçamento? As tarefas dele continuam na lista de tarefas. Não dá para desfazer.')) { oqFazer(() => oq.apagar(del.dataset.oqDel), { depois: () => { const m = document.getElementById('at-modal'); if (m) m.remove(); } }); return; }
+  const ed = e.target.closest && e.target.closest('[data-cg-edit]');
+  if (ed && !e.target.closest('a,button')) {
+    const pessoas = [...new Set((atas.pessoasDaEquipe() || []).map((p) => String(p.nome || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    osqAbrir(cg.formEditar(ed.dataset.cgEdit, { obrasCad: estado.obrasCad || [], pessoas }));
+  }
+});
+document.addEventListener('dragstart', (e) => {
+  const c = e.target.closest && e.target.closest('.oq-card[data-oq]'); if (!c) return;
+  oqArrastando = c.dataset.oq; c.dataset.arrastou = '1';
+  try { e.dataTransfer.setData('text/plain', 'oq:' + oqArrastando); e.dataTransfer.effectAllowed = 'move'; } catch { /* sem dataTransfer */ }
+});
+document.addEventListener('dragend', (e) => { const c = e.target.closest && e.target.closest('.oq-card[data-oq]'); if (c) setTimeout(() => { delete c.dataset.arrastou; }, 50); if (oqArrastando) document.querySelectorAll('.tf-sobre').forEach((x) => x.classList.remove('tf-sobre')); oqArrastando = null; });
+document.addEventListener('dragover', (e) => { const col = e.target.closest && e.target.closest('[data-oq-col]'); if (!col || !oqArrastando) return; e.preventDefault(); col.classList.add('tf-sobre'); });
+document.addEventListener('dragleave', (e) => { const col = e.target.closest && e.target.closest('[data-oq-col]'); if (col && !col.contains(e.relatedTarget)) col.classList.remove('tf-sobre'); });
+document.addEventListener('drop', (e) => {
+  const col = e.target.closest && e.target.closest('[data-oq-col]'); if (!col || !oqArrastando) return;
+  e.preventDefault(); col.classList.remove('tf-sobre'); const id = oqArrastando; oqArrastando = null;
+  const o = oq.porIdOrc(id); if (o && o.status !== col.dataset.oqCol) oqFazer(async () => { const n = await oq.mover(o.id, col.dataset.oqCol); await oqSincronizarCadastro(n); });
+});
+document.addEventListener('submit', (e) => {
+  const nf = e.target.closest && e.target.closest('#oq-form-nova');
+  if (nf) {
+    e.preventDefault(); const fd = new FormData(nf);
+    oqFazer(async () => { const n = await oq.criar({ obra: fd.get('obra'), cliente: String(fd.get('cliente') || '').trim(), arquitetura: String(fd.get('arquitetura') || '').trim(), titulo: fd.get('titulo'), status: nf.dataset.status }); await oqSincronizarCadastro(n, { criar: true }); },
+      { depois: () => { const m = document.getElementById('at-modal'); if (m) m.remove(); } });
+    return;
+  }
+  const f = e.target.closest && e.target.closest('#oq-form');
+  if (f) {
+    e.preventDefault(); const fd = new FormData(f); const id = f.dataset.oqForm;
+    const meses = fd.get('meses') === '' || fd.get('meses') == null ? null : Number(fd.get('meses'));
+    const inicio = fd.get('inicio_previsto') || null;
+    const campos = { obra: String(fd.get('obra') || '').trim(), cliente: String(fd.get('cliente') || '').trim() || null, arquitetura: String(fd.get('arquitetura') || '').trim() || null, titulo: String(fd.get('titulo') || '').trim(),
+      status: fd.get('status'), responsavel: String(fd.get('responsavel') || '').trim() || null, prazo: fd.get('prazo') || null, viavel: fd.has('viavel'), inicio_previsto: inicio, meses,
+      fim_previsto: fd.get('fim_previsto') || oq.fimDe(inicio, meses) || null, descricao: fd.get('descricao') || null };
+    if (fd.has('valor')) campos.valor = fd.get('valor') === '' ? null : Number(fd.get('valor'));
+    oqFazer(async () => { const n = await oq.salvar(Number(id) || id, campos); await oqSincronizarCadastro(n); }, { depois: () => oqDetalhe(id, 'Salvo ✓') });
+    return;
+  }
+  const g = e.target.closest && e.target.closest('#cg-form');
+  if (g) {
+    e.preventDefault(); const fd = new FormData(g); const v = (k) => String(fd.get(k) || '').trim() || null;
+    if (v('inicio') && v('fim') && v('fim') < v('inicio')) { alert('O fim não pode ser antes do início.'); return; }
+    cg.salvar({ codigo: g.dataset.cgForm, coord: v('coord'), gestor1: v('gestor1'), gestor2: v('gestor2'), estagiario: v('estagiario'), encarregado: v('encarregado'), inicio: v('inicio'), fim: v('fim') })
+      .then(() => { const m = document.getElementById('at-modal'); if (m) m.remove(); desenhar(); }).catch((err) => alert(`Não foi possível salvar (${err.message || err}).`));
+  }
+});
+
 document.addEventListener('click', (e) => {   // RH › Programado × realizado: trocar a semana
   const b = e.target.closest('[data-ep-sem]'); if (!b) return;
   mudarSemanaEP(Number(b.dataset.epSem)); desenhar();
@@ -2496,8 +2594,9 @@ document.addEventListener('click', async (e) => {
   e.preventDefault();
   const p = atas.pendenciaPorId(b.dataset.pcPdel); if (!p) return;
   const escopo = await confirmarExclusao(p); if (!escopo) return;
+  const raizO = b.closest('[data-oq-raiz]');
   const raiz = b.closest('[data-osq-raiz]'); const raizT = b.closest('[data-tcq-raiz]');
-  try { await atas.apagarPendencia(p.id, escopo); if (raiz) osqDetalhe(raiz.dataset.osqRaiz); else if (raizT) { desenhar(); tcqDetalhe(raizT.dataset.tcqRaiz); } else desenhar(); }
+  try { await atas.apagarPendencia(p.id, escopo); if (raiz) osqDetalhe(raiz.dataset.osqRaiz); else if (raizT) { desenhar(); tcqDetalhe(raizT.dataset.tcqRaiz); } else if (raizO) { desenhar(); oqDetalhe(raizO.dataset.oqRaiz); } else desenhar(); }
   catch (err) { alert(`Não foi possível excluir (${err.message || err}).`); }
 });
 // Controle de obras do Pós-obra: acrescentar um relato (anotação) numa pendência, direto na linha

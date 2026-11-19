@@ -561,6 +561,41 @@ export async function urlsFotosTerc(caminhos) {
   return o;
 }
 
+// ---------------------------------------------------------------- CRM de orçamentos novos e cronograma geral (supabase/37-orc-quadro-e-cronograma.sql)
+export async function listarOrcQuadro() {
+  const { data, error } = await sb.from('orc_quadro').select('*').order('id', { ascending: false });
+  if (error) throw new Error(error.message);
+  const l = data || [];
+  const v = await sb.from('orc_quadro_valor').select('*');   // só a diretoria enxerga (as outras pessoas recebem lista vazia)
+  const valores = Object.fromEntries(((v && v.data) || []).map((x) => [x.orc_id, x.valor]));
+  return l.map((o) => ({ ...o, valor: valores[o.id] == null ? null : Number(valores[o.id]) }));
+}
+export async function gravarOrcQuadro(linha) {
+  const { id, codigo, criado_em, criado_por, atualizado_em, d_fechado, valor, ...resto } = linha;
+  const q = id ? sb.from('orc_quadro').update(resto).eq('id', id) : sb.from('orc_quadro').insert(resto);
+  const { data, error } = await q.select().single();
+  if (error) throw new Error(error.message);
+  let v = null;
+  if (valor !== undefined) {
+    if (valor === null || valor === '') await sb.from('orc_quadro_valor').delete().eq('orc_id', data.id);
+    else { const r = await sb.from('orc_quadro_valor').upsert({ orc_id: data.id, valor }); if (r.error) throw new Error(r.error.message); v = Number(valor); }
+  }
+  return { ...data, valor: valor === undefined ? undefined : v };
+}
+export async function apagarOrcQuadro(id) {
+  const { error } = await sb.from('orc_quadro').delete().eq('id', id);
+  if (error) throw new Error(error.message);
+}
+export async function listarCronogramaObras() {
+  const { data, error } = await sb.from('cronograma_obras').select('*').order('codigo');
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+export async function gravarCronogramaObra(linha) {
+  const { error } = await sb.from('cronograma_obras').upsert({ ...linha, atualizado_em: new Date().toISOString() });
+  if (error) throw new Error(error.message);
+}
+
 // ---------------------------------------------------------------- setores / departamentos cadastráveis (supabase/13-setores.sql)
 export async function listarSetores() {
   const { data, error } = await sb.from('setores').select('nome').order('ordem').order('nome');

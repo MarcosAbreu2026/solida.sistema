@@ -7,7 +7,8 @@ import { cartaoDoAgente, num } from './comum.js';
 const brl = (v) => (v >= 1e6 ? `R$ ${(Math.round(v / 1e5) / 10).toLocaleString('pt-BR')} mi` : v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }));
 
 export function painel(ctx) {
-  const com = ctx.CFG && ctx.CFG.areas.find((a) => a.id === 'comercial');
+  const crm = pd.secao('CRM dos orçamentos', 'O que ainda vamos fechar: arraste o card pelas colunas · prazo de entrega, início previsto e tarefas ficam dentro do card · ★ viável aparece no cronograma geral de Operações', ctx.quadroOrc ? html.seguro(ctx.quadroOrc()) : '');
+  const com =ctx.CFG && ctx.CFG.areas.find((a) => a.id === 'comercial');
   const dados = ctx.drive && ctx.drive.orcamentos;
   const todos = (dados && dados.orcamentos) || [];
   const anos = [...new Set(todos.map((o) => o.ano))].sort();
@@ -19,6 +20,7 @@ export function painel(ctx) {
 
   if (!xs.length) {
     return html`${pd.pergunta(ctx.dep.pergunta)}
+      ${crm}
       ${pd.aviso('A planilha de orçamentos (SL_ORÇAMENTOS) ainda não foi lida do Drive.')}
       ${pd.secao('Quem precisa agir', '', pd.quemAgir(alertas, { setor: ctx.dep.setor }))}`;
   }
@@ -43,6 +45,7 @@ export function painel(ctx) {
   });
 
   return html`${pd.pergunta(ctx.dep.pergunta)}
+    ${crm}
     ${pd.aviso(`Planilha ${fonte ? fonte.arquivo : `SL_ORÇAMENTOS${ano}`}${fonte && fonte.modificado ? ` (salva em ${pd.dm(fonte.modificado.slice(0, 10))})` : ''}${dados.geradoEm ? `, lida em ${pd.dm(String(dados.geradoEm).slice(0, 10))}` : ''}. A situação de cada orçamento é a cor da linha na planilha.`, 'info')}
     ${pd.secao(`Status dos orçamentos de ${ano}`, 'Foco das reuniões · Excel de orçamentos', pd.cartoes([
       { rotulo: 'Em orçamento', valor: String(conta('em_orcamento')) },

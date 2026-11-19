@@ -1411,3 +1411,52 @@ select.pc-sit-sel { height: 22px !important; font-size: 11px; min-width: 100px; 
 @media print { .pc-tab [data-pc-edit]:hover { background: none; outline: 0; } }
 .pc-tab select.pc-pfase { font: inherit; font-size: 11.5px; font-weight: 600; padding: 1px 4px; height: 22px; max-width: 150px; border: 2px solid #C9D1DA; border-radius: 6px; background: #fff; color: #1F3A56; }
 @media print { .pc .pc-tab select.pc-pfase { border: 0 !important; font-size: 9.5pt; font-weight: 700; text-transform: uppercase; max-width: none; } }
+
+/* Cronograma geral de obras (Operações) · CRM de orçamentos (Orçamentos novas) — pedido do Marcos, 19/11/2026 */
+.cg-topo { display: flex; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 8px; flex-wrap: wrap; }
+.cg-imp-tit { display: none; }
+.cg-tab { border-collapse: collapse; font-size: 12px; width: 100%; }
+.cg-tab th, .cg-tab td { border: 1px solid var(--borda, #d8d8d8); padding: 4px 6px; white-space: nowrap; text-align: left; }
+.cg-tab thead th { background: #5b5b5b; color: #fff; font-size: 11px; position: sticky; top: 0; }
+.cg-tab th.cg-sem, .cg-tab td.cg-sem { text-align: center; min-width: 42px; padding: 4px 2px; }
+.cg-tab th.cg-sem small { display: block; font-size: 9px; opacity: .8; }
+.cg-tab .cg-mes { border-left: 2px solid #555; }
+.cg-tab .cg-hoje { box-shadow: inset 2px 0 0 #E8710A, inset -2px 0 0 #E8710A; }
+.cg-tab thead th.cg-hoje { background: #E8710A; }
+.cg-grupo td { background: #8a8a8a; color: #fff; font-weight: 700; letter-spacing: .03em; padding: 5px 8px; }
+.cg-n { background: rgba(255,255,255,.25); border-radius: 9px; padding: 0 7px; font-size: 11px; margin-left: 6px; }
+.cg-nome { max-width: 300px; overflow: hidden; text-overflow: ellipsis; }
+.cg-arq { color: #666; font-size: 11px; }
+.cg-pes { font-size: 11px; }
+.cg-prev { color: #7a5b00; font-style: italic; }
+.cg-edita { cursor: pointer; }
+.cg-edita:hover td:not(.cg-sem), .cg-lin-orc:hover td:not(.cg-sem) { background: #fff6e8; }
+td.cg-obra { background: #cfcfcf; font-weight: 600; }
+td.cg-pos { background: #e8d9bd; font-weight: 600; }
+td.cg-orc { background: #f6e9c0; color: #6b5200; font-weight: 600; font-style: italic; }
+td.cg-parada { background: #f0f0f0; color: #888; font-style: italic; text-align: center; }
+td.cg-sem-data { background: #fff8e1; color: #8a6d00; font-style: italic; font-size: 11px; }
+.cg-lin-parada td.cg-cod, .cg-lin-parada td.cg-nome { color: #888; }
+.cg-lin-orc { cursor: pointer; }
+.cg-tab .vazio { color: #888; font-style: italic; text-align: left; }
+
+.oq-card .oq-cli { font-size: 12px; margin: 2px 0 4px; font-weight: 600; }
+.oq-viavel { background: #FFE9A8; color: #6b5200; border-radius: 8px; padding: 0 6px; font-size: 10px; font-weight: 700; white-space: nowrap; }
+.oq-datas { display: flex; flex-wrap: wrap; gap: 4px 8px; font-size: 11px; color: #555; margin-top: 4px; }
+.oq-valor { font-weight: 700; color: #2c5d36; }
+.oq-card.oq-atrasado { border-left: 4px solid #C0392B; }
+.oq-card.oq-atrasado .oq-prazo { color: #C0392B; font-weight: 700; }
+.oq-card.oq-perto { border-left: 4px solid #E8A200; }
+.oq-card.oq-perto .oq-prazo { color: #9a6a00; font-weight: 700; }
+.tf-grade label.oq-chk, .oq-chk { grid-column: 1 / -1; display: flex; flex-direction: row; gap: 8px; align-items: center; }
+.oq-chk input { width: auto; }
+
+@media print {
+  body[data-imprime="cronograma"] .pd-corpo > :not(#cronograma-geral) { display: none !important; }
+  body[data-imprime="cronograma"] #cronograma-geral .cg-topo { display: none !important; }
+  body[data-imprime="cronograma"] .cg-imp-tit { display: block; margin: 0 0 6px; font-size: 14pt; color: #000; }
+  body[data-imprime="cronograma"] .cg-tab { font-size: 6.5pt; }
+  body[data-imprime="cronograma"] .cg-tab th, body[data-imprime="cronograma"] .cg-tab td { padding: 2px 2px; white-space: normal; }
+  body[data-imprime="cronograma"] .tabela-rolagem { overflow: visible !important; }
+  .cg-tab td, .cg-tab th, .cg-grupo td { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
