@@ -120,7 +120,9 @@ export function render({ params, obrasCad = [], pendencias = [], hoje = '', pode
       ${concl.length && !st ? html`<tr class="pc-conc"><td></td><td colspan="5"><details><summary>${concl.length} ${concl.length === 1 ? 'OS concluída' : 'OS concluídas'}</summary>${concl.map((o) => html`<div><a href="#" data-osq="${o.id}">${o.codigo}</a> · ${o.assunto || ''}</div>`)}</details></td></tr>` : ''}
     </tbody>`;
   };
+  const hojeBR = hoje ? `${hoje.slice(8, 10)}/${hoje.slice(5, 7)}/${hoje.slice(0, 4)}` : '';
   return html`<section class="pc">
+    <h2 class="pc-imp-tit">Controle de obras · Pós-obra<small>impresso em ${hojeBR}</small></h2>
     <p class="pequeno">Cada PO tem as suas OS; cada OS tem as suas pendências (com responsável e prazo) e, embaixo delas, os relatos.</p>
     <div class="pc-cards">${cartoes}</div>
     <div class="at-filtros">
@@ -130,6 +132,7 @@ export function render({ params, obrasCad = [], pendencias = [], hoje = '', pode
       <label>Prazo<select data-atas-filtro="prazo"><option value="">Todos</option>${[['vencido', 'Vencidas'], ['semana', 'Vencem em 7 dias'], ['sem', 'Sem prazo']].map(([v, t]) => html`<option value="${v}" ${prazoF === v ? html.seguro('selected') : ''}>${t}</option>`)}</select></label>
       <label>Ordenar por<select data-atas-filtro="ord"><option value="">Número do PO</option>${[['pior', 'Mais atrasados'], ['prazo', 'Prazo mais próximo'], ['os', 'Mais OS abertas'], ['antigas', 'OS mais antigas'], ['cliente', 'Cliente (A–Z)']].map(([v, t]) => html`<option value="${v}" ${ord === v ? html.seguro('selected') : ''}>${t}</option>`)}</select></label>
       <label>Procurar<input type="search" data-atas-filtro="q" value="${params.get('q') || ''}" placeholder="PO, cliente, OS, responsável…"></label>
+      <button type="button" class="botao pc-imprimir" data-imprimir="" title="Imprimir esta lista (versão para impressão, com letra grande)">🖨 Imprimir</button>
     </div>
     <div class="pd-tab-caixa"><div class="tabela-rolagem"><table class="pd-tab pc-tab">
       <thead><tr><th>PO / OS</th><th>Status da OS</th><th>Assunto</th><th>Responsável</th><th>Prazo</th><th></th></tr></thead>
