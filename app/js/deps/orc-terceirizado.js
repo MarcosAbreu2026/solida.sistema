@@ -58,6 +58,7 @@ export function painel(ctx) {
 
   return html`${pd.pergunta(ctx.dep.pergunta)}
     ${avisoLeitura(ctx, 'Programação e alertas lidos pelo agente em')}
+    ${pd.secao('Cards de orçamento terceirizado', 'Cada card é um item a contratar ou comprar (ex.: louças e metais) ligado a uma obra: arraste para a coluna certa; as tarefas e as fotos ficam dentro do card', ctx.quadroTerc ? html.seguro(ctx.quadroTerc()) : '')}
     ${pd.secao('Pendências de contratação', 'Quanto mais perto do fim da obra, maior a prioridade · itens laranja da programação, contratos no Mais Controle e alertas',
       pd.tabela(['Obra', 'Pendência', 'Tipo', 'Situação', 'Impacto'], linhas, { vazio: 'Nenhum item de terceiro ou fornecedor na programação das obras.' }))}
     ${pd.secao('Quem precisa agir', 'Cada alerta vira tarefa com responsável e data-limite', pd.quemAgir(ordenados.filter((i) => i.nivel === 'critico' || /sem contrato/i.test(i.texto)).map((i) => ({ nivel: 'critico', texto: `${i.obra ? `${i.obra}: ` : ''}${curto(i.texto, 200)}`, resp: i.resp || 'Júlia', obra: i.obra })), { setor: ctx.dep.setor }, { vazio: 'Nenhuma contratação crítica agora.' }))}`;

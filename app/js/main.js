@@ -46,6 +46,7 @@ import * as posGeral from './telas/posobra-geral.js';
 import * as agendaPos from './agenda-pos.js';
 import * as svPos from './servicos-pos.js';
 import * as osq from './os-quadro.js';
+import * as tcq from './terc-quadro.js';
 import * as reunioes from './reunioes.js';
 import * as poConcluir from './po-concluir.js';
 import { comodoDe } from './comodos.js';
@@ -542,7 +543,15 @@ function ctxPainel(dep, area) {
   return { dep, CFG: estado.cfg, obrasCad: estado.obrasCad || null, podeMudarObra: podeMudarSituacaoObra(), area: area || null, f, veValores: veValores(), drive: estado.drive || {}, base: estado.base, efetivo: estado.efetivo || { dias: {} },
     rotas: estado.rotas || { semanas: [] }, equipeProg: estado.equipeProg || { pessoas: [] }, terceiros: estado.terceiros || { empresas: [] }, ferrChk: estado.ferrChk || { registros: [] }, mc: estado.mc || { obras: [] }, celular: celularObra.registros(),
     pendencias: atas.todasPendencias(), hoje: hojeISO(), visiveis: f.porObra ? obrasDaPessoa() : null, sync: estado.sync, obrasMenu: obrasDoMenu(),
-    ...(dep && dep.id === 'posobra' ? ctxPosObra() : {}) };
+    ...(dep && dep.id === 'posobra' ? ctxPosObra() : {}),
+    ...(dep && dep.id === 'orc-terceirizado' ? ctxTerc() : {}) };
+}
+// Orçamento Terceirizado Laranja: os cards (Kanban) entram no painel
+const podeEditarTerc = () => ['socio', 'orc_terceirizado', 'orc_obras_novas', 'planejamento', 'coord_operacoes'].includes(funcaoAtual().id);
+function ctxTerc() {
+  if (!estado.tercVisitada) { estado.tercVisitada = true; tcq.carregar().then(() => { const r = rotaAtual(); if (!emEdicao() && r.tela !== 'atas') desenhar(); }); }
+  garantirAtasCarregadas('#terc');
+  return { quadroTerc: () => String(tcq.renderQuadro({ params: rotaAtual().params, podeEditar: podeEditarTerc(), projetos: obrasDeAtas(), pendencias: atas.todasPendencias() })) };
 }
 
 // bonequinho do escritório como foto do perfil (nenhuma foto é guardada)
@@ -1777,6 +1786,63 @@ document.addEventListener('click', (e) => {
   if (del && confirm('Excluir esta OS? Não dá para desfazer.')) osqFazer(() => osq.apagar(del.dataset.osqDel), { depois: () => { const m = document.getElementById('at-modal'); if (m) m.remove(); } });
 });
 
+// ---- Cards do Orçamento Terceirizado Laranja (mesmo jeito do Quadro de OS)
+let tcqArrastando = null;
+const tcqFazer = async (fn, { depois = null } = {}) => {
+  try { await fn(); try { await atas.carregar(); } catch { /* sem as tarefas: segue */ } desenhar(); if (depois) depois(); } catch (err) { alert(`Não foi possível mexer no card (${err.message || err}).`); }
+};
+const tcqDetalhe = (id, msg = '') => osqAbrir(tcq.detalhe(id, { podeEditar: podeEditarTerc(), projetos: obrasDeAtas(), msg, pendencias: atas.todasPendencias() }), 'osq-caixa');
+document.addEventListener('click', (e) => {
+  const nova = e.target.closest && e.target.closest('[data-tcq-nova]');
+  if (nova) { osqAbrir(tcq.formNova(nova.dataset.tcqNova, obrasDeAtas())); const c = document.querySelector('#tcq-form-nova [name="projeto"]'); if (c) c.focus(); return; }
+  const c = e.target.closest && e.target.closest('[data-tcq]');
+  if (c) { if (c.dataset.arrastou) return; e.preventDefault(); tcqDetalhe(c.dataset.tcq); return; }
+  const np = e.target.closest && e.target.closest('[data-tc-pend]');
+  if (np) {
+    const raiz = np.closest('[data-tcq-raiz]'); const idCard = raiz && raiz.dataset.tcqRaiz;
+    const antigo = document.getElementById('at-modal'); if (antigo) antigo.remove();
+    const m = document.createElement('div'); m.id = 'at-modal'; m.className = 'at-modal';
+    m.innerHTML = `<div class="at-modal-caixa">${String(atas.formAvulsa(obrasDeAtas(), '', 'ORC Terceirizado Laranja', { obra: np.dataset.tcObra, os: np.dataset.tcPend, osFase: np.dataset.tcFase || '' }))}</div>`; document.body.appendChild(m);
+    const campo = m.querySelector('[name="p_desc"]'); if (campo) campo.focus();
+    return;
+  }
+  const ft = e.target.closest && e.target.closest('[data-tcq-foto-del]');
+  if (ft) { const [id, i] = ft.dataset.tcqFotoDel.split('|'); tcqFazer(() => tcq.tirarFoto(id, Number(i)), { depois: () => tcqDetalhe(id) }); return; }
+  const del = e.target.closest && e.target.closest('[data-tcq-del]');
+  if (del && confirm('Excluir este card? As fotos somem; as tarefas dele continuam na lista de tarefas. Não dá para desfazer.')) tcqFazer(() => tcq.apagar(del.dataset.tcqDel), { depois: () => { const m = document.getElementById('at-modal'); if (m) m.remove(); } });
+});
+document.addEventListener('dragstart', (e) => {
+  const c = e.target.closest && e.target.closest('.osq-card[data-tcq]'); if (!c) return;
+  tcqArrastando = c.dataset.tcq; c.dataset.arrastou = '1';
+  try { e.dataTransfer.setData('text/plain', 'tcq:' + tcqArrastando); e.dataTransfer.effectAllowed = 'move'; } catch { /* sem dataTransfer */ }
+});
+document.addEventListener('dragend', (e) => { const c = e.target.closest && e.target.closest('.osq-card[data-tcq]'); if (c) setTimeout(() => { delete c.dataset.arrastou; }, 50); document.querySelectorAll('.tf-sobre').forEach((x) => x.classList.remove('tf-sobre')); tcqArrastando = null; });
+document.addEventListener('dragover', (e) => { const col = e.target.closest && e.target.closest('[data-tcq-col]'); if (!col || !tcqArrastando) return; e.preventDefault(); col.classList.add('tf-sobre'); });
+document.addEventListener('dragleave', (e) => { const col = e.target.closest && e.target.closest('[data-tcq-col]'); if (col && !col.contains(e.relatedTarget)) col.classList.remove('tf-sobre'); });
+document.addEventListener('drop', (e) => {
+  const col = e.target.closest && e.target.closest('[data-tcq-col]'); if (!col || !tcqArrastando) return;
+  e.preventDefault(); col.classList.remove('tf-sobre'); const id = tcqArrastando; tcqArrastando = null;
+  const o = tcq.porIdTerc(id); if (o && o.status !== col.dataset.tcqCol) tcqFazer(() => tcq.mover(o.id, col.dataset.tcqCol));
+});
+document.addEventListener('submit', (e) => {
+  const nf = e.target.closest && e.target.closest('#tcq-form-nova');
+  if (nf) {
+    e.preventDefault(); const fd = new FormData(nf);
+    tcqFazer(() => tcq.criar({ projeto: fd.get('projeto'), titulo: fd.get('titulo'), status: nf.dataset.status }), { depois: () => { const m = document.getElementById('at-modal'); if (m) m.remove(); } });
+    return;
+  }
+  const f = e.target.closest && e.target.closest('#tcq-form');
+  if (f) {
+    e.preventDefault(); const fd = new FormData(f); const id = f.dataset.tcqForm;
+    const campos = { projeto: String(fd.get('projeto') || '').trim(), titulo: String(fd.get('titulo') || '').trim(), status: fd.get('status'), descricao: fd.get('descricao') || null };
+    tcqFazer(() => tcq.salvar(Number(id) || id, campos), { depois: () => tcqDetalhe(id, 'Salvo ✓') });
+  }
+});
+document.addEventListener('change', (e) => {
+  const fo = e.target.closest && e.target.closest('[data-tcq-foto]');
+  if (fo) { const id = fo.dataset.tcqFoto; const arqs = [...fo.files]; tcqFazer(async () => { for (const a of arqs) await tcq.adicionarFoto(id, a); }, { depois: () => tcqDetalhe(id) }); }
+});
+
 document.addEventListener('click', (e) => {   // RH › Programado × realizado: trocar a semana
   const b = e.target.closest('[data-ep-sem]'); if (!b) return;
   mudarSemanaEP(Number(b.dataset.epSem)); desenhar();
@@ -2387,8 +2453,8 @@ document.addEventListener('click', async (e) => {
   e.preventDefault();
   const p = atas.pendenciaPorId(b.dataset.pcPdel); if (!p) return;
   const escopo = await confirmarExclusao(p); if (!escopo) return;
-  const raiz = b.closest('[data-osq-raiz]');
-  try { await atas.apagarPendencia(p.id, escopo); if (raiz) osqDetalhe(raiz.dataset.osqRaiz); else desenhar(); }
+  const raiz = b.closest('[data-osq-raiz]'); const raizT = b.closest('[data-tcq-raiz]');
+  try { await atas.apagarPendencia(p.id, escopo); if (raiz) osqDetalhe(raiz.dataset.osqRaiz); else if (raizT) { desenhar(); tcqDetalhe(raizT.dataset.tcqRaiz); } else desenhar(); }
   catch (err) { alert(`Não foi possível excluir (${err.message || err}).`); }
 });
 // Controle de obras do Pós-obra: acrescentar um relato (anotação) numa pendência, direto na linha

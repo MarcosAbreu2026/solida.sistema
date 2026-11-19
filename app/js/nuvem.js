@@ -511,6 +511,37 @@ export async function urlsFotosOs(caminhos) {
   return o;
 }
 
+// ---------------------------------------------------------------- cards do Orçamento Terceirizado Laranja (supabase/32-terc-quadro.sql)
+export async function listarTercQuadro() {
+  const { data, error } = await sb.from('terc_quadro').select('*').order('id', { ascending: false });
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+export async function gravarTercQuadro(linha) {
+  const { id, codigo, criado_em, criado_por, atualizado_em, d_concluido, ...resto } = linha;
+  const q = id ? sb.from('terc_quadro').update(resto).eq('id', id) : sb.from('terc_quadro').insert(resto);
+  const { data, error } = await q.select().single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+export async function apagarTercQuadro(id) {
+  const { error } = await sb.from('terc_quadro').delete().eq('id', id);
+  if (error) throw new Error(error.message);
+}
+export async function enviarFotoTerc(id, blob) {
+  const caminho = `${id}/foto-${Date.now()}-${Math.floor(Math.random() * 1000)}.jpg`;
+  const { error } = await sb.storage.from('terc-fotos').upload(caminho, blob, { contentType: 'image/jpeg' });
+  if (error) throw new Error(error.message);
+  return caminho;
+}
+export async function apagarFotoTerc(caminho) { await sb.storage.from('terc-fotos').remove([caminho]).catch(() => {}); }
+export async function urlsFotosTerc(caminhos) {
+  if (!caminhos.length) return {};
+  const { data } = await sb.storage.from('terc-fotos').createSignedUrls(caminhos, 60 * 60 * 6);
+  const o = {}; (data || []).forEach((x) => { if (x.signedUrl) o[x.path] = x.signedUrl; });
+  return o;
+}
+
 // ---------------------------------------------------------------- setores / departamentos cadastráveis (supabase/13-setores.sql)
 export async function listarSetores() {
   const { data, error } = await sb.from('setores').select('nome').order('ordem').order('nome');
