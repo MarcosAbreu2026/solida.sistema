@@ -14,7 +14,6 @@ export const STATUS = [
   { id: 'pagamento_enviado', nome: 'Pagamento enviado', cor: '#3C7480' },
   { id: 'pagamento_aguardando', nome: 'Pagamento aguardando', cor: '#C0692B' },
   { id: 'entrega_aguardando', nome: 'Entrega aguardando', cor: '#2F5F86' },
-  { id: 'ja_temos', nome: 'ARC / orçamento já temos', cor: '#8A6D3B' },
   { id: 'concluido', nome: 'Concluído', cor: '#4F7D5C' },
 ];
 const porId = Object.fromEntries(STATUS.map((s) => [s.id, s]));

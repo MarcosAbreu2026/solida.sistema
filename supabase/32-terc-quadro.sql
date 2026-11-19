@@ -7,7 +7,7 @@ create table if not exists public.terc_quadro (
   codigo text not null default '',
   projeto text not null,
   titulo text not null default '',
-  status text not null default 'solicitado' check (status in ('solicitado','cotacao','arq_aguardando','cliente_aguardando','pagamento_enviado','pagamento_aguardando','entrega_aguardando','ja_temos','concluido')),
+  status text not null default 'solicitado' check (status in ('solicitado','cotacao','arq_aguardando','cliente_aguardando','pagamento_enviado','pagamento_aguardando','entrega_aguardando','concluido')),
   descricao text,
   fotos text[] not null default '{}',
   d_concluido date,
