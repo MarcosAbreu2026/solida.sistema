@@ -89,6 +89,7 @@ export async function tirarFoto(id, indice) {
 const opcoesProjeto = (projetos) => html`<datalist id="tcq-projetos">${projetos.map((c) => html`<option value="${c}">`)}</datalist>`;
 const projetosDe = (extras = []) => [...new Set([...extras, ...lista.map((o) => o.projeto)].filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }));
 const tarefasDo = (o, pendencias) => pendencias.filter((p) => p.os === o.codigo && p.status !== 'cancelada');
+const lista3 = (t, ab) => { const a = t.filter((p) => p.status === 'aberta'); if (!a.length) return ''; return html`<ul class="osq-card-tarefas">${a.slice(0, 3).map((p) => html`<li title="${p.descricao}">${String(p.descricao).length > 48 ? `${String(p.descricao).slice(0, 46)}…` : p.descricao}${p.responsavel_nome ? html` <span class="pequeno">· ${p.responsavel_nome}</span>` : ''}</li>`)}${a.length > 3 ? html`<li class="pequeno">+ ${a.length - 3} tarefa(s)</li>` : ''}</ul>`; };
 const filtrar = (params, pendencias = []) => {
   const pj = params.get('tcprojeto') || ''; const q = (params.get('tcq') || '').toLocaleLowerCase('pt-BR'); const tar = params.get('tctarefas') || '';
   const abertas = (o) => tarefasDo(o, pendencias).filter((p) => p.status === 'aberta').length;
@@ -107,7 +108,7 @@ export function renderQuadro({ params, podeEditar, projetos = [], pendencias = [
     const t = tarefasDo(o, pendencias); const ab = t.filter((p) => p.status === 'aberta').length;
     return html`<article class="at-card osq-card" data-tcq="${o.id}" ${podeEditar ? html.seguro('draggable="true"') : ''} title="Clique para abrir${podeEditar ? ' · arraste para mudar a coluna' : ''}">
       <div class="at-tit"><b>${o.titulo || o.codigo}</b></div>
-      <div class="at-meta"><span class="at-chip">${o.projeto}</span><span class="at-chip">${o.codigo}</span>${t.length ? html`<span class="at-chip" title="Tarefas em aberto / total">☑ ${ab}/${t.length}</span>` : ''}${(o.fotos || []).length ? html`<span class="at-chip">📷 ${o.fotos.length}</span>` : ''}</div></article>`;
+      <div class="at-meta"><span class="at-chip">${o.projeto}</span><span class="at-chip">${o.codigo}</span>${t.length ? html`<span class="at-chip" title="Tarefas em aberto / total">☑ ${ab}/${t.length}</span>` : ''}${(o.fotos || []).length ? html`<span class="at-chip">📷 ${o.fotos.length}</span>` : ''}</div>${lista3(t, ab)}</article>`;
   };
   return html`<section class="osq">
     ${erro ? html`<p class="erro">${erro}</p>` : ''}

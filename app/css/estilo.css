@@ -2334,3 +2334,5 @@ td select[data-cx-usuario] { font: inherit; font-size: 13px; padding: 5px 8px; b
 .pf-exec-outra { min-width: 150px; }
 .tf-exec select, .tf-exec input { width: 100%; }
 .tf-exec .pf-exec-outra { margin-top: 6px; }
+.osq-card-tarefas { margin: 6px 0 0; padding-left: 16px; font-size: 12px; color: var(--cinza-texto, #555); }
+.osq-card-tarefas li { margin: 1px 0; }

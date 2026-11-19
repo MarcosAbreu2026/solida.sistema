@@ -145,10 +145,14 @@ export function renderQuadro({ params, podeEditar, clientesPos = [], semFiltros 
     if (!t) return html`<span class="osq-cobr osq-cobr-aguarda" title="Ainda sem tarefa para o financeiro">cobrar</span>`;
     return t.status === 'feita' ? html`<span class="osq-cobr osq-cobr-ok" title="${t.responsavel_nome || 'Financeiro'} já cobrou">✓ cobrado</span>` : html`<span class="osq-cobr osq-cobr-aguarda" title="Tarefa de ${t.responsavel_nome || 'financeiro'} aberta">⏳ ${t.responsavel_nome || 'financeiro'}</span>`;
   };
+  // tarefas da OS dentro do card (pedido do Marcos, 19/11/2026): contador e as primeiras em aberto
+  const tarefasOs = (o) => pendencias.filter((p) => p.os === o.codigo && p.status !== 'cancelada' && p.na_lista !== false);
+  const chipTarefas = (o) => { const t = tarefasOs(o); if (!t.length) return ''; return html`<span class="at-chip" title="Tarefas em aberto / total">☑ ${t.filter((p) => p.status === 'aberta').length}/${t.length}</span>`; };
+  const listaTarefas = (o) => { const ab = tarefasOs(o).filter((p) => p.status === 'aberta'); if (!ab.length) return ''; return html`<ul class="osq-card-tarefas">${ab.slice(0, 3).map((p) => html`<li title="${p.descricao}">${String(p.descricao).length > 48 ? `${String(p.descricao).slice(0, 46)}…` : p.descricao}${p.responsavel_nome ? html` <span class="pequeno">· ${p.responsavel_nome}</span>` : ''}</li>`)}${ab.length > 3 ? html`<li class="pequeno">+ ${ab.length - 3} tarefa(s)</li>` : ''}</ul>`; };
   const cartao = (o) => {
     return html`<article class="at-card osq-card" data-osq="${o.id}" ${podeEditar ? html.seguro('draggable="true"') : ''} title="Clique para abrir${podeEditar ? ' · arraste para mudar o status' : ''}">
       <div class="at-tit"><b>${o.cliente}</b>${o.assunto ? `, ${o.assunto}` : ''}</div>
-      <div class="at-meta"><span class="at-chip">${o.codigo}</span>${(o.fotos || []).length ? html`<span class="at-chip">📷 ${o.fotos.length}</span>` : ''}${chipCobranca(o)}</div></article>`;
+      <div class="at-meta"><span class="at-chip">${o.codigo}</span>${(o.fotos || []).length ? html`<span class="at-chip">📷 ${o.fotos.length}</span>` : ''}${chipTarefas(o)}${chipCobranca(o)}</div>${listaTarefas(o)}</article>`;
   };
   return html`<section class="osq">
     ${erro ? html`<p class="erro">${erro}</p>` : ''}
