@@ -47,6 +47,7 @@ import * as agendaPos from './agenda-pos.js';
 import * as svPos from './servicos-pos.js';
 import * as osq from './os-quadro.js';
 import * as tcq from './terc-quadro.js';
+import * as aloc from './alocacao.js';
 import * as reunioes from './reunioes.js';
 import * as poConcluir from './po-concluir.js';
 import { comodoDe } from './comodos.js';
@@ -544,7 +545,22 @@ function ctxPainel(dep, area) {
     rotas: estado.rotas || { semanas: [] }, equipeProg: estado.equipeProg || { pessoas: [] }, terceiros: estado.terceiros || { empresas: [] }, ferrChk: estado.ferrChk || { registros: [] }, mc: estado.mc || { obras: [] }, celular: celularObra.registros(),
     pendencias: atas.todasPendencias(), hoje: hojeISO(), visiveis: f.porObra ? obrasDaPessoa() : null, sync: estado.sync, obrasMenu: obrasDoMenu(),
     ...(dep && dep.id === 'posobra' ? ctxPosObra() : {}),
-    ...(dep && dep.id === 'orc-terceirizado' ? ctxTerc() : {}) };
+    ...(dep && dep.id === 'orc-terceirizado' ? ctxTerc() : {}),
+    ...(dep && dep.id === 'operacao' ? ctxAlocacao() : {}) };
+}
+// Operações: quadro de alocação (funcionários × obras em andamento × dias) e a visão funcionários × semana
+const podeEditarAloc = () => ['socio', 'coord_operacoes', 'planejamento', 'gestor_obra'].includes(funcaoAtual().id);
+const alocSem = () => { if (!estado.aloc) estado.aloc = { semana: inicioDaSemana(hojeISO()), vista: 'obras', sel: '', chave: '' }; return estado.aloc; };
+function carregarAloc() {
+  const a = alocSem(); const de = a.semana; const chave = `${de}`;
+  if (a.chave === chave) return;
+  a.chave = chave;
+  aloc.carregar(de, somarDias(de, 5)).then(() => { const r = rotaAtual(); if (!emEdicao() && r.tela !== 'atas') desenhar(); });
+}
+const alocObras = () => (estado.obrasCad || []).filter((c) => ativaNasListas(c) && c.situacao !== 'pausada' && /^mo/i.test(String(c.codigo))).map((c) => c.codigo).sort(numerico);
+function ctxAlocacao() {
+  carregarAloc();
+  return { quadroAloc: () => { const a = alocSem(); return String(aloc.render({ semanaIni: a.semana, vista: a.vista, podeEditar: podeEditarAloc(), obras: alocObras(), equipeProg: estado.equipeProg, selecionado: a.sel })); } };
 }
 // Orçamento Terceirizado Laranja: os cards (Kanban) entram no painel
 const podeEditarTerc = () => ['socio', 'orc_terceirizado', 'orc_obras_novas', 'planejamento', 'coord_operacoes'].includes(funcaoAtual().id);
@@ -2814,4 +2830,35 @@ document.addEventListener('change', (e) => {
   const outra = s.parentElement.querySelector('.pf-exec-outra'); if (!outra) return;
   outra.hidden = s.value !== '__outra__';
   if (!outra.hidden) outra.focus();
+});
+
+// Operações › alocação das obras: arrastar o funcionário para a obra e o dia (ou tocar no nome e depois no quadrado); outras semanas pelas setas
+const alFaixa = () => [alocSem().semana, somarDias(alocSem().semana, 5)];
+async function alFazer(fn) { try { await fn(...alFaixa()); desenhar(); } catch (err) { alert(`Não foi possível mexer na alocação (${err.message || err}).`); } }
+document.addEventListener('click', (e) => {
+  const sem = e.target.closest && e.target.closest('[data-al-sem]');
+  if (sem) { const v = sem.dataset.alSem; const a = alocSem(); a.semana = inicioDaSemana(v === 'hoje' ? hojeISO() : v); a.chave = ''; desenhar(); return; }
+  const vista = e.target.closest && e.target.closest('[data-al-vista]');
+  if (vista) { alocSem().vista = vista.dataset.alVista; desenhar(); return; }
+  const del = e.target.closest && e.target.closest('[data-al-del]');
+  if (del) { alFazer((de, ate) => aloc.remover(del.dataset.alDel, de, ate)); return; }
+  const card = e.target.closest && e.target.closest('[data-al-pessoa]');
+  if (card) { const a = alocSem(); a.sel = a.sel === card.dataset.alPessoa ? '' : card.dataset.alPessoa; desenhar(); return; }
+  const cel = e.target.closest && e.target.closest('.al-cel');
+  if (cel && alocSem().sel && !e.target.closest('[data-al-chip]')) alFazer((de, ate) => aloc.atribuir({ data: cel.dataset.alData, obra: cel.dataset.alObra, pessoa: alocSem().sel }, de, ate));
+});
+document.addEventListener('dragstart', (e) => {
+  const c = e.target.closest && e.target.closest('[data-al-pessoa]'); const ch = e.target.closest && e.target.closest('[data-al-chip]');
+  if (!c && !ch) return;
+  try { e.dataTransfer.setData('text/plain', c ? `alp:${c.dataset.alPessoa}` : `alm:${ch.dataset.alChip}`); e.dataTransfer.effectAllowed = 'copyMove'; } catch { /* sem dataTransfer */ }
+});
+document.addEventListener('dragover', (e) => { const cel = e.target.closest && e.target.closest('.al-cel'); if (cel) { e.preventDefault(); cel.classList.add('ap-sobre'); } });
+document.addEventListener('dragleave', (e) => { const cel = e.target.closest && e.target.closest('.al-cel'); if (cel) cel.classList.remove('ap-sobre'); });
+document.addEventListener('drop', (e) => {
+  const cel = e.target.closest && e.target.closest('.al-cel'); if (!cel) return;
+  e.preventDefault(); cel.classList.remove('ap-sobre');
+  const [tipo, ...resto] = String(e.dataTransfer.getData('text/plain') || '').split(':'); const valor = resto.join(':'); if (!valor) return;
+  const alvo = { data: cel.dataset.alData, obra: cel.dataset.alObra };
+  if (tipo === 'alp') alFazer((de, ate) => aloc.atribuir({ ...alvo, pessoa: valor }, de, ate));
+  else if (tipo === 'alm') alFazer((de, ate) => aloc.mover(valor, alvo, de, ate));
 });

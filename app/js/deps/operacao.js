@@ -79,6 +79,7 @@ export function painel(ctx) {
 
   return html`${pd.pergunta(ctx.dep.pergunta)}
     ${avisoLeitura(ctx, 'Base: leitura dos agentes')}
+    ${pd.secao('Alocação das obras em andamento', 'Arraste o funcionário para a obra e o dia (semana atual, próximas e anteriores) · a outra aba mostra onde cada funcionário está na semana, com uma cor por função', ctx.quadroAloc ? html.seguro(ctx.quadroAloc()) : '')}
     ${pd.secao('Resumo das obras', `Fonte: planejamento e grupos das obras · leitura ${leitura}`, resumo)}
     ${pd.secao('Cronograma geral de obras', 'Fonte: cronogramas no Drive (GERENCIAMENTO › CRONOGRAMA)', pd.tabela(['Obra', 'Início', 'Término contratual', 'Previsão atual', 'Desvio × contrato', 'Semanas até a previsão', 'Avanço médio', 'Situação'], cronLinhas))}
     ${pd.secao('Hoje por obra: equipe, meta e pendência maior', 'Equipe: efetivo do grupo da obra · meta do dia: programação semanal', pd.tabela(['Obra', 'Equipe de hoje', 'Meta do dia (foco)', 'Pendência maior'], hojeLinhas))}

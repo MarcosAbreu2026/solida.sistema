@@ -511,6 +511,25 @@ export async function urlsFotosOs(caminhos) {
   return o;
 }
 
+// ---------------------------------------------------------------- alocação das obras em andamento (supabase/33-alocacao-obras.sql)
+export async function listarAlocacao(de, ate) {
+  const { data, error } = await sb.from('alocacao_obras').select('*').gte('data', de).lte('data', ate).order('id');
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+export async function criarAlocacao(linha) {
+  const { error } = await sb.from('alocacao_obras').insert({ ...linha, criado_por: perfil.id });
+  if (error) throw new Error(error.message);
+}
+export async function atualizarAlocacao(id, mudancas) {
+  const { error } = await sb.from('alocacao_obras').update(mudancas).eq('id', id);
+  if (error) throw new Error(error.message);
+}
+export async function apagarAlocacao(id) {
+  const { error } = await sb.from('alocacao_obras').delete().eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
 // ---------------------------------------------------------------- cards do Orçamento Terceirizado Laranja (supabase/32-terc-quadro.sql)
 export async function listarTercQuadro() {
   const { data, error } = await sb.from('terc_quadro').select('*').order('id', { ascending: false });
