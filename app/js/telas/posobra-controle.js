@@ -66,8 +66,12 @@ export function render({ params, obrasCad = [], pendencias = [], hoje = '', pode
   const osComPend = (o) => (o.__pend || []).some(pendOk);
   const pendsDoGrupo = (g) => [...g.os.flatMap((o) => (o.status === 'concluido' ? [] : (o.__pend || []))), ...g.soltas].filter((p) => p.status === 'aberta');
   const metricas = (g) => { const ps = pendsDoGrupo(g); const abertasOs = g.os.filter((o) => o.status !== 'concluido');
-    return { venc: ps.filter((p) => p.prazo && p.prazo < hoje).length, nOs: abertasOs.length, antiga: abertasOs.map((o) => o.d_solicitacao || o.criado_em || '9999').sort()[0] || '9999', prox: ps.map((p) => p.prazo).filter(Boolean).sort()[0] || '9999' }; };
-  const ORDENS = { pior: (a, b) => b.m.venc - a.m.venc || b.m.nOs - a.m.nOs || ordemDePO(a.g, b.g), os: (a, b) => b.m.nOs - a.m.nOs || ordemDePO(a.g, b.g), antigas: (a, b) => String(a.m.antiga).localeCompare(String(b.m.antiga)) || ordemDePO(a.g, b.g), prazo: (a, b) => String(a.m.prox).localeCompare(String(b.m.prox)) || ordemDePO(a.g, b.g), cliente: (a, b) => String(a.g.nome || a.g.codigo).localeCompare(String(b.g.nome || b.g.codigo), 'pt-BR') };
+    const emFoco = g.os.filter((o) => (st === 'todas' ? true : st ? o.status === st : o.status !== 'concluido'));
+    const rk = emFoco.map(idxSt); const rank = rk.length ? Math.max(...rk) : -1;
+    return { rank, nOsRank: rk.filter((r) => r === rank).length, venc: ps.filter((p) => p.prazo && p.prazo < hoje).length, nOs: abertasOs.length, antiga: abertasOs.map((o) => o.d_solicitacao || o.criado_em || '9999').sort()[0] || '9999', prox: ps.map((p) => p.prazo).filter(Boolean).sort()[0] || '9999' }; };
+  const idxSt = (o) => STATUS.findIndex((s) => s.id === o.status);
+  const rankPO = (m) => m.rank;
+  const ORDENS = { status: (a, b) => b.m.rank - a.m.rank || b.m.nOsRank - a.m.nOsRank || ordemDePO(a.g, b.g), pior: (a, b) => b.m.venc - a.m.venc || b.m.nOs - a.m.nOs || ordemDePO(a.g, b.g), os: (a, b) => b.m.nOs - a.m.nOs || ordemDePO(a.g, b.g), antigas: (a, b) => String(a.m.antiga).localeCompare(String(b.m.antiga)) || ordemDePO(a.g, b.g), prazo: (a, b) => String(a.m.prox).localeCompare(String(b.m.prox)) || ordemDePO(a.g, b.g), cliente: (a, b) => String(a.g.nome || a.g.codigo).localeCompare(String(b.g.nome || b.g.codigo), 'pt-BR') };
   const visiveis = todos
     .filter((g) => (st === 'todas' ? true : st ? temStatus(g) : ((g.os.length === 0 || g.abertas.length > 0) && !(g.cad && g.cad.situacao === 'finalizada'))))
     .filter((g) => !q || texto(g).includes(q))
@@ -108,7 +112,7 @@ export function render({ params, obrasCad = [], pendencias = [], hoje = '', pode
   const linhaSolta = (p) => html`<tr class="pc-pend ${diasAtraso(p) ? 'pc-pend-venc' : ''}" data-tarefa="${p.id}"><td></td><td><span class="pc-pst">tarefa</span></td><td class="pc-relato">${p.descricao}${avisoAtraso(p)}</td><td>${p.responsavel_nome || html`<span class="pc-sem-txt">[definir]</span>`}</td><td>${p.prazo ? dBR(p.prazo) : ''}</td><td>${podeEditar ? html`<button type="button" class="ac-mini pc-pdel" data-pc-pdel="${p.id}" title="Excluir só esta tarefa (a OS continua)">excluir</button>` : ''}</td></tr>${relatos(p)}`;
   const faixa = (g) => {
     const doStatus = (o) => !st || st === 'todas' || o.status === st;
-    const abertas = [...g.os].filter((o) => o.status !== 'concluido' && doStatus(o) && (!filtroPend || osComPend(o))).sort((a, b) => a.codigo.localeCompare(b.codigo, 'pt-BR', { numeric: true }));
+    const abertas = [...g.os].filter((o) => o.status !== 'concluido' && doStatus(o) && (!filtroPend || osComPend(o))).sort((a, b) => (ord === 'status' ? idxSt(b) - idxSt(a) : 0) || a.codigo.localeCompare(b.codigo, 'pt-BR', { numeric: true }));
     const concl = [...g.os].filter((o) => o.status === 'concluido' && (st === 'concluido' ? false : true)).sort((a, b) => a.codigo.localeCompare(b.codigo, 'pt-BR', { numeric: true }));
     const concEmFoco = st === 'concluido' ? [...g.os].filter((o) => o.status === 'concluido') : [];
     g.os.forEach((o) => { o.__po = g.codigo; });
@@ -130,7 +134,7 @@ export function render({ params, obrasCad = [], pendencias = [], hoje = '', pode
       <label>Status da OS<select data-atas-filtro="st"><option value="" title="Sem as OS concluídas">Em aberto</option><option value="todas" ${st === 'todas' ? html.seguro('selected') : ''}>Todas</option>${STATUS.map((s) => html`<option value="${s.id}" ${st === s.id ? html.seguro('selected') : ''}>${s.nome}</option>`)}</select></label>
       <label>Responsável<select data-atas-filtro="resp"><option value="">Todos</option><option value="sem" ${resp === 'sem' ? html.seguro('selected') : ''}>Sem responsável</option>${pessoas.filter((x) => idsComPend.has(x.id) || x.id === resp).map((x) => html`<option value="${x.id}" ${resp === x.id ? html.seguro('selected') : ''}>${x.nome}</option>`)}</select></label>
       <label>Prazo<select data-atas-filtro="prazo"><option value="">Todos</option>${[['vencido', 'Vencidas'], ['semana', 'Vencem em 7 dias'], ['sem', 'Sem prazo']].map(([v, t]) => html`<option value="${v}" ${prazoF === v ? html.seguro('selected') : ''}>${t}</option>`)}</select></label>
-      <label>Ordenar por<select data-atas-filtro="ord"><option value="">Número do PO</option>${[['pior', 'Mais atrasados'], ['prazo', 'Prazo mais próximo'], ['os', 'Mais OS abertas'], ['antigas', 'OS mais antigas'], ['cliente', 'Cliente (A–Z)']].map(([v, t]) => html`<option value="${v}" ${ord === v ? html.seguro('selected') : ''}>${t}</option>`)}</select></label>
+      <label>Ordenar por<select data-atas-filtro="ord"><option value="">Número do PO</option>${[['pior', 'Mais atrasados'], ['prazo', 'Prazo mais próximo'], ['os', 'Mais OS abertas'], ['antigas', 'OS mais antigas'], ['status', 'Status da OS (do final para o início)'], ['cliente', 'Cliente (A–Z)']].map(([v, t]) => html`<option value="${v}" ${ord === v ? html.seguro('selected') : ''}>${t}</option>`)}</select></label>
       <label>Procurar<input type="search" data-atas-filtro="q" value="${params.get('q') || ''}" placeholder="PO, cliente, OS, responsável…"></label>
       <button type="button" class="botao pc-imprimir" data-imprimir="" title="Imprimir esta lista (versão para impressão, com letra grande)">🖨 Imprimir</button>
     </div>
