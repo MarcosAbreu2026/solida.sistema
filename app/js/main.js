@@ -2902,3 +2902,9 @@ document.addEventListener('dblclick', (e) => {
   c.addEventListener('keydown', (k) => { if (k.key === 'Escape') { fim = true; desenhar(); } else if (k.key === 'Enter' && !k.shiftKey) { k.preventDefault(); salvar(); } });
   c.addEventListener('blur', salvar);
 });
+
+// Controle de obras: mudar a fase (status) de uma tarefa da OS (solicitação, análise, orçamento, cobrança, agendado…) direto na linha da tarefa
+document.addEventListener('change', async (e) => {
+  const s = e.target.closest && e.target.closest('[data-pc-pfase]'); if (!s) return;
+  try { await atas.definirFaseTarefa(s.dataset.pcPfase, s.value); desenhar(); } catch (err) { alert(`Não foi possível mudar a fase (${err.message || err}).`); }
+});

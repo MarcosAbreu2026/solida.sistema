@@ -1109,6 +1109,13 @@ export async function definirResponsavelTarefa(id, pessoaId) {
   else { const l = lerLocal(); const q = l.pendencias.find((x) => String(x.id) === String(id)); if (q) Object.assign(q, mud); gravarLocal(l); }
   await carregar();
 }
+// fase (status) em que a tarefa de uma OS está: solicitação, análise, orçamento, cobrança, agendado…
+export async function definirFaseTarefa(id, fase) {
+  const mud = { os_fase: fase || null };
+  if (NA_NUVEM) await atualizarPendenciaNuvem(id, mud);
+  else { const l = lerLocal(); const q = l.pendencias.find((x) => String(x.id) === String(id)); if (q) Object.assign(q, mud); gravarLocal(l); }
+  await carregar();
+}
 // troca só o nome (título) da tarefa, direto no cartão; escopo 'seguintes' vale também para as próximas da série recorrente
 export async function renomearTarefa(id, texto, escopo = 'uma') {
   const p = pendenciaPorId(id); if (!p) throw new Error('Tarefa não encontrada.');
