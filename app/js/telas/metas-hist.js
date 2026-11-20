@@ -4,7 +4,8 @@
 // registrado nos relatórios diários da semana, senão deduzida do comentário (marcada como "deduzida"); sem nada disso: "Sem justificativa".
 import { html } from '../formato.js';
 import * as pd from './painel-dep.js';
-import { hojeISO } from '../datas.js';
+import { hojeISO, somarDias, inicioDaSemana } from '../datas.js';
+import { programacoes } from '../programacao.js';
 import { MOTIVOS, obrasIgnoradas } from './produtividade.js';
 
 const N_SEMANAS = 4;
@@ -67,7 +68,7 @@ export function analiseMetas(CFG, hoje = hojeISO()) {
 
 export function render({ CFG, params, hoje = hojeISO() }) {
   const a = analiseMetas(CFG, hoje);
-  if (!a.semanas.length) return html`${pd.pergunta('As metas das obras foram atingidas nas últimas 4 semanas? Se não, por quê?', 'Pergunta da aba')}${pd.aviso('Ainda não há metas semanais lidas pelo agente (metasSemanais). Quando o agente gravar as metas e os relatórios, o histórico aparece aqui.', 'atencao')}`;
+  if (!a.semanas.length) return html`${pd.pergunta('As metas das obras foram atingidas nas últimas 4 semanas? Se não, por quê?', 'Pergunta da aba')}${metasAdiante(CFG, hoje).html}${pd.aviso('Ainda não há metas semanais lidas pelo agente (metasSemanais). Quando o agente gravar as metas e os relatórios, o histórico aparece aqui.', 'atencao')}`;
   const t = a.totais;
   const pctExec = t.total ? Math.round(((t.ok + t.parcial) / t.total) * 100) : null;
   const filtroObra = params && params.get('obra');
@@ -126,10 +127,36 @@ export function render({ CFG, params, hoje = hojeISO() }) {
   ].filter(Boolean);
 
   return html`${pd.pergunta('As metas das obras foram atingidas nas últimas 4 semanas? Se não, por quê?', 'Pergunta da aba')}
+    ${metasAdiante(CFG, hoje).html}
     ${cartoes}
     ${avisos.length ? pd.caixa('Atenção', pd.itens(avisos)) : ''}
     ${pd.secao('Semana a semana', 'Concluída = meta batida · Avançou = andou mas não fechou · Sem avanço = não andou', porSemana)}
     ${pd.secao('Por obra', 'Percentual com execução (concluídas + avançaram) sobre o total de metas da obra na semana', porObra)}
     ${pd.secao('Por que não foi atingido', 'Causa das metas que não fecharam, nas últimas 4 semanas: problema de execução (material, mão de obra) ou de planejamento', causasTab)}
     ${pd.secao('Metas não atingidas, uma a uma', filtroObra ? `Só ${filtroObra}` : `As ${Math.min(120, filtradas.length)} mais recentes${filtradas.length > 120 ? ` de ${filtradas.length}` : ''}`, html`${filtros}${detalhe}`)}`;
+}
+
+// Metas das PRÓXIMAS 4 semanas (esta e as 3 seguintes): o que já está lançado e o que FALTA lançar (pedido do Marcos, 20/11/2026)
+export function metasAdiante(CFG, hoje) {
+  const seg0 = inicioDaSemana(hoje);
+  const semanas = [0, 1, 2, 3].map((i) => somarDias(seg0, i * 7));
+  const plan = ((CFG && CFG.areas) || []).find((x) => x.id === 'planejamento') || {};
+  const obras = [...new Set([...(plan.porObra || []).map((o) => o.obra), ...((CFG && CFG.metasSemanais && CFG.metasSemanais.semanas) || []).filter((s) => semanas.includes(s.ini)).flatMap((s) => (s.obras || []).map((o) => o.obra))])]
+    .sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }));
+  const lidas = ((CFG && CFG.metasSemanais && CFG.metasSemanais.semanas) || []);
+  const progs = programacoes(CFG);
+  const info = (obra, ini) => {
+    const s = lidas.find((x) => x.ini === ini); const o = s && (s.obras || []).find((x) => x.obra === obra);
+    const n = o ? (o.itens || []).filter((i) => i.item).length : 0;
+    if (n) return { ok: true, txt: `${n} meta${n > 1 ? 's' : ''}`, fonte: 'metas da semana' };
+    if (o && o.tipo === 'pendencias') return { ok: true, txt: 'só pendências', fonte: 'fase final' };
+    const p = progs.find((x) => x.obra === obra); const sp = p && (p.semanas || []).find((x) => x.inicio === ini);
+    const m = sp ? (sp.naSemana || []).length : 0;
+    if (m) return { ok: true, txt: `${m} item(ns) da programação`, fonte: 'programação' };
+    return { ok: false };
+  };
+  const tabela = obras.map((obra) => [pd.obraCel(obra), ...semanas.map((ini) => { const x = info(obra, ini); return x.ok ? pd.selo('ok', x.txt) : pd.selo(ini === semanas[1] || ini === semanas[0] ? 'critico' : 'atencao', 'falta lançar'); })]);
+  const faltaProx = obras.filter((o) => !info(o, semanas[1]).ok);
+  return { semanas, obras, tabela, faltaProx, html: html`${faltaProx.length ? pd.aviso(`Faltam as metas da PRÓXIMA semana (${dm(semanas[1])} a ${dm(somarDias(semanas[1], 4))}) em ${faltaProx.length} obra(s): ${faltaProx.join(', ')}. O prazo do planejamento é quinta ou sexta de manhã.`, 'atencao') : pd.aviso(`Metas da próxima semana (${dm(semanas[1])}) lançadas em todas as obras.`, 'info')}
+    ${pd.secao('Metas das próximas 4 semanas', 'Esta semana e as 3 seguintes · "falta lançar" = a obra ainda não tem meta nem programação lida do Drive para a semana', pd.tabela(['Obra', ...semanas.map((s, i) => `${i === 0 ? 'Esta semana · ' : ''}${dm(s)} a ${dm(somarDias(s, 4))}`)], tabela, { vazio: 'Nenhuma obra no planejamento.' }))}` };
 }

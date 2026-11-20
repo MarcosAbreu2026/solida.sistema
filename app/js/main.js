@@ -993,7 +993,7 @@ atas.definirFuncionarios(nomesDeFuncionarios(estado.equipeProg, CFG));   // list
   let out;
   try {
     // ---- desenho do Marcos: Início, painéis dos departamentos, página da obra e celular da obra
-    const abasDe = (base, ativa) => pd.abas([{ id: '', nome: 'Painel', href: base }, { id: 'detalhe', nome: tela === 'geral' ? 'Visão geral (anterior)' : 'Detalhes', href: `${base}/detalhe` }, ...(tela === 'transporte' ? [{ id: 'rotas', nome: 'Rotas da semana', href: `${base}/rotas` }] : []), ...(tela === 'planejamento' ? [{ id: 'metas', nome: 'Metas (4 semanas)', href: `${base}/metas` }, { id: 'funcionarios', nome: 'Funcionários por obra', href: `${base}/funcionarios` }, { id: 'dimensionamento', nome: 'Dimensionamento da equipe', href: `${base}/dimensionamento` }] : [])], ativa);
+    const abasDe = (base, ativa) => pd.abas([{ id: '', nome: 'Painel', href: base }, { id: 'detalhe', nome: tela === 'geral' ? 'Visão geral (anterior)' : 'Detalhes', href: `${base}/detalhe` }, ...(tela === 'transporte' ? [{ id: 'rotas', nome: 'Rotas da semana', href: `${base}/rotas` }] : []), ...(tela === 'planejamento' ? [{ id: 'metas', nome: 'Metas (4 semanas)', href: `${base}/metas` }] : [])], ativa);
     if (tela === 'geral' && ehPainel) {
       out = `<div class="pd">${pd.cabecalho({ rotulo: new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' }) })}${abasDe('#/geral', '')}${inicio.painel(ctxPainel(null, null))}</div>`;
     } else if (dep && ehPainel) {

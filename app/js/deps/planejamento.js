@@ -8,6 +8,7 @@ import { somarDias, inicioDaSemana } from '../datas.js';
 import { programacoes, feriado } from '../programacao.js';
 import { cronogramaDa } from '../telas/operacao.js';
 import { avisoLeitura } from './comum.js';
+import { metasAdiante } from '../telas/metas-hist.js';
 
 const norm = (s) => String(s || '').toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
 const curto = (s, n = 60) => { const t = String(s || '').trim(); return t.length > n ? `${t.slice(0, n).replace(/\s+\S*$/, '')}…` : t; };
@@ -83,6 +84,7 @@ export function painel(ctx) {
   const sem = plan.semanas || {};
   return html`${pd.pergunta(ctx.dep.pergunta)}
     ${avisoLeitura(ctx, 'Planejamento lido pelo agente em')}
+    ${metasAdiante(CFG, hoje).html}
     ${pd.secao('Como a meta nasce', 'Quem faz cada passo', comoNasce)}
     ${pd.secao('Aderência à meta da semana', `Semana de ${pd.dm(ini)} a ${pd.dm(somarDias(ini, 4))} · metas com quantidade da programação × produtividade relatada no grupo`,
       pd.tabela(['Obra', 'Metas concluídas', 'Aderência', 'Cronograma'], linhasAd, { vazio: 'Nenhuma obra com programação.' }))}

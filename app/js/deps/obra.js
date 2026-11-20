@@ -171,11 +171,19 @@ function abaCompras(ctx, cod) {
 // pendências (atas e avulsas) da obra, abertas primeiro
 function abaPendencias(ctx, cod) {
   const l = oc.pendenciasDaObra(ctx, cod);
-  const linhas = l.map((p) => [p.descricao, p.responsavel_nome || '', p.gestores_nome || '',
-    p.prazo ? (p.status === 'aberta' && p.prazo < ctx.hoje ? pd.selo('critico', pd.dm(p.prazo)) : pd.dm(p.prazo)) : '',
-    p.status === 'feita' ? pd.selo('ok', 'Concluída') : p.prazo && p.prazo < ctx.hoje ? pd.selo('critico', 'Atrasada') : pd.selo('atencao', 'Aberta')]);
-  return html`${pd.secao(`Pendências da ${cod}`, `${l.filter((p) => p.status === 'aberta').length} em aberto · atas e pendências avulsas`,
-    pd.tabela(['Pendência', 'Responsável', 'Gestor', 'Prazo', 'Situação'], linhas, { vazio: 'Nenhuma pendência desta obra.' }))}
+  // pendências que estão na planilha/PDF de pendências da pasta da obra (GERENCIAMENTO › PROGRAMAÇÃO SEMANAL) + as do sistema, tudo por prazo
+  const proj = oc.projetoDa(ctx, cod); const prog = proj && proj.programacao;
+  const arq = prog && prog.arquivo ? String(prog.arquivo).replace(/^.*[\/]/, '') : '';
+  const dataDe = (v) => { const s = String(v || ''); let m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s); if (m) return `${m[1]}-${m[2]}-${m[3]}`; m = /(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/.exec(s); if (!m) return ''; const a = m[3] ? (m[3].length === 2 ? `20${m[3]}` : m[3]) : ctx.hoje.slice(0, 4); return `${a}-${String(m[2]).padStart(2, '0')}-${String(m[1]).padStart(2, '0')}`; };
+  const doDrive = oc.lista(prog && prog.secoes).flatMap((s) => oc.lista(s && s.linhas)).filter((x) => x && x.item).map((x) => ({ origem: 'drive', texto: x.item, quem: x.quem || x.responsavel || x.funcionario || '', prazo: dataDe(x.prazo || x.data || x.quando), laranja: x.tipo === 'laranja' }));
+  const doSistema = l.map((p) => ({ origem: 'sistema', texto: p.descricao, quem: p.responsavel_nome || '', prazo: p.prazo ? String(p.prazo).slice(0, 10) : '', feita: p.status === 'feita' }));
+  const todas = [...doSistema, ...doDrive].sort((a, b) => (a.feita ? 1 : 0) - (b.feita ? 1 : 0) || String(a.prazo || '9999').localeCompare(String(b.prazo || '9999')));
+  const linhas = todas.map((x) => [x.texto, x.quem, x.prazo ? (!x.feita && x.prazo < ctx.hoje ? pd.selo('critico', pd.dm(x.prazo)) : pd.dm(x.prazo)) : '',
+    x.origem === 'drive' ? pd.selo('', `Drive${x.laranja ? ' · laranja' : ''}`) : pd.selo('ok', 'Sistema'),
+    x.feita ? pd.selo('ok', 'Concluída') : x.prazo && x.prazo < ctx.hoje ? pd.selo('critico', 'Atrasada') : pd.selo('atencao', 'Aberta')]);
+  const fonte = doDrive.length ? `${doDrive.length} do ${arq ? `arquivo ${arq}` : 'arquivo de pendências'} na pasta da obra no Drive` : 'nada lido do Drive (a pasta da obra não tem planilha ou PDF de pendências)';
+  return html`${pd.secao(`Pendências da ${cod}`, `${l.filter((p) => p.status === 'aberta').length} do sistema em aberto · ${fonte} · ordenadas por prazo`,
+    pd.tabela(['Pendência', 'Quem', 'Prazo', 'Origem', 'Situação'], linhas, { vazio: 'Nenhuma pendência desta obra, nem no sistema nem na pasta do Drive.' }))}
     <a class="pd-bt" href="#/atas?obra=${encodeURIComponent(cod)}">Abrir em Tarefas</a>`;
 }
 

@@ -25,7 +25,7 @@ export const secao = (titulo, fonte, corpo, { id = '' } = {}) => html`<section c
 const NIVEL_COR = { ok: 'pd-ok', atencao: 'pd-at', critico: 'pd-cr' };
 export function cartao(c) {
   const corpo = html`<span class="pd-c-rot">${c.rotulo}</span>
-    <b class="pd-c-val ${NIVEL_COR[c.nivel] || ''}">${c.valor == null || c.valor === '' ? '—' : c.valor}</b>
+    <b class="pd-c-val ${NIVEL_COR[c.nivel] || ''} ${String(c.valor == null ? "" : c.valor).length > 12 ? "pd-c-val-longo" : ""}">${c.valor == null || c.valor === '' ? '—' : c.valor}</b>
     ${typeof c.barra === 'number' ? html`<span class="pd-barra"><i style="width:${Math.max(0, Math.min(100, Math.round(c.barra * 100)))}%"></i></span>` : ''}
     ${c.sub ? html`<span class="pd-c-sub">${c.sub}</span>` : ''}
     ${c.meta ? html`<span class="pd-c-meta">${c.meta}</span>` : ''}`;
