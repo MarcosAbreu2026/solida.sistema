@@ -42,18 +42,19 @@ export const faixaDeDias = (dias) => [dias[0].data, dias[dias.length - 1].data];
 // ---------------------------------------------------------------- marcas "feito / não feito" do dia anterior
 const CH = 'solida.checagemDia';
 const lerLocal = () => { try { return JSON.parse(localStorage.getItem(CH)) || {}; } catch { return {}; } };
-export const checks = {};   // escopo → { 'AAAA-MM-DD|chave': true|false }
+export const checks = {};   // escopo → { 'AAAA-MM-DD|chave': { feito: true|false|null, qtd: número|null } }
+export const marca = (escopo, data, chave) => ((checks[escopo] || {})[`${data}|${chave}`] || null);
 export async function carregarChecks(escopo, de, ate) {
   try {
-    const linhas = NA_NUVEM ? await listarChecagem(escopo, de, ate) : Object.entries(lerLocal()).filter(([k]) => k.startsWith(`${escopo}|`)).map(([k, v]) => { const [, data, chave] = k.split('|'); return { data, chave, feito: v }; });
-    const mapa = {}; for (const l of linhas) mapa[`${String(l.data).slice(0, 10)}|${l.chave}`] = l.feito;
+    const linhas = NA_NUVEM ? await listarChecagem(escopo, de, ate) : Object.entries(lerLocal()).filter(([k]) => k.startsWith(`${escopo}|`)).map(([k, v]) => { const [, data, chave] = k.split('|'); return { data, chave, feito: typeof v === 'object' ? v.feito : v, qtd: typeof v === 'object' ? v.qtd : null }; });
+    const mapa = {}; for (const l of linhas) mapa[`${String(l.data).slice(0, 10)}|${l.chave}`] = { feito: l.feito, qtd: l.qtd == null ? null : Number(l.qtd) };
     const mudou = JSON.stringify(checks[escopo] || {}) !== JSON.stringify(mapa); checks[escopo] = mapa; return mudou;
   } catch { return false; }
 }
-export async function marcar(escopo, data, chave, feito) {
-  if (NA_NUVEM) await gravarChecagem({ escopo, data, chave, feito });
-  else { const l = lerLocal(); l[`${escopo}|${data}|${chave}`] = feito; try { localStorage.setItem(CH, JSON.stringify(l)); } catch { /* sem armazenamento */ } }
-  (checks[escopo] = checks[escopo] || {})[`${data}|${chave}`] = feito;
+export async function marcar(escopo, data, chave, feito, qtd = null) {
+  if (NA_NUVEM) await gravarChecagem({ escopo, data, chave, feito, qtd });
+  else { const l = lerLocal(); l[`${escopo}|${data}|${chave}`] = { feito, qtd }; try { localStorage.setItem(CH, JSON.stringify(l)); } catch { /* sem armazenamento */ } }
+  (checks[escopo] = checks[escopo] || {})[`${data}|${chave}`] = { feito, qtd };
 }
 
 // ---------------------------------------------------------------- tela dos dias
@@ -62,16 +63,28 @@ export function renderDias({ escopo, dias, aviso = '', cartoes, livres = null, p
   const marcas = checks[escopo] || {};
   const PER = { manha: 'manhã', tarde: 'tarde' };
   const cartao = (d, c) => {
-    const m = marcas[`${d.data}|${c.chave}`];
-    return html`<article class="df-card ${d.tipo === 'anterior' && m === true ? 'df-ok' : d.tipo === 'anterior' && m === false ? 'df-nao' : ''}">
+    const m = marcas[`${d.data}|${c.chave}`] || null;
+    const ant = d.tipo === 'anterior';
+    // controles de um item (ou do cartão todo): feito / não feito e, no item, a quantidade quando for diferente da meta
+    const controles = (chave, meta) => { const x = marcas[`${d.data}|${chave}`] || null; const f = x ? x.feito : null;
+      return html`<span class="df-chk-i">${podeChecar ? html`<button type="button" class="ac-mini ${f === true ? 'on' : ''}" data-dia-chk="${escopo}|${d.data}|${chave}|1" title="Feito">✔</button><button type="button" class="ac-mini ${f === false ? 'on nao' : ''}" data-dia-chk="${escopo}|${d.data}|${chave}|0" title="Não feito">✖</button>${meta != null ? html`<input type="number" class="df-qtd" step="0.1" min="0" value="${x && x.qtd != null ? x.qtd : ''}" placeholder="fez" title="Quantidade feita, se for diferente da meta (${meta})" data-dia-qtd="${escopo}|${d.data}|${chave}" data-meta="${meta}">` : ''}` : html`<b>${f === true ? '✔' : f === false ? '✖' : '·'}</b>${x && x.qtd != null ? html` <small>fez ${x.qtd}</small>` : ''}`}</span>`; };
+    const item = (s) => html`<li class="df-it ${ant && (marcas[`${d.data}|${c.chave}~${s.k}`] || {}).feito === true ? 'df-it-ok' : ant && (marcas[`${d.data}|${c.chave}~${s.k}`] || {}).feito === false ? 'df-it-nao' : ''}">
+      <span class="df-it-txt">${s.texto}</span>
+      <span class="df-it-quem">${s.tipo === 'laranja' ? (s.empresa ? html`<span class="df-emp">${s.empresa}</span>` : html`<span class="df-sem">empresa não informada</span>`) : (s.quem || []).length ? html`${s.quem.map((n) => html`<span class="df-chip">${n}</span>`)}${s.sugerido ? html` <i class="df-sug" title="O sistema sugeriu quem faz, pela função e pela produtividade">sugerido</i>` : ''}` : html`<span class="df-sem">${s.semQuem || 'sem funcionário'}</span>`}</span>
+      ${ant ? controles(`${c.chave}~${s.k}`, s.qtd) : ''}</li>`;
+    const grupo = (rot, cls, l) => (l.length ? html`<div class="df-grupo ${cls}"><h5>${rot}</h5><ul class="df-lista">${l.map(item)}</ul></div>` : '');
+    const origemCls = { drive: 'df-or-drive', meta: 'df-or-meta', nada: 'df-or-nada' };
+    return html`<article class="df-card ${!c.servicos && ant && m && m.feito === true ? 'df-ok' : !c.servicos && ant && m && m.feito === false ? 'df-nao' : ''}">
       <div class="df-tit">${c.link ? html`<a href="${c.link}">${c.titulo}</a>` : html`<b>${c.titulo}</b>`}${c.sub ? html`<small>${c.sub}</small>` : ''}</div>
-      ${(c.pessoas || []).some((p) => p.tarefa !== undefined) ? html`<ul class="df-quem">${c.pessoas.map((p) => html`<li class="${p.livre ? 'df-livre-sem' : ''}"><span class="df-chip">${p.nome}${p.periodo && p.periodo !== 'dia' ? html` <small>${PER[p.periodo] || ''}</small>` : ''}</span> ${p.livre ? html`<i>livre, sem tarefa</i>` : p.tarefa}</li>`)}</ul>`
-        : (c.pessoas || []).length ? html`<div class="df-pes">${c.pessoas.map((p) => html`<span class="df-chip">${p.nome}${p.periodo && p.periodo !== 'dia' ? html` <small>${PER[p.periodo] || ''}</small>` : ''}</span>`)}</div>` : html`<div class="df-pes"><span class="df-sem">sem funcionário alocado</span></div>`}
-      ${c.origem ? html`<p class="df-origem">${c.origem}</p>` : ''}
-      ${(c.itens || []).length ? html`<ul class="df-itens">${c.itens.map((t) => html`<li>${t}</li>`)}</ul>` : ''}
-      ${c.aviso ? html`<p class="df-aviso">${c.aviso}</p>` : ''}
-      ${d.tipo === 'anterior' ? html`<div class="df-chk"><span class="pequeno">Foi feito?</span>
-        ${podeChecar ? html`<button type="button" class="ac-mini ${m === true ? 'on' : ''}" data-dia-chk="${escopo}|${d.data}|${c.chave}|1">✔ feito</button><button type="button" class="ac-mini ${m === false ? 'on nao' : ''}" data-dia-chk="${escopo}|${d.data}|${c.chave}|0">✖ não feito</button>` : html`<b>${m === true ? '✔ feito' : m === false ? '✖ não feito' : 'sem marca'}</b>`}</div>` : ''}
+      ${c.servicos ? html`${grupo('Escopo cinza · Sólida', 'df-cinza', c.servicos.filter((s) => s.tipo !== 'laranja'))}${grupo('Laranja · terceirizados', 'df-laranja', c.servicos.filter((s) => s.tipo === 'laranja'))}
+        ${c.servicos.length ? '' : html`<p class="df-vazio">Nenhum serviço para este dia.</p>`}
+        ${(c.pessoasLivres || []).length ? html`<p class="df-livre-sem">Alocado na obra, sem serviço: ${c.pessoasLivres.map((p) => html`<span class="df-chip">${p.nome}${p.periodo && p.periodo !== 'dia' ? html` <small>${PER[p.periodo] || ''}</small>` : ''}</span>`)}</p>` : ''}
+        ${c.aviso ? html`<p class="df-aviso">${c.aviso}</p>` : ''}
+        ${c.origemInfo ? html`<p class="df-origem-rod ${origemCls[c.origemInfo.tipo] || ''}">${c.origemInfo.texto}</p>` : ''}`
+      : html`${(c.pessoas || []).length ? html`<div class="df-pes">${c.pessoas.map((p) => html`<span class="df-chip">${p.nome}${p.periodo && p.periodo !== 'dia' ? html` <small>${PER[p.periodo] || ''}</small>` : ''}</span>`)}</div>` : html`<div class="df-pes"><span class="df-sem">sem funcionário alocado</span></div>`}
+        ${(c.itens || []).length ? html`<ul class="df-itens">${c.itens.map((t) => html`<li>${t}</li>`)}</ul>` : ''}
+        ${c.aviso ? html`<p class="df-aviso">${c.aviso}</p>` : ''}
+        ${ant ? html`<div class="df-chk"><span class="pequeno">Foi feito?</span>${podeChecar ? html`<button type="button" class="ac-mini ${m && m.feito === true ? 'on' : ''}" data-dia-chk="${escopo}|${d.data}|${c.chave}|1">✔ feito</button><button type="button" class="ac-mini ${m && m.feito === false ? 'on nao' : ''}" data-dia-chk="${escopo}|${d.data}|${c.chave}|0">✖ não feito</button>` : html`<b>${m && m.feito === true ? '✔ feito' : m && m.feito === false ? '✖ não feito' : 'sem marca'}</b>`}</div>` : ''}`}
     </article>`;
   };
   return html`<div class="df">
@@ -116,7 +129,7 @@ export function cartoesOperacao({ dia, obras = [], linhas = [], itensDoDia = () 
     const pessoas = linhas.filter((l) => l.data === dia && l.obra === cod).map((l) => ({ nome: l.pessoa, periodo: l.periodo || 'dia' }));
     if (programar) {   // quem executa o quê: programação da pasta ou montada pela meta da semana × produtividade (programar-dia.js)
       const r = programar(cod, dia, pessoas);
-      return { chave: cod, titulo: cod, link: `#/obra/${encodeURIComponent(cod)}`, pessoas: r.pessoas, itens: r.itens.slice(0, 6), aviso: r.aviso, origem: r.origem };
+      return { chave: cod, titulo: cod, link: `#/obra/${encodeURIComponent(cod)}`, servicos: r.servicos, pessoasLivres: r.pessoasLivres, aviso: r.aviso, origemInfo: r.origemInfo };
     }
     const itens = itensDoDia(cod, dia).filter((i) => i.item).map(txt).slice(0, 4);
     return { chave: cod, titulo: cod, link: `#/obra/${encodeURIComponent(cod)}`, pessoas, itens, aviso: !itens.length ? (semProgramacao(cod) ? 'Sem programação semanal na pasta da obra.' : 'Sem meta para este dia.') : '' };

@@ -69,7 +69,10 @@ function gente(equipeProg) {
     const nome = String(p.nome || '').replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim(); if (nome.length < 3) continue;
     const k = chaveNome(nome); if (!vistos.has(k)) vistos.set(k, { nome, funcao: p.funcao || '' });
   }
-  return [...vistos.values()].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  const lista = [...vistos.values()].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  // quem é do pós-obra aparece marcado (Nascimento, Cleviano e Carlos, o eletricista): "função · pós-obra". Dois com o mesmo primeiro nome: não dá para saber qual é, não marca.
+  const pos = (listaConfig('funcionarios.posobra') || ['Nascimento', 'Cleviano', 'Carlos']).map((n) => chaveNome(n).split(/[\s-]+/)[0]);
+  return lista.map((g) => { const p = chaveNome(g.nome).split(/[\s-]+/)[0]; return pos.includes(p) && lista.filter((x) => chaveNome(x.nome).split(/[\s-]+/)[0] === p).length === 1 ? { ...g, pos: true, funcao: `${g.funcao ? `${g.funcao} · ` : ''}pós-obra` } : g; });
 }
 
 export function render({ semanaIni, vista, podeEditar, obras = [], equipeProg = null, selecionado = '', posLinhas = [] }) {

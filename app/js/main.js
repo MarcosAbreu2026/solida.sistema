@@ -645,7 +645,14 @@ const pendenciasDep = (setor) => String(df.renderPendenciasDep({ pendencias: pen
 document.addEventListener('click', (e) => {
   const b = e.target.closest && e.target.closest('[data-dia-chk]'); if (!b) return;
   const [escopo, data, chave, v] = b.dataset.diaChk.split('|');
-  df.marcar(escopo, data, chave, v === '1').then(() => desenhar()).catch((err) => alert(`Não foi possível marcar (${err.message || err}).`));
+  const antes = df.marca(escopo, data, chave);
+  df.marcar(escopo, data, chave, v === '1', antes ? antes.qtd : null).then(() => desenhar()).catch((err) => alert(`Não foi possível marcar (${err.message || err}).`));
+});
+// quantidade feita num item do dia anterior, quando diferente da meta: ≥ meta conta como feito, abaixo conta como não feito (a quantidade fica registrada)
+document.addEventListener('change', (e) => {
+  const i = e.target.closest && e.target.closest('[data-dia-qtd]'); if (!i) return;
+  const [escopo, data, chave] = i.dataset.diaQtd.split('|'); const v = i.value === '' ? null : Number(i.value); const meta = Number(i.dataset.meta);
+  df.marcar(escopo, data, chave, v == null ? null : v >= meta, v).then(() => desenhar()).catch((err) => alert(`Não foi possível marcar (${err.message || err}).`));
 });
 
 // bonequinho do escritório como foto do perfil (nenhuma foto é guardada)
@@ -792,7 +799,8 @@ function nomesDeFuncionarios(eqp, CFG) {
 // Ex-funcionários (pedido do Marcos, 19/11/2026): saem de todas as listas de pessoas do sistema (RH, alocação, agenda, executor). A lista vem daqui e da configuração funcionarios.desligados.
 const DESLIGADOS_BASE = ['william', 'uilson', 'romulo max', 'jose claudiano', 'jose cristiano', 'jorge pimentel'];
 const semAc = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim();
-const ehDesligado = (nome) => { const k = semAc(nome); return [...DESLIGADOS_BASE, ...(listaConfig('funcionarios.desligados') || [])].some((d) => semAc(d) === k); };
+const FORA_DA_DISTRIBUICAO = ['enio'];   // o Enio é gestor do pós-obra: não entra na distribuição de funcionários (pedido do Marcos, 20/11/2026); continua como login e executor de tarefas
+const ehDesligado = (nome) => { const k = semAc(nome); return [...DESLIGADOS_BASE, ...FORA_DA_DISTRIBUICAO, ...(listaConfig('funcionarios.desligados') || [])].some((d) => semAc(d) === k); };
 function tirarDesligados(eqp, CFG) {
   if (eqp && Array.isArray(eqp.pessoas)) { eqp._pessoasTodas = eqp._pessoasTodas || eqp.pessoas; eqp.pessoas = eqp._pessoasTodas.filter((p) => !ehDesligado(p.nome)); }
   if (CFG && Array.isArray(CFG.funcionariosRH)) { CFG._rhTodos = CFG._rhTodos || CFG.funcionariosRH; CFG.funcionariosRH = CFG._rhTodos.filter((p) => !ehDesligado(p && p.nome)); }

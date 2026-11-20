@@ -62,7 +62,7 @@ export function render({ hoje = hojeISO(), obrasCad = [], orcs = [], podeEditar 
   const obras = obrasCad.filter((c) => tipoDe(c) === 'obra' && situacaoDe(c) !== 'finalizada' && /^mo/i.test(String(c.codigo))).sort((a, b) => nomeNumero(a.codigo, b.codigo));
   const emCurso = obras.map((c) => { const l = porCod[String(c.codigo).toUpperCase()] || null; return linhaObra(c.codigo, c, l, 'cg-obra', { parada: situacaoDe(c) === 'pausada' }); });
   // 2) pós-obras com mais de 4 semanas de serviço
-  const pos = linhas.filter((l) => /^po/i.test(String(l.codigo)) && (totalSemanas(l.inicio, l.fim) || 0) > 4 && (!l.fim || l.fim >= seg0)
+  const pos = linhas.filter((l) => /^po/i.test(String(l.codigo)) && ((totalSemanas(l.inicio, l.fim) || 0) > 4 || (l.inicio && !l.fim)) && (!l.fim || l.fim >= seg0)
     && (!cad(l.codigo) || situacaoDe(cad(l.codigo)) !== 'finalizada')).sort((a, b) => nomeNumero(a.codigo, b.codigo));
   const linhasPos = pos.map((l) => linhaObra(l.codigo, cad(l.codigo), l, 'cg-pos'));
   // 3) orçamentos que acreditamos fechar

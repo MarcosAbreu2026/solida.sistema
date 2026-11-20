@@ -18,3 +18,4 @@ drop policy if exists chk_ler on public.checagem_dia;
 create policy chk_ler on public.checagem_dia for select to authenticated using (public.liberado());
 drop policy if exists chk_gravar on public.checagem_dia;
 create policy chk_gravar on public.checagem_dia for all to authenticated using (public.checagem_edita()) with check (public.checagem_edita());
+alter table public.checagem_dia add column if not exists qtd numeric;   -- quantidade feita no item, quando diferente da meta (20/11/2026)
