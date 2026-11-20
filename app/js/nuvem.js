@@ -596,6 +596,17 @@ export async function gravarCronogramaObra(linha) {
   if (error) throw new Error(error.message);
 }
 
+// ---------------------------------------------------------------- checagem do dia (supabase/39-checagem-do-dia.sql)
+export async function listarChecagem(escopo, de, ate) {
+  const { data, error } = await sb.from('checagem_dia').select('data,chave,feito').eq('escopo', escopo).gte('data', de).lte('data', ate);
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+export async function gravarChecagem({ escopo, data, chave, feito }) {
+  const { error } = await sb.from('checagem_dia').upsert({ escopo, data, chave, feito, atualizado_em: new Date().toISOString() }, { onConflict: 'escopo,data,chave' });
+  if (error) throw new Error(error.message);
+}
+
 // ---------------------------------------------------------------- setores / departamentos cadastráveis (supabase/13-setores.sql)
 export async function listarSetores() {
   const { data, error } = await sb.from('setores').select('nome').order('ordem').order('nome');

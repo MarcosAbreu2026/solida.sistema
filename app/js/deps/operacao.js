@@ -80,6 +80,8 @@ export function painel(ctx) {
   return html`${pd.pergunta(ctx.dep.pergunta)}
     ${avisoLeitura(ctx, 'Base: leitura dos agentes')}
     ${pd.secao('Cronograma geral de obras', 'Obras em andamento nos próximos 4 meses, semana a semana · pós-obras com mais de 4 semanas · orçamentos que acreditamos fechar', ctx.cronogramaGeral ? html.seguro(ctx.cronogramaGeral()) : '', { id: 'cronograma-geral' })}
+    ${pd.secao('Dia a dia das obras', 'Dia útil anterior (marque feito ou não feito), hoje e os dois próximos dias úteis: quem está em cada obra e a meta do dia · feriado e fim de semana não entram (a Mo602 funciona todos os dias)', ctx.diaFocoOp ? html.seguro(ctx.diaFocoOp({ obras: ctx.obrasAndamento && ctx.obrasAndamento.length ? ctx.obrasAndamento : obras.map((o) => o.obra), itensDoDia: (cod, d) => oc.itensDoDia(ctx, cod, d).itens, semProgramacao: (cod) => !oc.progDa(ctx, cod) })) : '')}
+    ${pd.secao('Pendências do departamento', 'Resumo das pendências da Operação: o que está atrasado, o que vence na semana e quem está com cada uma', ctx.pendenciasDep ? html.seguro(ctx.pendenciasDep(ctx.dep.setor)) : '')}
     ${pd.secao('Alocação das obras em andamento', 'Arraste o funcionário para a obra e o dia (semana atual, próximas e anteriores) · a outra aba mostra onde cada funcionário está na semana, com uma cor por função', ctx.quadroAloc ? html.seguro(ctx.quadroAloc()) : '')}
     ${pd.secao('Resumo das obras', `Fonte: planejamento e grupos das obras · leitura ${leitura}`, resumo)}
     ${pd.secao('Datas dos cronogramas no Drive', 'Fonte: cronogramas no Drive (GERENCIAMENTO › CRONOGRAMA)', pd.tabela(['Obra', 'Início', 'Término contratual', 'Previsão atual', 'Desvio × contrato', 'Semanas até a previsão', 'Avanço médio', 'Situação'], cronLinhas))}

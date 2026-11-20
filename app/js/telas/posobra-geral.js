@@ -9,6 +9,8 @@ import { depPorId } from '../organograma.js';
 import { reprogramado, tituloReprogramacao } from '../servicos-pos.js';
 import { chipSituacao, chipPrazo, rotaObra, fmt } from '../componentes.js';
 import { gruposDeObras } from './atas.js';
+import { feriado } from '../feriados.js';
+import { listaConfig } from '../config.js';
 
 const DIAS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const dm = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
@@ -177,6 +179,28 @@ export function pessoasSoNaPlanilha(base, equipeProg) {
 // chave que iguala as formas de escrever a mesma obra (Po577 · PO577 · PO577 - nome · Mo358)
 const chaveObra = (n) => { const s = String(n || '').trim(); const m = /^(?:mo|po)s*[-_]?s*(d+[a-z]?)/i.exec(s); return m ? `${/^mo/i.test(s) ? 'mo' : 'po'}${m[1].toLowerCase()}` : s.toLowerCase(); };
 export const PERIODO_ROT = { dia: 'dia todo', manha: 'manhã', tarde: 'tarde' };
+// funcionários do pós-obra (quem acompanha os dias livres deles é o pós-obra); a lista pode ser trocada em Configurações (chave funcionarios.posobra)
+export const EQUIPE_POS_PADRAO = ['Nascimento', 'Cleviano', 'Carlos'];
+export const equipePos = () => { const l = listaConfig('funcionarios.posobra'); return l && l.length ? l : EQUIPE_POS_PADRAO; };
+const primeiroNome = (n) => semAcento(limparNomeAg(n)).split(' ')[0];
+// quem do pós-obra está livre em cada dia: sem cartão em nenhuma obra (nem na planilha); "manhã livre" / "tarde livre" quando só trabalha meio período
+export function blocoLivres(dia, opcoes = {}) {
+  if (feriado(dia)) return '';
+  const l = livresDoDia(dia, opcoes);
+  return html`<div class="df-livres"><b>Livres no pós-obra</b>${l.length ? l.map((x) => html`<span class="ap-livre ${x.livre !== 'dia' ? 'ap-livre-meio' : ''}">${x.nome}${x.livre !== 'dia' ? html` <small>${PERIODO_ROT[x.livre]} livre</small>` : ''}</span>`) : html`<span class="ap-todos">todos alocados</span>`}</div>`;
+}
+export function livresDoDia(dia, { linhasAgenda = [], base = { agenda: [] }, equipe = equipePos() } = {}) {
+  const ocupado = new Map();   // primeiro nome → { manha, tarde }
+  const marca = (nome, periodo) => { const k = primeiroNome(nome); const o = ocupado.get(k) || { manha: false, tarde: false }; if (periodo !== 'tarde') o.manha = true; if (periodo !== 'manha') o.tarde = true; ocupado.set(k, o); };
+  for (const l of linhasAgenda) if (l.data === dia) marca(l.pessoa, l.periodo || 'dia');
+  for (const a of base.agenda || []) if (a.data === dia) for (const n of (a.pessoas && a.pessoas.length ? a.pessoas : [])) marca(n, 'dia');
+  return equipe.map((nome) => {
+    const o = ocupado.get(primeiroNome(nome));
+    if (!o) return { nome, livre: 'dia' };
+    if (o.manha && o.tarde) return null;
+    return { nome, livre: o.manha ? 'tarde' : 'manha' };
+  }).filter(Boolean);
+}
 export function renderAgenda({ base, semanaIni, linhasAgenda, podeEditar, selecionado, erro, extras = [], equipeProg = null, obrasLista = [] }) {
   const todasEm = obrasEmAndamento(base);
   const dias = DIAS.map((_, i) => somarDias(semanaIni, i));
@@ -210,9 +234,18 @@ export function renderAgenda({ base, semanaIni, linhasAgenda, podeEditar, seleci
     <div class="atual"><span>Semana</span><b>${dm(semanaIni)} a ${dm(somarDias(semanaIni, 5))}</b></div>
     <button type="button" class="botao" data-ap-sem="hoje">Esta semana</button>
     <button type="button" class="botao" data-ap-sem="${somarDias(semanaIni, 7)}">Próxima semana →</button>
+    <button type="button" class="botao" data-imprimir="" title="Imprimir a agenda da semana (ou salvar em PDF)">🖨 Imprimir</button>
   </div>`;
+  const equipe = equipePos();
+  const rodapeLivres = html`<tfoot><tr class="ap-livres"><th class="ap-obra">Funcionários livres<small>pós-obra: ${equipe.join(', ')}</small></th>${dias.map((d, i) => {
+    const fer = feriado(d); if (i === 5) return html`<td class="ap-livre-vazio">—</td>`;
+    if (fer) return html`<td class="ap-feriado" title="${fer}">feriado<small>${fer}</small></td>`;
+    const l = livresDoDia(d, { linhasAgenda, base, equipe });
+    return html`<td class="ap-livre-cel">${l.length ? l.map((x) => html`<span class="ap-livre ${x.livre !== 'dia' ? 'ap-livre-meio' : ''}">${x.nome}${x.livre !== 'dia' ? html` <small>${PERIODO_ROT[x.livre]} livre</small>` : ''}</span>`) : html`<span class="ap-todos">todos alocados</span>`}</td>`;
+  })}</tr></tfoot>`;
   const faltam = podeEditar ? daPlanilha(base, semanaIni).filter((n) => !linhasAgenda.some((x) => x.data === n.data && x.obra === n.obra && x.pessoa === n.pessoa)).length : 0;
   return html`<section class="ap">
+    <h2 class="ap-sem-tit">Pós-obra · semana de ${dm(semanaIni)} a ${dm(somarDias(semanaIni, 5))}/${somarDias(semanaIni, 5).slice(0, 4)}</h2>
     ${nav}
     ${faltam ? html`<p class="ap-importar"><button type="button" class="botao" data-ap-importar>Trazer da planilha: preencher a semana com os ${faltam} nomes que já estão lá</button> <span class="pequeno">cria os cartões na agenda; depois você move e tira como quiser</span></p>` : ''}
     ${erro ? html`<p class="erro">${erro}</p>` : ''}
@@ -223,7 +256,7 @@ export function renderAgenda({ base, semanaIni, linhasAgenda, podeEditar, seleci
           <b>${e.profissional}</b><small>${e.funcao || ''}${e.vinculo ? ` · ${e.vinculo}` : ''}</small><span class="ap-n">${naSemana(e.profissional)} ${naSemana(e.profissional) === 1 ? 'dia' : 'dias'}</span></div>`)}
       </aside>` : ''}
       <div class="ap-grade tabela-rolagem"><table class="ap-tab"><thead><tr><th>Obra</th>${dias.map((d, i) => html`<th>${DIAS[i]} <small>${dm(d)}</small></th>`)}</tr></thead>
-        <tbody>${obras.map((o) => { const pt = partesObra(o); return html`<tr><th class="ap-obra"><a href="${/^po/i.test(o.obra) ? rotaObra(o.obra) : `#/obra/${encodeURIComponent(o.obra)}`}" title="${pt.sub}">${pt.titulo}</a><small>${pt.sub || o.situacao || ''}</small>${podeEditar && extras.includes(o.obra) && !comMovimento(o) ? html`<button type="button" class="ac-mini" data-ap-tirar-obra="${o.obra}">tirar da semana</button>` : ''}</th>${dias.map((d) => celula(o, d))}</tr>`; })}</tbody></table>
+        <tbody>${obras.map((o) => { const pt = partesObra(o); return html`<tr><th class="ap-obra"><a href="${/^po/i.test(o.obra) ? rotaObra(o.obra) : `#/obra/${encodeURIComponent(o.obra)}`}" title="${pt.sub}">${pt.titulo}</a><small>${pt.sub || o.situacao || ''}</small>${podeEditar && extras.includes(o.obra) && !comMovimento(o) ? html`<button type="button" class="ac-mini" data-ap-tirar-obra="${o.obra}">tirar da semana</button>` : ''}</th>${dias.map((d) => celula(o, d))}</tr>`; })}</tbody>${rodapeLivres}</table>
         ${!obras.length ? html`<p class="vazio">Ninguém escalado nesta semana. Escolha um pós-obra abaixo ou traga o que está na planilha.</p>` : ''}
         ${podeEditar && nomesParaEscolher.length ? html`<p class="ap-mais"><label>+ Adicionar obra à semana <select data-ap-mais><option value="">escolher…</option>${gruposDeObras(nomesParaEscolher, '')}</select></label></p>` : ''}</div>
     </div>

@@ -49,6 +49,7 @@ import * as osq from './os-quadro.js';
 import * as tcq from './terc-quadro.js';
 import * as oq from './orc-quadro.js';
 import * as cg from './cronograma-geral.js';
+import * as df from './dia-foco.js';
 import * as aloc from './alocacao.js';
 import * as reunioes from './reunioes.js';
 import * as poConcluir from './po-concluir.js';
@@ -295,6 +296,7 @@ function ctxPosObra() {
   garantirOsCarregadas(); garantirAtasCarregadas('#posobra-painel'); carregarAgendaSemana();
   const podeEditar = podeEditarPos();
   return {
+    diaPos: diaFocoPos, pendPos: () => pendenciasDep('Pós-obra'),
     quadroOs: () => String(osq.renderQuadro({ params: rotaAtual().params, podeEditar, clientesPos: posObrasAtivas(), pendencias: atas.todasPendencias() })),
     agendaPos: () => (estado.base ? String(posGeral.renderAgenda({ base: estado.base, semanaIni: estado.posAgenda.semana, linhasAgenda: agendaPos.linhas, podeEditar, selecionado: estado.posAgenda.sel, erro: agendaPos.erro, extras: apExtras(), obrasLista: obrasDeAtas(), equipeProg: estado.equipeProg })) : ''),
   };
@@ -550,6 +552,7 @@ function ctxPainel(dep, area) {
     ...(dep && dep.id === 'orc-terceirizado' ? ctxTerc() : {}),
     ...(dep && dep.id === 'operacao' ? { ...ctxAlocacao(), ...ctxCronograma() } : {}),
     ...(dep && dep.id === 'orcamentos' ? ctxOrcQuadro() : {}),
+    diaFocoOp: diaFocoOperacao, pendenciasDep, obrasAndamento: alocObras(),
     alocObra: { semana: inicioDaSemana(hojeISO()), linhas: alocDaSemana(inicioDaSemana(hojeISO())) } };
 }
 // Operações: quadro de alocação (funcionários × obras em andamento × dias) e a visão funcionários × semana
@@ -579,6 +582,7 @@ function alocPosDaSemana(seg) {
 }
 const alocObras = () => (estado.obrasCad || []).filter((c) => ativaNasListas(c) && c.situacao !== 'pausada' && /^mo/i.test(String(c.codigo))).map((c) => c.codigo).sort(numerico);
 function ctxAlocacao() {
+  garantirAtasCarregadas('#operacao');
   carregarAloc();
   return { quadroAloc: () => { const a = alocSem(); return String(aloc.render({ semanaIni: a.semana, vista: a.vista, podeEditar: podeEditarAloc(), obras: alocObras(), equipeProg: estado.equipeProg, selecionado: a.sel, posLinhas: alocPosDaSemana(a.semana) })); } };
 }
@@ -606,6 +610,43 @@ function ctxCronograma() {
   carregarOrcCron();
   return { cronogramaGeral: () => String(cg.render({ hoje: hojeISO(), obrasCad: estado.obrasCad || [], orcs: oq.lista, podeEditar: podeEditarCron() })) };
 }
+
+// ---- Dia a dia (dia útil anterior · hoje · próximos 2 dias úteis) e pendências do departamento
+const checksPedidos = {};
+function garantirChecks(escopo, de, ate) {
+  const k = `${escopo}|${de}|${ate}`; if (checksPedidos[k] && Date.now() - checksPedidos[k] < 60000) return;
+  checksPedidos[k] = Date.now();
+  df.carregarChecks(escopo, de, ate).then((mudou) => { if (mudou && !emEdicao()) desenhar(); });
+}
+const alocOpCache = {};
+function alocOpDaSemana(seg) {
+  const c = alocOpCache[seg]; if (c && Date.now() - c.t < 60000) return c.linhas || [];
+  alocOpCache[seg] = { linhas: c ? c.linhas : null, t: Date.now() };
+  aloc.buscar(seg, somarDias(seg, 5)).then((l) => { const mudou = JSON.stringify((alocOpCache[seg] || {}).linhas) !== JSON.stringify(l); alocOpCache[seg] = { linhas: l, t: Date.now() }; if (mudou && !emEdicao()) desenhar(); });
+  return c ? c.linhas || [] : [];
+}
+const semanasDosDias = (dias) => [...new Set(dias.map((d) => inicioDaSemana(d.data)))];
+function diaFocoPos() {
+  const f = df.diasDoFoco(hojeISO()); const [de, ate] = df.faixaDeDias(f.dias); garantirChecks('posobra', de, ate);
+  const linhas = semanasDosDias(f.dias).flatMap((s) => alocPosDaSemana(s));
+  const base = estado.base || { agenda: [], obraPorNome: new Map() };
+  return String(df.renderDias({ escopo: 'posobra', dias: f.dias, aviso: f.aviso, podeChecar: podeEditarPos(), vazio: 'Nenhum pós-obra programado.',
+    cartoes: (d) => df.cartoesPos({ dia: d.data, linhas, base, osLista: osq.lista }),
+    livres: (d) => posGeral.blocoLivres(d.data, { linhasAgenda: linhas, base }) }));
+}
+function diaFocoOperacao({ obras, itensDoDia = () => [], semProgramacao = () => false, cod = '' }) {
+  const f = df.diasDoFoco(hojeISO(), cod); const [de, ate] = df.faixaDeDias(f.dias); garantirChecks('operacao', de, ate);
+  const linhas = semanasDosDias(f.dias).flatMap((s) => alocOpDaSemana(s));
+  return String(df.renderDias({ escopo: 'operacao', dias: f.dias, aviso: cod && df.trabalhaTodoDia(cod) ? 'Esta obra funciona também em feriados e fins de semana: todos os dias valem.' : f.aviso, podeChecar: podeEditarAloc(), vazio: 'Nenhuma obra para este dia.',
+    cartoes: (d) => df.cartoesOperacao({ dia: d.data, obras, linhas, itensDoDia, semProgramacao }) }));
+}
+const pendenciasDoSetor = (setor) => atas.todasPendencias().filter((p) => p.setor === setor && p.status !== 'cancelada' && p.na_lista !== false);
+const pendenciasDep = (setor) => String(df.renderPendenciasDep({ pendencias: pendenciasDoSetor(setor), hoje: hojeISO(), visao: rotaAtual().params.get('pdv') || 'kanban' }));
+document.addEventListener('click', (e) => {
+  const b = e.target.closest && e.target.closest('[data-dia-chk]'); if (!b) return;
+  const [escopo, data, chave, v] = b.dataset.diaChk.split('|');
+  df.marcar(escopo, data, chave, v === '1').then(() => desenhar()).catch((err) => alert(`Não foi possível marcar (${err.message || err}).`));
+});
 
 // bonequinho do escritório como foto do perfil (nenhuma foto é guardada)
 function desenharAvatares(raiz = document) {

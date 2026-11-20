@@ -4,6 +4,8 @@
 // Na nuvem: tabela alocacao_obras (supabase/33-alocacao-obras.sql); no computador do escritório (teste): neste navegador.
 import { html } from './formato.js';
 import { somarDias } from './datas.js';
+import { feriado } from './feriados.js';
+import { listaConfig } from './config.js';
 import { NA_NUVEM, listarAlocacao, criarAlocacao, atualizarAlocacao, apagarAlocacao, listarAgendaPos } from './nuvem.js';
 
 const CHAVE = 'solida.alocacaoObras';
@@ -87,6 +89,16 @@ export function render({ semanaIni, vista, podeEditar, obras = [], equipeProg = 
   const emPos = (nome, d) => (posLinhas || []).some((l) => l.data === d && (chaveNome(l.pessoa) === chaveNome(nome) || (primeiro(nome).length > 2 && primeiro(l.pessoa) === primeiro(nome))));
   const posPeriodo = (nome, d) => { const l = (posLinhas || []).find((x) => x.data === d && (chaveNome(x.pessoa) === chaveNome(nome) || (primeiro(nome).length > 2 && primeiro(x.pessoa) === primeiro(nome)))); return (l && l.periodo) || 'dia'; };
   const diasTotais =(nome) => new Set([...linhas.filter((l) => chaveNome(l.pessoa) === chaveNome(nome)).map((l) => l.data), ...dias.filter((d) => emPos(nome, d))]).size;
+  // funcionários livres da OPERAÇÃO (quem acompanha é a Simone ou o gestor de obra): sem obra no dia e sem pós-obra. O pessoal do pós-obra tem a linha própria na agenda do pós-obra.
+  const equipePosNomes = () => { const l = listaConfig('funcionarios.posobra'); return (l && l.length ? l : ['Nascimento', 'Cleviano', 'Carlos']).map(primeiro); };
+  const ehDoPos = (n) => { const p = primeiro(n); return equipePosNomes().includes(p) && todos.filter((g) => primeiro(g.nome) === p).length <= 1; };   // dois "Carlos" no RH: não dá para saber qual é o do pós-obra, ficam na operação
+  const livresOperacao = (d) => todos.filter((g) => !ehDoPos(g.nome) && !linhas.some((l) => l.data === d && chaveNome(l.pessoa) === chaveNome(g.nome)) && !emPos(g.nome, d));
+  const rodapeLivres = () => html`<tfoot><tr class="ap-livres"><th class="ap-obra">Funcionários livres<small>operação · sem obra no dia</small></th>${dias.map((d, i) => {
+    const fer = feriado(d); if (i === 5) return html`<td class="ap-livre-vazio">—</td>`;
+    if (fer) return html`<td class="ap-feriado" title="${fer}">feriado<small>${fer}</small></td>`;
+    const l = livresOperacao(d);
+    return html`<td class="ap-livre-cel">${l.length ? l.map((g) => html`<span class="ap-livre al-livre" style="border-color:${corDaFuncao(g.funcao)}" title="${g.funcao || ''}">${g.nome}</span>`) : html`<span class="ap-todos">todos alocados</span>`}</td>`;
+  })}</tr></tfoot>`;
   let corpo;
   if (vista === 'func') {
     const nomes = [...new Set([...todos.map((g) => g.nome), ...linhas.map((l) => l.pessoa)])].sort((a, b) => a.localeCompare(b, 'pt-BR'));
@@ -111,7 +123,7 @@ export function render({ semanaIni, vista, podeEditar, obras = [], equipeProg = 
         ${todos.map((e) => html`<div class="ap-card al-card ${selecionado === e.nome ? 'sel' : ''}" style="border-left:4px solid ${corDaFuncao(e.funcao)}" draggable="true" data-al-pessoa="${e.nome}"><b>${e.nome}</b><small>${e.funcao || ''}</small><span class="ap-n">${naSemana(e.nome)} ${naSemana(e.nome) === 1 ? 'dia' : 'dias'}</span></div>`)}
         ${todos.length ? '' : html`<p class="pequeno">Sem funcionários lidos do RH ainda.</p>`}</aside>` : ''}
       <div class="ap-grade tabela-rolagem"><table class="ap-tab"><thead><tr><th>Obra em andamento</th>${dias.map((d, i) => html`<th>${DIAS[i]} <small>${dm(d)}</small></th>`)}</tr></thead>
-        <tbody>${obras.map((o) => html`<tr><th class="ap-obra"><a href="#/obra/${encodeURIComponent(o)}">${o}</a></th>${dias.map((d) => celula(o, d))}</tr>`)}</tbody></table>
+        <tbody>${obras.map((o) => html`<tr><th class="ap-obra"><a href="#/obra/${encodeURIComponent(o)}">${o}</a></th>${dias.map((d) => celula(o, d))}</tr>`)}</tbody>${rodapeLivres()}</table>
         ${obras.length ? '' : html`<p class="vazio">Nenhuma obra em andamento no cadastro.</p>`}</div></div>`;
   }
   return html`<section class="ap al"><h2 class="al-imp-tit">${vista === 'func' ? 'Funcionários da semana' : 'Obras da semana'} · ${dm(semanaIni)} a ${dm(somarDias(semanaIni, 5))}</h2>${nav}${erro ? html`<p class="erro">${erro}</p>` : ''}

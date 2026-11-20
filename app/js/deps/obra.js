@@ -109,9 +109,10 @@ export function resumo(ctx, cod) {
 
   // Meta do dia (resultado de ontem, meta de hoje e de amanhã) e "Como a meta chega ao canteiro": tirados por enquanto, a ser repensados
   return html`<div class="pd-sec-h"><h2>Visão da obra</h2><a class="pd-bt pd-bt-cheio pd-so-celular" href="#/celular/${encodeURIComponent(cod)}">Abrir celular da obra</a></div>
+    ${pd.secao('Dia a dia desta obra', `Dia útil anterior (marque feito ou não feito), hoje e os próximos dois dias úteis: quem está na obra e a meta do dia · a programação semanal e a meta da semana vêm logo abaixo${oc.progDa(ctx, cod) ? '' : ' · esta obra está SEM programação semanal na pasta: o gestor precisa lançar'}`, ctx.diaFocoOp ? html.seguro(ctx.diaFocoOp({ obras: [cod], cod, itensDoDia: (c, d) => oc.itensDoDia(ctx, c, d).itens, semProgramacao: (c) => !oc.progDa(ctx, c) })) : '')}
+    ${progObra.secoes(ctx, oc.projetoDa(ctx, cod), cod)}
     ${plan}
     ${blocos}
-    ${progObra.secoes(ctx, oc.projetoDa(ctx, cod), cod)}
     ${ctx.alocObra && ctx.alocObra.linhas ? pd.secao('Equipe alocada nesta semana', 'Do quadro de alocação (Operações): quem vai para esta obra em cada dia', equipeDaObraHtml(cod, ctx.alocObra.semana, ctx.alocObra.linhas)) : ''}
     ${pd.secao('Quem precisa agir nesta obra', 'Alertas dos agentes que citam a obra · alerta vira tarefa com data-limite', pd.quemAgir(agir, { obra: cod, setor: 'Operação' }))}
     ${pd.secao('Escopo e aditivos', es && es.arquivo ? `Drive · ${es.arquivo}${ctx.veValores ? '' : ' · valores só para sócios'}` : '', escopo)}`;

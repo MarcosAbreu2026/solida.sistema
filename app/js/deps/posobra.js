@@ -101,6 +101,8 @@ export function painel(ctx) {
 
   return html`${pd.pergunta(ctx.dep.pergunta)}
     ${avisoFonte(base)}
+    ${pd.secao('Dia a dia do pós-obra', 'Dia útil anterior (marque feito ou não feito), hoje e os dois próximos dias úteis: quem vai a cada pós-obra e o resumo dos serviços · feriado e fim de semana não entram', ctx.diaPos ? html.seguro(ctx.diaPos()) : '')}
+    ${pd.secao('Pendências do departamento', 'O que está parado e o que está andando: Kanban por prazo ou por responsável · clique na tarefa para abrir', ctx.pendPos ? html.seguro(ctx.pendPos()) : '')}
     ${pd.secao('Solicitações: do pedido ao serviço concluído', 'Situações como estão no controle operacional. O mapeamento para solicitado, orçamento, a agendar, agendado e finalizado precisa ser confirmado.', fases)}
     ${pd.secao('Outros estados no controle', 'Fonte: Controle Operacional Pós-Obra', outros)}
     ${pd.secao('Controle de obras', 'A lista do Controle Operacional (planilha) com os pós-obras e as OS do sistema: situação, relato, responsável, prazo e tarefas abertas', html`<a class="botao on" href="#/posobra/controle">Abrir o controle de obras →</a>`)}

@@ -152,7 +152,7 @@ export function renderQuadro({ params, podeEditar, clientesPos = [], semFiltros 
   const cartao = (o) => {
     return html`<article class="at-card osq-card" data-osq="${o.id}" ${podeEditar ? html.seguro('draggable="true"') : ''} title="Clique para abrir${podeEditar ? ' · arraste para mudar o status' : ''}">
       <div class="at-tit"><b>${o.cliente}</b>${o.assunto ? `, ${o.assunto}` : ''}</div>
-      <div class="at-meta"><span class="at-chip">${o.codigo}</span>${(o.fotos || []).length ? html`<span class="at-chip">📷 ${o.fotos.length}</span>` : ''}${chipTarefas(o)}${chipCobranca(o)}</div>${listaTarefas(o)}</article>`;
+      <div class="at-meta"><span class="at-chip">${o.codigo}</span>${(o.fotos || []).length ? html`<span class="at-chip">📷 ${o.fotos.length}</span>` : ''}${chipTarefas(o)}${chipCobranca(o)}</div></article>`;
   };
   return html`<section class="osq">
     ${erro ? html`<p class="erro">${erro}</p>` : ''}
