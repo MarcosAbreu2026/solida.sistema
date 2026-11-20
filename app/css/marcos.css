@@ -1519,3 +1519,7 @@ td.cg-sem-data { background: #fff8e1; color: #8a6d00; font-style: italic; font-s
 .df-urg { background: #fde2df; color: #9B3A33; font-weight: 700; }
 .df-resp-lista { padding: 6px 14px 10px; display: grid; gap: 6px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
 @media (max-width: 900px) { .df-grade { grid-template-columns: 1fr !important; } }
+.df-quem { list-style: none; margin: 4px 0 0; padding: 0; }
+.df-quem li { margin: 3px 0; font-size: 12px; line-height: 1.35; }
+.df-quem .df-livre-sem i { color: #9a6a00; }
+.df-origem { margin: 4px 0 0; font-size: 10px; color: #888; font-style: italic; }

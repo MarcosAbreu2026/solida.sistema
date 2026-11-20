@@ -4,6 +4,7 @@
 import { html } from '../formato.js';
 import * as pd from '../telas/painel-dep.js';
 import * as oc from './obras-comum.js';
+import { programadorDoCtx } from '../programar-dia.js';
 import { somarDias } from '../datas.js';
 import * as progObra from '../telas/prog-obra.js';
 import { equipeDaObraHtml } from '../alocacao.js';
@@ -109,7 +110,7 @@ export function resumo(ctx, cod) {
 
   // Meta do dia (resultado de ontem, meta de hoje e de amanhã) e "Como a meta chega ao canteiro": tirados por enquanto, a ser repensados
   return html`<div class="pd-sec-h"><h2>Visão da obra</h2><a class="pd-bt pd-bt-cheio pd-so-celular" href="#/celular/${encodeURIComponent(cod)}">Abrir celular da obra</a></div>
-    ${pd.secao('Dia a dia desta obra', `Dia útil anterior (marque feito ou não feito), hoje e os próximos dois dias úteis: quem está na obra e a meta do dia · a programação semanal e a meta da semana vêm logo abaixo${oc.progDa(ctx, cod) ? '' : ' · esta obra está SEM programação semanal na pasta: o gestor precisa lançar'}`, ctx.diaFocoOp ? html.seguro(ctx.diaFocoOp({ obras: [cod], cod, itensDoDia: (c, d) => oc.itensDoDia(ctx, c, d).itens, semProgramacao: (c) => !oc.progDa(ctx, c) })) : '')}
+    ${pd.secao('Dia a dia desta obra', `Dia útil anterior (marque feito ou não feito), hoje e os próximos dois dias úteis: quem está na obra e a meta do dia · a programação semanal e a meta da semana vêm logo abaixo${oc.progDa(ctx, cod) ? '' : ' · esta obra está SEM programação semanal na pasta: o gestor precisa lançar'}`, ctx.diaFocoOp ? html.seguro(ctx.diaFocoOp({ obras: [cod], cod, itensDoDia: (c, d) => oc.itensDoDia(ctx, c, d).itens, semProgramacao: (c) => !oc.progDa(ctx, c), programar: programadorDoCtx(ctx) })) : '')}
     ${progObra.secoes(ctx, oc.projetoDa(ctx, cod), cod)}
     ${plan}
     ${blocos}

@@ -65,7 +65,9 @@ export function renderDias({ escopo, dias, aviso = '', cartoes, livres = null, p
     const m = marcas[`${d.data}|${c.chave}`];
     return html`<article class="df-card ${d.tipo === 'anterior' && m === true ? 'df-ok' : d.tipo === 'anterior' && m === false ? 'df-nao' : ''}">
       <div class="df-tit">${c.link ? html`<a href="${c.link}">${c.titulo}</a>` : html`<b>${c.titulo}</b>`}${c.sub ? html`<small>${c.sub}</small>` : ''}</div>
-      ${(c.pessoas || []).length ? html`<div class="df-pes">${c.pessoas.map((p) => html`<span class="df-chip">${p.nome}${p.periodo && p.periodo !== 'dia' ? html` <small>${PER[p.periodo] || ''}</small>` : ''}</span>`)}</div>` : html`<div class="df-pes"><span class="df-sem">sem funcionário alocado</span></div>`}
+      ${(c.pessoas || []).some((p) => p.tarefa !== undefined) ? html`<ul class="df-quem">${c.pessoas.map((p) => html`<li class="${p.livre ? 'df-livre-sem' : ''}"><span class="df-chip">${p.nome}${p.periodo && p.periodo !== 'dia' ? html` <small>${PER[p.periodo] || ''}</small>` : ''}</span> ${p.livre ? html`<i>livre, sem tarefa</i>` : p.tarefa}</li>`)}</ul>`
+        : (c.pessoas || []).length ? html`<div class="df-pes">${c.pessoas.map((p) => html`<span class="df-chip">${p.nome}${p.periodo && p.periodo !== 'dia' ? html` <small>${PER[p.periodo] || ''}</small>` : ''}</span>`)}</div>` : html`<div class="df-pes"><span class="df-sem">sem funcionário alocado</span></div>`}
+      ${c.origem ? html`<p class="df-origem">${c.origem}</p>` : ''}
       ${(c.itens || []).length ? html`<ul class="df-itens">${c.itens.map((t) => html`<li>${t}</li>`)}</ul>` : ''}
       ${c.aviso ? html`<p class="df-aviso">${c.aviso}</p>` : ''}
       ${d.tipo === 'anterior' ? html`<div class="df-chk"><span class="pequeno">Foi feito?</span>
@@ -108,10 +110,14 @@ export function cartoesPos({ dia, linhas = [], base = { agenda: [], obraPorNome:
 
 // ---------------------------------------------------------------- cartões de Operações (uma obra por cartão) e de uma obra
 // obras: códigos em andamento; linhas: alocação das obras; itensDoDia(cod, dia) → [{ item, meta, unidade }]
-export function cartoesOperacao({ dia, obras = [], linhas = [], itensDoDia = () => [], semProgramacao = () => false }) {
+export function cartoesOperacao({ dia, obras = [], linhas = [], itensDoDia = () => [], semProgramacao = () => false, programar = null }) {
   const txt = (i) => `${i.item}${i.meta != null ? `: ${Number(i.meta).toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${i.unidade || ''}` : ''}`.trim();
   return obras.filter((cod) => ehDiaUtil(dia, cod)).map((cod) => {
     const pessoas = linhas.filter((l) => l.data === dia && l.obra === cod).map((l) => ({ nome: l.pessoa, periodo: l.periodo || 'dia' }));
+    if (programar) {   // quem executa o quê: programação da pasta ou montada pela meta da semana × produtividade (programar-dia.js)
+      const r = programar(cod, dia, pessoas);
+      return { chave: cod, titulo: cod, link: `#/obra/${encodeURIComponent(cod)}`, pessoas: r.pessoas, itens: r.itens.slice(0, 6), aviso: r.aviso, origem: r.origem };
+    }
     const itens = itensDoDia(cod, dia).filter((i) => i.item).map(txt).slice(0, 4);
     return { chave: cod, titulo: cod, link: `#/obra/${encodeURIComponent(cod)}`, pessoas, itens, aviso: !itens.length ? (semProgramacao(cod) ? 'Sem programação semanal na pasta da obra.' : 'Sem meta para este dia.') : '' };
   });

@@ -22,12 +22,13 @@ const SEM_MEDIDA = new Set(['verb', 'vb', 'serv', 'comp', 'dia', 'mes']);   // v
 // profissional da planilha de produtividade → nome curto (igual ao da distribuição)
 const PROF = [[/pedreiro/, 'pedreiro', 'pedreiro'], [/ajudante/, 'ajudante', 'ajudante'], [/eletricista/, 'eletricista', 'eletricista'], [/bombeiro/, 'bombeiro', 'bombeiro hidráulico'],
   [/pintor/, 'pintor', 'pintor'], [/montador|gesseiro/, 'gesseiro', 'montador de drywall / gesseiro'], [/carpinteiro/, 'carpinteiro', 'carpinteiro']];
+export const canonProf = (n) => (PROF.find(([re]) => re.test(norm(n))) || [null, norm(n), n])[1];
 const canon = (n) => (PROF.find(([re]) => re.test(norm(n))) || [null, norm(n), n])[1];
 export const rotuloProf = (c) => (PROF.find((p) => p[1] === c) || [null, c, c])[2];
 const ORDEM_PROF = PROF.map((p) => p[1]);
 
 // cor de fundo da fase na programação: cinza (neutro) = equipe Sólida; qualquer outra cor (laranja, verde…) = terceiro/fornecedor
-const ehTerceiro = (cor) => {
+export const ehTerceiro = (cor) => {
   const h = String(cor || '').replace('#', '');
   if (!/^[0-9a-f]{6}$/i.test(h)) return false;
   const [r, g, b] = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
@@ -75,7 +76,7 @@ export function dimensionar(linhas, rend) {
 }
 
 // obra → tarefas da semana: programação (planilha) da semana; sem ela, os itens com quantidade da meta semanal (pré-programação, sem dia)
-function tarefasDaObra(CFG, p, cod, ini, hoje) {
+export function tarefasDaObra(CFG, p, cod, ini, hoje) {
   const pr = programacaoDaObra(p, hoje);
   const linhas = ((p && p.programacao && p.programacao.planilha && p.programacao.planilha.linhas) || []).filter((l) => l.data && l.data >= ini && l.data <= somarDias(ini, 6));
   if (linhas.length) return { fonte: 'programação', rotulo: `Programação ${pr.semana || ''}`.trim(), arquivo: pr.arquivo, linhas };

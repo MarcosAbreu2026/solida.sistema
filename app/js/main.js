@@ -634,11 +634,11 @@ function diaFocoPos() {
     cartoes: (d) => df.cartoesPos({ dia: d.data, linhas, base, osLista: osq.lista }),
     livres: (d) => posGeral.blocoLivres(d.data, { linhasAgenda: linhas, base }) }));
 }
-function diaFocoOperacao({ obras, itensDoDia = () => [], semProgramacao = () => false, cod = '' }) {
+function diaFocoOperacao({ obras, itensDoDia = () => [], semProgramacao = () => false, cod = "", programar = null }) {
   const f = df.diasDoFoco(hojeISO(), cod); const [de, ate] = df.faixaDeDias(f.dias); garantirChecks('operacao', de, ate);
   const linhas = semanasDosDias(f.dias).flatMap((s) => alocOpDaSemana(s));
   return String(df.renderDias({ escopo: 'operacao', dias: f.dias, aviso: cod && df.trabalhaTodoDia(cod) ? 'Esta obra funciona também em feriados e fins de semana: todos os dias valem.' : f.aviso, podeChecar: podeEditarAloc(), vazio: 'Nenhuma obra para este dia.',
-    cartoes: (d) => df.cartoesOperacao({ dia: d.data, obras, linhas, itensDoDia, semProgramacao }) }));
+    cartoes: (d) => df.cartoesOperacao({ dia: d.data, obras, linhas, itensDoDia, semProgramacao, programar }) }));
 }
 const pendenciasDoSetor = (setor) => atas.todasPendencias().filter((p) => p.setor === setor && p.status !== 'cancelada' && p.na_lista !== false);
 const pendenciasDep = (setor) => String(df.renderPendenciasDep({ pendencias: pendenciasDoSetor(setor), hoje: hojeISO(), visao: rotaAtual().params.get('pdv') || 'kanban' }));
