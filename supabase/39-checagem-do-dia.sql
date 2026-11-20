@@ -19,3 +19,5 @@ create policy chk_ler on public.checagem_dia for select to authenticated using (
 drop policy if exists chk_gravar on public.checagem_dia;
 create policy chk_gravar on public.checagem_dia for all to authenticated using (public.checagem_edita()) with check (public.checagem_edita());
 alter table public.checagem_dia add column if not exists qtd numeric;   -- quantidade feita no item, quando diferente da meta (20/11/2026)
+alter table public.checagem_dia add column if not exists estado text check (estado in ('feito','nao','reagendar'));   -- feito · não feito · reagendar (20/11/2026)
+alter table public.checagem_dia alter column feito drop not null;   -- reagendar e só quantidade não têm feito

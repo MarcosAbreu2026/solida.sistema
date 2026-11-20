@@ -47,14 +47,15 @@ export const marca = (escopo, data, chave) => ((checks[escopo] || {})[`${data}|$
 export async function carregarChecks(escopo, de, ate) {
   try {
     const linhas = NA_NUVEM ? await listarChecagem(escopo, de, ate) : Object.entries(lerLocal()).filter(([k]) => k.startsWith(`${escopo}|`)).map(([k, v]) => { const [, data, chave] = k.split('|'); return { data, chave, feito: typeof v === 'object' ? v.feito : v, qtd: typeof v === 'object' ? v.qtd : null }; });
-    const mapa = {}; for (const l of linhas) mapa[`${String(l.data).slice(0, 10)}|${l.chave}`] = { feito: l.feito, qtd: l.qtd == null ? null : Number(l.qtd) };
+    const mapa = {}; for (const l of linhas) mapa[`${String(l.data).slice(0, 10)}|${l.chave}`] = { feito: l.feito, qtd: l.qtd == null ? null : Number(l.qtd), estado: l.estado || (l.feito === true ? "feito" : l.feito === false ? "nao" : null) };
     const mudou = JSON.stringify(checks[escopo] || {}) !== JSON.stringify(mapa); checks[escopo] = mapa; return mudou;
   } catch { return false; }
 }
-export async function marcar(escopo, data, chave, feito, qtd = null) {
-  if (NA_NUVEM) await gravarChecagem({ escopo, data, chave, feito, qtd });
-  else { const l = lerLocal(); l[`${escopo}|${data}|${chave}`] = { feito, qtd }; try { localStorage.setItem(CH, JSON.stringify(l)); } catch { /* sem armazenamento */ } }
-  (checks[escopo] = checks[escopo] || {})[`${data}|${chave}`] = { feito, qtd };
+export async function marcar(escopo, data, chave, feito, qtd = null, estado = null) {
+  const est = estado || (feito === true ? 'feito' : feito === false ? 'nao' : null);
+  if (NA_NUVEM) await gravarChecagem({ escopo, data, chave, feito, qtd, estado: est });
+  else { const l = lerLocal(); l[`${escopo}|${data}|${chave}`] = { feito, qtd, estado: est }; try { localStorage.setItem(CH, JSON.stringify(l)); } catch { /* sem armazenamento */ } }
+  (checks[escopo] = checks[escopo] || {})[`${data}|${chave}`] = { feito, qtd, estado: est };
 }
 
 // ---------------------------------------------------------------- tela dos dias
@@ -81,6 +82,13 @@ export function renderDias({ escopo, dias, aviso = '', cartoes, livres = null, p
         ${(c.pessoasLivres || []).length ? html`<p class="df-livre-sem">Alocado na obra, sem serviço: ${c.pessoasLivres.map((p) => html`<span class="df-chip">${p.nome}${p.periodo && p.periodo !== 'dia' ? html` <small>${PER[p.periodo] || ''}</small>` : ''}</span>`)}</p>` : ''}
         ${c.aviso ? html`<p class="df-aviso">${c.aviso}</p>` : ''}
         ${c.origemInfo ? html`<p class="df-origem-rod ${origemCls[c.origemInfo.tipo] || ''}">${c.origemInfo.texto}</p>` : ''}`
+      : c.checklist ? html`${(c.pessoas || []).length ? html`<div class="df-pes">${c.pessoas.map((p) => html`<span class="df-chip">${p.nome}${p.periodo && p.periodo !== 'dia' ? html` <small>${PER[p.periodo] || ''}</small>` : ''}</span>`)}</div>` : ''}
+        <ul class="df-lista df-check">${c.checklist.map((s) => { const x = marcas[`${d.data}|${c.chave}~${s.k}`] || null; const est = x ? x.estado : null;
+          return html`<li class="df-it ${ant && est === 'feito' ? 'df-it-ok' : ant && est === 'nao' ? 'df-it-nao' : ant && est === 'reagendar' ? 'df-it-reag' : ''}">
+            <span class="df-it-txt"><b class="df-os">${s.os || ''}</b> ${s.texto}</span>
+            <span class="df-it-quem">${(s.quem || []).length ? s.quem.map((n) => html`<span class="df-chip">${n}</span>`) : html`<span class="df-sem">${(c.pessoas || []).length ? 'equipe do dia' : 'sem funcionário'}</span>`}${s.prazo ? html` <small class="df-prazo">${s.prazo}</small>` : ''}</span>
+            ${ant ? html`<span class="df-chk-i">${podeChecar ? html`<button type="button" class="ac-mini ${est === 'feito' ? 'on' : ''}" data-dia-chk="${escopo}|${d.data}|${c.chave}~${s.k}|1">✔ feito</button><button type="button" class="ac-mini ${est === 'nao' ? 'on nao' : ''}" data-dia-chk="${escopo}|${d.data}|${c.chave}~${s.k}|0">✖ não feito</button><button type="button" class="ac-mini ${est === 'reagendar' ? 'on reag' : ''}" data-dia-chk="${escopo}|${d.data}|${c.chave}~${s.k}|r" ${s.tarefa ? html.seguro(`data-reag="${s.tarefa}"`) : ''} title="Joga a tarefa para o próximo dia útil">↻ reagendar</button>` : html`<b>${est === 'feito' ? '✔ feito' : est === 'nao' ? '✖ não feito' : est === 'reagendar' ? '↻ reagendar' : '·'}</b>`}</span>` : ''}</li>`; })}</ul>
+        ${c.aviso ? html`<p class="df-aviso">${c.aviso}</p>` : ''}`
       : html`${(c.pessoas || []).length ? html`<div class="df-pes">${c.pessoas.map((p) => html`<span class="df-chip">${p.nome}${p.periodo && p.periodo !== 'dia' ? html` <small>${PER[p.periodo] || ''}</small>` : ''}</span>`)}</div>` : html`<div class="df-pes"><span class="df-sem">sem funcionário alocado</span></div>`}
         ${(c.itens || []).length ? html`<ul class="df-itens">${c.itens.map((t) => html`<li>${t}</li>`)}</ul>` : ''}
         ${c.aviso ? html`<p class="df-aviso">${c.aviso}</p>` : ''}
@@ -100,24 +108,42 @@ export function renderDias({ escopo, dias, aviso = '', cartoes, livres = null, p
 // ---------------------------------------------------------------- cartões do pós-obra
 const chaveObra = (n) => { const s = String(n || '').trim(); const m = /^(?:mo|po)\s*[-_]?\s*(\d+[a-z]?)/i.exec(s); return m ? `${/^mo/i.test(s) ? 'mo' : 'po'}${m[1].toLowerCase()}` : s.toLowerCase(); };
 const curto = (t, n = 70) => { const s = String(t || '').replace(/\s+/g, ' ').trim(); return s.length > n ? `${s.slice(0, n - 1).replace(/\s+\S*$/, '')}…` : s; };
-export function cartoesPos({ dia, linhas = [], base = { agenda: [], obraPorNome: new Map() }, osLista = [] }) {
-  const porObra = new Map();
-  const pega = (obra) => { const k = chaveObra(obra); if (!porObra.has(k)) porObra.set(k, { obra, pessoas: [] }); return porObra.get(k); };
+// Pós-obra: um cartão por PO (ou só OS, sem PO). Dentro, o checklist: OS · tarefa a fazer · quem (executor, ou a equipe do dia) · feito / não feito / reagendar (só no dia anterior).
+// O que vai para o dia: tarefas das OS com prazo naquele dia (o prazo da tarefa é o dia em que ela está agendada) e as OS agendadas ou em execução do PO que tem gente escalada.
+export function cartoesPos({ dia, linhas = [], base = { agenda: [], obraPorNome: new Map() }, osLista = [], pendencias = [] }) {
+  const grupos = new Map();
+  const pega = (obra) => { const k = chaveObra(obra); if (!grupos.has(k)) grupos.set(k, { obra, pessoas: [], checklist: [] }); return grupos.get(k); };
+  const nomeDe = (n) => (typeof n === 'string' ? n : n && (n.nome || n.profissional || n.pessoa)) || '';
   for (const l of linhas.filter((x) => x.data === dia)) { const g = pega(l.obra); if (!g.pessoas.some((p) => p.nome === l.pessoa)) g.pessoas.push({ nome: l.pessoa, periodo: l.periodo || 'dia' }); }
   // sem lançamento no sistema: o que está escrito na planilha do pós-obra
   for (const a of (base.agenda || []).filter((x) => x.data === dia)) {
-    if (porObra.has(chaveObra(a.obra))) continue;
-    const g = pega(a.obra); for (const n of (a.pessoas && a.pessoas.length ? a.pessoas : [])) if (!g.pessoas.some((p) => p.nome === n)) g.pessoas.push({ nome: n, periodo: 'dia' });
+    if (grupos.has(chaveObra(a.obra))) continue;
+    const g = pega(a.obra); for (const n of (a.pessoas && a.pessoas.length ? a.pessoas : [])) { const nome = nomeDe(n); if (nome && !g.pessoas.some((p) => p.nome === nome)) g.pessoas.push({ nome, periodo: 'dia' }); }
     if (!g.pessoas.length && a.texto) g.texto = a.texto;
   }
-  return [...porObra.values()].sort((a, b) => a.obra.localeCompare(b.obra, 'pt-BR', { numeric: true })).map((g) => {
+  const osPorCod = new Map(osLista.map((o) => [o.codigo, o]));
+  // tarefas das OS com prazo no dia
+  const doDia = pendencias.filter((p) => p.os && p.status !== 'cancelada' && String(p.prazo || '').slice(0, 10) === dia);
+  for (const p of doDia) {
+    const o = osPorCod.get(p.os); const obra = (o && o.cliente) || p.obra || 'Sem PO'; const g = pega(obra);
+    g.checklist.push({ k: `t${p.id}`, tarefa: p.id, os: p.os, texto: curto(p.descricao, 90), quem: [p.executor || p.responsavel_nome].filter(Boolean) });
+  }
+  // OS agendadas / em execução de um PO com gente escalada no dia e sem tarefa já listada
+  for (const g of grupos.values()) {
+    if (!g.pessoas.length) continue;
+    for (const o of osLista.filter((x) => chaveObra(x.cliente) === chaveObra(g.obra) && ['agendado', 'execucao'].includes(x.status))) {
+      if (g.checklist.some((c) => c.os === o.codigo)) continue;
+      g.checklist.push({ k: o.codigo, os: o.codigo, texto: curto(o.assunto, 90), quem: [] });
+    }
+    const o = (base.obraPorNome && base.obraPorNome.get(g.obra)) || null;
+    if (!g.checklist.length && o) for (const s of (o.servicos || []).filter((x) => x.aberta && ['Execução', 'Agendamento', 'Planejamento'].includes(x.situacao)).slice(0, 2)) if (s.relato && s.relato !== s.os) g.checklist.push({ k: s.os, os: s.os, texto: curto(s.relato, 90), quem: [] });
+  }
+  return [...grupos.values()].filter((g) => g.pessoas.length || g.checklist.length || g.texto).sort((a, b) => a.obra.localeCompare(b.obra, 'pt-BR', { numeric: true })).map((g) => {
     const o = (base.obraPorNome && base.obraPorNome.get(g.obra)) || { obra: g.obra };
     const pt = partesObra(o);
-    const os = osLista.filter((x) => chaveObra(x.cliente) === chaveObra(g.obra) && ['agendado', 'execucao'].includes(x.status));
-    const servs = ((o.servicos || []).filter((s) => s.aberta && ['Execução', 'Agendamento', 'Planejamento'].includes(s.situacao)));
-    const itens = [...os.map((x) => `${x.codigo}: ${curto(x.assunto)}`), ...(os.length ? [] : servs.slice(0, 2).map((s) => `${s.os}: ${curto(s.relato)}`))].slice(0, 3);
-    if (g.texto) itens.push(`Planilha: ${curto(g.texto, 60)}`);
-    return { chave: chaveObra(g.obra), titulo: pt.titulo || g.obra, sub: pt.sub, link: /^po/i.test(g.obra) ? `#/posobra/obra/${encodeURIComponent(g.obra)}` : `#/obra/${encodeURIComponent(g.obra)}`, pessoas: g.pessoas, itens };
+    const ehPO = /^(po|mo)\s*[-_]?\s*\d/i.test(String(g.obra));
+    return { chave: chaveObra(g.obra), titulo: pt.titulo || g.obra, sub: pt.sub, link: ehPO ? (/^po/i.test(g.obra) ? `#/posobra/obra/${encodeURIComponent(g.obra)}` : `#/obra/${encodeURIComponent(g.obra)}`) : '', pessoas: g.pessoas, checklist: g.checklist,
+      aviso: g.texto ? `Planilha: ${curto(g.texto, 80)}` : (!g.checklist.length ? 'Sem OS nem tarefa neste dia: só a equipe escalada.' : '') };
   });
 }
 

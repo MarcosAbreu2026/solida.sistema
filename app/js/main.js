@@ -657,7 +657,7 @@ function diaFocoPos() {
   const linhas = semanasDosDias(f.dias).flatMap((s) => alocPosDaSemana(s));
   const base = estado.base || { agenda: [], obraPorNome: new Map() };
   return String(df.renderDias({ escopo: 'posobra', dias: f.dias, aviso: f.aviso, podeChecar: podeEditarPos(), vazio: 'Nenhum pós-obra programado.',
-    cartoes: (d) => df.cartoesPos({ dia: d.data, linhas, base, osLista: osq.lista }),
+    cartoes: (d) => df.cartoesPos({ dia: d.data, linhas, base, osLista: osq.lista, pendencias: atas.todasPendencias() }),
     livres: (d) => posGeral.blocoLivres(d.data, { linhasAgenda: linhas, base }) }));
 }
 function diaFocoOperacao({ obras, itensDoDia = () => [], semProgramacao = () => false, cod = "", programar = null }) {
@@ -672,7 +672,13 @@ document.addEventListener('click', (e) => {
   const b = e.target.closest && e.target.closest('[data-dia-chk]'); if (!b) return;
   const [escopo, data, chave, v] = b.dataset.diaChk.split('|');
   const antes = df.marca(escopo, data, chave);
-  df.marcar(escopo, data, chave, v === '1', antes ? antes.qtd : null).then(() => desenhar()).catch((err) => alert(`Não foi possível marcar (${err.message || err}).`));
+  const qtd = antes ? antes.qtd : null;
+  if (v === 'r') {   // reagendar: a tarefa vai para o próximo dia útil e o item fica marcado "reagendar"
+    const id = b.dataset.reag; const novo = df.proximoUtil(data > hojeISO() ? data : hojeISO(), 1);
+    (async () => { if (id) await atas.reprogramar(id, novo); await df.marcar(escopo, data, chave, null, qtd, 'reagendar'); desenhar(); })().catch((err) => alert(`Não foi possível reagendar (${err.message || err}).`));
+    return;
+  }
+  df.marcar(escopo, data, chave, v === '1', qtd).then(() => desenhar()).catch((err) => alert(`Não foi possível marcar (${err.message || err}).`));
 });
 // quantidade feita num item do dia anterior, quando diferente da meta: ≥ meta conta como feito, abaixo conta como não feito (a quantidade fica registrada)
 document.addEventListener('change', (e) => {

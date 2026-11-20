@@ -613,12 +613,12 @@ export async function gravarCronogramaObra(linha) {
 
 // ---------------------------------------------------------------- checagem do dia (supabase/39-checagem-do-dia.sql)
 export async function listarChecagem(escopo, de, ate) {
-  const { data, error } = await sb.from('checagem_dia').select('data,chave,feito,qtd').eq('escopo', escopo).gte('data', de).lte('data', ate);
+  const { data, error } = await sb.from('checagem_dia').select('data,chave,feito,qtd,estado').eq('escopo', escopo).gte('data', de).lte('data', ate);
   if (error) throw new Error(error.message);
   return data || [];
 }
-export async function gravarChecagem({ escopo, data, chave, feito, qtd = null }) {
-  const { error } = await sb.from('checagem_dia').upsert({ escopo, data, chave, feito, qtd, atualizado_em: new Date().toISOString() }, { onConflict: 'escopo,data,chave' });
+export async function gravarChecagem({ escopo, data, chave, feito, qtd = null, estado = null }) {
+  const { error } = await sb.from('checagem_dia').upsert({ escopo, data, chave, feito, qtd, estado, atualizado_em: new Date().toISOString() }, { onConflict: 'escopo,data,chave' });
   if (error) throw new Error(error.message);
 }
 
