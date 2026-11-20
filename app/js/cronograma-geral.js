@@ -52,7 +52,7 @@ export function render({ hoje = hojeISO(), obrasCad = [], orcs = [], podeEditar 
   const celulas = (inicio, fim, cls, parada = false) => (parada
     ? html`<td class="cg-parada" colspan="${SEMANAS}">Obra parada: sem andamento</td>`
     : !inicio ? html`<td class="cg-sem-data" colspan="${SEMANAS}">${podeEditar ? 'clique na linha para definir o início e o fim' : 'início e fim ainda não definidos'}</td>`
-      : cols.map((c, i) => { const n = semanaDaObra(inicio, fim, c); return html`<td class="cg-sem ${n ? cls : ''} ${i === 0 ? 'cg-hoje' : ''} ${i > 0 && c.slice(0, 7) !== cols[i - 1].slice(0, 7) ? 'cg-mes' : ''}">${n ? `S${String(n).padStart(2, '0')}` : ''}</td>`; }));
+      : cols.map((c, i) => { const n = semanaDaObra(inicio, fim || (cls === 'cg-orc' ? null : seg0), c); return html`<td class="cg-sem ${n ? cls : ''} ${i === 0 ? 'cg-hoje' : ''} ${i > 0 && c.slice(0, 7) !== cols[i - 1].slice(0, 7) ? 'cg-mes' : ''}">${n ? `S${String(n).padStart(2, '0')}` : ''}</td>`; }));
   const pe = (v) => html`<td class="cg-pes">${v || ''}</td>`;
   const linhaObra = (cod, c, l, cls, { parada = false, tituloLinha = '' } = {}) => html`<tr class="cg-lin ${podeEditar ? 'cg-edita' : ''} ${parada ? 'cg-lin-parada' : ''}" ${podeEditar ? html.seguro(`data-cg-edit="${String(cod).replace(/"/g, '')}"`) : ''} title="${tituloLinha || (podeEditar ? 'Clique para editar a equipe e as datas' : '')}">
     <td class="cg-cod"><b>${cod}</b></td>${nomeDe(cod, c)}${pe(l && l.coord)}${pe(l && l.gestor1)}${pe(l && l.gestor2)}${pe(l && l.estagiario)}${pe(l && l.encarregado)}${celulas(l && l.inicio, l && l.fim, cls, parada)}</tr>`;
