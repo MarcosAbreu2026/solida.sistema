@@ -6,6 +6,7 @@ import { html } from './formato.js';
 import { somarDias } from './datas.js';
 import { feriado } from './feriados.js';
 import { listaConfig } from './config.js';
+import { emFerias } from './ferias.js';
 import { NA_NUVEM, listarAlocacao, criarAlocacao, atualizarAlocacao, apagarAlocacao, listarAgendaPos } from './nuvem.js';
 
 const CHAVE = 'solida.alocacaoObras';
@@ -22,7 +23,9 @@ export async function carregar(de, ate) {
   catch (e) { erro = String(e.message || e); }
   return linhas;
 }
+const avisoFerias = (pessoa, data) => { if (emFerias(pessoa, data)) throw new Error(`${pessoa} está de férias em ${dm(data)}`); };
 export async function atribuir({ data, obra, pessoa }, de, ate) {
+  avisoFerias(pessoa, data);
   if (linhas.some((x) => x.data === data && x.obra === obra && x.pessoa === pessoa)) return;
   const jaNoDia = linhas.filter((x) => x.data === data && chaveNome(x.pessoa) === chaveNome(pessoa) && (x.periodo || 'dia') === 'dia');
   const periodo = jaNoDia.length ? 'tarde' : 'dia';
@@ -33,6 +36,7 @@ export async function atribuir({ data, obra, pessoa }, de, ate) {
 }
 export async function mover(id, { data, obra }, de, ate) {
   const x = linhas.find((l) => String(l.id) === String(id)); if (!x) return;
+  avisoFerias(x.pessoa, data);
   if (linhas.some((l) => l.data === data && l.obra === obra && l.pessoa === x.pessoa && String(l.id) !== String(id))) { await remover(id, de, ate); return; }
   if (NA_NUVEM) await atualizarAlocacao(id, { data, obra });
   else { const l = lerLocal(); const y = l.linhas.find((q) => String(q.id) === String(id)); if (y) { y.data = data; y.obra = obra; } gravarLocal(l); }
@@ -95,12 +99,13 @@ export function render({ semanaIni, vista, podeEditar, obras = [], equipeProg = 
   // funcionários livres da OPERAÇÃO (quem acompanha é a Simone ou o gestor de obra): sem obra no dia e sem pós-obra. O pessoal do pós-obra tem a linha própria na agenda do pós-obra.
   const equipePosNomes = () => { const l = listaConfig('funcionarios.posobra'); return (l && l.length ? l : ['Nascimento', 'Cleviano', 'Carlos']).map(primeiro); };
   const ehDoPos = (n) => { const p = primeiro(n); return equipePosNomes().includes(p) && todos.filter((g) => primeiro(g.nome) === p).length <= 1; };   // dois "Carlos" no RH: não dá para saber qual é o do pós-obra, ficam na operação
-  const livresOperacao = (d) => todos.filter((g) => !ehDoPos(g.nome) && !linhas.some((l) => l.data === d && chaveNome(l.pessoa) === chaveNome(g.nome)) && !emPos(g.nome, d));
+  const livresOperacao = (d) => todos.filter((g) => !ehDoPos(g.nome) && !linhas.some((l) => l.data === d && chaveNome(l.pessoa) === chaveNome(g.nome)) && !emPos(g.nome, d) && !emFerias(g.nome, d));
+  const deFerias = (d) => todos.filter((g) => emFerias(g.nome, d));
   const rodapeLivres = () => html`<tfoot><tr class="ap-livres"><th class="ap-obra">Funcionários livres<small>operação · sem obra no dia</small></th>${dias.map((d, i) => {
     const fer = feriado(d); if (i === 5) return html`<td class="ap-livre-vazio">—</td>`;
     if (fer) return html`<td class="ap-feriado" title="${fer}">feriado<small>${fer}</small></td>`;
     const l = livresOperacao(d);
-    return html`<td class="ap-livre-cel">${l.length ? l.map((g) => html`<span class="ap-livre al-livre" style="border-color:${corDaFuncao(g.funcao)}" title="${g.funcao || ''}">${g.nome}</span>`) : html`<span class="ap-todos">todos alocados</span>`}</td>`;
+    return html`<td class="ap-livre-cel">${l.length ? l.map((g) => html`<span class="ap-livre al-livre" style="border-color:${corDaFuncao(g.funcao)}" title="${g.funcao || ''}">${g.nome}</span>`) : html`<span class="ap-todos">todos alocados</span>`}${deFerias(d).map((g) => html`<span class="ap-livre al-ferias" title="${g.nome} está de férias">${g.nome} <small>férias</small></span>`)}</td>`;
   })}</tr></tfoot>`;
   let corpo;
   if (vista === 'func') {
@@ -108,7 +113,7 @@ export function render({ semanaIni, vista, podeEditar, obras = [], equipeProg = 
     const celula = (nome, d) => {
       const ls = linhas.filter((l) => chaveNome(l.pessoa) === chaveNome(nome) && l.data === d);
       const pos = emPos(nome, d);
-      return html`<td class="al-fcel">${ls.map((l) => html`<span class="al-fchip" style="background:${corDaFuncao(funcaoDe(nome))}" title="${nome} · ${funcaoDe(nome) || 'função não informada'} · ${l.obra}">${l.obra}${(l.periodo || 'dia') !== 'dia' ? html` <small>${PERIODO_ROT[l.periodo]}</small>` : ((ls.length + (pos ? 1 : 0)) > 1 ? html` <small>1/${ls.length + (pos ? 1 : 0)}</small>` : '')}</span>`)}${pos ? html`<span class="al-fchip al-pos" title="${nome} está no pós-obra neste dia (agenda do pós-obra)">Pós-obra${posPeriodo(nome, d) !== 'dia' ? html` <small>${PERIODO_ROT[posPeriodo(nome, d)]}</small>` : (ls.length ? html` <small>1/${ls.length + 1}</small>` : '')}</span>` : ''}</td>`;
+      return html`<td class="al-fcel">${emFerias(nome, d) ? html`<span class="al-fchip al-ferias-chip" title="${nome} está de férias">Férias</span>` : ''}${ls.map((l) => html`<span class="al-fchip" style="background:${corDaFuncao(funcaoDe(nome))}" title="${nome} · ${funcaoDe(nome) || 'função não informada'} · ${l.obra}">${l.obra}${(l.periodo || 'dia') !== 'dia' ? html` <small>${PERIODO_ROT[l.periodo]}</small>` : ((ls.length + (pos ? 1 : 0)) > 1 ? html` <small>1/${ls.length + (pos ? 1 : 0)}</small>` : '')}</span>`)}${pos ? html`<span class="al-fchip al-pos" title="${nome} está no pós-obra neste dia (agenda do pós-obra)">Pós-obra${posPeriodo(nome, d) !== 'dia' ? html` <small>${PERIODO_ROT[posPeriodo(nome, d)]}</small>` : (ls.length ? html` <small>1/${ls.length + 1}</small>` : '')}</span>` : ''}</td>`;
     };
     corpo = html`${legenda()}<div class="ap-grade tabela-rolagem"><table class="ap-tab al-ftab"><thead><tr><th>Funcionário</th>${dias.map((d, i) => html`<th>${DIAS[i]} <small>${dm(d)}</small></th>`)}<th>Dias</th></tr></thead>
       <tbody>${nomes.map((n) => html`<tr class="${diasTotais(n) ? '' : 'al-vazia'}"><th class="ap-obra"><span class="al-dot" style="background:${corDaFuncao(funcaoDe(n))}"></span>${n}<small>${funcaoDe(n) || ''}</small></th>${dias.map((d) => celula(n, d))}<td class="n">${diasTotais(n)}</td></tr>`)}</tbody></table>
@@ -123,7 +128,7 @@ export function render({ semanaIni, vista, podeEditar, obras = [], equipeProg = 
     };
     corpo = html`${legenda()}<div class="ap-corpo">
       ${podeEditar ? html`<aside class="ap-func"><h3>Funcionários</h3>
-        ${todos.map((e) => html`<div class="ap-card al-card ${selecionado === e.nome ? 'sel' : ''}" style="border-left:4px solid ${corDaFuncao(e.funcao)}" draggable="true" data-al-pessoa="${e.nome}"><b>${e.nome}</b><small>${e.funcao || ''}</small><span class="ap-n">${naSemana(e.nome)} ${naSemana(e.nome) === 1 ? 'dia' : 'dias'}</span></div>`)}
+        ${todos.map((e) => dias.every((d) => emFerias(e.nome, d)) ? html`<div class="ap-card al-card al-card-ferias" style="border-left:4px solid ${corDaFuncao(e.funcao)}" title="De férias a semana toda: não dá para alocar"><b>${e.nome}</b><small>${e.funcao || ''}</small><span class="ap-n">férias</span></div>` : html`<div class="ap-card al-card ${selecionado === e.nome ? 'sel' : ''}" style="border-left:4px solid ${corDaFuncao(e.funcao)}" draggable="true" data-al-pessoa="${e.nome}"><b>${e.nome}</b><small>${e.funcao || ''}</small><span class="ap-n">${naSemana(e.nome)} ${naSemana(e.nome) === 1 ? 'dia' : 'dias'}${dias.some((d) => emFerias(e.nome, d)) ? ` · férias em ${dias.filter((d) => emFerias(e.nome, d)).map(dm).join(', ')}` : ''}</span></div>`)}
         ${todos.length ? '' : html`<p class="pequeno">Sem funcionários lidos do RH ainda.</p>`}</aside>` : ''}
       <div class="ap-grade tabela-rolagem"><table class="ap-tab"><thead><tr><th>Obra em andamento</th>${dias.map((d, i) => html`<th>${DIAS[i]} <small>${dm(d)}</small></th>`)}</tr></thead>
         <tbody>${obras.map((o) => html`<tr><th class="ap-obra"><a href="#/obra/${encodeURIComponent(o)}">${o}</a></th>${dias.map((d) => celula(o, d))}</tr>`)}</tbody>${rodapeLivres()}</table>
@@ -187,6 +192,7 @@ export function imagemPNG({ semanaIni, vista, obras = [], equipeProg = null, pos
       titulo: n, sub: funcaoDe(n), cor: corDaFuncao(funcaoDe(n)),
       celulas: dias.map((d) => {
         const it = linhas.filter((l) => chaveNome(l.pessoa) === chaveNome(n) && l.data === d).map((l) => ({ txt: l.obra + ((l.periodo || 'dia') !== 'dia' ? ` (${PER[l.periodo]})` : ''), cor: corDaFuncao(funcaoDe(n)) }));
+        if (emFerias(n, d)) it.push({ txt: 'Férias', cor: '#B45309' });
         const p = posDe(n, d); if (p) it.push({ txt: `Pós-obra${(p.periodo || 'dia') !== 'dia' ? ` (${PER[p.periodo]})` : ''}`, cor: '#111827' });
         return it;
       }),

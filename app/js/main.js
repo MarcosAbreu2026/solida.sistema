@@ -51,6 +51,7 @@ import * as oq from './orc-quadro.js';
 import * as cg from './cronograma-geral.js';
 import * as df from './dia-foco.js';
 import * as aloc from './alocacao.js';
+import * as ferias from './ferias.js';
 import * as reunioes from './reunioes.js';
 import * as poConcluir from './po-concluir.js';
 import { comodoDe } from './comodos.js';
@@ -552,9 +553,34 @@ function ctxPainel(dep, area) {
     ...(dep && dep.id === 'orc-terceirizado' ? ctxTerc() : {}),
     ...(dep && dep.id === 'operacao' ? { ...ctxAlocacao(), ...ctxCronograma() } : {}),
     ...(dep && dep.id === 'orcamentos' ? ctxOrcQuadro() : {}),
+    ferias: feriasLista(), alocSemanaPassada: alocOpDaSemana, feriasRH: () => String(ferias.render({ podeEditar: podeEditarFerias(), equipeProg: estado.equipeProg, hoje: hojeISO() })),
     diaFocoOp: diaFocoOperacao, evidenciasLista: evidencias.todosEventos, atasLista: atas.todasAtas,pendenciasDep, obrasAndamento: alocObras(),
     alocObra: { semana: inicioDaSemana(hojeISO()), linhas: alocDaSemana(inicioDaSemana(hojeISO())) } };
 }
+// Operações: abas do topo (Painel · Dia a dia · Funcionários · Pendências); cada seção do painel antigo fica na aba certa
+const ABAS_OP = [{ id: '', nome: 'Painel' }, { id: 'dia', nome: 'Dia a dia' }, { id: 'funcionarios', nome: 'Funcionários' }, { id: 'pendencias', nome: 'Pendências' }];
+// Férias (RH lança em RH › Controle de férias; supabase/40-ferias.sql): carrega uma vez e a cada minuto, e redesenha se mudou
+const podeEditarFerias = () => ['socio', 'rh'].includes(funcaoAtual().id);
+let feriasPedida = 0;
+function feriasLista() {
+  if (Date.now() - feriasPedida > 60000) {
+    feriasPedida = Date.now();
+    const antes = JSON.stringify(ferias.lista);
+    ferias.carregar().then(() => { if (JSON.stringify(ferias.lista) !== antes && !emEdicao()) desenhar(); });
+  }
+  return ferias.lista;
+}
+document.addEventListener('click', async (e) => {
+  const add = e.target.closest && e.target.closest('[data-fe-add]');
+  const del = e.target.closest && e.target.closest('[data-fe-del]');
+  if (!add && !del) return;
+  try {
+    if (add) await ferias.lancar({ funcionario: document.getElementById('fe-func').value, inicio: document.getElementById('fe-ini').value, fim: document.getElementById('fe-fim').value });
+    else if (confirm('Apagar este lançamento de férias?')) await ferias.apagar(del.dataset.feDel);
+    for (const k of Object.keys(alocCache)) delete alocCache[k];
+    desenhar();
+  } catch (err) { alert(`Não foi possível salvar as férias (${err.message || err}).`); }
+});
 // Operações: quadro de alocação (funcionários × obras em andamento × dias) e a visão funcionários × semana
 const podeEditarAloc = () => ['socio', 'coord_operacoes', 'planejamento', 'gestor_obra'].includes(funcaoAtual().id);
 const alocSem = () => { if (!estado.aloc) estado.aloc = { semana: inicioDaSemana(hojeISO()), vista: 'obras', sel: '', chave: '' }; return estado.aloc; };
@@ -840,7 +866,8 @@ atas.definirFuncionarios(nomesDeFuncionarios(estado.equipeProg, CFG));   // list
   let area = CFG && CFG.areas.find((a) => a.id === (dep ? dep.cfg : tela));
   if (area && !dep && !podeVerArea(area)) { area = null; tela = 'geral'; }   // setor fora do perfil: nem existe
   const temLegado = !!(dep && area && dep.id !== 'materiais') || tela === 'geral';   // Materiais / Vendas: sem aba Detalhes por enquanto
-  const ehPainel = (dep || tela === 'geral') && (!temLegado || ((!rota.sub || rota.sub === 'painel') && ![...rota.params.keys()].length));
+  const subOp = dep && dep.id === 'operacao' && ABAS_OP.some((a) => a.id && a.id === rota.sub) ? rota.sub : '';   // Operações: abas Dia a dia · Funcionários · Pendências
+  const ehPainel = (dep || tela === 'geral') && (!temLegado || subOp || ((!rota.sub || rota.sub === 'painel') && ![...rota.params.keys()].length));
   if ((dep || tela === 'geral') && !ehPainel && rota.sub === 'detalhe') rota = { ...rota, sub: '' };
   const ehObraPlan = tela === 'planejamento' && rota.sub === 'obra';
   const fixas = ['caixinha', 'obrasorc', 'agentes', 'meudia', 'agenda', 'quadro', 'estoque', 'escritorio', 'perfil', 'feed', 'treinamentos', 'acessos', 'configuracoes', 'atas', 'tarefas', 'marketing', 'equipe', 'obra', 'celular'];
@@ -988,16 +1015,17 @@ atas.definirFuncionarios(nomesDeFuncionarios(estado.equipeProg, CFG));   // list
   }
 
   if (!CFG) return;
+  feriasLista();   // férias valem no quadro de alocação, na agenda do pós-obra e na programação do dia
   const deObra = f.porObra;
   const T = criarTelas(CFG, veValores(), opcoesTelas());
   let out;
   try {
     // ---- desenho do Marcos: Início, painéis dos departamentos, página da obra e celular da obra
-    const abasDe = (base, ativa) => pd.abas([{ id: '', nome: 'Painel', href: base }, { id: 'detalhe', nome: tela === 'geral' ? 'Visão geral (anterior)' : 'Detalhes', href: `${base}/detalhe` }, ...(tela === 'transporte' ? [{ id: 'rotas', nome: 'Rotas da semana', href: `${base}/rotas` }] : []), ...(tela === 'planejamento' ? [{ id: 'metas', nome: 'Metas (4 semanas)', href: `${base}/metas` }] : [])], ativa);
+    const abasDe = (base, ativa) => pd.abas([{ id: '', nome: 'Painel', href: base }, ...(tela === 'operacao' ? ABAS_OP.filter((a) => a.id).map((a) => ({ ...a, href: `${base}/${a.id}` })) : []), { id: 'detalhe', nome: tela === 'geral' ? 'Visão geral (anterior)' : 'Detalhes', href: `${base}/detalhe` }, ...(tela === 'transporte' ? [{ id: 'rotas', nome: 'Rotas da semana', href: `${base}/rotas` }] : []), ...(tela === 'planejamento' ? [{ id: 'metas', nome: 'Metas (4 semanas)', href: `${base}/metas` }] : [])], ativa);
     if (tela === 'geral' && ehPainel) {
       out = `<div class="pd">${pd.cabecalho({ rotulo: new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' }) })}${abasDe('#/geral', '')}${inicio.painel(ctxPainel(null, null))}</div>`;
     } else if (dep && ehPainel) {
-      out = `<div class="pd">${pd.cabecalho({ resp: dep.resp })}${temLegado ? abasDe(`#/${dep.id}`, '') : ''}${painelDe(dep.id, ctxPainel(dep, area))}</div>`;
+      out = `<div class="pd">${pd.cabecalho({ resp: dep.resp })}${temLegado ? abasDe(`#/${dep.id}`, subOp) : ''}${painelDe(dep.id, { ...ctxPainel(dep, area), abaOp: subOp })}</div>`;
     } else if (tela === 'obra') {
       if (!estado.celCarregado) { estado.celCarregado = true; celularObra.carregar(() => desenhar()); }
       out = telaObraNova(rota);

@@ -530,6 +530,21 @@ export async function apagarAlocacao(id) {
   if (error) throw new Error(error.message);
 }
 
+// ---------------------------------------------------------------- férias dos funcionários (supabase/40-ferias.sql)
+export async function listarFerias() {
+  const { data, error } = await sb.from('ferias').select('*').order('inicio');
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+export async function criarFerias(linha) {
+  const { error } = await sb.from('ferias').insert({ ...linha, criado_por: perfil.id });
+  if (error) throw new Error(error.message);
+}
+export async function apagarFerias(id) {
+  const { error } = await sb.from('ferias').delete().eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
 // ---------------------------------------------------------------- cards do Orçamento Terceirizado Laranja (supabase/32-terc-quadro.sql)
 export async function listarTercQuadro() {
   const { data, error } = await sb.from('terc_quadro').select('*').order('id', { ascending: false });

@@ -7,6 +7,7 @@
 // Sem IA e sem API paga: só conta. Serviço de terceiro (fase em cor na programação) é listado, mas não consome funcionário da Sólida.
 import { somarDias, inicioDaSemana } from './datas.js';
 import { ehDiaUtil } from './dia-foco.js';
+import { emFerias } from './ferias.js';
 import { casar, canonProf, rotuloProf, ehTerceiro, tarefasDaObra } from './telas/dimensionamento.js';
 
 const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim();
@@ -19,7 +20,8 @@ export function programadorDoCtx(ctx) {
   const proj = ctx.drive && ctx.drive.projetos; const rend = proj && proj.rendimentos;
   const itensRend = ((rend && rend.itens) || []).filter((r) => r.total > 0 && r.media > 0);
   const funcaoDe = (nome) => { const k = norm(nome); const e = ((ctx.equipeProg && ctx.equipeProg.pessoas) || []).find((p) => norm(p.nome) === k || norm(p.nome).split(' ')[0] === k.split(' ')[0]); return e ? e.funcao || '' : ''; };
-  return (cod, dia, pessoas) => {
+  return (cod, dia, todasPessoas) => {
+    const pessoas = (todasPessoas || []).filter((x) => !emFerias(x.nome, dia));   // quem está de férias não recebe serviço
     const p = (((proj || {}).obras) || []).find((o) => o.obra === cod) || null;
     const ini = inicioDaSemana(dia);
     const t = tarefasDaObra(ctx.CFG, p, cod, ini, ctx.hoje);

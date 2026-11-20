@@ -15,6 +15,7 @@ export function painel(ctx) {
     ${pd.secao('Programado × realizado', 'Cada funcionário: em que obra foi programado em cada dia (planilha de distribuição) × onde apareceu no efetivo', secaoProgramadoRealizado(ctx.equipeProg, ctx.efetivo, ctx.hoje))}
     ${pd.secao('Faltas, atrasos e horas extras', 'Último mês, mês atual e acumulado do ano, com as justificativas · fonte: Sólides',
       pd.tabela(['Funcionário', 'Faltas no mês', 'Atrasos no mês', 'Horas extras no mês', 'Acumulado no ano', 'Justificativas'], [], { vazio: semSolides }))}
+    ${pd.secao('Férias lançadas', 'O RH lança o período de cada funcionário · valem no quadro de alocação, na agenda do pós-obra e na programação do dia', ctx.feriasRH ? html.seguro(ctx.feriasRH()) : '')}
     ${pd.secao('Controle de férias', 'Planilha de férias: períodos aquisitivos e concessivos', pd.cartoes([
       cartaoDoAgente(ctx.area, /^f[ée]rias$/i, { rotulo: 'De férias agora' }),
       cartaoDoAgente(ctx.area, /f[ée]rias vencidas/i, { rotulo: 'Férias vencidas', meta: 'Meta 0', nivel: (n) => (n > 0 ? 'critico' : 'ok') }),

@@ -11,6 +11,7 @@ import { chipSituacao, chipPrazo, rotaObra, fmt } from '../componentes.js';
 import { gruposDeObras } from './atas.js';
 import { feriado } from '../feriados.js';
 import { listaConfig } from '../config.js';
+import { emFerias } from '../ferias.js';
 
 const DIAS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const dm = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
@@ -195,6 +196,7 @@ export function livresDoDia(dia, { linhasAgenda = [], base = { agenda: [] }, equ
   for (const l of linhasAgenda) if (l.data === dia) marca(l.pessoa, l.periodo || 'dia');
   for (const a of base.agenda || []) if (a.data === dia) for (const n of (a.pessoas && a.pessoas.length ? a.pessoas : [])) marca(n, 'dia');
   return equipe.map((nome) => {
+    if (emFerias(nome, dia)) return null;   // de férias não é livre (o RH lança em RH › Férias)
     const o = ocupado.get(primeiroNome(nome));
     if (!o) return { nome, livre: 'dia' };
     if (o.manha && o.tarde) return null;

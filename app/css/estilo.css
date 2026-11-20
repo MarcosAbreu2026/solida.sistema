@@ -2347,6 +2347,14 @@ td select[data-cx-usuario] { font: inherit; font-size: 13px; padding: 5px 8px; b
 .al-fchip { display: inline-block; color: #fff; border-radius: 3px; padding: 1px 6px; margin: 0 3px 3px 0; font-size: 12px; }
 .al-fchip small { opacity: .85; }
 .al-fchip.al-pos { background: #111827; }
+.al-fchip.al-ferias-chip, .al-ferias { background: #B45309; color: #fff; }
+.al-ferias { border-color: #B45309; }
+.al-card-ferias { opacity: .55; cursor: not-allowed; background: #FDF3E7; }
+.fe-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin: 6px 0 10px; }
+.fe-form label { display: flex; flex-direction: column; font-size: 12px; gap: 3px; }
+.sp-chip { display: inline-block; color: #fff; border-radius: 3px; padding: 1px 6px; margin: 0 3px 3px 0; font-size: 12px; }
+.sp-chip.sp-prev { background: transparent !important; border: 1px dashed currentColor; }
+.sp-chip.sp-fer { background: #B45309; }
 .ap-per { border: 0; border-radius: 3px; padding: 0 5px; font-size: 11px; cursor: pointer; background: #D9C58A; color: #3b3210; }
 .ap-per-manha { background: #FCE7A8; color: #5b4300; } .ap-per-tarde { background: #C9DDF2; color: #14385c; }
 .al-imp-tit { display: none; }

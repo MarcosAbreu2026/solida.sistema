@@ -1,5 +1,5 @@
 // Operações (desenho do Marcos, página 4). Contrato e ctx: ver comum.js.
-// Resumo das obras · Cronograma geral · Hoje por obra (equipe, meta, pendência maior) · Efetivo real × planejado
+// Abas: Painel (resumo, cronograma geral, hoje por obra, efetivo, quem agir, terceirizados) · Dia a dia · Funcionários (semana passada + alocação) · Pendências.
 // · Quem precisa agir · Terceirizados × contratos no Mais Controle.
 import { html } from '../formato.js';
 import * as pd from '../telas/painel-dep.js';
@@ -7,6 +7,7 @@ import { avisoLeitura } from './comum.js';
 import * as oc from './obras-comum.js';
 import { programadorDoCtx } from '../programar-dia.js';
 import { somarDias, inicioDaSemana } from '../datas.js';
+import * as opSemana from '../op-semana-passada.js';
 import * as ent from './entregaveis.js';
 
 const semanasEntre = (de, ate) => (de && ate ? Math.max(0, Math.ceil((new Date(ate) - new Date(de)) / (7 * 86400000))) : null);
@@ -79,13 +80,31 @@ export function painel(ctx) {
     return [pd.obraCel(obra), l.join(', '), s === 'sem' ? pd.selo('critico', 'Sem contrato no Mais Controle') : s === 'semmed' ? pd.selo('atencao', 'Contrato sem medição') : pd.selo('ok', 'Contrato e medição em dia')];
   });
 
-  return html`${pd.pergunta(ctx.dep.pergunta)}
-    ${avisoLeitura(ctx, 'Base: leitura dos agentes')}
-    ${pd.secao('Cronograma geral de obras', 'Obras em andamento nos próximos 4 meses, semana a semana · pós-obras com mais de 4 semanas · orçamentos que acreditamos fechar', ctx.cronogramaGeral ? html.seguro(ctx.cronogramaGeral()) : '', { id: 'cronograma-geral' })}
-    ${pd.secao('Dia a dia das obras', 'Dia útil anterior (marque feito ou não feito), hoje e os dois próximos dias úteis: quem está em cada obra e a meta do dia · feriado e fim de semana não entram (a Mo602 funciona todos os dias)', ctx.diaFocoOp ? html.seguro(ctx.diaFocoOp({ obras: ctx.obrasAndamento && ctx.obrasAndamento.length ? ctx.obrasAndamento : obras.map((o) => o.obra), itensDoDia: (cod, d) => oc.itensDoDia(ctx, cod, d).itens, semProgramacao: (cod) => !oc.progDa(ctx, cod), programar: programadorDoCtx(ctx) })) : '')}
-    ${pd.secao('Quadro de entregáveis', `Documentação obrigatória do gestor de obra, por obra · ${ent.LEGENDA}`, ent.quadro(ctx, ctx.obrasAndamento && ctx.obrasAndamento.length ? ctx.obrasAndamento : obras.map((o) => o.obra), { eventos: ctx.evidenciasLista ? ctx.evidenciasLista() : null, atas: ctx.atasLista ? ctx.atasLista() : null }), { id: 'entregaveis' })}
+  const cab = html`${pd.pergunta(ctx.dep.pergunta)}
+    ${avisoLeitura(ctx, 'Base: leitura dos agentes')}`;
+  const aba = ctx.abaOp || '';
+  // ---- aba Dia a dia
+  if (aba === 'dia') {
+    return html`${cab}
+    ${pd.secao('Dia a dia das obras', 'Dia útil anterior (marque feito ou não feito), hoje e os dois próximos dias úteis: quem está em cada obra e a meta do dia · feriado e fim de semana não entram (a Mo602 funciona todos os dias)', ctx.diaFocoOp ? html.seguro(ctx.diaFocoOp({ obras: ctx.obrasAndamento && ctx.obrasAndamento.length ? ctx.obrasAndamento : obras.map((o) => o.obra), itensDoDia: (cod, d) => oc.itensDoDia(ctx, cod, d).itens, semProgramacao: (cod) => !oc.progDa(ctx, cod), programar: programadorDoCtx(ctx) })) : '')}`;
+  }
+  // ---- aba Funcionários: alocação (semana escolhida) e distribuição da semana passada
+  if (aba === 'funcionarios') {
+    const passada = somarDias(inicioDaSemana(ctx.hoje), -7);
+    return html`${cab}
+    ${pd.secao('Distribuição da semana passada', 'Quem esteve em qual obra em cada dia: efetivo real dos grupos de WhatsApp; onde o grupo não enviou, vale a alocação/programação · mais os funcionários em férias', opSemana.render({ ctx, semanaIni: passada, alocLinhas: (ctx.alocSemanaPassada && ctx.alocSemanaPassada(passada)) || [], ferias: ctx.ferias || [], hoje: ctx.hoje }))}
+    ${pd.secao('Alocação das obras em andamento', 'Arraste o funcionário para a obra e o dia (semana atual, próximas e anteriores) · a outra aba mostra onde cada funcionário está na semana, com uma cor por função · quem está de férias aparece marcado e não pode ser alocado', ctx.quadroAloc ? html.seguro(ctx.quadroAloc()) : '')}`;
+  }
+  // ---- aba Pendências
+  if (aba === 'pendencias') {
+    return html`${cab}
     ${pd.secao('Pendências do departamento', 'Resumo das pendências da Operação: o que está atrasado, o que vence na semana e quem está com cada uma', ctx.pendenciasDep ? html.seguro(ctx.pendenciasDep(ctx.dep.setor)) : '')}
-    ${pd.secao('Alocação das obras em andamento', 'Arraste o funcionário para a obra e o dia (semana atual, próximas e anteriores) · a outra aba mostra onde cada funcionário está na semana, com uma cor por função', ctx.quadroAloc ? html.seguro(ctx.quadroAloc()) : '')}
+    ${pd.secao('Quem precisa agir', 'Alerta clicado vira tarefa com responsável e data-limite', pd.quemAgir(agir, { setor: 'Operação' }))}`;
+  }
+  // ---- aba Painel (a página de abertura)
+  return html`${cab}
+    ${pd.secao('Cronograma geral de obras', 'Obras em andamento nos próximos 4 meses, semana a semana · pós-obras com mais de 4 semanas · orçamentos que acreditamos fechar', ctx.cronogramaGeral ? html.seguro(ctx.cronogramaGeral()) : '', { id: 'cronograma-geral' })}
+    ${pd.secao('Quadro de entregáveis', `Documentação obrigatória do gestor de obra, por obra · ${ent.LEGENDA}`, ent.quadro(ctx, ctx.obrasAndamento && ctx.obrasAndamento.length ? ctx.obrasAndamento : obras.map((o) => o.obra), { eventos: ctx.evidenciasLista ? ctx.evidenciasLista() : null, atas: ctx.atasLista ? ctx.atasLista() : null }), { id: 'entregaveis' })}
     ${pd.secao('Resumo das obras', `Fonte: planejamento e grupos das obras · leitura ${leitura}`, resumo)}
     ${pd.secao('Datas dos cronogramas no Drive', 'Fonte: cronogramas no Drive (GERENCIAMENTO › CRONOGRAMA)', pd.tabela(['Obra', 'Início', 'Término contratual', 'Previsão atual', 'Desvio × contrato', 'Semanas até a previsão', 'Avanço médio', 'Situação'], cronLinhas))}
     ${pd.secao('Hoje por obra: equipe, meta e pendência maior', 'Equipe: efetivo do grupo da obra · meta do dia: programação semanal', pd.tabela(['Obra', 'Equipe de hoje', 'Meta do dia (foco)', 'Pendência maior'], hojeLinhas))}
