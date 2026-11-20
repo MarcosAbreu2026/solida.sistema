@@ -18,6 +18,8 @@ export async function carregar() {
   return eventos;
 }
 
+export const todosEventos = () => eventos;
+
 // que prova vale para cada tarefa (pelo texto). Aprovar/verificar/afixar não se prova por arquivo.
 const REGRAS = [
   { re: /produtividade: registrar/i, tipo: 'whats' },

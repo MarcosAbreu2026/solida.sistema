@@ -24,6 +24,7 @@ let dados = { atas: [], pendencias: [], pessoas: [], erro: '' };
 let rascunho = null;   // ata lida de um arquivo/texto, esperando conferência
 
 export const temRascunho = () => !!rascunho;
+export const todasAtas = () => dados.atas;
 export function descartarRascunho() { rascunho = null; lote = null; }
 let lote = null;   // "ata de pendências" lida: cada linha vira uma tarefa, esperando conferência
 export const temLote = () => !!lote;

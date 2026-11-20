@@ -552,7 +552,7 @@ function ctxPainel(dep, area) {
     ...(dep && dep.id === 'orc-terceirizado' ? ctxTerc() : {}),
     ...(dep && dep.id === 'operacao' ? { ...ctxAlocacao(), ...ctxCronograma() } : {}),
     ...(dep && dep.id === 'orcamentos' ? ctxOrcQuadro() : {}),
-    diaFocoOp: diaFocoOperacao, pendenciasDep, obrasAndamento: alocObras(),
+    diaFocoOp: diaFocoOperacao, evidenciasLista: evidencias.todosEventos, atasLista: atas.todasAtas,pendenciasDep, obrasAndamento: alocObras(),
     alocObra: { semana: inicioDaSemana(hojeISO()), linhas: alocDaSemana(inicioDaSemana(hojeISO())) } };
 }
 // Operações: quadro de alocação (funcionários × obras em andamento × dias) e a visão funcionários × semana
