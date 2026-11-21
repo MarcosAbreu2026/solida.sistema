@@ -2384,3 +2384,5 @@ td select[data-cx-usuario] { font: inherit; font-size: 13px; padding: 5px 8px; b
 .df-fontes li.usada { font-weight: 700; }
 .df-fontes li small { font-weight: 400; color: var(--muted); }
 .df-semprof { color: #B3261E; font-weight: 700; font-size: 12px; }
+.or-tarefas { border-top: 1px solid var(--linha2); padding-top: 8px; }
+.or-tarefas h4 { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 4px; font-size: 13px; }

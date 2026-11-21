@@ -1033,7 +1033,7 @@ atas.definirFuncionarios(nomesDeFuncionarios(estado.equipeProg, CFG));   // list
   let out;
   try {
     // ---- desenho do Marcos: Início, painéis dos departamentos, página da obra e celular da obra
-    const abasDe = (base, ativa) => pd.abas([{ id: '', nome: 'Painel', href: base }, ...(tela === 'operacao' ? ABAS_OP.filter((a) => a.id).map((a) => ({ ...a, href: `${base}/${a.id}` })) : []), { id: 'detalhe', nome: tela === 'geral' ? 'Visão geral (anterior)' : 'Detalhes', href: `${base}/detalhe` }, ...(tela === 'transporte' ? [{ id: 'rotas', nome: 'Rotas da semana', href: `${base}/rotas` }] : []), ...(tela === 'planejamento' ? [{ id: 'metas', nome: 'Metas (4 semanas)', href: `${base}/metas` }] : [])], ativa);
+    const abasDe = (base, ativa) => pd.abas([{ id: '', nome: tela === 'orcamentos' ? 'CRM' : 'Painel', href: base }, ...(tela === 'operacao' ? ABAS_OP.filter((a) => a.id).map((a) => ({ ...a, href: `${base}/${a.id}` })) : []), { id: 'detalhe', nome: tela === 'geral' ? 'Visão geral (anterior)' : tela === 'orcamentos' ? 'Aditivos das obras' : 'Detalhes', href: `${base}/detalhe` }, ...(tela === 'transporte' ? [{ id: 'rotas', nome: 'Rotas da semana', href: `${base}/rotas` }] : []), ...(tela === 'planejamento' ? [{ id: 'metas', nome: 'Metas (4 semanas)', href: `${base}/metas` }] : [])], ativa);
     if (tela === 'geral' && ehPainel) {
       out = `<div class="pd">${pd.cabecalho({ rotulo: new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' }) })}${abasDe('#/geral', '')}${inicio.painel(ctxPainel(null, null))}</div>`;
     } else if (dep && ehPainel) {
@@ -1117,7 +1117,7 @@ atas.definirFuncionarios(nomesDeFuncionarios(estado.equipeProg, CFG));   // list
       out = corpo ? `<div>${abas}<div style="margin-top:26px">${corpo()}</div></div>` : T.telaArea(area, `<div style="margin-bottom:34px">${topo}</div>`);
     }
     else if (tela === 'equipe') out = equipeRank.render({ params: rota.params, extra: pedidos.secaoEquipe(estado.pedido.lista) });
-    else if (area && area.id === 'orcamentos') out = orcamentosTela.render(CFG, estado.drive.projetos, veValores(), deObra ? obrasDaPessoa() : null);
+    else if (area && area.id === 'orcamentos') out = (garantirAtasCarregadas('#orc'), orcamentosTela.render(CFG, estado.drive.projetos, veValores(), deObra ? obrasDaPessoa() : null, { pendencias: atas.todasPendencias(), podeEditar: podeEditarOrc() }));
     else if (tela === 'funcionarios') out = T.telaPessoas(estado.pessoas);
     else if (tela === 'agentes') out = T.telaAgentes();
     else if (area && area.id === 'posobra') {
