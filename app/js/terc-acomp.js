@@ -204,3 +204,32 @@ export async function apagar(obra, escopo, chave) {
   if (NA_NUVEM) { await apagarTercItem(obra, escopo, chave); await carregar(); return; }
   const l = lerLocal(); l.itens = l.itens.filter((x) => !(x.obra === obra && x.escopo === escopo && x.chave === chave)); l.valores = l.valores.filter((x) => !(x.obra === obra && x.escopo === escopo && x.chave === chave)); gravarLocal(l); itensDb = l.itens; valoresDb = l.valores;
 }
+
+// ---------------------------------------------------------------- quadro igual à planilha (topo da página de cada obra)
+// Mesmas colunas e ordem da planilha <obra>_TERCERIZADOS: Cód. · Aquisições · Andamento / Observações · Data limite para fechar · Prazo de entrega ·
+// Início da obra · Loja/Vendedor · Contato · Valor ESTIMADO · Valor FECHADO · diferença · Forma de Pagamento; cada linha na cor da situação (legenda).
+export function renderPlanilha({ projetos, obra, hoje, podeEditar, veValores }) {
+  const d = linhasDaObra(projetos, obra, hoje);
+  const legenda = html`<div class="tca-legenda"><b>LEGENDA</b>${SITUACOES.map((s) => html`<span style="background:#${s.cor}">${s.nome}</span>`)}</div>`;
+  const total = (escopo) => { const l = d.linhas.filter((x) => x.escopo === escopo); return { o: l.reduce((s, x) => s + (x.valorOrcado || 0), 0), f: l.filter((x) => x.valorFechado != null).reduce((s, x) => s + x.valorFechado, 0), l }; };
+  const bloco = (escopo, titulo) => {
+    const t = total(escopo);
+    const cab = ['Cód.', 'Aquisições', 'Andamento / Observações', 'Data limite para fechar', 'Prazo de entrega', 'Início da obra', 'Loja/Vendedor', 'Contato', ...(veValores ? ['Valor ESTIMADO', 'Valor FECHADO', 'Diferença', 'Forma de Pagamento'] : [])];
+    const linhas = t.l.map((l) => {
+      const s = porSit[l.situacao] || porSit.especificar;
+      const cel = (x, cls = '') => html`<td class="${cls}">${x}</td>`;
+      return html`<tr class="tca-row" style="background:#${s.cor}" data-tca="${encodeURIComponent(`${obra}|${l.escopo}|${l.chave}`)}" title="${s.nome} · clique para abrir">
+        ${cel(l.cod)}${cel(html`<b>${l.item}</b>${l.noOrcamento === false ? html` <span class="tca-fora">fora do orçamento</span>` : ''}`)}${cel(l.obs, 'tca-obs')}
+        ${cel(l.dataLimite ? (l.vencido ? html`<b class="pd-cr">${dBR(l.dataLimite)}</b>` : dBR(l.dataLimite)) : (l.limiteSugerido ? html`<i title="sugerida pelo cronograma">${dBR(l.limiteSugerido)}</i>` : ''))}
+        ${cel(l.prazoFornecedor)}${cel(l.prazoPadrao ? dBR(l.prazoPadrao) : '')}
+        ${cel(html`${l.lojas && l.lojas.length ? l.lojas.join('\n') : l.lojaCotando}${l.lojaFechada ? html`\n<b>Fechado: ${l.lojaFechada}</b>` : ''}${l.vendedor ? html`\n${l.vendedor}` : ''}`, 'tca-obs')}${cel(l.contato, 'tca-obs')}
+        ${veValores ? html`${cel(l.valorOrcado != null ? reais(l.valorOrcado) : '', 'tca-n')}${cel(l.valorFechado != null ? reais(l.valorFechado) : '', 'tca-n')}${cel(l.diferenca != null ? reais(l.diferenca) : '', 'tca-n')}${cel(String(l.pagamento || '').split('\n')[0], 'tca-obs')}` : ''}</tr>`;
+    });
+    return html`<section class="tca-bloco"><h3>${titulo} <span class="pequeno">${t.l.length} item(ns)${t.l.length ? ` · ${t.l.filter((x) => ['fechado', 'concluido'].includes(x.situacao)).length} fechado(s)` : ''}${veValores && t.o ? ` · estimado ${reais(t.o)} · fechado ${reais(t.f)}` : ''}</span></h3>
+      ${t.l.length ? html`<div class="tabela-rolagem"><table class="tab tca-planilha"><thead><tr>${cab.map((c) => html`<th>${c}</th>`)}</tr></thead><tbody>${linhas}</tbody></table></div>` : html`<p class="pd-vazio">Sem itens ${escopo === 'laranja' ? 'laranja' : 'cinza'} para esta obra.</p>`}</section>`;
+  };
+  const arq = d.planilha ? html`${d.planilha.arquivo}` : 'sem planilha na pasta TERCERIZADOS do Drive';
+  return html`<div class="tca-quadro"><div class="tca-topo"><span class="pequeno">${obra} · ${arq}${d.cronograma ? ' · prazos do cronograma' : ''}</span>${podeEditar ? html`<button type="button" class="botao" data-tca-novo="${obra}">+ Novo item</button>` : ''}</div>
+    ${legenda}${bloco('laranja', 'TERCEIRIZADOS CLIENTE · laranja')}${bloco('cinza', 'TERCEIRIZADOS SÓLIDA · cinza')}
+    <p class="pequeno">Mesmo quadro da planilha do Drive${podeEditar ? '; clique numa linha para preencher cotação, loja fechada, contrato e situação' : ''}. Cor da linha = situação do item.</p></div>`;
+}

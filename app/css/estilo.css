@@ -2386,3 +2386,18 @@ td select[data-cx-usuario] { font: inherit; font-size: 13px; padding: 5px 8px; b
 .df-semprof { color: #B3261E; font-weight: 700; font-size: 12px; }
 .or-tarefas { border-top: 1px solid var(--linha2); padding-top: 8px; }
 .or-tarefas h4 { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 4px; font-size: 13px; }
+
+/* Quadro dos terceirizados igual à planilha (terc-acomp.js › renderPlanilha) */
+.tca-topo { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 8px; }
+.tca-legenda { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0 14px; font-size: 12px; }
+.tca-legenda span { padding: 3px 10px; border-radius: 4px; border: 1px solid rgba(0,0,0,.08); }
+.tca-bloco { margin: 0 0 20px; }
+.tca-bloco h3 { font-size: 15px; margin: 0 0 8px; }
+table.tca-planilha { font-size: 12.5px; }
+table.tca-planilha th { background: #3b3b3b; color: #fff; white-space: nowrap; position: sticky; top: 0; }
+table.tca-planilha td { vertical-align: top; border-bottom: 1px solid rgba(0,0,0,.08); padding: 5px 8px; }
+table.tca-planilha td.tca-obs { white-space: pre-line; min-width: 180px; max-width: 360px; }
+table.tca-planilha td.tca-n { text-align: right; white-space: nowrap; }
+tr.tca-row { cursor: pointer; }
+tr.tca-row:hover { filter: brightness(.96); }
+.tca-fora { font-size: 11px; color: #B3261E; font-weight: 700; }

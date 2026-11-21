@@ -258,7 +258,7 @@ function telaPosObraPlanilha(rota) {
   if (ehObra && !rota.params.get('completo')) {
     if (!estado.base) return semBase();
     carregarAgendaSemana(); garantirAtasCarregadas();
-    return { abas, conteudo: `<div class="pagina" style="margin-top:26px">${String(posGeral.renderObra({ base: estado.base, nome: rota.arg, semanaIni: estado.posAgenda.semana, linhasAgenda: agendaPos.linhas, pendencias: atas.todasPendencias(), podeEditar: podeEditarPos(), linkCompleto: `#/posobra/obra/${encodeURIComponent(rota.arg)}?completo=1` }))}</div>` };
+    return { abas, conteudo: `<div class="pagina" style="margin-top:26px">${/^po/i.test(rota.arg) ? quadroTercObra(rota.arg) : ''}${String(posGeral.renderObra({ base: estado.base, nome: rota.arg, semanaIni: estado.posAgenda.semana, linhasAgenda: agendaPos.linhas, pendencias: atas.todasPendencias(), podeEditar: podeEditarPos(), linkCompleto: `#/posobra/obra/${encodeURIComponent(rota.arg)}?completo=1` }))}</div>` };
   }
   if (!estado.base) return semBase();
   const p = periodo(estado.verPor, estado.ref);
@@ -555,7 +555,7 @@ function ctxPainel(dep, area) {
     ...(dep && dep.id === 'operacao' ? { ...ctxAlocacao(), ...ctxCronograma() } : {}),
     ...(dep && dep.id === 'orcamentos' ? ctxOrcQuadro() : {}),
     ferias: feriasLista(), alocSemanaPassada: alocOpDaSemana, feriasRH: () => String(ferias.render({ podeEditar: podeEditarFerias(), equipeProg: estado.equipeProg, hoje: hojeISO() })),
-    diaFocoOp: diaFocoOperacao, evidenciasLista: evidencias.todosEventos, atasLista: atas.todasAtas,pendenciasDep, obrasAndamento: alocObras(),
+    quadroTercObra,     diaFocoOp: diaFocoOperacao, evidenciasLista: evidencias.todosEventos, atasLista: atas.todasAtas,pendenciasDep, obrasAndamento: alocObras(),
     alocObra: { semana: inicioDaSemana(hojeISO()), linhas: alocDaSemana(inicioDaSemana(hojeISO())) } };
 }
 // Operações: abas do topo (Painel · Dia a dia · Funcionários · Pendências); cada seção do painel antigo fica na aba certa
@@ -615,6 +615,11 @@ function ctxAlocacao() {
 }
 // Orçamento Terceirizado Laranja: os cards (Kanban) entram no painel
 const podeEditarTerc = () => ['socio', 'orc_terceirizado', 'orc_obras_novas', 'planejamento', 'coord_operacoes'].includes(funcaoAtual().id);
+// quadro igual à planilha de terceirizados no topo da página de cada obra (Operações e Pós-obra)
+const quadroTercObra = (cod) => {
+  if (!estado.tcaVisitada) { estado.tcaVisitada = true; tca.carregar().then(() => { const r = rotaAtual(); if (!emEdicao() && r.tela !== 'atas') desenhar(); }); }
+  return String(pd.secao('Terceirizados desta obra: cinza e laranja', 'o mesmo quadro da planilha de terceirizados do Drive · a cor da linha é a situação do item', tca.renderPlanilha({ projetos: estado.drive.projetos, obra: cod, hoje: hojeISO(), podeEditar: podeEditarTerc(), veValores: veValoresTerc() })));
+};
 // obras do acompanhamento dos terceirizados: as do cadastro (Mo e Po) em andamento; quem é de obra vê só as suas
 const veValoresTerc = () => veValores() || ['orc_terceirizado', 'orc_obras_novas', 'planejamento', 'coord_operacoes'].includes(funcaoAtual().id);
 const obrasDoTerc = () => { const minhas = funcaoAtual().porObra ? obrasDaPessoa() : null; return (estado.obrasCad || []).filter((c) => ativaNasListas(c) && c.situacao !== 'pausada' && /^(mo|po)d/i.test(String(c.codigo)) && (!minhas || minhas.includes(c.codigo))).map((c) => c.codigo).sort(numerico); };
