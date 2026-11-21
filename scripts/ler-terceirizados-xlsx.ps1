@@ -76,7 +76,7 @@ function Ler-Terceirizados([string]$pastaObra, [string]$codigo) {
   $p = Get-ChildItem $pastaObra -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '(?i)^TERC' } | Select-Object -First 1
   if (-not $p) { return $null }
   $arq = Get-ChildItem $p.FullName -File -ErrorAction SilentlyContinue |
-    Where-Object { $_.Extension -ieq '.xlsx' -and $_.Name -match '(?i)^[^_]*_TERC[EI]?RIZADOS_R(\d+)' -and $_.Name -notmatch '~\$|claude|teste' } |
+    Where-Object { $_.Extension -ieq '.xlsx' -and $_.Name -match '(?i)^[^_]*_TERC[EI]?RIZADOS_R(\d+)' -and $_.Name -notmatch '~\$|claude|teste|^Moxxx' } |
     Sort-Object { [int]([regex]::Match($_.Name, '_R(\d+)').Groups[1].Value) }, LastWriteTime | Select-Object -Last 1
   if (-not $arq) { return $null }
   if (Igual-Anterior $anterior[$codigo].terceirizados $arq) { return $anterior[$codigo].terceirizados }
