@@ -119,7 +119,9 @@ export function render({ projetos, hoje, obras, params, podeEditar, veValores })
     return [html`<a href="#/orc-terceirizado?tobra=${encodeURIComponent(o)}">${pd.obraCel(o)}</a>`, cel(c), cel(lj), prox ? (prox < hoje ? pd.selo('critico', dBR(prox)) : dBR(prox)) : '—', d.planilha ? html`<span class="pequeno">${d.planilha.arquivo}</span>` : html`<span class="pd-def">sem planilha na pasta</span>`]; });
   const visao = pd.tabela(['Obra', 'Cinza · Sólida contrata', 'Laranja · cliente', 'Próxima data limite', 'Planilha'], resumoObras, { vazio: 'Nenhuma obra.' });
   const filtro = html`<div class="fo-nav"><b>Obra:</b> <a class="botao${sel ? '' : ' on'}" href="#/orc-terceirizado">Todas</a>${obras.map((o) => html`<a class="botao${sel === o ? ' on' : ''}" href="#/orc-terceirizado?tobra=${encodeURIComponent(o)}">${o}</a>`)}</div>`;
-  if (!sel) return html`${erro ? html`<p class="erro">${erro}</p>` : ''}${filtro}${visao}<p class="pequeno">Escolha uma obra para ver item por item: orçado × cotação × fechado, prazos e contrato. Base: planilha de terceirizados da pasta da obra (Drive); o que for preenchido aqui fica no sistema.</p>`;
+  const lidas = (((projetos || {}).obras) || []).some((o) => o.terceirizados);
+  const semEnvio = !lidas ? pd.aviso('As planilhas de terceirizados do Drive ainda não chegaram ao sistema: o computador do escritório precisa ler o Drive e enviar à nuvem (passo a passo em docs/enviar-dados-escritorio.md). Enquanto isso, só aparecem os itens lançados aqui.', 'atencao') : '';
+  if (!sel) return html`${erro ? html`<p class="erro">${erro}</p>` : ''}${semEnvio}${filtro}${visao}<p class="pequeno">Escolha uma obra para ver item por item: orçado × cotação × fechado, prazos e contrato. Base: planilha de terceirizados da pasta da obra (Drive); o que for preenchido aqui fica no sistema.</p>`;
   const d = linhasDaObra(projetos, sel, hoje);
   const doEsc = d.linhas.filter((l) => !esc || l.escopo === esc);
   const c = contagem(doEsc);
