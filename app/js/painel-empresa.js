@@ -45,7 +45,7 @@ export function criarTelas(CFG, socio, opc = {}) {
     const p = String(k.valor ?? '—').split(' · ');
     const v = p.shift();
     const sem = v === '—';
-    return `<div class="met"><div class="v${sem ? ' sem' : ''}">${esc(v)}</div><div class="l" title="${esc(k.label)}">${esc(curto(k.label))}</div>${p.length ? `<div class="n">${esc(p.join(', '))}</div>` : ''}${k.nota ? `<div class="n">${esc(k.nota)}</div>` : ''}${k.restrito ? '<div class="r">Visível só para sócios</div>' : ''}</div>`;
+    return `<div class="met"><div class="v${sem ? ' sem' : ''}${v.length > 12 ? ' longo' : ''}">${esc(v)}</div><div class="l" title="${esc(k.label)}">${esc(curto(k.label))}</div>${p.length ? `<div class="n">${esc(p.join(', '))}</div>` : ''}${k.nota ? `<div class="n">${esc(k.nota)}</div>` : ''}${k.restrito ? '<div class="r">Visível só para sócios</div>' : ''}</div>`;
   }
 
   // ------------------------------------------------------------ visão geral

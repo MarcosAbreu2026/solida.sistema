@@ -8,6 +8,7 @@
 
 import { somarDias } from './datas.js';
 import { feriado } from './feriados.js';
+import { CINZA_FIXO, normTxt } from './escopo-cor.js';
 
 export { feriado };
 
@@ -53,7 +54,8 @@ export function classificar(texto) {
   const t = String(texto);
   if (/^(alerta|agendad|pendente)/i.test(t) || /pend[êe]ncias/i.test(t) || /conclu[ií]d/i.test(t)) return 'contexto';
   if (/^(compra|contrata|medi[çc][ãa]o de|entrega)/i.test(t)) return 'laranja';
-  const { parte } = separarParte(t);
+  const { base, parte } = separarParte(t);
+  if (CINZA_FIXO.test(normTxt(base))) return "cinza";   // alvenaria, pintura, hidráulica, elétrica… a Sólida executa (o nome entre parênteses é o funcionário)
   if (parte) {
     if (/s[óo]lida/i.test(parte)) return 'cinza';
     if (/terceiriz|fornecedor|arquitetura/i.test(parte)) return 'laranja';

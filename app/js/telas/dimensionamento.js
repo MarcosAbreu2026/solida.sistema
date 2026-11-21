@@ -9,6 +9,7 @@ import { alocacaoPorObra, alocacaoDeLinhas } from './func-obras.js';
 import { programacaoDaObra } from './prog-obra.js';
 import { obrasComProjeto } from './projetos.js';
 import { cronogramaDa } from './operacao.js';
+import { classificadorDaObra } from '../escopo-cor.js';
 
 const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/²/g, '2').replace(/\s+/g, ' ').trim();
 const dm = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
@@ -53,11 +54,11 @@ export function casar(l, itens) {
 }
 
 // ---- dimensionar uma lista de tarefas { data?, tarefa, cod, qtd, un }
-export function dimensionar(linhas, rend) {
+export function dimensionar(linhas, rend, classif = null) {
   const itensRend = ((rend && rend.itens) || []).filter((r) => r.total > 0 && r.media > 0);
   const hd = {}; const porDia = new Map(); const semMedia = []; const acima = []; const cobertas = []; const terceiros = [];
   for (const l of linhas) {
-    if (ehTerceiro(l.cor)) { terceiros.push(l); continue; }   // fase em laranja/verde na programação = fornecedor: não é a equipe Sólida
+    if (classif ? classif(l, l.cor) === 'laranja' : ehTerceiro(l.cor)) { terceiros.push(l); continue; }   // fase em laranja/verde na programação = fornecedor: não é a equipe Sólida
     if (typeof l.qtd !== 'number' || l.qtd <= 0 || SEM_MEDIDA.has(unid(l.un))) { semMedia.push({ ...l, motivo: 'sem quantidade medida (verba ou serviço)' }); continue; }
     const m = casar(l, itensRend);
     if (!m) { semMedia.push({ ...l, motivo: 'sem média na planilha' }); continue; }
@@ -97,7 +98,7 @@ function escopoDaObra(CFG, drive, cod, p, hoje, rend, alocSemana) {
   const cr = cronogramaDa(drive && drive.projetos, cod);
   if (cr.erro) return html`<p class="pd-vazio">Sem cronograma lido: ${cr.erro}.</p>`;
   const medivel = itens.filter((i) => typeof i.qtd === 'number' && i.qtd > 0 && !NAO_MEDIVEL.test(String(i.cod || '')) && !SEM_MEDIDA.has(unid(i.un)));
-  const d = dimensionar(medivel, rend);
+  const d = dimensionar(medivel, rend, classificadorDaObra(p));
   const total = Object.values(d.hd).reduce((s, v) => s + v, 0);
   const cobertura = medivel.length ? d.cobertas.length / medivel.length : 0;
   const exe = Math.max(0, Math.min(1, cr.exe || 0));
@@ -142,7 +143,7 @@ export function render({ CFG, drive, eqp, obrasCad, params, hoje = hojeISO(), al
   for (const o of obras) {
     const t = tarefasDaObra(CFG, o, o.obra, ini, hoje);
     if (!t.fonte) { semDados.push(o.obra); continue; }
-    const d = dimensionar(t.linhas, rend);
+    const d = dimensionar(t.linhas, rend, classificadorDaObra(o));
     const al = (aloc.obras.get(o.obra) || { prof: {} }).prof;
     const profs = [...new Set([...Object.keys(d.hd), ...Object.keys(al)])].sort((a, b) => ORDEM_PROF.indexOf(a) - ORDEM_PROF.indexOf(b));
     const dias = t.fonte === 'programação' ? null : 5;

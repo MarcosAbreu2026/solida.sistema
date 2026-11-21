@@ -2369,3 +2369,18 @@ td select[data-cx-usuario] { font: inherit; font-size: 13px; padding: 5px 8px; b
   .al .al-fchip, .al .al-dot, .al-legenda i, .al .ap-chip { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .al .al-fchip { font-size: 9pt; }
 }
+
+/* indicador com valor longo (ex.: "3 de 5 (Mo531, Mo581, Mo602)"): quebra a linha em vez de passar por cima do vizinho */
+.met .v.longo, .kgrid .met .v.longo { white-space: normal; overflow-wrap: anywhere; font-size: 17px; line-height: 1.3; letter-spacing: 0; }
+.kgrid .met .l { white-space: normal; overflow: visible; text-overflow: clip; }
+.kgrid .met { min-width: 0; overflow: hidden; }
+
+/* Dia a dia: fontes lidas por obra (✓ verde = tem, ● vermelho = não tem) e serviço sem profissional */
+.df-fontes { list-style: none; margin: 8px 0 0; padding: 8px 0 0; border-top: 1px dashed var(--linha2); display: grid; gap: 3px; font-size: 12px; }
+.df-fontes li b { display: inline-block; width: 16px; font-size: 13px; }
+.df-fontes li.ok b { color: #2E7D4F; }
+.df-fontes li.nao b { color: #B3261E; }
+.df-fontes li.nao { color: var(--muted); }
+.df-fontes li.usada { font-weight: 700; }
+.df-fontes li small { font-weight: 400; color: var(--muted); }
+.df-semprof { color: #B3261E; font-weight: 700; font-size: 12px; }

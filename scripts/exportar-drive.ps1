@@ -318,6 +318,7 @@ function Ler-Listagem([string]$pastaProjeto) {
 . (Join-Path $PSScriptRoot 'ler-pdf.ps1')
 . (Join-Path $PSScriptRoot 'ler-programacao-xlsx.ps1')
 . (Join-Path $PSScriptRoot 'ler-rendimentos-equipe.ps1')
+. (Join-Path $PSScriptRoot 'ler-terceirizados-xlsx.ps1')
 . (Join-Path $PSScriptRoot 'grade-xlsx.ps1')
 
 # leitura anterior (para não reler PDF/planilha que não mudou)
@@ -491,6 +492,7 @@ foreach ($pasta in Get-ChildItem $pastaObras -Directory | Where-Object { $_.Name
     cronograma = Ler-Cronograma $pasta.FullName $codigo
     escopo = Ler-Escopo $pasta.FullName $codigo
     programacao = Ler-Programacao $pasta.FullName $codigo
+    terceirizados = $(try { Ler-Terceirizados $pasta.FullName $codigo } catch { $null })
   })
 }
 # rendimentos: médias de produtividade da equipe por serviço (planilha do Marcos), para dimensionar a equipe da programação semanal

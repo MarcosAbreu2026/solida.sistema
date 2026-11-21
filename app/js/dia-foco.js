@@ -71,7 +71,7 @@ export function renderDias({ escopo, dias, aviso = '', cartoes, livres = null, p
       return html`<span class="df-chk-i">${podeChecar ? html`<button type="button" class="ac-mini ${f === true ? 'on' : ''}" data-dia-chk="${escopo}|${d.data}|${chave}|1" title="Feito">✔</button><button type="button" class="ac-mini ${f === false ? 'on nao' : ''}" data-dia-chk="${escopo}|${d.data}|${chave}|0" title="Não feito">✖</button>${meta != null ? html`<input type="number" class="df-qtd" step="0.1" min="0" value="${x && x.qtd != null ? x.qtd : ''}" placeholder="fez" title="Quantidade feita, se for diferente da meta (${meta})" data-dia-qtd="${escopo}|${d.data}|${chave}" data-meta="${meta}">` : ''}` : html`<b>${f === true ? '✔' : f === false ? '✖' : '·'}</b>${x && x.qtd != null ? html` <small>fez ${x.qtd}</small>` : ''}`}</span>`; };
     const item = (s) => html`<li class="df-it ${ant && (marcas[`${d.data}|${c.chave}~${s.k}`] || {}).feito === true ? 'df-it-ok' : ant && (marcas[`${d.data}|${c.chave}~${s.k}`] || {}).feito === false ? 'df-it-nao' : ''}">
       <span class="df-it-txt">${s.texto}</span>
-      <span class="df-it-quem">${s.tipo === 'laranja' ? (s.empresa ? html`<span class="df-emp">${s.empresa}</span>` : html`<span class="df-sem">empresa não informada</span>`) : (s.quem || []).length ? html`${s.quem.map((n) => html`<span class="df-chip">${n}</span>`)}${s.sugerido ? html` <i class="df-sug" title="O sistema sugeriu quem faz, pela função e pela produtividade">sugerido</i>` : ''}` : html`<span class="df-sem">${s.semQuem || 'sem funcionário'}</span>`}</span>
+      <span class="df-it-quem">${s.tipo === 'laranja' ? (s.empresa ? html`<span class="df-emp">${s.empresa}</span>` : html`<span class="df-sem">empresa não informada</span>`) : s.semProfissional ? html`<span class="df-semprof">● sem profissional para este serviço</span>` : (s.quem || []).length ? html`${s.quem.map((n) => html`<span class="df-chip">${n}</span>`)}${s.sugerido ? html` <i class="df-sug" title="O sistema sugeriu quem faz, pela função e pela produtividade">sugerido</i>` : ''}` : html`<span class="df-sem">${s.semQuem || 'sem funcionário'}</span>`}</span>
       ${ant ? controles(`${c.chave}~${s.k}`, s.qtd) : ''}</li>`;
     const grupo = (rot, cls, l) => (l.length ? html`<div class="df-grupo ${cls}"><h5>${rot}</h5><ul class="df-lista">${l.map(item)}</ul></div>` : '');
     const origemCls = { drive: 'df-or-drive', meta: 'df-or-meta', nada: 'df-or-nada' };
@@ -81,7 +81,8 @@ export function renderDias({ escopo, dias, aviso = '', cartoes, livres = null, p
         ${c.servicos.length ? '' : html`<p class="df-vazio">Nenhum serviço para este dia.</p>`}
         ${(c.pessoasLivres || []).length ? html`<p class="df-livre-sem">Alocado na obra, sem serviço: ${c.pessoasLivres.map((p) => html`<span class="df-chip">${p.nome}${p.periodo && p.periodo !== 'dia' ? html` <small>${PER[p.periodo] || ''}</small>` : ''}</span>`)}</p>` : ''}
         ${c.aviso ? html`<p class="df-aviso">${c.aviso}</p>` : ''}
-        ${c.origemInfo ? html`<p class="df-origem-rod ${origemCls[c.origemInfo.tipo] || ''}">${c.origemInfo.texto}</p>` : ''}`
+        ${c.origemInfo ? html`<p class="df-origem-rod ${origemCls[c.origemInfo.tipo] || ''}">${c.origemInfo.texto}</p>` : ''}
+        ${c.fontes ? html`<ul class="df-fontes">${c.fontes.map((f) => html`<li class="${f.ok ? 'ok' : 'nao'}${f.usada ? ' usada' : ''}"><b>${f.ok ? '✓' : '●'}</b> ${f.nome}<small> · ${f.detalhe}${f.usada ? ' · USADA' : ''}</small></li>`)}</ul>` : ''}`
       : c.checklist ? html`${(c.pessoas || []).length ? html`<div class="df-pes">${c.pessoas.map((p) => html`<span class="df-chip">${p.nome}${p.periodo && p.periodo !== 'dia' ? html` <small>${PER[p.periodo] || ''}</small>` : ''}</span>`)}</div>` : ''}
         <ul class="df-lista df-check">${c.checklist.map((s) => { const x = marcas[`${d.data}|${c.chave}~${s.k}`] || null; const est = x ? x.estado : null;
           return html`<li class="df-it ${ant && est === 'feito' ? 'df-it-ok' : ant && est === 'nao' ? 'df-it-nao' : ant && est === 'reagendar' ? 'df-it-reag' : ''}">
@@ -155,7 +156,7 @@ export function cartoesOperacao({ dia, obras = [], linhas = [], itensDoDia = () 
     const pessoas = linhas.filter((l) => l.data === dia && l.obra === cod).map((l) => ({ nome: l.pessoa, periodo: l.periodo || 'dia' }));
     if (programar) {   // quem executa o quê: programação da pasta ou montada pela meta da semana × produtividade (programar-dia.js)
       const r = programar(cod, dia, pessoas);
-      return { chave: cod, titulo: cod, link: `#/obra/${encodeURIComponent(cod)}`, servicos: r.servicos, pessoasLivres: r.pessoasLivres, aviso: r.aviso, origemInfo: r.origemInfo };
+      return { chave: cod, titulo: cod, link: `#/obra/${encodeURIComponent(cod)}`, servicos: r.servicos, pessoasLivres: r.pessoasLivres, aviso: r.aviso, origemInfo: r.origemInfo, fontes: r.fontes };
     }
     const itens = itensDoDia(cod, dia).filter((i) => i.item).map(txt).slice(0, 4);
     return { chave: cod, titulo: cod, link: `#/obra/${encodeURIComponent(cod)}`, pessoas, itens, aviso: !itens.length ? (semProgramacao(cod) ? 'Sem programação semanal na pasta da obra.' : 'Sem meta para este dia.') : '' };

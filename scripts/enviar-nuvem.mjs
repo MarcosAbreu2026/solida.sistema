@@ -56,6 +56,9 @@ function semValoresProjetos(d) {
   };
   const o = semValores(d);
   for (const obra of o.obras || []) {
+    // terceirizados: valores orçado, fechado, diferença e forma de pagamento só para sócios (gestores veem situação, loja e prazos)
+    const t = obra.terceirizados;
+    if (t) for (const l of [t.cinza, t.laranja]) for (const i of l || []) { delete i.estimado; delete i.estimadoAditivo; delete i.fechado; delete i.diferenca; delete i.pagamento; }
     const e = obra.escopo; if (!e) continue;
     e.grade = limpaGrade(e.grade, e.colunasValor);
     for (const a of [].concat(e.aditivos || [])) { a.grade = limpaGrade(a.grade, a.colunasValor); delete a.total; }
