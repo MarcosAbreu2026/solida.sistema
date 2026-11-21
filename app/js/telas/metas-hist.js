@@ -7,6 +7,8 @@ import * as pd from './painel-dep.js';
 import { hojeISO, somarDias, inicioDaSemana } from '../datas.js';
 import { programacoes } from '../programacao.js';
 import { MOTIVOS, obrasIgnoradas } from './produtividade.js';
+import { classificadorDaObra } from '../escopo-cor.js';
+import { encarregados, historicoPorObra, apanhadoGeral } from './metas-cinza-laranja.js';
 
 const N_SEMANAS = 4;
 const SEM_CAUSA = 'Sem justificativa';
@@ -44,12 +46,14 @@ const fmtQtd = (it) => (it.meta == null ? (it.estado === 'ok' ? 'feito' : '—')
 const ROT_ESTADO = { ok: ['ok', 'Concluído'], parcial: ['atencao', 'Avançou'], nao: ['critico', 'Sem avanço'] };
 
 // o que o quadro mostra: últimas 4 semanas (já começadas), por obra, com contagem e causa de cada meta não atingida
-export function analiseMetas(CFG, hoje = hojeISO()) {
-  const todas = ((CFG && CFG.metasSemanais && CFG.metasSemanais.semanas) || []).filter((s) => s.ini <= hoje).sort((a, b) => b.ini.localeCompare(a.ini)).slice(0, N_SEMANAS);
+export function analiseMetas(CFG, hoje = hojeISO(), drive = null) {
+  const segHoje = inicioDaSemana(hoje);
+  const todas = ((CFG && CFG.metasSemanais && CFG.metasSemanais.semanas) || []).filter((s) => s.ini < segHoje).sort((a, b) => b.ini.localeCompare(a.ini)).slice(0, N_SEMANAS);
   const ignoradas = obrasIgnoradas(CFG);
   const semanas = todas.map((s) => {
     const obras = (s.obras || []).filter((o) => !ignoradas.includes(o.obra)).map((o) => {
-      const itens = (o.itens || []).map((it) => ({ it, causa: it.estado === 'ok' ? null : causaDo(CFG, o.obra, s, it) }));
+      const classif = classificadorDaObra((((drive && drive.projetos) || {}).obras || []).find((p) => p.obra === o.obra));
+      const itens = (o.itens || []).map((it) => ({ it, tipo: it.tipo === 'laranja' || it.tipo === 'cinza' ? it.tipo : classif({ tarefa: it.item }), causa: it.estado === 'ok' ? null : causaDo(CFG, o.obra, s, it) }));
       const cont = (e) => itens.filter((x) => x.it.estado === e).length;
       const total = Math.max(o.tipo === 'pendencias' ? (o.total || 0) : 0, itens.length);
       return { obra: o.obra, tipo: o.tipo, semLeitura: !!o.semLeitura, lacunas: o.lacunas || [], itens, total, ok: cont('ok'), parcial: cont('parcial'), nao: cont('nao'), semRegistro: Math.max(0, total - itens.length) };
@@ -66,9 +70,10 @@ export function analiseMetas(CFG, hoje = hojeISO()) {
   return { semanas, naoAtingidas, causas, totais: { total, ok, parcial, nao: contadas.reduce((t, { o }) => t + o.nao, 0), semRegistro: contadas.reduce((t, { o }) => t + o.semRegistro, 0), semJustificativa: causas.get(SEM_CAUSA) || 0 } };
 }
 
-export function render({ CFG, params, hoje = hojeISO() }) {
-  const a = analiseMetas(CFG, hoje);
-  if (!a.semanas.length) return html`${pd.pergunta('As metas das obras foram atingidas nas últimas 4 semanas? Se não, por quê?', 'Pergunta da aba')}${metasAdiante(CFG, hoje).html}${pd.aviso('Ainda não há metas semanais lidas pelo agente (metasSemanais). Quando o agente gravar as metas e os relatórios, o histórico aparece aqui.', 'atencao')}`;
+export function render({ CFG, params, hoje = hojeISO(), drive = null }) {
+  const a = analiseMetas(CFG, hoje, drive);
+  if (!a.semanas.length) return html`${pd.pergunta('As metas das obras foram atingidas nas últimas 4 semanas? Se não, por quê?', 'Pergunta da aba')}${metasAdiante(CFG, hoje).html}${pd.aviso('Ainda não há metas semanais lidas pelo agente (metasSemanais) nas 4 semanas anteriores. Quando o agente gravar as metas e os relatórios, o histórico aparece aqui.', 'atencao')}
+    ${pd.secao('Obras com encarregado: as 4 semanas anteriores', 'Mo358, Mo531, Mo602 e Mo581 · sem meta lida, vale o relatório do grupo', encarregados(CFG, a, hoje))}`;
   const t = a.totais;
   const pctExec = t.total ? Math.round(((t.ok + t.parcial) / t.total) * 100) : null;
   const filtroObra = params && params.get('obra');
@@ -130,10 +135,13 @@ export function render({ CFG, params, hoje = hojeISO() }) {
     ${metasAdiante(CFG, hoje).html}
     ${cartoes}
     ${avisos.length ? pd.caixa('Atenção', pd.itens(avisos)) : ''}
+    ${pd.secao('Obras com encarregado: as 4 semanas anteriores', 'Mo358, Mo531, Mo602 e Mo581 (e quem o RH marcar com encarregado) · houve registro? lançou produtividade e não bateu a meta? teve justificativa?', encarregados(CFG, a, hoje))}
+    ${pd.secao('Cada obra: cinza × laranja, o que foi atingido e o que não foi', 'As 4 semanas anteriores, obra a obra · abra a obra para ver meta por meta e a causa', historicoPorObra(a))}
     ${pd.secao('Semana a semana', 'Concluída = meta batida · Avançou = andou mas não fechou · Sem avanço = não andou', porSemana)}
     ${pd.secao('Por obra', 'Percentual com execução (concluídas + avançaram) sobre o total de metas da obra na semana', porObra)}
     ${pd.secao('Por que não foi atingido', 'Causa das metas que não fecharam, nas últimas 4 semanas: problema de execução (material, mão de obra) ou de planejamento', causasTab)}
-    ${pd.secao('Metas não atingidas, uma a uma', filtroObra ? `Só ${filtroObra}` : `As ${Math.min(120, filtradas.length)} mais recentes${filtradas.length > 120 ? ` de ${filtradas.length}` : ''}`, html`${filtros}${detalhe}`)}`;
+    ${pd.secao('Metas não atingidas, uma a uma', filtroObra ? `Só ${filtroObra}` : `As ${Math.min(120, filtradas.length)} mais recentes${filtradas.length > 120 ? ` de ${filtradas.length}` : ''}`, html`${filtros}${detalhe}`)}
+    ${pd.secao('Apanhado geral das 4 semanas: cinza × laranja', 'Todas as obras juntas', apanhadoGeral(a))}`;
 }
 
 // Metas das PRÓXIMAS 4 semanas (esta e as 3 seguintes): o que já está lançado e o que FALTA lançar (pedido do Marcos, 20/11/2026)
@@ -141,7 +149,9 @@ export function metasAdiante(CFG, hoje) {
   const seg0 = inicioDaSemana(hoje);
   const semanas = [0, 1, 2, 3].map((i) => somarDias(seg0, i * 7));
   const plan = ((CFG && CFG.areas) || []).find((x) => x.id === 'planejamento') || {};
-  const obras = [...new Set([...(plan.porObra || []).map((o) => o.obra), ...((CFG && CFG.metasSemanais && CFG.metasSemanais.semanas) || []).filter((s) => semanas.includes(s.ini)).flatMap((s) => (s.obras || []).map((o) => o.obra))])]
+  // obras do cadastro em andamento (Mo602, Po595…) entram mesmo que o agente ainda não tenha lido a pasta delas
+  const doCadastro = ((CFG && CFG.obrasCad) || []).filter((c) => c.situacao === 'andamento' && /^(mo|po)\d/i.test(String(c.codigo))).map((c) => c.codigo);
+  const obras = [...new Set([...(plan.porObra || []).map((o) => o.obra), ...doCadastro,...((CFG && CFG.metasSemanais && CFG.metasSemanais.semanas) || []).filter((s) => semanas.includes(s.ini)).flatMap((s) => (s.obras || []).map((o) => o.obra))])]
     .sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }));
   const lidas = ((CFG && CFG.metasSemanais && CFG.metasSemanais.semanas) || []);
   const progs = programacoes(CFG);

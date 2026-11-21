@@ -1040,7 +1040,7 @@ atas.definirFuncionarios(nomesDeFuncionarios(estado.equipeProg, CFG));   // list
       if (f.porObra && !obrasDaPessoa().includes(rota.sub)) out = `<div class="erro">A obra ${esc(rota.sub)} não está entre as suas obras.</div>`;
       else out = String(celularObra.render(ctxPainel(depPorId('operacao'), CFG.areas.find((a) => a.id === 'operacao')), rota.sub, rota.params));
     } else if (dep && dep.id === 'planejamento' && rota.sub === 'dimensionamento') { const segDim = inicioDaSemana((rota.params.get('s')) || hojeISO()); out = String(dimens.render({ CFG, drive: estado.drive, eqp: estado.equipeProg, obrasCad: estado.obrasCad, params: rota.params, alocLinhas: alocDaSemana(segDim), alocSemana: segDim })); }
-    else if (dep && dep.id === 'planejamento' && rota.sub === 'metas') out = String(metasHist.render({ CFG, params: rota.params }));
+    else if (dep && dep.id === 'planejamento' && rota.sub === 'metas') out = String(metasHist.render({ CFG, params: rota.params, drive: estado.drive }));
     else if (dep && dep.id === 'planejamento' && rota.sub === 'funcionarios') out = String(funcObras.render({ eqp: estado.equipeProg, obrasCad: estado.obrasCad, efetivo: estado.efetivo, params: rota.params }));
     else if (ehObraPlan) out = T.telaObra(rota.arg);
     else if (area && area.id === 'operacao') {
