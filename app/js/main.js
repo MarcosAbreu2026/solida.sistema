@@ -47,6 +47,7 @@ import * as agendaPos from './agenda-pos.js';
 import * as svPos from './servicos-pos.js';
 import * as osq from './os-quadro.js';
 import * as tcq from './terc-quadro.js';
+import * as tca from './terc-acomp.js';
 import * as oq from './orc-quadro.js';
 import * as cg from './cronograma-geral.js';
 import * as df from './dia-foco.js';
@@ -614,10 +615,15 @@ function ctxAlocacao() {
 }
 // Orçamento Terceirizado Laranja: os cards (Kanban) entram no painel
 const podeEditarTerc = () => ['socio', 'orc_terceirizado', 'orc_obras_novas', 'planejamento', 'coord_operacoes'].includes(funcaoAtual().id);
+// obras do acompanhamento dos terceirizados: as do cadastro (Mo e Po) em andamento; quem é de obra vê só as suas
+const veValoresTerc = () => veValores() || ['orc_terceirizado', 'orc_obras_novas', 'planejamento', 'coord_operacoes'].includes(funcaoAtual().id);
+const obrasDoTerc = () => { const minhas = funcaoAtual().porObra ? obrasDaPessoa() : null; return (estado.obrasCad || []).filter((c) => ativaNasListas(c) && c.situacao !== 'pausada' && /^(mo|po)d/i.test(String(c.codigo)) && (!minhas || minhas.includes(c.codigo))).map((c) => c.codigo).sort(numerico); };
 function ctxTerc() {
   if (!estado.tercVisitada) { estado.tercVisitada = true; tcq.carregar().then(() => { const r = rotaAtual(); if (!emEdicao() && r.tela !== 'atas') desenhar(); }); }
+  if (!estado.tcaVisitada) { estado.tcaVisitada = true; tca.carregar().then(() => { const r = rotaAtual(); if (!emEdicao() && r.tela !== 'atas') desenhar(); }); }
   garantirAtasCarregadas('#terc');
-  return { quadroTerc: () => String(tcq.renderQuadro({ params: rotaAtual().params, podeEditar: podeEditarTerc(), projetos: obrasDeAtas(), pendencias: atas.todasPendencias() })) };
+  return { acompTerc: () => String(tca.render({ projetos: estado.drive.projetos, hoje: hojeISO(), obras: obrasDoTerc(), params: rotaAtual().params, podeEditar: podeEditarTerc(), veValores: veValoresTerc() })),
+    quadroTerc: () => String(tcq.renderQuadro({ params: rotaAtual().params, podeEditar: podeEditarTerc(), projetos: obrasDeAtas(), pendencias: atas.todasPendencias() })) };
 }
 
 // CRM dos orçamentos novos (Kanban) e cronograma geral de obras (Operações)
@@ -1933,6 +1939,21 @@ document.addEventListener('click', (e) => {
 });
 
 // ---- Cards do Orçamento Terceirizado Laranja (mesmo jeito do Quadro de OS)
+// acompanhamento dos terceirizados (terc-acomp.js): abrir o item, novo item, salvar, excluir
+const tcaAbrir = (obra, escopo, chave) => osqAbrir(tca.form({ projetos: estado.drive.projetos, hoje: hojeISO(), obra, escopo, chave, podeEditar: podeEditarTerc(), veValores: veValoresTerc() }), 'osq-caixa');
+document.addEventListener('click', (e) => {
+  const lin = e.target.closest && e.target.closest('[data-tca]');
+  if (lin) { e.preventDefault(); const [obra, escopo, chave] = decodeURIComponent(lin.dataset.tca).split('|'); tcaAbrir(obra, escopo, chave); return; }
+  const nv = e.target.closest && e.target.closest('[data-tca-novo]');
+  if (nv) { osqAbrir(tca.form({ projetos: estado.drive.projetos, hoje: hojeISO(), obra: nv.dataset.tcaNovo, podeEditar: podeEditarTerc(), veValores: veValoresTerc(), novo: true }), 'osq-caixa'); return; }
+  const del = e.target.closest && e.target.closest('[data-tca-del]');
+  if (del && confirm('Excluir este item do acompanhamento? Não dá para desfazer.')) { const [obra, escopo, chave] = del.dataset.tcaDel.split('|'); tca.apagar(obra, escopo, chave).then(() => { const m = document.getElementById('at-modal'); if (m) m.remove(); desenhar(); }).catch((err) => alert(`Não foi possível excluir (${err.message || err}).`)); }
+});
+document.addEventListener('submit', (e) => {
+  const f = e.target.closest && e.target.closest('#tca-form'); if (!f) return;
+  e.preventDefault();
+  tca.salvarForm(new FormData(f), f.dataset.obra, f.dataset.chave, !!f.dataset.novo).then(({ linha, valores }) => tca.gravar(linha, valores)).then(() => { const m = document.getElementById('at-modal'); if (m) m.remove(); desenhar(); }).catch((err) => alert(`Não foi possível salvar (${err.message || err}).`));
+});
 let tcqArrastando = null;
 const tcqFazer = async (fn, { depois = null } = {}) => {
   try { await fn(); try { await atas.carregar(); } catch { /* sem as tarefas: segue */ } desenhar(); if (depois) depois(); } catch (err) { alert(`Não foi possível mexer no card (${err.message || err}).`); }

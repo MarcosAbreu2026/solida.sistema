@@ -562,6 +562,33 @@ export async function apagarTercQuadro(id) {
   const { error } = await sb.from('terc_quadro').delete().eq('id', id);
   if (error) throw new Error(error.message);
 }
+// Acompanhamento dos terceirizados (supabase/41-terc-itens.sql): o que o sistema preenche por cima da planilha do Drive
+export async function listarTercItens() {
+  const { data, error } = await sb.from('terc_itens').select('*');
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+export async function listarTercValores() {
+  const { data, error } = await sb.from('terc_itens_valores').select('*');
+  if (error) return [];   // sem permissão para ver valores: volta vazio
+  return data || [];
+}
+export async function gravarTercItem(linha, valores = null) {
+  const { id, atualizado_em, atualizado_por, ...resto } = linha;
+  const { data, error } = await sb.from('terc_itens').upsert(resto, { onConflict: 'obra,escopo,chave' }).select().single();
+  if (error) throw new Error(error.message);
+  if (valores) {
+    const v = { obra: resto.obra, escopo: resto.escopo, chave: resto.chave, ...valores };
+    const r = await sb.from('terc_itens_valores').upsert(v, { onConflict: 'obra,escopo,chave' });
+    if (r.error) throw new Error(r.error.message);
+  }
+  return data;
+}
+export async function apagarTercItem(obra, escopo, chave) {
+  const { error } = await sb.from('terc_itens').delete().eq('obra', obra).eq('escopo', escopo).eq('chave', chave);
+  if (error) throw new Error(error.message);
+  await sb.from('terc_itens_valores').delete().eq('obra', obra).eq('escopo', escopo).eq('chave', chave);
+}
 export async function enviarFotoTerc(id, blob) {
   const caminho = `${id}/foto-${Date.now()}-${Math.floor(Math.random() * 1000)}.jpg`;
   const { error } = await sb.storage.from('terc-fotos').upload(caminho, blob, { contentType: 'image/jpeg' });

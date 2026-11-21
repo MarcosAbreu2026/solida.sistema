@@ -23,13 +23,14 @@ export const corEhTerceiro = (cor) => {
   return Math.max(r, g, b) - Math.min(r, g, b) > 14;
 };
 
-const bate = (txt, alvo) => { const a = tokens(txt); const b = tokens(alvo); if (!a.length || !b.length) return false; const n = a.filter((x) => b.includes(x)).length; return n >= Math.min(2, a.length, b.length) && n / Math.min(a.length, b.length) >= 0.6; };
+export const bate = (txt, alvo) => { const a = tokens(txt); const b = tokens(alvo); if (!a.length || !b.length) return false; const n = a.filter((x) => b.includes(x)).length; return n >= Math.min(2, a.length, b.length) && n / Math.min(a.length, b.length) >= 0.6; };
 
 // p = obra do projetos.json ({ escopo.grupos[].itens[{cod,desc}], terceirizados.laranja[{cod,item,loja}] }) → (l, cor) => 'cinza' | 'laranja'
 export function classificadorDaObra(p) {
-  const escopo = (((p && p.escopo && p.escopo.grupos) || []).flatMap((g) => g.itens || []));
+  const arr = (v) => (Array.isArray(v) ? v : v ? [v] : []);
+  const escopo = arr(p && p.escopo && p.escopo.grupos).flatMap((g) => arr(g.itens));
   const codsEscopo = new Set(escopo.map((i) => normTxt(i.cod).replace(/ /g, '')).filter(Boolean));
-  const laranja = (((p && p.terceirizados && p.terceirizados.laranja) || []).filter((i) => i.item));
+  const laranja = (arr(p && p.terceirizados && p.terceirizados.laranja).filter((i) => i.item));
   const temPlanilha = laranja.length > 0;
   const alvosLaranja = laranja.map((i) => ({ txt: String(i.item).replace(/\s*-\s*(mat|mo|mat e mo|mo e mat)\s*$/i, ''), loja: String(i.loja || '').split(/\n|\//)[0].replace(/\([^)]*\)/g, '').trim() }));
   return (l, cor) => {

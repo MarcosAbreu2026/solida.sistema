@@ -38,7 +38,7 @@ export const DEPARTAMENTOS = [
     resp: 'Estagiária: Júlia · Supervisora: Mariana',
     titulo: 'ORC Terceirizado Laranja',
     pergunta: 'Quais contratações e orçamentos de terceiros faltam em cada obra e qual é a prioridade?',
-    funcoes: ['orc_terceirizado', 'orc_obras_novas', 'planejamento', 'coord_operacoes'] },
+    funcoes: ['orc_terceirizado', 'orc_obras_novas', 'planejamento', 'coord_operacoes', 'gestor_obra', 'estagiario'] },
   { id: 'orcamentos', nome: 'ORC Obras Novas', cfg: 'orcamentos', setor: 'ORC Obras Novas',
     resp: 'Gestora: Isabel · Estagiário: Leandro · independente do Comercial',
     pergunta: 'Em que status está cada orçamento e quantos estamos fechando?',

@@ -59,6 +59,7 @@ export function painel(ctx) {
 
   return html`${pd.pergunta(ctx.dep.pergunta)}
     ${avisoLeitura(ctx, 'Programação e alertas lidos pelo agente em')}
+    ${pd.secao('Terceirizados por obra: cinza e laranja', 'A planilha de acompanhamento de cada obra no sistema: item, escopo, orçado, prazos, data limite, quem está cotando, quem fechou e contrato · todos os gestores e estagiários de obra veem o status das suas obras', ctx.acompTerc ? html.seguro(ctx.acompTerc()) : '', { id: 'acompanhamento' })}
     ${pd.secao('Cards de orçamento terceirizado', 'Cada card é um item a contratar ou comprar (ex.: louças e metais) ligado a uma obra: arraste para a coluna certa; as tarefas e as fotos ficam dentro do card', ctx.quadroTerc ? html.seguro(ctx.quadroTerc()) : '')}
     ${pd.secao('Tarefas por cargo', 'Abra o cargo para ver as tarefas dele · o cargo é escolhido em cada tarefa', tarefasPorCargo(ctx))}
     ${pd.secao('Pendências de contratação', 'Quanto mais perto do fim da obra, maior a prioridade · itens laranja da programação, contratos no Mais Controle e alertas',
