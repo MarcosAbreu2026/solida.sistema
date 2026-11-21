@@ -70,3 +70,6 @@ create or replace function public.terc_itens_antes() returns trigger language pl
 begin new.atualizado_em := now(); return new; end $$;
 drop trigger if exists terc_itens_antes on public.terc_itens;
 create trigger terc_itens_antes before insert or update on public.terc_itens for each row execute function public.terc_itens_antes();
+
+-- função de gatilho: ninguém precisa chamá-la pela API
+revoke execute on function public.terc_itens_antes() from public, anon, authenticated;
