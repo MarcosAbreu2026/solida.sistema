@@ -116,9 +116,9 @@ export function render({ projetos, hoje, obras, params, podeEditar, veValores })
   const resumoObras = obras.map((o) => { const d = linhasDaObra(projetos, o, hoje); const c = contagem(d.linhas.filter((l) => l.escopo === 'cinza')); const lj = contagem(d.linhas.filter((l) => l.escopo === 'laranja'));
     const prox = d.linhas.filter((l) => !['fechado', 'concluido'].includes(l.situacao) && l.limiteEfetivo).map((l) => l.limiteEfetivo).sort()[0] || '';
     const cel = (x) => (x.total ? html`${pd.selo(x.vencidos || x.urgentes ? 'critico' : x.fechados === x.total ? 'ok' : 'atencao', `${x.fechados} de ${x.total} fechados`)}<span class="pd-obra-sub">${x.semCotacao ? `${x.semCotacao} sem cotação` : 'todos cotados'}${x.vencidos ? ` · ${x.vencidos} com limite vencido` : ''}</span>` : html`<span class="pd-def">sem itens</span>`);
-    return [html`<a href="#/orc-terceirizado?tobra=${encodeURIComponent(o)}">${pd.obraCel(o)}</a>`, cel(c), cel(lj), prox ? (prox < hoje ? pd.selo('critico', dBR(prox)) : dBR(prox)) : '—', d.planilha ? html`<span class="pequeno">${d.planilha.arquivo}</span>` : html`<span class="pd-def">sem planilha na pasta</span>`]; });
+    return [html`<a href="#/orc-terceirizado?tobra=${encodeURIComponent(o)}&tcprojeto=${encodeURIComponent(o)}">${pd.obraCel(o)}</a>`, cel(c), cel(lj), prox ? (prox < hoje ? pd.selo('critico', dBR(prox)) : dBR(prox)) : '—', d.planilha ? html`<span class="pequeno">${d.planilha.arquivo}</span>` : html`<span class="pd-def">sem planilha na pasta</span>`]; });
   const visao = pd.tabela(['Obra', 'Cinza · Sólida contrata', 'Laranja · cliente', 'Próxima data limite', 'Planilha'], resumoObras, { vazio: 'Nenhuma obra.' });
-  const filtro = html`<div class="fo-nav"><b>Obra:</b> <a class="botao${sel ? '' : ' on'}" href="#/orc-terceirizado">Todas</a>${obras.map((o) => html`<a class="botao${sel === o ? ' on' : ''}" href="#/orc-terceirizado?tobra=${encodeURIComponent(o)}">${o}</a>`)}</div>`;
+  const filtro = html`<div class="fo-nav"><b>Obra:</b> <a class="botao${sel ? '' : ' on'}" href="#/orc-terceirizado">Todas</a>${obras.map((o) => html`<a class="botao${sel === o ? ' on' : ''}" href="#/orc-terceirizado?tobra=${encodeURIComponent(o)}&tcprojeto=${encodeURIComponent(o)}">${o}</a>`)}</div>`;
   const lidas = (((projetos || {}).obras) || []).some((o) => o.terceirizados);
   const semEnvio = !lidas ? pd.aviso('As planilhas de terceirizados do Drive ainda não chegaram ao sistema: o computador do escritório precisa ler o Drive e enviar à nuvem (passo a passo em docs/enviar-dados-escritorio.md). Enquanto isso, só aparecem os itens lançados aqui.', 'atencao') : '';
   if (!sel) return html`${erro ? html`<p class="erro">${erro}</p>` : ''}${semEnvio}${filtro}${visao}<p class="pequeno">Escolha uma obra para ver item por item: orçado × cotação × fechado, prazos e contrato. Base: planilha de terceirizados da pasta da obra (Drive); o que for preenchido aqui fica no sistema.</p>`;
@@ -152,7 +152,7 @@ export function render({ projetos, hoje, obras, params, podeEditar, veValores })
   });
   const aviso = !d.planilha ? pd.aviso(`${sel}: sem planilha de terceirizados na pasta TERCERIZADOS da obra no Drive. ${podeEditar ? 'Use "+ Novo item" para lançar os itens aqui.' : 'A equipe do orçamento terceirizado lança os itens.'}`, 'atencao') : '';
   const fonte = d.planilha ? html`<p class="pequeno">Planilha ${d.planilha.arquivo} · prazo padrão = início da atividade no cronograma${d.cronograma ? ` (${String(d.cronograma.arquivo).replace(/^.*[\/]/, '')})` : ' (obra sem cronograma lido)'} · data limite sugerida = prazo padrão − prazo de entrega − 7 dias · "fora do orçamento" = sem valor estimado, aditivo ou marcado "não consta no escopo". ${podeEditar ? 'Clique no item para preencher cotação, loja fechada, contrato e situação.' : 'Clique no item para ver os detalhes.'}</p>` : '';
-  return html`${erro ? html`<p class="erro">${erro}</p>` : ''}${filtro}${aviso}${cards}${abas}${pd.tabela(cab, linhas, { vazio: 'Nenhum item.' })}${fonte}`;
+  return html`${erro ? html`<p class="erro">${erro}</p>` : ''}${filtro}${aviso}${cards}${renderPlanilha({ projetos, obra: sel, hoje, podeEditar, veValores })}${fonte}`;
 }
 
 const sel = (c) => (c ? html.seguro('selected') : '');
@@ -219,7 +219,7 @@ export function renderPlanilha({ projetos, obra, hoje, podeEditar, veValores }) 
       const s = porSit[l.situacao] || porSit.especificar;
       const cel = (x, cls = '') => html`<td class="${cls}">${x}</td>`;
       return html`<tr class="tca-row" style="background:#${s.cor}" data-tca="${encodeURIComponent(`${obra}|${l.escopo}|${l.chave}`)}" title="${s.nome} · clique para abrir">
-        ${cel(l.cod)}${cel(html`<b>${l.item}</b>${l.noOrcamento === false ? html` <span class="tca-fora">fora do orçamento</span>` : ''}`)}${cel(l.obs, 'tca-obs')}
+        ${cel(l.cod)}${cel(html`<b>${l.item}</b>${/^AD/i.test(String(l.cod || '')) ? html` <span class="tca-adit">aditivo</span>` : html` <span class="tca-adit tca-esc">escopo</span>`}${l.noOrcamento === false ? html` <span class="tca-fora">fora do orçamento</span>` : ''}`)}${cel(l.obs, 'tca-obs')}
         ${cel(l.dataLimite ? (l.vencido ? html`<b class="pd-cr">${dBR(l.dataLimite)}</b>` : dBR(l.dataLimite)) : (l.limiteSugerido ? html`<i title="sugerida pelo cronograma">${dBR(l.limiteSugerido)}</i>` : ''))}
         ${cel(l.prazoFornecedor)}${cel(l.prazoPadrao ? dBR(l.prazoPadrao) : '')}
         ${cel(html`${l.lojas && l.lojas.length ? l.lojas.join('\n') : l.lojaCotando}${l.lojaFechada ? html`\n<b>Fechado: ${l.lojaFechada}</b>` : ''}${l.vendedor ? html`\n${l.vendedor}` : ''}`, 'tca-obs')}${cel(l.contato, 'tca-obs')}

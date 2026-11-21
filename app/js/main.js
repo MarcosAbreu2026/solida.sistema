@@ -618,7 +618,7 @@ const podeEditarTerc = () => ['socio', 'orc_terceirizado', 'orc_obras_novas', 'p
 // quadro igual à planilha de terceirizados no topo da página de cada obra (Operações e Pós-obra)
 const quadroTercObra = (cod) => {
   if (!estado.tcaVisitada) { estado.tcaVisitada = true; tca.carregar().then(() => { const r = rotaAtual(); if (!emEdicao() && r.tela !== 'atas') desenhar(); }); }
-  return String(pd.secao('Terceirizados desta obra: cinza e laranja', 'o mesmo quadro da planilha de terceirizados do Drive · a cor da linha é a situação do item', tca.renderPlanilha({ projetos: estado.drive.projetos, obra: cod, hoje: hojeISO(), podeEditar: podeEditarTerc(), veValores: veValoresTerc() })));
+  return `<p class="pequeno" style="margin:10px 0"><a class="link" href="#/orc-terceirizado?tobra=${encodeURIComponent(cod)}&tcprojeto=${encodeURIComponent(cod)}">Terceirizados cinza e laranja de ${cod}: ver o quadro no Orçamento Terceirizado Laranja →</a></p>`;
 };
 // obras do acompanhamento dos terceirizados: as do cadastro (Mo e Po) em andamento; quem é de obra vê só as suas
 const veValoresTerc = () => veValores() || ['orc_terceirizado', 'orc_obras_novas', 'planejamento', 'coord_operacoes'].includes(funcaoAtual().id);
@@ -627,7 +627,7 @@ function ctxTerc() {
   if (!estado.tercVisitada) { estado.tercVisitada = true; tcq.carregar().then(() => { const r = rotaAtual(); if (!emEdicao() && r.tela !== 'atas') desenhar(); }); }
   if (!estado.tcaVisitada) { estado.tcaVisitada = true; tca.carregar().then(() => { const r = rotaAtual(); if (!emEdicao() && r.tela !== 'atas') desenhar(); }); }
   garantirAtasCarregadas('#terc');
-  return { acompTerc: () => String(tca.render({ projetos: estado.drive.projetos, hoje: hojeISO(), obras: obrasDoTerc(), params: rotaAtual().params, podeEditar: podeEditarTerc(), veValores: veValoresTerc() })),
+  return { obraSel: rotaAtual().params.get('tobra') || '', acompTerc: () => String(tca.render({ projetos: estado.drive.projetos, hoje: hojeISO(), obras: obrasDoTerc(), params: rotaAtual().params, podeEditar: podeEditarTerc(), veValores: veValoresTerc() })),
     quadroTerc: () => String(tcq.renderQuadro({ params: rotaAtual().params, podeEditar: podeEditarTerc(), projetos: obrasDeAtas(), pendencias: atas.todasPendencias() })) };
 }
 

@@ -2401,3 +2401,5 @@ table.tca-planilha td.tca-n { text-align: right; white-space: nowrap; }
 tr.tca-row { cursor: pointer; }
 tr.tca-row:hover { filter: brightness(.96); }
 .tca-fora { font-size: 11px; color: #B3261E; font-weight: 700; }
+.tca-adit { font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 3px; background: #7B6AA8; color: #fff; text-transform: uppercase; }
+.tca-adit.tca-esc { background: #6E7782; }
