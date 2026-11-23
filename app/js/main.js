@@ -2910,6 +2910,9 @@ document.addEventListener('submit', async (e) => {
         { const caixaOs = g.querySelector('.av-os'); if (caixaOs && !caixaOs.hidden && !g.querySelector('[name="av_os"]').value) { alert('Este PO tem OS em aberto: escolha a OS da tarefa (ou "Sem OS" se for uma tarefa geral do PO).'); g.querySelector('[name="av_os"]').focus(); return; } }
         await atas.criarPendencia({ daObra: !!comodoDe(String(new FormData(g).get('p_assunto') || '')) && !new FormData(g).has('p_pessoal') && !g.dataset.os, ata_id: null, ...p, obra: String(new FormData(g).get('av_obra') || '').replace('__nenhuma__', ''), setor: setorV, os: osEscolhida(g) || g.dataset.os || null, osFase: osFaseDe(g) || g.dataset.osFase || null, observadores: new FormData(g).getAll('p_obs'), hora: String(new FormData(g).get('p_hora') || ''), duracao: new FormData(g).get('p_dur'), recorrente: new FormData(g).has('p_recor'), frequencia: String(new FormData(g).get('p_freq') || 'semanal') });
         const mod = document.getElementById('at-modal'); if (mod) mod.remove();
+        // a tarefa nova tem que aparecer: se o filtro de obra da tela a esconderia (ex.: Tabela em "Nenhuma" e a tarefa é de uma obra), passa para "Todas"
+        { const ob = String(new FormData(g).get('av_obra') || '').replace('__nenhuma__', ''); const r = rotaAtual(); const o = r.params.get('obra') || ''; const ef = o || (r.params.get('modo') === 'lista' ? 'todas' : 'nenhuma');
+          if (ob && document.querySelector('[data-atas-filtro="obra"]') && ef !== 'todas' && ef.toLowerCase() !== ob.toLowerCase()) trocarQuery({ obra: 'todas' }); }
       } else await atas.criarPendencia({ ata_id: Number(g.dataset.ata), ...p, obra: g.dataset.obra, setor: g.dataset.setor });
     }
     desenhar();
