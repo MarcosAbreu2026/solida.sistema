@@ -480,12 +480,19 @@ export function nomesExecutores() {
   for (const n of [...dados.pessoas.filter((p) => !ehConta(p)).map((p) => p.nome), ...funcionariosEmpresa]) { const k = chaveNome(n); if (k && !m.has(k)) m.set(k, String(n).trim()); }
   return [...m.values()].sort((a, b) => a.localeCompare(b, 'pt-BR'));
 }
+// Além das pessoas: "Terceirizado" e, quando ainda não se sabe qual funcionário vai executar, a função da mão de obra civil (pedido do Marcos, 20/11/2026).
+export const FUNCOES_MAO_DE_OBRA = ['Pedreiro', 'Ladrilheiro', 'Eletricista', 'Bombeiro hidráulico', 'Ajudante', 'Servente', 'Pintor', 'Gesseiro', 'Carpinteiro / marceneiro'];
+export const EXEC_TERCEIRIZADO = 'Terceirizado';
+const execFuncao = (f) => `${f} (função)`;
+export const ehExecutorEspecial = (v) => v === EXEC_TERCEIRIZADO || FUNCOES_MAO_DE_OBRA.some((f) => execFuncao(f) === v);
 // pref = prefixo dos names ("p" na linha de pendência, "t" no detalhe); valor = executor atual ('' = nenhum)
 export function campoExecutor(pref, valor = '') {
   const nomes = nomesExecutores(); const v = String(valor || '').trim();
   const naLista = v && nomes.some((n) => chaveNome(n) === chaveNome(v));
-  const outra = !!v && !naLista;
-  return html`<select name="${pref}_exec" class="pf-exec" data-exec-sel title="Quem vai executar a tarefa (o responsável continua sendo quem responde por ela)"><option value="" ${!v ? html.seguro('selected') : ''}>Nenhum executor</option>${nomes.map((n) => html`<option value="${n}" ${naLista && chaveNome(n) === chaveNome(v) ? html.seguro('selected') : ''}>${n}</option>`)}<option value="__outra__" ${outra ? html.seguro('selected') : ''}>Outra pessoa…</option></select><input name="${pref}_exec_outra" class="pf-exec-outra" placeholder="Nome de quem vai executar" value="${outra ? v : ''}" ${outra ? '' : html.seguro('hidden')}>`;
+  const especial = !!v && ehExecutorEspecial(v);
+  const outra = !!v && !naLista && !especial;
+  const sel = (c) => (c ? html.seguro('selected') : '');
+  return html`<select name="${pref}_exec" class="pf-exec" data-exec-sel title="Quem vai executar a tarefa (o responsável continua sendo quem responde por ela). Sem saber o funcionário, escolha Terceirizado ou a função."><option value="" ${sel(!v)}>Nenhum executor</option><optgroup label="Pessoas">${nomes.map((n) => html`<option value="${n}" ${sel(naLista && chaveNome(n) === chaveNome(v))}>${n}</option>`)}</optgroup><optgroup label="Terceirizado"><option value="${EXEC_TERCEIRIZADO}" ${sel(v === EXEC_TERCEIRIZADO)}>Terceirizado (empresa)</option></optgroup><optgroup label="Função (ainda sem o nome do funcionário)">${FUNCOES_MAO_DE_OBRA.map((f) => html`<option value="${execFuncao(f)}" ${sel(v === execFuncao(f))}>${f}</option>`)}</optgroup><option value="__outra__" ${sel(outra)}>Outra pessoa…</option></select><input name="${pref}_exec_outra" class="pf-exec-outra" placeholder="Nome de quem vai executar" value="${outra ? v : ''}" ${outra ? '' : html.seguro('hidden')}>`;
 }
 // ---- Cargo da tarefa (pedido do Marcos, 19/11/2026): associa a tarefa a um cargo (função do sistema) para ver, no cargo, as tarefas dele.
 export const cargosLista = () => FUNCOES.filter((f) => f.id !== 'socio' || true).map((f) => ({ id: f.id, nome: f.nome })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
