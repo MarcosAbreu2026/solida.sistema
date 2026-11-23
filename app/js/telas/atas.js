@@ -971,7 +971,10 @@ function vistaDia(params, obras, setorFixo) {
   const pessoaSel = params.get('pessoa') || 'eu';
   const p2 = new URLSearchParams(params); p2.set('pessoa', pessoaSel);
   const urg = params.get('urg') || '';
-  const base = filtrar(p2, setorFixo).filter((p) => !urg || (urg === 'sem' ? !p.urgencia : p.urgencia === urg));
+  const execF = params.get('exec') || ''; const przF = params.get('prz') || '';
+  const base = filtrar(p2, setorFixo).filter((p) => !urg || (urg === 'sem' ? !p.urgencia : p.urgencia === urg))
+    .filter((p) => !execF || (execF === '__sem' ? !p.executor : chaveNome(p.executor) === chaveNome(execF)))
+    .filter((p) => !przF || (przF === 'atrasadas' ? p.status === 'aberta' && p.prazo && p.prazo < hoje : przF === 'semprazo' ? !p.prazo : przF === 'semana' ? p.prazo && p.prazo >= hoje && p.prazo <= somarDias(hoje, 6 - ((new Date(`${hoje}T12:00:00`).getDay() + 6) % 7)) : true));
   const aberta = (p) => p.status === 'aberta';
   const atrasadas = dia >= hoje ? base.filter((p) => aberta(p) && p.prazo && p.prazo < hoje) : [];
   const doDia = base.filter((p) => p.prazo === dia);
@@ -1001,12 +1004,19 @@ function vistaDia(params, obras, setorFixo) {
     return html`<div class="lt-linha ${p.status === 'feita' ? 'lt-feita' : ''}" data-tarefa="${p.id}" title="Clique para ver a tarefa · clique no nome para editá-lo aqui mesmo">
       <input type="checkbox" class="lt-chk" data-pend="${p.id}|${p.status === 'feita' ? 'aberta' : 'feita'}" ${p.status === 'feita' ? html.seguro('checked') : ''} title="${p.status === 'feita' ? 'Reabrir' : 'Concluir'}">
       <div class="lt-corpo"><span class="lt-tit" title="Clique para editar o nome da tarefa">${cmp && p.obra ? html`<b class="lt-obra">${p.obra}</b> ` : ''}${descRica(p.descricao)}</span>${sub ? html`<span class="lt-sub ${atrasada ? 'lt-atraso' : ''}">${sub}</span>` : ''}${p.funcao_tarefa ? html`<span class="lt-sub">Função: ${p.funcao_tarefa}</span>` : ''}</div>
-      <div class="lt-dir">${pontoDaAta(ataDe(p), p)}${mostrarQuem(p) ? html`<span class="lt-quem ${corPessoa(quem)}">${quem}</span>` : ''}${chipUrg(p.urgencia)}
-        <button type="button" class="lt-bt" data-lt-mover="${p.id}|${ontem}" title="Passar para ${dm(ontem)}">↩ Devolver para ${dm(ontem).slice(0, 5)}</button>
+      <div class="lt-dir"><span class="lt-c lt-c-ata">${pontoDaAta(ataDe(p), p)}</span>
+        <span class="lt-c lt-c-prazo ${atrasada ? 'lt-atraso' : ''}" title="Prazo">${p.status === 'feita' ? '✓' : p.prazo ? dm(p.prazo).slice(0, 5) : html`<i>sem prazo</i>`}</span>
+        <span class="lt-c lt-c-urg" title="Prioridade">${p.urgencia ? chipUrg(p.urgencia) : html`<i>—</i>`}</span>
+        <span class="lt-c lt-c-resp" title="Responsável">${quem ? html`<span class="lt-quem ${corPessoa(quem)}">${quem}</span>` : html`<i>—</i>`}</span>
+        <span class="lt-c lt-c-exec" title="Executor (não é obrigatório)">${p.executor ? p.executor : html`<i>—</i>`}</span>
+        <span class="lt-c-acoes"><button type="button" class="lt-bt" data-lt-mover="${p.id}|${ontem}" title="Passar para ${dm(ontem)}">↩ ${dm(ontem).slice(0, 5)}</button>
         <button type="button" class="lt-bt" data-lt-mover="${p.id}|${amanha}" title="Passar para ${dm(amanha)}">→ ${dm(amanha).slice(0, 5)}</button>
         <button type="button" class="lt-bt" data-lt-abrir="${p.id}">Editar</button>
-        <button type="button" class="lt-bt lt-bt-ex" data-pend-del="${p.id}">Excluir</button></div></div>`;
+        <button type="button" class="lt-bt lt-bt-ex" data-pend-del="${p.id}">Excluir</button></span></div></div>`;
   };
+  // cabeçalho de colunas (como numa planilha): Tarefa · Prazo · Prioridade · Responsável · Executor
+  const cabCol = html`<div class="lt-cabcol"><span class="lt-c-chk"></span><span class="lt-c-tarefa">Tarefa</span><span class="lt-dir"><span class="lt-c lt-c-ata"></span><span class="lt-c lt-c-prazo">Prazo</span><span class="lt-c lt-c-urg">Prioridade</span><span class="lt-c lt-c-resp">Responsável</span><span class="lt-c lt-c-exec">Executor</span><span class="lt-c-acoes lt-c-acoes-cab"></span></span></div>`;
+  const executoresDaLista = [...new Set(filtrar(p2, setorFixo).map((p) => String(p.executor || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
   const opt = (v, t, atual) => html`<option value="${v}" ${atual === v ? html.seguro('selected') : ''}>${t}</option>`;
   const gente = pessoasParaVer();
   const pilula = (chave, valor, rotulo, atual) => html`<button type="button" class="lt-pil ${atual === valor ? 'on' : ''}" data-lt-filtro="${chave}|${valor}">${rotulo}</button>`;
@@ -1025,17 +1035,19 @@ function vistaDia(params, obras, setorFixo) {
         </div>
       </div>
       <div class="lt-filtros">
-        <div class="lt-grp"><span>Urgência</span>${pilula('urg', '', 'Todas', urg)}${pilula('urg', 'alta', 'Alta', urg)}${pilula('urg', 'media', 'Média', urg)}${pilula('urg', 'baixa', 'Baixa', urg)}${pilula('urg', 'sem', 'Sem', urg)}</div>
+        <div class="lt-grp"><span>Prioridade</span>${pilula('urg', '', 'Todas', urg)}${pilula('urg', 'alta', 'Alta', urg)}${pilula('urg', 'media', 'Média', urg)}${pilula('urg', 'baixa', 'Baixa', urg)}${pilula('urg', 'sem', 'Sem', urg)}</div>
         <div class="lt-grp lt-grp-sel">
-          <label>Ver tarefas de<select data-atas-filtro="pessoa">${opt('eu', 'Só as minhas', pessoaSel)}${opt('todos', 'Todos (os que eu vejo)', pessoaSel)}${opt('tipo:solida', 'Equipe da Sólida', pessoaSel)}${opt('tipo:terceirizado', 'Terceirizados (todos)', pessoaSel)}${opt('tipo:cliente', 'Clientes', pessoaSel)}${opt('tipo:arquitetura', 'Arquitetura', pessoaSel)}${gente.length ? html`<optgroup label="Pessoas">${gente.map((x) => opt(x.id, x.nome, pessoaSel))}</optgroup>` : ''}</select></label>
+          <label>Responsável<select data-atas-filtro="pessoa">${opt('eu', 'Só as minhas', pessoaSel)}${opt('todos', 'Todos (os que eu vejo)', pessoaSel)}${opt('tipo:solida', 'Equipe da Sólida', pessoaSel)}${opt('tipo:terceirizado', 'Terceirizados (todos)', pessoaSel)}${opt('tipo:cliente', 'Clientes', pessoaSel)}${opt('tipo:arquitetura', 'Arquitetura', pessoaSel)}${gente.length ? html`<optgroup label="Pessoas">${gente.map((x) => opt(x.id, x.nome, pessoaSel))}</optgroup>` : ''}</select></label>
           ${setorFixo ? '' : html`<label>Setor<select data-atas-filtro="setor"><option value="">Todos</option>${SETORES_ATA.map((s) => opt(s, s, params.get('setor') || ''))}</select></label>`}
           ${selObraTarefas(obras, params)}
+          <label>Prazo<select data-atas-filtro="prz"><option value="">Todos</option>${opt('atrasadas', 'Atrasadas', przF)}${opt('semana', 'Esta semana', przF)}${opt('semprazo', 'Sem prazo', przF)}</select></label>
+          <label>Executor<select data-atas-filtro="exec"><option value="">Todos</option>${opt('__sem', 'Sem executor', execF)}${executoresDaLista.map((x) => opt(x, x, execF))}</select></label>
           <label>Procurar<input type="search" data-atas-filtro="q" value="${params.get('q') || ''}" placeholder="texto…"></label>
           <label>Ordenar por<select data-atas-filtro="ord"><option value="">Padrão</option>${opt('assunto', 'Assunto', ord)}${opt('prioridade', 'Prioridade', ord)}${opt('responsavel', 'Responsável', ord)}${opt('data', 'Data', ord)}</select></label></div>
       </div>
       <div class="lt-acoes">${atrasadas.length ? html`<button type="button" class="lt-bt lt-bt-grande" data-lt-passar="${atrasadas.map((p) => p.id).join(',')}|${alvoPassar}">Passar ${atrasadas.length} ${atrasadas.length === 1 ? 'pendência' : 'pendências'} para ${dm(alvoPassar).slice(0, 5)}</button>` : ''}</div>
       ${(() => { const rs = reunioesDaPessoa(pessoaSel).filter((r) => r.data === dia && (!obraSel(params) || codigoDaObra(r.obra) === codigoDaObra(obraSel(params))) && (!params.get('setor') || r.setor === params.get('setor'))).sort((a, b) => a.ini.localeCompare(b.ini)); return rs.length ? html`<section class="lt-grupo lt-reunioes"><header><h3>Reuniões</h3><span>${rs.length}</span></header>${rs.map((r) => html`<div class="lt-linha lt-reuniao" data-reun-abrir="${r.id}" title="Clique para abrir a reunião"><span class="lt-r-ico">🎥</span><div class="lt-corpo"><span class="lt-tit"><b>${horaReuniao(r)}</b> · ${r.nome}</span><span class="lt-sub">${r.local ? `${r.local} · ` : ''}${(r.convidados || []).length + (r.emails_externos || []).length} convidados</span></div><div class="lt-dir">${r.meet_link ? html`<a class="rn-meet" href="${r.meet_link}" target="_blank" rel="noopener">🎥 Entrar</a>` : ''}</div></div>`)}</section>` : ''; })()}
-      ${ordem.length ? ordem.map(([, g]) => html`<section class="lt-grupo"><header><h3>${g.nome}</h3><span>${g.itens.filter((p) => p.status === 'feita').length}/${g.itens.length}</span></header>${g.itens.map(linha)}</section>`) : html`<p class="lt-vazio">Nenhuma tarefa para este dia com esses filtros.</p>`}
+      ${ordem.length ? ordem.map(([, g]) => html`<section class="lt-grupo"><header><h3>${g.nome}</h3><span>${g.itens.filter((p) => p.status === 'feita').length}/${g.itens.length}</span></header>${cabCol}${g.itens.map(linha)}</section>`) : html`<p class="lt-vazio">Nenhuma tarefa para este dia com esses filtros.</p>`}
     </div>
   </section>`;
 }
@@ -1055,7 +1067,7 @@ function cabecalhoImpressao(params, modo, hoje, setorFixo = '') {
       <div class="ci-meio"><div class="ci-tit">TAREFAS</div><div class="ci-data">${dm(dia)}</div></div>
       <div class="ci-canto">${rotCanto ? html`<small>${rotCanto}</small>` : ''}<b>${canto}</b></div>
     </div>
-    <div class="ci-filtros">${urg ? html`<span><b>Prioridade:</b> ${urg === 'sem' ? 'sem prioridade' : ({ alta: 'alta', media: 'média', baixa: 'baixa' }[urg] || urg)}</span>` : ''}${q ? html`<span><b>Busca:</b> ${q}</span>` : ''}</div>
+    <div class="ci-filtros">${urg ? html`<span><b>Prioridade:</b> ${urg === 'sem' ? 'sem prioridade' : ({ alta: 'alta', media: 'média', baixa: 'baixa' }[urg] || urg)}</span>` : ''}${params.get('prz') ? html`<span><b>Prazo:</b> ${{ atrasadas: 'atrasadas', semana: 'esta semana', semprazo: 'sem prazo' }[params.get('prz')] || params.get('prz')}</span>` : ''}${params.get('exec') ? html`<span><b>Executor:</b> ${params.get('exec') === '__sem' ? 'sem executor' : params.get('exec')}</span>` : ''}${q ? html`<span><b>Busca:</b> ${q}</span>` : ''}</div>
   </div>`;
 }
 export function renderPendencias({ params, obras = [], setorFixo = '', base = '#/atas', sugestoes = [] }) {

@@ -1608,3 +1608,23 @@ td.cg-sem-data { background: #fff8e1; color: #8a6d00; font-style: italic; font-s
   header.topo .pilula, header.topo .usuario, header.topo .quem { font-size: 12px; padding: 4px 10px; }
   .ag-principal .periodo { margin-top: 0; }
 }
+
+/* Tarefas em modo Lista: colunas como numa planilha (prazo · prioridade · responsável · executor), na tela e na impressão — pedido do Marcos, 23/11/2026 */
+.lt-c { flex: none; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lt-c i { color: #9aa8b8; font-style: normal; }
+.lt-c-ata { width: 16px; } .lt-c-prazo { width: 62px; font-weight: 700; } .lt-c-urg { width: 76px; } .lt-c-resp { width: 110px; } .lt-c-exec { width: 120px; }
+.lt-c-prazo.lt-atraso { color: #B83A2E; }
+.lt-dir { flex-wrap: nowrap !important; justify-content: flex-start !important; }
+.lt-c-acoes { display: inline-flex; gap: 5px; flex-wrap: nowrap; }
+.lt-c-acoes-cab { width: 250px; }
+.lt-cabcol { display: flex; align-items: center; gap: 14px; padding: 5px 20px; background: #CFE0F2; border-bottom: 1px solid #B9CCE2; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: #1F3A56; }
+.lt-cabcol .lt-c-chk { width: 18px; flex: none; } .lt-cabcol .lt-c-tarefa { flex: 1 1 260px; }
+.lt-cabcol .lt-dir { display: flex; align-items: center; gap: 8px; }
+@media print {
+  .lt-c-acoes, .lt-c-acoes-cab { display: none !important; }
+  .lt-cabcol { padding: 1px 8px !important; gap: 6px !important; font-size: 7.5px !important; background: #dfe9f4 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .lt-cabcol .lt-c-chk { width: 12px; }
+  .lt-c { font-size: 8px !important; line-height: 1.4; }
+  .lt-c-ata { width: 10px; } .lt-c-prazo { width: 38px; } .lt-c-urg { width: 48px; } .lt-c-resp { width: 74px; } .lt-c-exec { width: 74px; }
+}
+.lt-c { color: #1F3A56; } .lt-c.lt-atraso { color: #B83A2E; }
