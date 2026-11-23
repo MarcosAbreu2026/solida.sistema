@@ -1628,9 +1628,6 @@ td.cg-sem-data { background: #fff8e1; color: #8a6d00; font-style: italic; font-s
   .lt-c-ata { width: 10px; } .lt-c-prazo { width: 38px; } .lt-c-urg { width: 48px; } .lt-c-resp { width: 74px; } .lt-c-exec { width: 74px; }
 }
 .lt-c { color: #1F3A56; } .lt-c.lt-atraso { color: #B83A2E; }
-/* nova tarefa: "Tarefa recorrente" fica ao lado da Duração (o campo Executor entrou e a grade ficou desalinhada) */
-.tf-nova .tf-grade.pf-linha .tf-recor { grid-column: auto !important; }
-
 /* Planejado × executado por obra (Operações): uma linha baixa por obra, sem rolagem — o detalhe vai na dica (passar o mouse) */
 .pd-pe .tabela-rolagem { overflow: visible !important; }
 .pd-pe table { width: 100%; table-layout: auto; }

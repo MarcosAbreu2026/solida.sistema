@@ -203,6 +203,11 @@ function visivelParaMim(x, ehAta, pendDaAta) {
     return false;
   }
   if (x.criado_por === eu) return true;
+  // marcado em algum item da ata (responsável, gestor ou observador) ou participante da reunião: vê a ata (o banco já devolve só os itens dele)
+  if (pendDaAta.some((p) => String(p.ata_id) === String(x.id) && (p.responsavel === eu || (p.gestores || []).includes(eu) || (p.observadores || []).includes(eu)))) return true;
+  { const pal = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/(.*)/g, ' ').replace(/[^a-z ]/g, ' ').split(/s+/).filter((w) => w.length >= 3);
+    const meu = new Set(pal((dados.pessoas.find((p) => p.id === eu) || {}).nome || sessao().nome));
+    if ((x.participantes || []).some((t) => pal(t).some((w) => meu.has(w)))) return true; }
   if (x.obra && (sessao().obras || []).includes(x.obra)) return true;
   if (funcaoVe('opcao.atas.escopo_todos', f.id, false)) return true;   // Configurações: esta função vê as atas de todos os departamentos
   // ATA: só quem é do setor (ou da obra) e quem criou. Quem recebeu uma pendência da ata de outro setor vê a pendência, não a ata.
@@ -735,7 +740,6 @@ export function formAvulsa(obras, prazo, setorPadrao = '', preset = {}) {
         <label class="av-quem">Quem
           <select name="p_resp" class="pf-sol tf-req"><option value="">Pessoa da Sólida…</option>${opcoesPessoas(preset.resp || '')}</select>
           <input name="p_nome" class="pf-ext tf-req" list="dl-terceiros" placeholder="Nome da empresa ou pessoa" autocomplete="off" hidden></label>
-        <label class="tf-exec">Executor${campoExecutor('p', '')}</label>
         <label>Departamento<select name="av_setor" class="tf-req" required><option value="">— escolher —</option>${SETORES_ATA.map((s) => html`<option value="${s}" ${s === setorPadrao ? html.seguro('selected') : ''}>${s}</option>`)}</select></label>
         <label>Prazo<input type="date" name="p_prazo" class="tf-req" value="${prazo || ''}"></label>
         <label>Horário na Agenda<input type="time" name="p_hora" value="${preset.hora || ''}"></label>
