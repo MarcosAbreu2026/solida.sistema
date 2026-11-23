@@ -1630,3 +1630,11 @@ td.cg-sem-data { background: #fff8e1; color: #8a6d00; font-style: italic; font-s
 .lt-c { color: #1F3A56; } .lt-c.lt-atraso { color: #B83A2E; }
 /* nova tarefa: "Tarefa recorrente" fica ao lado da Duração (o campo Executor entrou e a grade ficou desalinhada) */
 .tf-nova .tf-grade.pf-linha .tf-recor { grid-column: auto !important; }
+
+/* Planejado × executado por obra (Operações): uma linha baixa por obra, sem rolagem — o detalhe vai na dica (passar o mouse) */
+.pd-pe .tabela-rolagem { overflow: visible !important; }
+.pd-pe table { width: 100%; table-layout: auto; }
+.pd-pe th, .pd-pe td { white-space: nowrap; padding: 5px 8px; font-size: 12px; line-height: 1.25; vertical-align: middle; }
+.pd-pe .pd-av { min-width: 72px; display: inline-flex; flex-direction: column; gap: 2px; }
+.pd-pe .pd-av b { font-size: 12px; }
+.pd-pe .pd-selo { font-size: 11.5px; padding: 1px 8px; }
