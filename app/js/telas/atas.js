@@ -735,6 +735,7 @@ export function formAvulsa(obras, prazo, setorPadrao = '', preset = {}) {
         <label class="av-quem">Quem
           <select name="p_resp" class="pf-sol tf-req"><option value="">Pessoa da Sólida…</option>${opcoesPessoas(preset.resp || '')}</select>
           <input name="p_nome" class="pf-ext tf-req" list="dl-terceiros" placeholder="Nome da empresa ou pessoa" autocomplete="off" hidden></label>
+        <label class="tf-exec">Executor${campoExecutor('p', '')}</label>
         <label>Departamento<select name="av_setor" class="tf-req" required><option value="">— escolher —</option>${SETORES_ATA.map((s) => html`<option value="${s}" ${s === setorPadrao ? html.seguro('selected') : ''}>${s}</option>`)}</select></label>
         <label>Prazo<input type="date" name="p_prazo" class="tf-req" value="${prazo || ''}"></label>
         <label>Horário na Agenda<input type="time" name="p_hora" value="${preset.hora || ''}"></label>
