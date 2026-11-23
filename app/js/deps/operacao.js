@@ -82,6 +82,29 @@ export function painel(ctx) {
 
   const cab = html`${pd.pergunta(ctx.dep.pergunta)}
     ${avisoLeitura(ctx, 'Base: leitura dos agentes')}`;
+  // ---- planejado × executado por obra (pedido do Marcos, 20/11/2026): prazo decorrido × avanço do cronograma, meta da semana, atrasos, efetivo, pendências e entregáveis
+  const listaPE = ctx.obrasAndamento && ctx.obrasAndamento.length ? ctx.obrasAndamento : obras.map((o) => o.obra);
+  const evs = ctx.evidenciasLista ? ctx.evidenciasLista() : null; const atasL = ctx.atasLista ? ctx.atasLista() : null;
+  const diaEfPE = oc.diaUtil(ctx.hoje, -1);
+  const planExeLinhas = listaPE.map((cod) => {
+    const cr = oc.cronograma(ctx, cod); const ad = oc.aderenciaSemana(ctx, cod);
+    const venc = cr.erro ? null : cr.ativ.filter((a) => a.atrasada).length;
+    const pend = oc.pendenciasDaObra(ctx, cod).filter((p) => p.status === 'aberta'); const pendAtr = pend.filter((p) => p.prazo && p.prazo < ctx.hoje).length;
+    const e = oc.efetivo(ctx, ctx.hoje, cod); const eOnt = oc.efetivo(ctx, diaEfPE, cod); const ef = e.enviado ? e : eOnt;
+    const rs = ent.resumoDaObra(ctx, cod, { eventos: evs, atas: atasL });
+    const dif = !cr.erro && cr.tempo != null && cr.exe != null ? cr.exe - cr.tempo : null;
+    const sit = dif == null ? pd.traco() : pd.selo(dif >= -0.1 ? 'ok' : dif >= -0.25 ? 'atencao' : 'critico', dif >= 0 ? 'no ritmo ou à frente' : `${Math.round(-dif * 100)} pontos atrás do prazo`);
+    return [pd.obraCel(cod, '', `#/obra/${encodeURIComponent(cod)}`),
+      cr.erro ? html`<span class="pd-def">${cr.erro}</span>` : html`${pd.dma(cr.inicioObra)}<span class="pd-obra-sub">até ${pd.dma(cr.fimObra)}${cr.fimObra < ctx.hoje ? ' (vencida)' : ''}</span>`,
+      cr.erro || cr.tempo == null ? pd.traco() : pd.barraCel(cr.tempo), cr.erro ? pd.traco() : pd.barraCel(cr.exe || 0), sit,
+      ad ? pd.selo(ad.valor >= 0.9 ? 'ok' : ad.valor >= 0.6 ? 'atencao' : 'critico', `${pd.pct(ad.valor)} (${ad.ok} de ${ad.tot})`) : html`<span class="pd-def">sem produtividade relatada</span>`,
+      venc == null ? pd.traco() : pd.selo(venc >= 10 ? 'critico' : venc ? 'atencao' : 'ok', String(venc)),
+      ef.enviado ? `${ef.solida} Sólida${ef.terceiros ? ` + ${ef.terceiros} terc.` : ''}` : html`<span class="pd-def">não enviado</span>`,
+      pend.length ? pd.selo(pendAtr ? 'atencao' : 'ok', `${pend.length}${pendAtr ? ` · ${pendAtr} atrasada(s)` : ''}`) : pd.selo('ok', 'nenhuma'),
+      html`${pd.selo(rs.nivel, rs.avaliados ? `${rs.emDia} de ${rs.avaliados}` : '—')}${rs.faltam.length ? html`<span class="pd-obra-sub">falta: ${rs.faltam.join(', ')}</span>` : ''}`];
+  });
+  const planExe = pd.tabela(['Obra', 'Início · previsão', 'Prazo decorrido', 'Avanço da obra', 'Planejado × executado', 'Meta da semana', 'Atividades vencidas', 'Efetivo', 'Pendências', 'Entregáveis'], planExeLinhas, { vazio: 'Nenhuma obra em andamento.' });
+
   const aba = ctx.abaOp || '';
   // ---- aba Dia a dia
   if (aba === 'dia') {
@@ -104,9 +127,9 @@ export function painel(ctx) {
   // ---- aba Painel (a página de abertura)
   return html`${cab}
     ${pd.secao('Cronograma geral de obras', 'Obras em andamento nos próximos 4 meses, semana a semana · pós-obras com mais de 4 semanas · orçamentos que acreditamos fechar', ctx.cronogramaGeral ? html.seguro(ctx.cronogramaGeral()) : '', { id: 'cronograma-geral' })}
+    ${pd.secao('Planejado × executado por obra', 'Prazo decorrido do cronograma × avanço da obra, meta da semana, atividades vencidas, efetivo, pendências e entregáveis · fontes: cronogramas no Drive (GERENCIAMENTO › CRONOGRAMA), grupos das obras, atas e pendências', planExe, { id: 'planejado-executado' })}
     ${pd.secao('Quadro de entregáveis', `Documentação obrigatória do gestor de obra, por obra · ${ent.LEGENDA}`, ent.quadro(ctx, ctx.obrasAndamento && ctx.obrasAndamento.length ? ctx.obrasAndamento : obras.map((o) => o.obra), { eventos: ctx.evidenciasLista ? ctx.evidenciasLista() : null, atas: ctx.atasLista ? ctx.atasLista() : null }), { id: 'entregaveis' })}
     ${pd.secao('Resumo das obras', `Fonte: planejamento e grupos das obras · leitura ${leitura}`, resumo)}
-    ${pd.secao('Datas dos cronogramas no Drive', 'Fonte: cronogramas no Drive (GERENCIAMENTO › CRONOGRAMA)', pd.tabela(['Obra', 'Início', 'Término contratual', 'Previsão atual', 'Desvio × contrato', 'Semanas até a previsão', 'Avanço médio', 'Situação'], cronLinhas))}
     ${pd.secao('Hoje por obra: equipe, meta e pendência maior', 'Equipe: efetivo do grupo da obra · meta do dia: programação semanal', pd.tabela(['Obra', 'Equipe de hoje', 'Meta do dia (foco)', 'Pendência maior'], hojeLinhas))}
     ${pd.secao('Efetivo real × planejado (semana)', 'Real: efetivo dos grupos (média por dia) · planejado: sai da distribuição de equipe (DIST), ainda não lida pelo sistema', pd.tabela(['Obra', 'Real / planejado', 'Terceirizados', 'Leitura'], efLinhas))}
     ${pd.secao('Quem precisa agir', 'Alerta clicado vira tarefa com responsável e data-limite', pd.quemAgir(agir, { setor: 'Operação' }))}

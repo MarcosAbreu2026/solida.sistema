@@ -116,3 +116,11 @@ export function quadro(ctx, obras, { eventos = null, atas = null } = {}) {
 }
 
 export const LEGENDA = '✓ em dia (data do último item) · ✕ faltando ou atrasado · "não lido" = o sistema ainda não lê essa fonte · — não se aplica agora';
+
+// resumo dos entregáveis de uma obra (para o quadro Planejado × executado): quantos em dia, de quantos avaliados
+export function resumoDaObra(ctx, cod, opcoes = {}) {
+  const v = Object.values(entregaveisDaObra(ctx, cod, opcoes));
+  const emDia = v.filter((c) => c.nivel === 'ok').length; const avaliados = v.filter((c) => c.nivel === 'ok' || c.nivel === 'critico').length;
+  const faltam = COLUNAS.filter(([k]) => entregaveisDaObra(ctx, cod, opcoes)[k].nivel === 'critico').map((c) => c[1]);
+  return { emDia, avaliados, naoLidos: v.filter((c) => c.nivel === 'nl').length, faltam, nivel: !avaliados ? '' : emDia === avaliados ? 'ok' : emDia / avaliados >= 0.6 ? 'atencao' : 'critico' };
+}
