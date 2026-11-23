@@ -1579,3 +1579,32 @@ td.cg-sem-data { background: #fff8e1; color: #8a6d00; font-style: italic; font-s
 .tf[data-tf-raiz] .obs-chip, .tf[data-tf-raiz] .obs-item { padding-top: 2px !important; padding-bottom: 2px !important; font-size: 12px; }
 .tf[data-tf-raiz] .tf-botoes { margin-top: 6px; }
 .tf[data-tf-raiz] .tf-esq > .pequeno, .tf[data-tf-raiz] .tf-grade ~ .pequeno { display: none; }
+
+/* ---- Celular (até 760px): Agenda só por dia, fonte menor, sem o que não cabe (pedido do Felipe, 23/11/2026) ---- */
+@media (max-width: 760px) {
+  html, body { font-size: 13px; overflow-x: hidden; }
+  .ver-como { display: none !important; }
+  #modoVis { display: none !important; }
+  .cabeca-setor { display: none; }
+  .legenda-semana { display: none; }
+  .rn-lista { display: none; }
+  #titulo { font-size: 22px !important; }
+  /* a agenda vem primeiro; as funções ficam embaixo, menores */
+  .ag-layout { display: flex; flex-direction: column-reverse; gap: 10px; }
+  .ag-funcoes { padding: 8px 10px; } .ag-funcoes h3 { font-size: 14px; margin: 0 0 4px; } .ag-funcoes > .pequeno, .ag-bol-leg { display: none; }
+  .ag-func { padding: 6px 8px; } .ag-func b { font-size: 12px; }
+  .ag-principal, .ag-layout, .fn-painel { min-width: 0; max-width: 100%; }
+  .fn-painel { padding: 10px; } .fn-cab h3 { font-size: 15px; } .fn-cab .pequeno { font-size: 11px; }
+  /* navegação do dia numa linha só */
+  .periodo { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 6px; }
+  .periodo .botao { padding: 4px 10px; font-size: 12px; } .periodo .atual b { font-size: 16px; } .periodo .atual span { font-size: 11px; }
+  .ag-chips-dia { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 5px; padding-bottom: 2px; } .ag-chips-dia button, .ag-chips-dia a { padding: 3px 9px; font-size: 12px; white-space: nowrap; flex: none; }
+  .fl-lista { grid-template-columns: minmax(0, 1fr) !important; }
+  .ag-tcaixa, .ag-rcaixa { font-size: 12.5px; }
+}
+@media (max-width: 760px) {
+  header.topo { padding: 10px 14px 8px !important; gap: 4px 10px !important; }
+  header.topo .sinc, header.topo #sinc { display: none !important; }
+  header.topo .pilula, header.topo .usuario, header.topo .quem { font-size: 12px; padding: 4px 10px; }
+  .ag-principal .periodo { margin-top: 0; }
+}

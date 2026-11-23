@@ -910,6 +910,7 @@ atas.definirFuncionarios(nomesDeFuncionarios(estado.equipeProg, CFG));   // list
   { const mv = $('#modoVis'); const abaP = rota.params.get('aba'); const naTarefas = (tela === 'atas' || tela === 'tarefas') && (!abaP || abaP === 'pendencias');
     if (mv && tela === 'agenda') { const m = rota.params.get('modo') === 'dia' ? 'dia' : 'semana'; mv.hidden = false; mv.innerHTML = `<span class="mv-rot">Modo de visualização</span><span class="mv-seg"><button type="button" data-mva="semana" class="${m === 'semana' ? 'on' : ''}">Semana</button><button type="button" data-mva="dia" class="${m === 'dia' ? 'on' : ''}">Dia</button></span>`; }
     else if (mv) { mv.hidden = !naTarefas; if (naTarefas) { const m = rota.params.get('modo') === 'lista' ? 'lista' : 'tabela'; mv.innerHTML = `<span class="mv-rot">Modo de visualização</span><span class="mv-seg"><button type="button" data-mv="" class="${m === 'tabela' ? 'on' : ''}">Tabela</button><button type="button" data-mv="lista" class="${m === 'lista' ? 'on' : ''}">Lista</button></span><button type="button" class="mv-imp" data-lista-importar="" title="Importar uma lista de pendências em PDF: cada linha vira uma tarefa">⬆ Importar lista</button><button type="button" class="mv-imp" data-imprimir="" title="Imprimir as tarefas (ou salvar em PDF)">🖨 Imprimir</button>`; } } }
+  if (tela === 'agenda' && ehCelular()) { const mv2 = $('#modoVis'); if (mv2) mv2.hidden = true; }   // celular: a Agenda é só por dia
   const sc = $('#sinc');
   const sy = estado.sync;
   if (sy.erro) { sc.textContent = 'Sem conexão, mostrando os últimos dados'; sc.className = 'sinc err'; sc.title = sy.erro; }
@@ -988,7 +989,7 @@ atas.definirFuncionarios(nomesDeFuncionarios(estado.equipeProg, CFG));   // list
   // Agenda: as funções da semana + as tarefas (pendências com prazo) no mesmo calendário
   if (tela === 'agenda') {
     garantirAtasCarregadas('#agenda'); garantirReunioesCarregadas();
-    $('#conteudo').innerHTML = `<div>${agendaSemana.render({ dia: estado.dia, CFG, pendAberta: estado.pendAberta, params: rota.params, semanaRef: estado.semanaRef, modo: rota.params.get('modo') === 'dia' ? 'dia' : 'semana', diaRef: ehData(rota.params.get('dia')) ? rota.params.get('dia') : hojeISO(), pendencias: atas.todasPendencias(), eu: nuvem.NA_NUVEM ? (nuvem.perfilAtual() || {}).id : idPessoa(), nomeDe: atas.nomePessoa, reunioesDoDia: (d) => reunioes.daPessoa('eu').filter((r) => r.data === d).sort((a, b) => a.ini.localeCompare(b.ini)) })}${reunioes.renderLista({ pessoas: atas.pessoasSelecionaveis() })}</div>`;
+    $('#conteudo').innerHTML = `<div>${agendaSemana.render({ dia: estado.dia, CFG, pendAberta: estado.pendAberta, params: rota.params, semanaRef: estado.semanaRef, modo: (ehCelular() || rota.params.get('modo') === 'dia') ? 'dia' : 'semana', diaRef: ehData(rota.params.get('dia')) ? rota.params.get('dia') : hojeISO(), pendencias: atas.todasPendencias(), eu: nuvem.NA_NUVEM ? (nuvem.perfilAtual() || {}).id : idPessoa(), nomeDe: atas.nomePessoa, reunioesDoDia: (d) => reunioes.daPessoa('eu').filter((r) => r.data === d).sort((a, b) => a.ini.localeCompare(b.ini)) })}${reunioes.renderLista({ pessoas: atas.pessoasSelecionaveis() })}</div>`;
     return;
   }
   // escritório virtual: tela com animação própria (não redesenha sozinha a cada 5 min)
@@ -3160,3 +3161,6 @@ document.addEventListener('click', (e) => {
   else if (add) adicionarParticipanteExterno(box);
 });
 document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.matches && e.target.matches('[data-pc-nome]')) { e.preventDefault(); adicionarParticipanteExterno(e.target.closest('[data-part]')); } });
+
+// celular (tela estreita): Agenda só por dia e telas mais enxutas
+function ehCelular() { return !!(window.matchMedia && window.matchMedia('(max-width: 760px)').matches); }
