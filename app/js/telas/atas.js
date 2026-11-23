@@ -663,7 +663,7 @@ export async function reprogramar(id, novo) {
 }
 
 // ponto discreto no cartão/linha: a tarefa veio de uma ata (passar o mouse mostra qual; clicar abre a ata)
-const pontoDaAta = (a) => (a ? html`<a class="at-ata-ponto" href="#/atas?aba=atas&ata=${a.id}" title="Veio da ata ${a.titulo} (${dm(a.data)})" aria-label="Veio da ata ${a.titulo}">📄</a>` : '');
+const pontoDaAta = (a, p) => { const id = a ? a.id : (p && p.ata_id); if (!id) return ''; const t = a ? `Veio da ata ${a.titulo} (${dm(a.data)})` : 'Veio de uma ata (clique para abrir)'; return html`<a class="at-ata-ponto" href="#/atas?aba=atas&ata=${id}" title="${t}" aria-label="${t}">📄</a>`; };
 function cartao(p, hoje) {
   const a = ataDe(p); const col = coluna(p, hoje);
   const dias = p.prazo ? diasEntre(hoje, p.prazo) : null;
@@ -671,7 +671,7 @@ function cartao(p, hoje) {
   const onde2 = p.obra || p.setor || '';   // se tem obra aparece a obra; senão, o setor
   return html`<article class="at-card at-${col}" data-tarefa="${p.id}" draggable="true" title="Clique para ver os detalhes · clique no nome para editá-lo aqui mesmo · arraste para mudar o prazo">
     <div class="at-tit" title="Clique para editar o nome da tarefa">${descRica(p.descricao)}</div>
-    <div class="at-linha2"><span class="at-esq">${prazoBtn(p, rotuloPrazo, `at-prazo at-p-${col}`)}</span><span class="at-dir">${pontoDaAta(a)}${p.urgencia ? chipUrg(p.urgencia) : ""}</span></div>
+    <div class="at-linha2"><span class="at-esq">${prazoBtn(p, rotuloPrazo, `at-prazo at-p-${col}`)}</span><span class="at-dir">${pontoDaAta(a, p)}${p.urgencia ? chipUrg(p.urgencia) : ""}</span></div>
     <div class="at-linha3"><span class="at-esq"><span class="at-pessoa">${nomeDe(p.responsavel, p.responsavel_nome)}</span>${p.responsavel_tipo && p.responsavel_tipo !== 'solida' ? html`<span class="at-tipo at-t-${p.responsavel_tipo}">${ROTULO_TIPO[p.responsavel_tipo] || 'Externo'}${p.responsavel_categoria ? ` · ${p.responsavel_categoria}` : ''}</span>` : ''}</span><span class="at-dir">${onde2 ? html`<span class="at-chip">${onde2}</span>` : ''}</span></div>
 
     <div class="at-acoes">
@@ -986,7 +986,7 @@ function vistaDia(params, obras, setorFixo) {
     return html`<div class="lt-linha ${p.status === 'feita' ? 'lt-feita' : ''}" data-tarefa="${p.id}" title="Clique para ver a tarefa · clique no nome para editá-lo aqui mesmo">
       <input type="checkbox" class="lt-chk" data-pend="${p.id}|${p.status === 'feita' ? 'aberta' : 'feita'}" ${p.status === 'feita' ? html.seguro('checked') : ''} title="${p.status === 'feita' ? 'Reabrir' : 'Concluir'}">
       <div class="lt-corpo"><span class="lt-tit" title="Clique para editar o nome da tarefa">${cmp && p.obra ? html`<b class="lt-obra">${p.obra}</b> ` : ''}${descRica(p.descricao)}</span>${sub ? html`<span class="lt-sub ${atrasada ? 'lt-atraso' : ''}">${sub}</span>` : ''}${p.funcao_tarefa ? html`<span class="lt-sub">Função: ${p.funcao_tarefa}</span>` : ''}</div>
-      <div class="lt-dir">${pontoDaAta(ataDe(p))}${mostrarQuem(p) ? html`<span class="lt-quem ${corPessoa(quem)}">${quem}</span>` : ''}${chipUrg(p.urgencia)}
+      <div class="lt-dir">${pontoDaAta(ataDe(p), p)}${mostrarQuem(p) ? html`<span class="lt-quem ${corPessoa(quem)}">${quem}</span>` : ''}${chipUrg(p.urgencia)}
         <button type="button" class="lt-bt" data-lt-mover="${p.id}|${ontem}" title="Passar para ${dm(ontem)}">↩ Devolver para ${dm(ontem).slice(0, 5)}</button>
         <button type="button" class="lt-bt" data-lt-mover="${p.id}|${amanha}" title="Passar para ${dm(amanha)}">→ ${dm(amanha).slice(0, 5)}</button>
         <button type="button" class="lt-bt" data-lt-abrir="${p.id}">Editar</button>
@@ -1235,7 +1235,7 @@ export function detalheTarefa(id, { msg = '', obras = [] } = {}) {
   return html`<div class="tf" data-tf-raiz="${p.id}">
     <div class="tf-corpo">
     <form id="tf-form" class="tf-esq" data-tf="${p.id}" autocomplete="off">
-    <div class="tf-cab"><h3>Tarefa</h3>${p.status === 'feita' ? html`<span class="at-chip">concluída</span>` : col === 'vencido' ? html`<span class="at-chip tf-venc">vencida</span>` : ''}${onde(p) ? html`<span class="at-chip">${onde(p)}</span>` : ''}${a ? html`<a class="at-ata" href="#/atas?aba=atas&ata=${a.id}" title="Ata de origem">ata ${dm(a.data).slice(0, 5)}</a>` : ''}${p.os ? html`<a class="at-chip at-os" href="#/posobra/os/${encodeURIComponent(p.os)}">${p.os}</a>` : ''}</div>
+    <div class="tf-cab"><h3>Tarefa</h3>${p.status === 'feita' ? html`<span class="at-chip">concluída</span>` : col === 'vencido' ? html`<span class="at-chip tf-venc">vencida</span>` : ''}${onde(p) ? html`<span class="at-chip">${onde(p)}</span>` : ''}${(a || p.ata_id) ? html`<a class="botao at-ver-ata" href="#/atas?aba=atas&ata=${a ? a.id : p.ata_id}" title="${a ? a.titulo : 'Ata de origem desta tarefa'}">📄 Ver ata${a ? ` ${dm(a.data).slice(0, 5)}` : ''}</a>` : ''}${p.os ? html`<a class="at-chip at-os" href="#/posobra/os/${encodeURIComponent(p.os)}">${p.os}</a>` : ''}</div>
       <div class="tf-grade">
         <label class="tf-ass">Assunto / cômodo<input name="t_assunto" value="${ass}" placeholder="ex.: ACM"></label>
         <label class="tf-desc">Título (o que fazer)<input name="t_desc" value="${resto}" placeholder="ex.: Retirar da área gourmet" required></label>
