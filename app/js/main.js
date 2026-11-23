@@ -3164,3 +3164,14 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.
 
 // celular (tela estreita): Agenda só por dia e telas mais enxutas
 function ehCelular() { return !!(window.matchMedia && window.matchMedia('(max-width: 760px)').matches); }
+
+// Celular: o menu vira um botão (☰) que abre a lista de abas em tela cheia; nada de faixa que rola de lado (pedido do Felipe, 23/11/2026)
+(function menuCelular() {
+  const b = document.createElement('button'); b.type = 'button'; b.id = 'navMenuBtn'; b.className = 'nav-menu-btn'; b.setAttribute('aria-label', 'Abrir o menu');
+  const pintar = () => { const a = document.body.classList.contains('menu-aberto'); b.textContent = a ? '✕' : '☰'; b.setAttribute('aria-label', a ? 'Fechar o menu' : 'Abrir o menu'); };
+  b.addEventListener('click', () => { document.body.classList.toggle('menu-aberto'); pintar(); });
+  document.body.appendChild(b); pintar();
+  const fechar = () => { if (document.body.classList.contains('menu-aberto')) { document.body.classList.remove('menu-aberto'); pintar(); } };
+  window.addEventListener('hashchange', fechar);
+  document.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('nav a.nav-item, nav .nav-perfil')) setTimeout(fechar, 0); });
+})();
