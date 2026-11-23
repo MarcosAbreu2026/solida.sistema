@@ -47,10 +47,13 @@ const primeiraLinha = (s) => String(s || '').split('\n')[0].trim();
 // ---- situação pela cor da linha na planilha (a LEGENDA da planilha dá a cor de cada situação)
 function sitPelaCor(cor, legenda) {
   if (!cor) return null;
-  const l = arr(legenda).find((x) => String(x.cor || '').toUpperCase() === String(cor).toUpperCase());
+  const rgb = (h) => [0, 2, 4].map((i) => parseInt(String(h).replace('#', '').slice(i, i + 2), 16));
+  const dist = (a, b) => { const x = rgb(a); const y = rgb(b); return Math.max(...x.map((v, i) => Math.abs(v - y[i]))); };
+  // cor igual à da legenda ou muito parecida (o Excel às vezes grava um tom ao lado do da legenda)
+  const l = arr(legenda).filter((x) => /^[0-9a-f]{6}$/i.test(String(x.cor || ''))).map((x) => ({ x, d: dist(x.cor, cor) })).filter((y) => y.d <= 14).sort((a, b) => a.d - b.d).map((y) => y.x)[0];
   const t = normTxt(l ? l.texto : '');
   if (t) { if (/conclu/.test(t)) return 'concluido'; if (/fechado/.test(t)) return 'fechado'; if (/urgente/.test(t)) return 'urgente'; if (/arq.*diretoria|diretoria/.test(t)) return 'diretoria'; if (/arquitetura/.test(t)) return 'arquitetura'; if (/orcamento no fornecedor/.test(t)) return 'cotacao'; if (/especificar/.test(t)) return 'especificar'; }
-  const s = SITUACOES.find((x) => x.cor === String(cor).toUpperCase()); return s ? s.id : null;
+  const s = /^[0-9a-f]{6}$/i.test(String(cor)) ? SITUACOES.find((x) => dist(x.cor, cor) <= 14) : null; return s ? s.id : null;
 }
 
 // ---- as linhas de uma obra: planilha + escopo + cronograma, com o que o sistema preencheu por cima
@@ -95,6 +98,8 @@ export function linhasDaObra(projetos, obra, hoje) {
     if (d.situacao) sobre.situacao = d.situacao;
     if (d.contrato) sobre.contrato = d.contrato;
     if (d.obs) sobre.obs = d.obs;
+    if (d.contato) sobre.contato = d.contato;
+    if (d.lojas) { sobre.lojas = String(d.lojas).split('\n').filter(Boolean); if (!d.loja_cotando) sobre.lojaCotando = sobre.lojas[0]; }
     if (v) { if (v.valor_orcado != null) sobre.valorOrcado = Number(v.valor_orcado); if (v.valor_fechado != null) sobre.valorFechado = Number(v.valor_fechado); if (v.forma_pagamento) sobre.pagamento = v.forma_pagamento; if (sobre.valorOrcado != null && sobre.valorFechado != null) sobre.diferenca = sobre.valorOrcado - sobre.valorFechado; }
     out.set(k, sobre);
   }
@@ -110,7 +115,7 @@ export function linhasDaObra(projetos, obra, hoje) {
 const contagem = (linhas) => ({ total: linhas.length, fechados: linhas.filter((l) => ['fechado', 'concluido'].includes(l.situacao)).length, semCotacao: linhas.filter((l) => l.situacao === 'especificar').length, vencidos: linhas.filter((l) => l.vencido).length, urgentes: linhas.filter((l) => l.situacao === 'urgente').length });
 
 // ---------------------------------------------------------------- telas
-export function render({ projetos, hoje, obras, params, podeEditar, veValores }) {
+export function render({ projetos, hoje, obras, params, podeEditar, veValores, cards: cardsK = [], pendencias = [] }) {
   const sel = params.get('tobra') && obras.includes(params.get('tobra')) ? params.get('tobra') : '';
   const esc = params.get('tesc') === 'cinza' ? 'cinza' : params.get('tesc') === 'laranja' ? 'laranja' : '';
   const resumoObras = obras.map((o) => { const d = linhasDaObra(projetos, o, hoje); const c = contagem(d.linhas.filter((l) => l.escopo === 'cinza')); const lj = contagem(d.linhas.filter((l) => l.escopo === 'laranja'));
@@ -152,7 +157,7 @@ export function render({ projetos, hoje, obras, params, podeEditar, veValores })
   });
   const aviso = !d.planilha ? pd.aviso(`${sel}: sem planilha de terceirizados na pasta TERCERIZADOS da obra no Drive. ${podeEditar ? 'Use "+ Novo item" para lançar os itens aqui.' : 'A equipe do orçamento terceirizado lança os itens.'}`, 'atencao') : '';
   const fonte = d.planilha ? html`<p class="pequeno">Planilha ${d.planilha.arquivo} · prazo padrão = início da atividade no cronograma${d.cronograma ? ` (${String(d.cronograma.arquivo).replace(/^.*[\/]/, '')})` : ' (obra sem cronograma lido)'} · data limite sugerida = prazo padrão − prazo de entrega − 7 dias · "fora do orçamento" = sem valor estimado, aditivo ou marcado "não consta no escopo". ${podeEditar ? 'Clique no item para preencher cotação, loja fechada, contrato e situação.' : 'Clique no item para ver os detalhes.'}</p>` : '';
-  return html`${erro ? html`<p class="erro">${erro}</p>` : ''}${filtro}${aviso}${cards}${renderPlanilha({ projetos, obra: sel, hoje, podeEditar, veValores })}${fonte}`;
+  return html`${erro ? html`<p class="erro">${erro}</p>` : ''}${filtro}${aviso}${cards}${renderPlanilha({ projetos, obra: sel, hoje, podeEditar, veValores, cards: cardsK, pendencias })}${fonte}`;
 }
 
 const sel = (c) => (c ? html.seguro('selected') : '');
@@ -208,7 +213,7 @@ export async function apagar(obra, escopo, chave) {
 // ---------------------------------------------------------------- quadro igual à planilha (topo da página de cada obra)
 // Mesmas colunas e ordem da planilha <obra>_TERCERIZADOS: Cód. · Aquisições · Andamento / Observações · Data limite para fechar · Prazo de entrega ·
 // Início da obra · Loja/Vendedor · Contato · Valor ESTIMADO · Valor FECHADO · diferença · Forma de Pagamento; cada linha na cor da situação (legenda).
-export function renderPlanilha({ projetos, obra, hoje, podeEditar, veValores }) {
+export function renderPlanilha({ projetos, obra, hoje, podeEditar, veValores, cards = [], pendencias = [] }) {
   const d = linhasDaObra(projetos, obra, hoje);
   const legenda = html`<div class="tca-legenda"><b>LEGENDA</b>${SITUACOES.map((s) => html`<span style="background:#${s.cor}">${s.nome}</span>`)}</div>`;
   const total = (escopo) => { const l = d.linhas.filter((x) => x.escopo === escopo); return { o: l.reduce((s, x) => s + (x.valorOrcado || 0), 0), f: l.filter((x) => x.valorFechado != null).reduce((s, x) => s + x.valorFechado, 0), l }; };
@@ -229,7 +234,42 @@ export function renderPlanilha({ projetos, obra, hoje, podeEditar, veValores }) 
       ${t.l.length ? html`<div class="tabela-rolagem"><table class="tab tca-planilha"><thead><tr>${cab.map((c) => html`<th>${c}</th>`)}</tr></thead><tbody>${linhas}</tbody></table></div>` : html`<p class="pd-vazio">Sem itens ${escopo === 'laranja' ? 'laranja' : 'cinza'} para esta obra.</p>`}</section>`;
   };
   const arq = d.planilha ? html`${d.planilha.arquivo}` : 'sem planilha na pasta TERCERIZADOS do Drive';
-  return html`<div class="tca-quadro"><div class="tca-topo"><span class="pequeno">${obra} · ${arq}${d.cronograma ? ' · prazos do cronograma' : ''}</span>${podeEditar ? html`<button type="button" class="botao" data-tca-novo="${obra}">+ Novo item</button>` : ''}</div>
+  return html`<div class="tca-quadro"><div class="tca-topo"><span class="pequeno">${obra} · ${arq}${d.cronograma ? ' · prazos do cronograma' : ''}</span>${html`<span><button type="button" class="botao" data-imprimir="terc" title="A4 paisagem, uma planilha por obra">🖨 Imprimir</button> `}${podeEditar ? html`<button type="button" class="botao" data-tca-novo="${obra}">+ Novo item</button>` : ''}</span></div>
     ${legenda}${bloco('laranja', 'TERCEIRIZADOS CLIENTE · laranja')}${bloco('cinza', 'TERCEIRIZADOS SÓLIDA · cinza')}
+    ${renderImpressao({ projetos, obra, hoje, veValores, cards, pendencias })}
     <p class="pequeno">Mesmo quadro da planilha do Drive${podeEditar ? '; clique numa linha para preencher cotação, loja fechada, contrato e situação' : ''}. Cor da linha = situação do item.</p></div>`;
+}
+
+// ---------------------------------------------------------------- impressão: uma planilha por obra no padrão do PDF "<obra>_TERCERIZADOS LARANJA" (A4 paisagem)
+// Cabeçalho da obra, legenda, laranja (cliente) e cinza (Sólida) separados; embaixo de cada item os cards do Kanban (terc_quadro) ligados a ele
+// com status e as tarefas abertas (responsável → executor); depois, os cards da obra que não casaram com nenhuma linha da planilha.
+const ROT_CARD = { solicitado: 'Solicitado', cotacao: 'Cotação', arq_aguardando: 'Arquitetura aguardando', cliente_aguardando: 'Cliente aguardando', pagamento_enviado: 'Pagamento enviado', pagamento_aguardando: 'Pagamento aguardando', entrega_aguardando: 'Entrega aguardando', concluido: 'Concluído' };
+export function renderImpressao({ projetos, obra, hoje, veValores, cards = [], pendencias = [] }) {
+  const d = linhasDaObra(projetos, obra, hoje);
+  const t = d.planilha || {};
+  const topo = arr(t.topo).filter(Boolean);
+  const meusCards = cards.filter((c) => String(c.projeto || '') === obra);
+  const usados = new Set();
+  const casa = (l) => meusCards.filter((c) => normTxt(c.titulo) === normTxt(l.item) || bate(c.titulo, l.item)).filter((c) => !usados.has(c.id));
+  const tarefasDe = (c) => arr(pendencias).filter((p) => p.os === c.codigo && p.status === 'aberta');
+  const cardImp = (c) => { const ts = tarefasDe(c); return html`<div class="tci-card"><b>${c.codigo}</b> · ${ROT_CARD[c.status] || c.status}${c.descricao ? html` · ${String(c.descricao).split('\n')[0].slice(0, 140)}` : ''}${ts.length ? html`<ul>${ts.map((p) => html`<li>${p.descricao}${p.prazo && /^\d{4}/.test(p.prazo) ? ` (até ${dBR(String(p.prazo).slice(0, 10))})` : ''} — ${p.responsavel_nome || 'sem responsável'}${p.executor && p.executor !== p.responsavel_nome ? ` → ${p.executor}` : ''}</li>`)}</ul>` : html` · <i>sem tarefa aberta</i>`}</div>`; };
+  const colunas = 8 + (veValores ? 4 : 0);
+  const bloco = (escopo, titulo) => {
+    const l = d.linhas.filter((x) => x.escopo === escopo);
+    const cab = ['Cód.', 'Aquisição', 'Andamento / Observações', 'Data limite', 'Prazo de entrega', 'Início da obra', 'Loja/Vendedor', 'Contato', ...(veValores ? ['Valor estimado', 'Valor fechado', 'Diferença', 'Forma de pgto.'] : [])];
+    const corpo = l.map((x) => {
+      const s = porSit[x.situacao] || porSit.especificar; const cs = escopo === 'laranja' ? casa(x) : []; cs.forEach((c) => usados.add(c.id));
+      return html`<tr class="tci-it" style="background:#${s.cor}"><td>${x.cod}</td><td><b>${x.item}</b>${/^AD/i.test(String(x.cod || '')) ? html` <small>(aditivo)</small>` : ''}<br><small>${s.nome}</small></td><td class="tci-pre">${x.obs}</td><td>${x.dataLimite ? dBR(x.dataLimite) : (x.limiteSugerido ? html`<i>${dBR(x.limiteSugerido)}</i>` : '')}</td><td>${x.prazoFornecedor}</td><td>${x.prazoPadrao ? dBR(x.prazoPadrao) : ''}</td><td class="tci-pre">${(x.lojas && x.lojas.length ? x.lojas.join('\n') : x.lojaCotando) || ''}${x.lojaFechada ? `\nFechado: ${x.lojaFechada}` : ''}</td><td class="tci-pre">${x.contato}</td>${veValores ? html`<td class="tci-n">${x.valorOrcado != null ? reais(x.valorOrcado) : ''}</td><td class="tci-n">${x.valorFechado != null ? reais(x.valorFechado) : ''}</td><td class="tci-n">${x.diferenca != null ? reais(x.diferenca) : ''}</td><td class="tci-pre">${String(x.pagamento || '').split('\n')[0]}</td>` : ''}</tr>
+        ${cs.length ? html`<tr class="tci-cards"><td></td><td colspan="${colunas - 1}">${cs.map(cardImp)}</td></tr>` : ''}`;
+    });
+    return html`<h3>${titulo} <small>${l.length} item(ns)</small></h3>${l.length ? html`<table class="tci-tab"><thead><tr>${cab.map((c) => html`<th>${c}</th>`)}</tr></thead><tbody>${corpo}</tbody></table>` : html`<p>Sem itens.</p>`}`;
+  };
+  const laranja = bloco('laranja', 'TERCEIRIZADOS CLIENTE · LARANJA'); const cinza = bloco('cinza', 'TERCEIRIZADOS SÓLIDA · CINZA');
+  const sobra = meusCards.filter((c) => !usados.has(c.id));
+  const proj = d.p || {};
+  return html`<div class="tca-imp"><div class="tci-cab"><h2>${obra}${t.rev ? ` · ${t.rev}` : ''} — Terceirizados</h2>
+    <p>${topo.length ? topo.map((x) => html`${x}<br>`) : html`${proj.endereco || ''}`}</p><p class="tci-peq">${t.arquivo ? `Planilha ${t.arquivo} · ` : ''}impresso em ${dBR(hoje)}</p></div>
+    <div class="tci-leg"><b>LEGENDA</b>${SITUACOES.map((s) => html`<span style="background:#${s.cor}">${s.nome}</span>`)}</div>
+    ${laranja}${cinza}
+    ${sobra.length ? html`<h3>Cards do Kanban ligados a ${obra} sem linha correspondente na planilha <small>${sobra.length}</small></h3>${sobra.map(cardImp)}` : ''}</div>`;
 }

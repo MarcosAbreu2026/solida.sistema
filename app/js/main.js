@@ -627,7 +627,7 @@ function ctxTerc() {
   if (!estado.tercVisitada) { estado.tercVisitada = true; tcq.carregar().then(() => { const r = rotaAtual(); if (!emEdicao() && r.tela !== 'atas') desenhar(); }); }
   if (!estado.tcaVisitada) { estado.tcaVisitada = true; tca.carregar().then(() => { const r = rotaAtual(); if (!emEdicao() && r.tela !== 'atas') desenhar(); }); }
   garantirAtasCarregadas('#terc');
-  return { obraSel: rotaAtual().params.get('tobra') || '', acompTerc: () => String(tca.render({ projetos: estado.drive.projetos, hoje: hojeISO(), obras: obrasDoTerc(), params: rotaAtual().params, podeEditar: podeEditarTerc(), veValores: veValoresTerc() })),
+  return { obraSel: rotaAtual().params.get('tobra') || '', acompTerc: () => String(tca.render({ projetos: estado.drive.projetos, hoje: hojeISO(), obras: obrasDoTerc(), params: rotaAtual().params, podeEditar: podeEditarTerc(), veValores: veValoresTerc(), cards: tcq.lista, pendencias: atas.todasPendencias() })),
     quadroTerc: () => String(tcq.renderQuadro({ params: rotaAtual().params, podeEditar: podeEditarTerc(), projetos: obrasDeAtas(), pendencias: atas.todasPendencias() })) };
 }
 

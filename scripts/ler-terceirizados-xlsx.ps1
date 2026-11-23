@@ -40,6 +40,8 @@ function Ler-Aba-Terceirizados($linhas) {
     if ($a.item -and ($a.estimado -or $a.fechado)) { $cab = $l.n; $cols = $a; break }
   }
   if (-not $cab) { return $null }
+  $topo = New-Object Collections.ArrayList
+  foreach ($l in $linhas) { if ($l.n -ge $cab) { break }; if ($l.c.Values | Where-Object { "$_" -match '(?i)^LEGENDA' }) { continue }; $t = ($l.c.Keys | Sort-Object { Indice-Coluna $_ } | ForEach-Object { "$($l.c[$_])" } | Where-Object { $_ -notmatch '^-?[0-9.]+$' }) -join '  ·  '; if ($t) { [void]$topo.Add($t) } }
   if (-not $cols.dif -and $cols.difAlt) { $cols.dif = $cols.difAlt }
   # legenda: texto → cor (a linha que tem "LEGENDA")
   $legenda = New-Object Collections.ArrayList
@@ -70,7 +72,7 @@ function Ler-Aba-Terceirizados($linhas) {
       cor = $cor; linha = $l.n
     })
   }
-  return [ordered]@{ legenda = $legenda; itens = $itens }
+  return [ordered]@{ legenda = $legenda; itens = $itens; topo = $topo }
 }
 function Ler-Terceirizados([string]$pastaObra, [string]$codigo) {
   $p = Get-ChildItem $pastaObra -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '(?i)^TERC' } | Select-Object -First 1
@@ -89,5 +91,5 @@ function Ler-Terceirizados([string]$pastaObra, [string]$codigo) {
   $leg = if ($laranja -and $laranja.legenda.Count) { $laranja.legenda } elseif ($cinza) { $cinza.legenda } else { @() }
   $rev = [regex]::Match($arq.Name, '_R(\d+)').Groups[1].Value
   return [ordered]@{ v = $VERSAO_LEITURA; arquivo = $arq.Name; modificado = $arq.LastWriteTime.ToString('o'); rev = $(if ($rev) { "R$rev" } else { '' })
-    legenda = $leg; cinza = $(if ($cinza) { $cinza.itens } else { @() }); laranja = $(if ($laranja) { $laranja.itens } else { @() }) }
+    topo = $(if ($laranja) { $laranja.topo } elseif ($cinza) { $cinza.topo } else { @() }); legenda = $leg; cinza = $(if ($cinza) { $cinza.itens } else { @() }); laranja = $(if ($laranja) { $laranja.itens } else { @() }) }
 }
