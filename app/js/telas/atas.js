@@ -845,19 +845,27 @@ function detalheAta(id, hoje, obras) {
 // O valor vai num campo escondido "participantes" no mesmo formato de sempre: "Marcos (Sólida), Fernanda (Arquitetura)".
 const TIPOS_PARTICIPANTE_EXTERNO = ['Arquitetura', 'Cliente', 'Terceirizado', 'Outro'];
 function blocoParticipantes(atuais = []) {
-  const eq = (a, b) => semAcento(a).toLowerCase().trim().split(/\s+/)[0] === semAcento(b).toLowerCase().trim().split(/\s+/)[0];
-  const pessoas = pessoasSelecionaveis();
+  // nomes COMPLETOS das pessoas (como estão no cadastro); quem está logado com a conta admin aparece com o próprio nome, sem o "(admin)"
+  const limpo = (n) => String(n || '').replace(/\s*\(admin\)\s*/i, ' ').replace(/\s+/g, ' ').trim();
+  const chave = (n) => semAcento(limpo(n)).toLowerCase();
+  const eu = souEu(); const minhaConta = dados.pessoas.find((p) => p.id === eu && ehConta(p));
+  const base = [...pessoasSelecionaveis(), ...(minhaConta ? [minhaConta] : [])].map((p) => ({ id: p.id, nome: limpo(p.nome) }));
+  const vistos = new Set(); const pessoas = base.filter((p) => { const k = chave(p.nome); if (!k || vistos.has(k)) return false; vistos.add(k); return true; }).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' }));
+  const primeiroTk = (n) => chave(n).split(' ')[0];
   const sol = new Set(); const fora = [];
   for (const t of atuais) {
     const m = String(t).match(/^(.*?)\s*\(([^)]*)\)\s*$/); const nome = (m ? m[1] : String(t)).trim(); const papel = m ? m[2].trim() : '';
-    const p = (!papel || /s[óo]lida/i.test(papel)) ? pessoas.find((x) => eq(x.nome, nome)) : null;
+    let p = null;
+    if (!papel || /s[óo]lida/i.test(papel)) {
+      p = pessoas.find((x) => chave(x.nome) === chave(nome));   // nome completo igual
+      if (!p) { const cand = pessoas.filter((x) => primeiroTk(x.nome) === primeiroTk(nome)); if (cand.length === 1) p = cand[0]; }   // só o primeiro nome: vale se só uma pessoa tem esse nome
+    }
     if (p) sol.add(p.id); else if (nome) fora.push(String(t).trim());
   }
-  const primeiro = (n) => String(n || '').trim().split(/\s+/)[0];
-  const valorInicial = [...pessoas.filter((p) => sol.has(p.id)).map((p) => `${primeiro(p.nome)} (Sólida)`), ...fora].join(', ');
+  const valorInicial = [...pessoas.filter((p) => sol.has(p.id)).map((p) => `${p.nome} (Sólida)`), ...fora].join(', ');
   const cartao = (t) => html`<span class="at-pc at-pc-ext on" data-pc-ext="${t}">${t}<i data-pc-del title="Tirar">×</i></span>`;
   return html`<div class="at-part" data-part><span class="at-part-rot">Participantes <span class="pequeno">clique nas pessoas da Sólida; para quem é de fora, escolha o tipo, escreva o nome e adicione</span></span>
-    <div class="at-part-sol">${pessoas.map((p) => html`<button type="button" class="at-pc ${sol.has(p.id) ? 'on' : ''}" data-pc-sol="${primeiro(p.nome)}">${primeiro(p.nome)}</button>`)}</div>
+    <div class="at-part-sol">${pessoas.map((p) => html`<button type="button" class="at-pc ${sol.has(p.id) ? 'on' : ''}" data-pc-sol="${p.nome}">${p.nome}</button>`)}</div>
     <div class="at-part-novo"><select data-pc-tipo>${TIPOS_PARTICIPANTE_EXTERNO.map((t) => html`<option>${t}</option>`)}</select><input data-pc-nome autocomplete="off" placeholder="Nome (e empresa, se quiser)"><button type="button" class="ac-mini" data-pc-add>+ adicionar</button></div>
     <div class="at-part-ext" data-pc-lista>${fora.map(cartao)}</div>
     <input type="hidden" name="participantes" value="${valorInicial}"></div>`;
