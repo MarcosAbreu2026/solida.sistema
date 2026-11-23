@@ -35,7 +35,7 @@ export async function importarListaPendencias(arquivo, obras) {
   const r = await lerArquivoAta(arquivo);
   const formato = formatoListaPendencias(r.texto, r.paginas);
   if (!formato) throw new Error('Este PDF não parece uma lista de pendências (tabela Obra · Pendência · Urgência… ou Nº · Obra · Descrição · Responsável…). Para importar uma ata de reunião, use a aba Atas.');
-  const opc = { pessoas: dados.pessoas, obras, hoje: hojeISO() };
+  const opc = { pessoas: pessoasSelecionaveis(), obras, hoje: hojeISO() };
   rascunho = null; lote = montarLote(formato === 'pessoa' ? lerListaPorPessoa(r.paginas, r.texto, opc) : lerAtaDePendencias(r.paginas, r.texto, opc), obras);
   return lote;
 }
@@ -45,7 +45,7 @@ export async function importar({ arquivo = null, texto = '', fala = false }, obr
   let t = texto; let nome = ''; let paginas = null;
   if (arquivo) { const r = await lerArquivoAta(arquivo); t = r.texto; paginas = r.paginas; nome = String(arquivo.name || '').replace(/\.[^.]+$/, ''); }
   if (!String(t).trim()) throw new Error('Não há texto para ler.');
-  const opc = { pessoas: dados.pessoas, obras, hoje: hojeISO() };
+  const opc = { pessoas: pessoasSelecionaveis(), obras, hoje: hojeISO() };
   // transcrição de reunião (gravada) ou resumo em tópicos: leitor de reunião; ata pronta (PDF, texto): leitor de ata
   if (fala) rascunho = analisarFala(t, opc);
   else if (!arquivo && pareceResumoEmTopicos(t)) rascunho = analisarReuniao(t, opc);
@@ -74,11 +74,11 @@ export const assuntoDoTexto = (txt) => {
 function montarLote(lido, obras) {
   if (lido.tipo === 'pessoa') {
     // lista de UMA pessoa (Ata de pendências — Mariana): ela é a responsável de todas; "Com a Julia" na observação põe a Julia como observadora
-    const q = primeiroNomeDe(lido.pessoaNome); const resp = dados.pessoas.find((p) => primeiroNomeDe(p.nome) === q) || {};
+    const q = primeiroNomeDe(lido.pessoaNome); const resp = pessoasSelecionaveis().find((p) => primeiroNomeDe(p.nome) === q) || {};
     const itens = lido.itens.map((it) => {
       const geral = /^geral$/i.test(it.obraTxt); const cod = normalizarCodigoObra(it.obraTxt);
       const cad = geral ? '' : obras.find((o) => codigoDaObra(o) === codigoDaObra(cod) || normTxt(o) === normTxt(it.obraTxt) || normTxt(NOMES_OBRAS[String(o).toLowerCase()]) === normTxt(it.obraTxt));
-      const obsIds = [...new Set(it.comPessoas.map((n) => { const q2 = primeiroNomeDe(n); return (dados.pessoas.find((p) => primeiroNomeDe(p.nome) === q2) || {}).id; }).filter((id) => id && id !== resp.id))];
+      const obsIds = [...new Set(it.comPessoas.map((n) => { const q2 = primeiroNomeDe(n); return (pessoasSelecionaveis().find((p) => primeiroNomeDe(p.nome) === q2) || {}).id; }).filter((id) => id && id !== resp.id))];
       const notas = [it.obs, it.desde ? `Pendente desde ${dm(it.desde).slice(0, 5)}` : ''].filter(Boolean);
       return { n: it.n, incluir: true, obra: cad || '', obraPdf: !geral && !cad ? it.obraTxt : '', assunto: assuntoDoTexto(it.titulo), desc: it.titulo, responsavel: resp.id || '', observadores: obsIds, responsaveisTxt: lido.pessoaNome, setor: (resp.setores || [])[0] || '', urgencia: it.urgencia, prazo: it.prazo, hora: it.hora || '', notas };
     });
@@ -87,7 +87,7 @@ function montarLote(lido, obras) {
   const setorTerc = SETORES_ATA.find((s) => /terceiriz\w*\s+laranja/i.test(s)) || '';
   const setorPadrao = SETORES_ATA.find((s) => /^orc\s+obras\s+novas$/i.test(s)) || '';
   const itens = lido.itens.map((it) => {
-    const ids = it.responsaveis.map((nome) => { const q = primeiroNomeDe(nome); const ach = dados.pessoas.filter((p) => primeiroNomeDe(p.nome) === q); return (ach.find((p) => normTxt(p.nome) === normTxt(nome)) || ach[0] || {}).id || ''; }).filter(Boolean);
+    const ids = it.responsaveis.map((nome) => { const q = primeiroNomeDe(nome); const ach = pessoasSelecionaveis().filter((p) => primeiroNomeDe(p.nome) === q); return (ach.find((p) => normTxt(p.nome) === normTxt(nome)) || ach[0] || {}).id || ''; }).filter(Boolean);
     const principal = it.obraTxt; const alvo = principal.replace(/^p[oó]s-obra\s*·\s*/i, ''); const cod = normalizarCodigoObra(alvo);
     // a obra do PDF (código ou nome) é procurada no cadastro, inclusive pelo nome (Sinagoga Leblon = Mo461)
     const cad = obras.find((o) => codigoDaObra(o) === codigoDaObra(cod) || normTxt(o) === normTxt(alvo) || normTxt(NOMES_OBRAS[String(o).toLowerCase()]) === normTxt(alvo));
@@ -578,7 +578,7 @@ const pessoasParaVer = () => {
 };
 // nível do cargo (0 = mais alto): quem é de nível abaixo não vê as tarefas do nível acima
 const NIVEL = { socio: 0, administrativo: 1, coord_operacoes: 1, tecnico: 2, planejamento: 2, projetos: 2, compras: 2, ferramentas: 2, financeiro: 2, rh: 2, marketing: 3, gestor_obra: 3, posobra: 3, orc_terceirizado: 4, orc_obras_novas: 4, estagiario_compras: 4, estagiario_posobra: 4, executor_ferramentas: 4, estagiario: 4, encarregado: 5, ajudante: 6 };
-const pessoasComPendencia = () => { const ids = new Set(dados.pendencias.filter((p) => naLista(p) && p.status !== 'cancelada' && p.responsavel).map((p) => p.responsavel)); return dados.pessoas.filter((p) => ids.has(p.id)).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')); };
+const pessoasComPendencia = () => { const ids = new Set(dados.pendencias.filter((p) => naLista(p) && p.status !== 'cancelada' && p.responsavel).map((p) => p.responsavel)); return dados.pessoas.filter((p) => ids.has(p.id) && !ehConta(p)).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')); };
 // o campo "Terceirizado" aparece depois de escolher "Terceirizados (todos)" em Responsável: só nomes de empresa ou pessoa
 // (sem tipo de serviço, para a lista não ficar enorme)
 function seletorTerceirizado(atual) {
