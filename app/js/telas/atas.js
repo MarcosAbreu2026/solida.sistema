@@ -662,6 +662,8 @@ export async function reprogramar(id, novo) {
   await carregar();
 }
 
+// ponto discreto no cartão/linha: a tarefa veio de uma ata (passar o mouse mostra qual; clicar abre a ata)
+const pontoDaAta = (a) => (a ? html`<a class="at-ata-ponto" href="#/atas?aba=atas&ata=${a.id}" title="Veio da ata ${a.titulo} (${dm(a.data)})" aria-label="Veio da ata ${a.titulo}">📄</a>` : '');
 function cartao(p, hoje) {
   const a = ataDe(p); const col = coluna(p, hoje);
   const dias = p.prazo ? diasEntre(hoje, p.prazo) : null;
@@ -669,7 +671,7 @@ function cartao(p, hoje) {
   const onde2 = p.obra || p.setor || '';   // se tem obra aparece a obra; senão, o setor
   return html`<article class="at-card at-${col}" data-tarefa="${p.id}" draggable="true" title="Clique para ver os detalhes · clique no nome para editá-lo aqui mesmo · arraste para mudar o prazo">
     <div class="at-tit" title="Clique para editar o nome da tarefa">${descRica(p.descricao)}</div>
-    <div class="at-linha2"><span class="at-esq">${prazoBtn(p, rotuloPrazo, `at-prazo at-p-${col}`)}</span><span class="at-dir">${p.urgencia ? chipUrg(p.urgencia) : ""}</span></div>
+    <div class="at-linha2"><span class="at-esq">${prazoBtn(p, rotuloPrazo, `at-prazo at-p-${col}`)}</span><span class="at-dir">${pontoDaAta(a)}${p.urgencia ? chipUrg(p.urgencia) : ""}</span></div>
     <div class="at-linha3"><span class="at-esq"><span class="at-pessoa">${nomeDe(p.responsavel, p.responsavel_nome)}</span>${p.responsavel_tipo && p.responsavel_tipo !== 'solida' ? html`<span class="at-tipo at-t-${p.responsavel_tipo}">${ROTULO_TIPO[p.responsavel_tipo] || 'Externo'}${p.responsavel_categoria ? ` · ${p.responsavel_categoria}` : ''}</span>` : ''}</span><span class="at-dir">${onde2 ? html`<span class="at-chip">${onde2}</span>` : ''}</span></div>
 
     <div class="at-acoes">
@@ -797,17 +799,30 @@ function linhasDaAta(a, ps) {
   const itens = [...ps.map((p, i) => ({ kind: 'pend', p, n: Number(p.item) || 0, i })), ...((a.informativos || []).map((x, i) => ({ kind: 'info', x, n: (x && x.n) || 0, i: 1000 + i })))];
   return itens.sort((x, y) => ((x.n || 1e6) - (y.n || 1e6)) || (x.i - y.i));
 }
+// Quem foi marcado em itens da ata mas não é de lá (nem criou, nem participou, nem é do departamento/obra) vê só os itens dele.
+function ataRestrita(a) {
+  const eu = souEu(); const f = funcaoReal();
+  if (!NA_NUVEM || !eu || a.criado_por === eu || ['socio', 'administrativo'].includes(f.id)) return false;
+  const primeiro = (s) => semAcento(String(s || '')).toLowerCase().replace(/\(.*\)/, '').trim().split(/\s+/)[0];
+  const meuNome = ((dados.pessoas.find((p) => p.id === eu) || {}).nome) || sessao().nome || '';
+  if ((a.participantes || []).some((t) => primeiro(t) && primeiro(t) === primeiro(meuNome))) return false;
+  const perf = perfilAtual() || {};
+  if (a.obra && (perf.obras || []).some((o) => codigoDaObra(o) === codigoDaObra(a.obra))) return false;
+  if (!f.porObra && a.setor && meusSetores().includes(a.setor)) return false;
+  return true;
+}
 function detalheAta(id, hoje, obras) {
   const a = dados.atas.find((x) => String(x.id) === String(id));
   if (!a) return html`<p class="vazio">Ata não encontrada (ou você não tem acesso a ela). <a class="link" href="#/atas?aba=atas">Voltar às atas</a></p>`;
   const ps = dados.pendencias.filter((p) => p.ata_id === a.id && p.status !== 'cancelada');
   const podeApagar = funcaoReal().id === 'socio' || a.criado_por === souEu();
+  const restrita = ataRestrita(a);
   return html`<p class="at-voltar"><a class="link" href="#/atas?aba=atas">← Todas as atas</a> <button type="button" class="botao on at-imprimir" data-imprimir="" title="Imprimir esta ata (ou salvar em PDF)">🖨 Imprimir ata</button></p>
     <article class="at-ata-det">
       <h2>${a.titulo}</h2>
       <p class="pequeno at-drive ${a.arquivada_em ? 'ok' : a.arquivo_erro ? 'erro' : ''}">${a.arquivada_em ? html`✓ Salva no Drive (${new Date(a.arquivada_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}): ${a.arquivo || a.titulo + '.pdf'}` : a.arquivo_erro ? html`Não consegui salvar no Drive: ${a.arquivo_erro}. Vou tentar de novo no próximo ciclo.` : a.obra ? 'Aguardando ser salva no Drive (o computador do escritório salva a cada 10 minutos).' : 'Ata sem obra: fica só no sistema.'}${a.criado_por_nome ? ` Registrada por ${a.criado_por_nome}.` : ''}</p>
       ${(() => { const ac = acompanhamento(a); return ac.total ? html`<p class="at-acomp"><b>Acompanhamento:</b> ${ac.feitas} de ${ac.total} pendências concluídas${ac.atrasadas ? html` · <span class="pendente">${ac.atrasadas} ${ac.atrasadas === 1 ? 'atrasada' : 'atrasadas'}</span>` : ''}${ac.reprogramadas ? ` · ${ac.reprogramadas} ${ac.reprogramadas === 1 ? 'reprogramada' : 'reprogramadas'}` : ''}</p>` : ''; })()}
-      ${a.resumo ? html`<div class="at-resumo">${textoRico(a.resumo)}</div>` : ''}
+      ${restrita ? html`<p class="pequeno at-restrita">Você vê só os itens em que foi marcado(a) nesta ata.</p>` : (a.resumo ? html`<div class="at-resumo">${textoRico(a.resumo)}</div>` : '')}
       <div class="sd-folha">
         <div class="sd-cab">
           <div class="sd-logo"></div>
@@ -816,7 +831,7 @@ function detalheAta(id, hoje, obras) {
           <div class="sd-linha"><b>PARTICIPANTES:</b> ${participantesRico(a.participantes)}</div>
         </div>
         <div class="tabela-rolagem"><table class="sd-tab"><thead><tr><th>ITEM</th><th>TIPO</th><th></th><th>RESPONSÁVEL</th><th>DATA LIMITE</th><th class="sd-sem-pdf"></th></tr></thead><tbody>
-          ${linhasDaAta(a, ps).map((r, k) => r.kind === 'info' ? html`<tr><td class="c">${k + 1}</td><td class="c sd-t-info">INFORMATIVO</td><td>${descRica(typeof r.x === 'string' ? r.x : r.x.texto)}</td><td class="c">${typeof r.x === 'string' || !r.x.quem ? '—' : html`${String(r.x.quem).toLocaleUpperCase('pt-BR')}${r.x.tipo && r.x.tipo !== 'solida' ? html`<small>${ROTULO_TIPO[r.x.tipo] || 'Externo'}${r.x.categoria ? ` · ${r.x.categoria}` : ''}</small>` : ''}`}</td><td class="c"></td><td class="sd-sem-pdf"></td></tr>`
+          ${linhasDaAta(a, ps).filter((r) => !restrita || r.kind !== 'info' || ((typeof r.x === 'object' && r.x.quem) ? String(r.x.quem).toLowerCase().split(/\s+/)[0] === String(((dados.pessoas.find((q) => q.id === souEu()) || {}).nome) || '').toLowerCase().split(/\s+/)[0] : false)).map((r, k) => r.kind === 'info' ? html`<tr><td class="c">${k + 1}</td><td class="c sd-t-info">INFORMATIVO</td><td>${descRica(typeof r.x === 'string' ? r.x : r.x.texto)}</td><td class="c">${typeof r.x === 'string' || !r.x.quem ? '—' : html`${String(r.x.quem).toLocaleUpperCase('pt-BR')}${r.x.tipo && r.x.tipo !== 'solida' ? html`<small>${ROTULO_TIPO[r.x.tipo] || 'Externo'}${r.x.categoria ? ` · ${r.x.categoria}` : ''}</small>` : ''}`}</td><td class="c"></td><td class="sd-sem-pdf"></td></tr>`
             : html`<tr class="${r.p.status === 'feita' ? 'sd-feita' : ''}"><td class="c">${k + 1}</td><td class="c sd-t-pend">PENDÊNCIA</td><td>${descRica(r.p.descricao)}${r.p.na_lista !== false ? '' : html` <span class="at-fora-lista" title="Tirada da lista de pendências; continua nesta ata">fora da lista</span>`}</td><td class="c">${String(nomeDe(r.p.responsavel, r.p.responsavel_nome)).toLocaleUpperCase('pt-BR')}${r.p.responsavel_tipo && r.p.responsavel_tipo !== 'solida' ? html`<small>${ROTULO_TIPO[r.p.responsavel_tipo] || 'Externo'}${r.p.responsavel_categoria ? ` · ${r.p.responsavel_categoria}` : ''}</small>` : ''}</td>
               <td class="c ${reprogramada(r.p) ? 'sd-repro' : ''}" ${reprogramada(r.p) ? html.seguro(`title="${tituloRepro(r.p).replace(/"/g, '')}"`) : ''}>${prazoBtn(r.p, r.p.prazo ? dMes(r.p.prazo) : '—')}${reprogramada(r.p) ? html`<small>↻ era ${dMes(r.p.prazo_original)}</small>` : ''}</td>
               <td class="sd-sem-pdf at-acoes">${r.p.status === 'feita' ? html`<button type="button" class="ac-mini" data-pend="${r.p.id}|aberta">↺</button>` : html`<button type="button" class="ac-mini at-ok" data-pend="${r.p.id}|feita" title="Concluir">✓</button>`}${r.p.na_lista !== false ? '' : html`<button type="button" class="ac-mini" data-pend-lista="${r.p.id}" title="Voltar esta pendência para a lista de pendências">+ lista</button>`}</td></tr>`)}
@@ -826,6 +841,27 @@ function detalheAta(id, hoje, obras) {
     </article>`;
 }
 
+// Participantes da reunião (pedido do Felipe, 23/11/2026): clicar nos nomes da Sólida e, para gente de fora (arquitetura, cliente, terceirizado…), adicionar cartões.
+// O valor vai num campo escondido "participantes" no mesmo formato de sempre: "Marcos (Sólida), Fernanda (Arquitetura)".
+const TIPOS_PARTICIPANTE_EXTERNO = ['Arquitetura', 'Cliente', 'Terceirizado', 'Outro'];
+function blocoParticipantes(atuais = []) {
+  const eq = (a, b) => semAcento(a).toLowerCase().trim().split(/\s+/)[0] === semAcento(b).toLowerCase().trim().split(/\s+/)[0];
+  const pessoas = pessoasSelecionaveis();
+  const sol = new Set(); const fora = [];
+  for (const t of atuais) {
+    const m = String(t).match(/^(.*?)\s*\(([^)]*)\)\s*$/); const nome = (m ? m[1] : String(t)).trim(); const papel = m ? m[2].trim() : '';
+    const p = (!papel || /s[óo]lida/i.test(papel)) ? pessoas.find((x) => eq(x.nome, nome)) : null;
+    if (p) sol.add(p.id); else if (nome) fora.push(String(t).trim());
+  }
+  const primeiro = (n) => String(n || '').trim().split(/\s+/)[0];
+  const valorInicial = [...pessoas.filter((p) => sol.has(p.id)).map((p) => `${primeiro(p.nome)} (Sólida)`), ...fora].join(', ');
+  const cartao = (t) => html`<span class="at-pc at-pc-ext on" data-pc-ext="${t}">${t}<i data-pc-del title="Tirar">×</i></span>`;
+  return html`<div class="at-part" data-part><span class="at-part-rot">Participantes <span class="pequeno">clique nas pessoas da Sólida; para quem é de fora, escolha o tipo, escreva o nome e adicione</span></span>
+    <div class="at-part-sol">${pessoas.map((p) => html`<button type="button" class="at-pc ${sol.has(p.id) ? 'on' : ''}" data-pc-sol="${primeiro(p.nome)}">${primeiro(p.nome)}</button>`)}</div>
+    <div class="at-part-novo"><select data-pc-tipo>${TIPOS_PARTICIPANTE_EXTERNO.map((t) => html`<option>${t}</option>`)}</select><input data-pc-nome autocomplete="off" placeholder="Nome (e empresa, se quiser)"><button type="button" class="ac-mini" data-pc-add>+ adicionar</button></div>
+    <div class="at-part-ext" data-pc-lista>${fora.map(cartao)}</div>
+    <input type="hidden" name="participantes" value="${valorInicial}"></div>`;
+}
 function formNova(obras, revisarId = '') {
   const hoje = hojeISO();
   const ataRev = revisarId ? ataPorId(revisarId) : null;
@@ -860,7 +896,7 @@ function formNova(obras, revisarId = '') {
     </div>
     <p class="at-nome-linha">Nome da ata: <b id="ata-nome">escolha a data</b> <span class="pequeno" id="ata-destino"></span></p>
     <div class="at-form-grade2"><label>Local<input name="local" required autocomplete="off" placeholder="ex.: online, ou o endereço" value="${r && r.local ? r.local : ''}"></label></div>
-    <label>Participantes <span class="pequeno">escreva os nomes separados por vírgula; pode pôr a empresa entre parênteses</span><input name="participantes" required autocomplete="off" placeholder="ex.: Marcos (Sólida), Fernanda (Arquitetura), Julio (Cliente)" value="${r ? r.participantes.join(', ') : ''}"></label>
+    ${blocoParticipantes(r ? r.participantes : [])}
     <textarea name="resumo" hidden>${r ? r.resumo : ''}</textarea>
     <h3>Pendências <span class="pequeno">o que precisa de ação: quem faz e até quando</span></h3>
     <div id="pend-linhas">${html.seguro(linhasIniciais)}</div>
@@ -950,7 +986,7 @@ function vistaDia(params, obras, setorFixo) {
     return html`<div class="lt-linha ${p.status === 'feita' ? 'lt-feita' : ''}" data-tarefa="${p.id}" title="Clique para ver a tarefa · clique no nome para editá-lo aqui mesmo">
       <input type="checkbox" class="lt-chk" data-pend="${p.id}|${p.status === 'feita' ? 'aberta' : 'feita'}" ${p.status === 'feita' ? html.seguro('checked') : ''} title="${p.status === 'feita' ? 'Reabrir' : 'Concluir'}">
       <div class="lt-corpo"><span class="lt-tit" title="Clique para editar o nome da tarefa">${cmp && p.obra ? html`<b class="lt-obra">${p.obra}</b> ` : ''}${descRica(p.descricao)}</span>${sub ? html`<span class="lt-sub ${atrasada ? 'lt-atraso' : ''}">${sub}</span>` : ''}${p.funcao_tarefa ? html`<span class="lt-sub">Função: ${p.funcao_tarefa}</span>` : ''}</div>
-      <div class="lt-dir">${mostrarQuem(p) ? html`<span class="lt-quem ${corPessoa(quem)}">${quem}</span>` : ''}${chipUrg(p.urgencia)}
+      <div class="lt-dir">${pontoDaAta(ataDe(p))}${mostrarQuem(p) ? html`<span class="lt-quem ${corPessoa(quem)}">${quem}</span>` : ''}${chipUrg(p.urgencia)}
         <button type="button" class="lt-bt" data-lt-mover="${p.id}|${ontem}" title="Passar para ${dm(ontem)}">↩ Devolver para ${dm(ontem).slice(0, 5)}</button>
         <button type="button" class="lt-bt" data-lt-mover="${p.id}|${amanha}" title="Passar para ${dm(amanha)}">→ ${dm(amanha).slice(0, 5)}</button>
         <button type="button" class="lt-bt" data-lt-abrir="${p.id}">Editar</button>

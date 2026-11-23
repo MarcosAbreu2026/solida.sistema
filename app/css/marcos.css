@@ -1547,3 +1547,19 @@ td.cg-sem-data { background: #fff8e1; color: #8a6d00; font-style: italic; font-s
 .df-os { color: #1f3a5f; margin-right: 2px; }
 .df-check .df-it { grid-template-columns: 1fr; }
 .df-prazo { color: #888; }
+
+/* ponto 'veio de uma ata' no cartão e na linha da tarefa */
+.at-ata-ponto { text-decoration: none; font-size: 12px; line-height: 1; opacity: .75; margin-right: 4px; cursor: pointer; } .at-ata-ponto:hover { opacity: 1; }
+.lt-tit .at-ata-ponto { margin-left: 6px; }
+
+/* Participantes da ata: pessoas da Sólida clicáveis + cartões de gente de fora */
+.at-part { margin: 8px 0; display: flex; flex-direction: column; gap: 6px; }
+.at-part-rot { font-weight: 700; font-size: 13px; }
+.at-part-sol, .at-part-ext { display: flex; flex-wrap: wrap; gap: 5px; }
+.at-pc { border: 1px solid #B9C9DD; background: #fff; color: #1F3A56; border-radius: 999px; padding: 3px 11px; font-size: 12.5px; cursor: pointer; font-family: inherit; }
+.at-pc:hover { border-color: #2B5E96; } .at-pc.on { background: #2B5E96; border-color: #2B5E96; color: #fff; }
+.at-pc-ext { cursor: default; display: inline-flex; align-items: center; gap: 6px; } .at-pc-ext i { font-style: normal; cursor: pointer; font-weight: 800; opacity: .85; } .at-pc-ext i:hover { opacity: 1; }
+.at-part-novo { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; } .at-part-novo select, .at-part-novo input { padding: 4px 8px; font-size: 13px; } .at-part-novo input { flex: 1 1 200px; min-width: 0; }
+.at-restrita { background: #F4F7FB; border: 1px solid #CBD9EA; border-radius: 8px; padding: 6px 10px; }
+/* nova tarefa: a lista de observadores não rola; tudo cabe na janela */
+.tf-nova .obs-lista, .tf-nova .tf-reuniao .obs-lista, #reun-form .obs-lista { max-height: none; overflow: visible; }

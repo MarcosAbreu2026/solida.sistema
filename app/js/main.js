@@ -2889,6 +2889,7 @@ document.addEventListener('submit', async (e) => {
       }
       if (pendencias.some((p) => p.externoTipo === '' && !p.responsavel)) { alert('Toda pendência precisa de um responsável: escolha a pessoa da Sólida.'); return; }
       if (pendencias.some((p) => p.externoTipo === 'terceirizado' && !p.externoCategoria && !p.externoNome)) { alert('Pendência de terceirizado: escreva o nome da empresa ou pessoa.'); return; }
+      if (!String(fd.get('participantes') || '').trim()) { alert('Escolha pelo menos um participante da reunião (clique nos nomes ou adicione alguém de fora).'); return; }
       const nome = atas.atualizarNomeDoForm(f); if (!nome) { alert('Escolha a data: o nome da ata sai dela.'); return; }
       if (f.dataset.revisar) {
         const idRev = f.dataset.revisar;
@@ -3139,3 +3140,23 @@ document.addEventListener('click', (e) => {
     const l = document.createElement('a'); l.href = url; l.download = `distribuicao-${a.vista === 'func' ? 'funcionarios' : 'obras'}-${a.semana}.png`; document.body.appendChild(l); l.click(); l.remove();
   } catch (err) { alert(`Não foi possível gerar a imagem (${err.message || err}).`); }
 });
+
+// Participantes da ata: clicar nas pessoas da Sólida e adicionar cartões de gente de fora (arquitetura, cliente, terceirizado…)
+function sincronizarParticipantes(box) {
+  const valores = [...box.querySelectorAll('.at-pc.on')].map((el) => (el.dataset.pcSol ? `${el.dataset.pcSol} (Sólida)` : el.dataset.pcExt)).filter(Boolean);
+  const campo = box.querySelector('input[name="participantes"]'); if (campo) { campo.value = valores.join(', '); campo.dispatchEvent(new Event('input', { bubbles: true })); }
+}
+function adicionarParticipanteExterno(box) {
+  const nome = box.querySelector('[data-pc-nome]'); const tipo = box.querySelector('[data-pc-tipo]'); const t = String(nome.value || '').replace(/[(),;]/g, ' ').replace(/\s+/g, ' ').trim(); if (!t) { nome.focus(); return; }
+  const valor = tipo.value === 'Outro' ? t : `${t} (${tipo.value})`;
+  const el = document.createElement('span'); el.className = 'at-pc at-pc-ext on'; el.dataset.pcExt = valor; el.append(valor); const x = document.createElement('i'); x.dataset.pcDel = ''; x.title = 'Tirar'; x.textContent = '×'; el.appendChild(x);
+  box.querySelector('[data-pc-lista]').appendChild(el); nome.value = ''; nome.focus(); sincronizarParticipantes(box);
+}
+document.addEventListener('click', (e) => {
+  const box = e.target.closest && e.target.closest('[data-part]'); if (!box) return;
+  const sol = e.target.closest('[data-pc-sol]'); const del = e.target.closest('[data-pc-del]'); const add = e.target.closest('[data-pc-add]');
+  if (sol) { sol.classList.toggle('on'); sincronizarParticipantes(box); }
+  else if (del) { del.closest('.at-pc').remove(); sincronizarParticipantes(box); }
+  else if (add) adicionarParticipanteExterno(box);
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.matches && e.target.matches('[data-pc-nome]')) { e.preventDefault(); adicionarParticipanteExterno(e.target.closest('[data-part]')); } });
