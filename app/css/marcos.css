@@ -1565,3 +1565,17 @@ td.cg-sem-data { background: #fff8e1; color: #8a6d00; font-style: italic; font-s
 .tf-nova .obs-lista, .tf-nova .tf-reuniao .obs-lista, #reun-form .obs-lista { max-height: none; overflow: visible; }
 
 .tf-cab .at-ver-ata { padding: 2px 12px; font-size: 12.5px; text-decoration: none; margin-left: 6px; }
+
+/* Janela da tarefa (nova, detalhes e reunião): compacta e SEM barra de rolagem em nenhuma hipótese (pedido do Felipe, 23/11/2026) */
+.at-modal:has(.tf) { overflow: hidden; padding-top: 3vh; }
+.at-modal-caixa.tf-caixa, .at-modal-caixa:has(.tf-corpo) { overflow: visible !important; max-height: none !important; }
+.tf[data-tf-raiz] .tf-esq { padding-top: 12px; padding-bottom: 10px; }
+.tf[data-tf-raiz] .tf-grade { gap: 5px 12px; align-items: end; }
+.tf[data-tf-raiz] .tf-grade label { gap: 2px; font-size: 12px; }
+.tf[data-tf-raiz] .tf-grade select, .tf[data-tf-raiz] .tf-grade input:not([type="checkbox"]) { height: 28px !important; min-height: 0 !important; padding: 2px 8px !important; font-size: 13px !important; box-sizing: border-box !important; }
+.tf[data-tf-raiz] .tf-cab { margin-bottom: 4px; } .tf[data-tf-raiz] .tf-sep { margin: 2px 0; }
+.tf[data-tf-raiz] .obs-lista, .tf .obs-lista { max-height: none !important; overflow: visible !important; }
+.tf[data-tf-raiz] .obs-busca { padding: 3px 4px !important; font-size: 12.5px; }
+.tf[data-tf-raiz] .obs-chip, .tf[data-tf-raiz] .obs-item { padding-top: 2px !important; padding-bottom: 2px !important; font-size: 12px; }
+.tf[data-tf-raiz] .tf-botoes { margin-top: 6px; }
+.tf[data-tf-raiz] .tf-esq > .pequeno, .tf[data-tf-raiz] .tf-grade ~ .pequeno { display: none; }
